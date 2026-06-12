@@ -3,14 +3,16 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\IntegrationConnection;
 use App\Models\OpeningHour;
 use App\Models\RestaurantTable;
-use App\Models\Room;
 use App\Models\SpecialOpeningHour;
 use App\Services\AuditLogger;
+use App\Services\Newsletter\MailwizzProvider;
 use App\Services\PlanLimitService;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 
 class SettingsController extends Controller
 {
@@ -25,8 +27,18 @@ class SettingsController extends Controller
         $location = $this->context->location();
         abort_if($location === null, 404);
 
+        $mailwizz = IntegrationConnection::whereNull('location_id')
+            ->where('provider', 'mailwizz')
+            ->first();
+        $mailwizzCredentials = [];
+        if ($mailwizz?->credentials_encrypted) {
+            $mailwizzCredentials = json_decode(Crypt::decryptString($mailwizz->credentials_encrypted), true) ?: [];
+        }
+
         return view('admin.settings.index', [
             'location' => $location,
+            'mailwizz' => $mailwizz,
+            'mailwizzCredentials' => $mailwizzCredentials,
             'settings' => $location->effectiveSettings(),
             'rooms' => $location->rooms()->withCount('tables')->orderBy('sort_order')->get(),
             'tables' => $location->tables()->with('room')->orderBy('sort_order')->get(),
@@ -71,6 +83,94 @@ class SettingsController extends Controller
         $this->audit->log('location.settings_updated', $settings, $old, $validated);
 
         return back()->with('success', __('Buchungsregeln gespeichert.'));
+    }
+
+    /**
+     * Booking widget field visibility: hidden | optional | required per field.
+     */
+    public function updateFieldRules(Request $request)
+    {
+        $location = $this->context->location();
+        abort_if($location === null, 404);
+
+        $fields = ['email', 'phone', 'occasion', 'note', 'allergies'];
+        $validated = $request->validate(
+            collect($fields)->mapWithKeys(fn ($f) => ["fields.{$f}" => ['required', 'in:hidden,optional,required']])->all()
+        );
+
+        $settings = $location->settings()->firstOrCreate(['tenant_id' => $location->tenant_id]);
+        $old = $settings->field_rules;
+        $settings->update(['field_rules' => $validated['fields']]);
+
+        $this->audit->log('location.field_rules_updated', $settings, ['field_rules' => $old], $validated['fields']);
+
+        return back()->with('success', __('Formularfelder gespeichert.'));
+    }
+
+    /**
+     * MailWizz newsletter integration (tenant-wide). Credentials are stored
+     * encrypted; the API key is never displayed again after saving.
+     */
+    public function updateMailwizz(Request $request)
+    {
+        $tenant = $this->context->tenant();
+
+        $validated = $request->validate([
+            'api_url' => ['required', 'url'],
+            'api_key' => ['nullable', 'string', 'max:255'],
+            'list_uid' => ['required', 'string', 'max:64'],
+            'enabled' => ['nullable', 'boolean'],
+        ]);
+
+        $connection = IntegrationConnection::firstOrNew([
+            'tenant_id' => $tenant->id,
+            'location_id' => null,
+            'provider' => 'mailwizz',
+        ]);
+
+        $credentials = [];
+        if ($connection->credentials_encrypted) {
+            $credentials = json_decode(Crypt::decryptString($connection->credentials_encrypted), true) ?: [];
+        }
+        $credentials['api_url'] = $validated['api_url'];
+        $credentials['list_uid'] = $validated['list_uid'];
+        if (! empty($validated['api_key'])) {
+            $credentials['api_key'] = $validated['api_key'];
+        }
+
+        if (empty($credentials['api_key'])) {
+            return back()->withErrors(['api_key' => __('API-Key erforderlich.')]);
+        }
+
+        $connection->credentials_encrypted = Crypt::encryptString(json_encode($credentials));
+        $connection->status = $request->boolean('enabled', true) ? 'connected' : 'disconnected';
+        $connection->save();
+
+        $this->audit->log('integration.mailwizz_updated', $connection, null, [
+            'api_url' => $validated['api_url'],
+            'list_uid' => $validated['list_uid'],
+            'status' => $connection->status,
+        ]);
+
+        // Verify the connection right away so misconfiguration is visible immediately
+        if ($connection->status === 'connected') {
+            $provider = new MailwizzProvider(
+                $credentials['api_url'], $credentials['api_key'], $credentials['list_uid']
+            );
+            try {
+                if (! $provider->testConnection()) {
+                    $connection->update(['status' => 'error']);
+
+                    return back()->withErrors(['api_url' => __('Verbindungstest fehlgeschlagen – bitte URL, API-Key und Listen-UID prüfen.')]);
+                }
+            } catch (\Throwable) {
+                $connection->update(['status' => 'error']);
+
+                return back()->withErrors(['api_url' => __('MailWizz nicht erreichbar.')]);
+            }
+        }
+
+        return back()->with('success', __('MailWizz-Integration gespeichert und Verbindung getestet.'));
     }
 
     public function storeRoom(Request $request)

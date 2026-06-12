@@ -24,5 +24,13 @@
             @endif
         @endif
     </main>
+    <script>
+        // Auto-resize when embedded as iframe via /embed/{tenant}/{location}.js
+        if (window.parent !== window) {
+            const send = () => parent.postMessage({gastrobookHeight: document.body.scrollHeight + 40}, '*');
+            new ResizeObserver(send).observe(document.body);
+            window.addEventListener('load', send);
+        }
+    </script>
 </body>
 </html>

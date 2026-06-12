@@ -121,6 +121,71 @@
         </div>
     </div>
 
+    {{-- Booking form fields --}}
+    @if(auth()->user()->canInTenant('tenant.settings.manage', app(\App\Support\TenantContext::class)->tenant(), $location))
+    <form method="POST" action="{{ route('admin.settings.field-rules') }}" class="rounded-2xl bg-white p-5 shadow-sm">
+        @csrf @method('PUT')
+        <h2 class="mb-1 font-bold">Formularfelder im Buchungswidget</h2>
+        <p class="mb-3 text-xs text-stone-500">Steuert pro Feld, ob es Gästen angezeigt wird und ob es Pflicht ist. Der Name ist immer Pflicht.</p>
+        <div class="space-y-2 text-sm">
+            @foreach([
+                'email' => 'E-Mail',
+                'phone' => 'Telefon',
+                'occasion' => 'Anlass',
+                'allergies' => 'Allergien / Unverträglichkeiten',
+                'note' => 'Anmerkung',
+            ] as $field => $label)
+                <div class="flex items-center justify-between gap-3">
+                    <span>{{ $label }}</span>
+                    <select name="fields[{{ $field }}]" class="rounded-lg border-stone-200 text-sm">
+                        @foreach(['hidden' => 'Ausgeblendet', 'optional' => 'Optional', 'required' => 'Pflichtfeld'] as $value => $optionLabel)
+                            <option value="{{ $value }}" @selected($settings->fieldRule($field) === $value)>{{ $optionLabel }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            @endforeach
+        </div>
+        <p class="mt-3 text-xs text-amber-700">Hinweis: Werden E-Mail <em>und</em> Telefon ausgeblendet, können Gäste keine Bestätigung erhalten und es wird kein Gastprofil verknüpft.</p>
+        <button class="mt-3 rounded-xl bg-stone-900 px-5 py-2.5 text-sm font-bold text-white">Speichern</button>
+    </form>
+    @endif
+
+    {{-- MailWizz newsletter integration --}}
+    @if(auth()->user()->canInTenant('integrations.manage', app(\App\Support\TenantContext::class)->tenant(), $location))
+    <form method="POST" action="{{ route('admin.settings.mailwizz') }}" class="rounded-2xl bg-white p-5 shadow-sm">
+        @csrf @method('PUT')
+        <div class="mb-1 flex items-center justify-between">
+            <h2 class="font-bold">Newsletter: MailWizz</h2>
+            @if($mailwizz)
+                <span class="rounded-full px-2.5 py-0.5 text-xs font-semibold
+                    {{ ['connected' => 'bg-emerald-100 text-emerald-800', 'error' => 'bg-red-100 text-red-700'][$mailwizz->status] ?? 'bg-stone-100 text-stone-600' }}">
+                    {{ ['connected' => 'verbunden', 'error' => 'Fehler', 'disconnected' => 'deaktiviert'][$mailwizz->status] ?? $mailwizz->status }}
+                </span>
+            @endif
+        </div>
+        <p class="mb-3 text-xs text-stone-500">
+            Gäste mit Newsletter-Einwilligung werden automatisch in die MailWizz-Liste übertragen (mandantenweit).
+            Double-Opt-In wird über die Listeneinstellung in MailWizz gesteuert.
+        </p>
+        <div class="space-y-2 text-sm">
+            <div>
+                <label class="mb-1 block text-xs font-semibold text-stone-500">API-URL (z. B. https://news.example.com/api)</label>
+                <input type="url" name="api_url" required value="{{ $mailwizzCredentials['api_url'] ?? '' }}" class="w-full rounded-lg border-stone-200">
+            </div>
+            <div>
+                <label class="mb-1 block text-xs font-semibold text-stone-500">API-Key {{ ($mailwizzCredentials['api_key'] ?? null) ? '(gesetzt – leer lassen zum Beibehalten)' : '' }}</label>
+                <input type="password" name="api_key" autocomplete="new-password" placeholder="{{ ($mailwizzCredentials['api_key'] ?? null) ? '••••••••' : '' }}" class="w-full rounded-lg border-stone-200">
+            </div>
+            <div>
+                <label class="mb-1 block text-xs font-semibold text-stone-500">Listen-UID</label>
+                <input type="text" name="list_uid" required value="{{ $mailwizzCredentials['list_uid'] ?? '' }}" class="w-full rounded-lg border-stone-200">
+            </div>
+            <label class="flex items-center gap-2"><input type="checkbox" name="enabled" value="1" @checked(($mailwizz->status ?? '') === 'connected')> Synchronisierung aktiv</label>
+        </div>
+        <button class="mt-3 rounded-xl bg-stone-900 px-5 py-2.5 text-sm font-bold text-white">Speichern & Verbindung testen</button>
+    </form>
+    @endif
+
     {{-- Combinations + special hours --}}
     <div class="space-y-6">
         <div class="rounded-2xl bg-white p-5 shadow-sm">

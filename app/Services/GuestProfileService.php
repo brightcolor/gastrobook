@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\SyncNewsletterSubscriber;
 use App\Models\Guest;
 use App\Models\GuestConsent;
 use App\Models\Tenant;
@@ -66,6 +67,12 @@ class GuestProfileService
                 'marketing_consent' => $granted,
                 'marketing_consent_at' => $granted ? now() : $guest->marketing_consent_at,
             ]);
+
+            // Push to the tenant's newsletter system (MailWizz etc.) after commit;
+            // the job re-checks consent and skips when no integration is configured.
+            if ($type === 'newsletter' && $guest->email) {
+                SyncNewsletterSubscriber::dispatch($guest->id, $granted)->afterCommit();
+            }
         }
 
         return GuestConsent::create([

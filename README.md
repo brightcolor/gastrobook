@@ -52,6 +52,9 @@ GastroBook ist ein eigenständiges Reservierungssystem für Restaurants, Cafés,
 | REST-API v1 (Sanctum, tenant-gebundene Tokens, Scopes, Rate Limits) | ✅ |
 | Webhooks (HMAC-Signatur, Retry/Backoff, Auto-Deaktivierung, Delivery-Log) | ✅ |
 | Auditlog (filterbar, IP-anonymisiert, Impersonation-Kennzeichnung) | ✅ |
+| MailWizz-Newsletter-Sync (Einwilligung → Liste, verschlüsselte Credentials) | ✅ |
+| Konfigurierbare Widget-Felder (E-Mail/Telefon/Anlass/Allergien/Notiz je Standort) | ✅ |
+| Einbettbares Widget (JS-Snippet → iframe mit Auto-Resize) | ✅ |
 | DSGVO-Werkzeuge (Export, Anonymisierung, Einwilligungshistorie, Retention-Job) | ✅ |
 | No-Show-Schutz / Deposits (Regelwerk + Datenmodell, PaymentProvider abstrahiert) | 🔶 vorbereitet |
 | Events & Tickets (Datenmodell + Kapazitätslogik) | 🔶 vorbereitet |
@@ -186,7 +189,13 @@ Personenzahl → Datum → verfügbare Uhrzeiten (live via `/slots`-JSON) → Ko
 
 - Bei Ausbuchung: Alternativzeiten am selben Tag, alternative Tage, optional Warteliste.
 - Je nach Standortregel: sofort bestätigt / als Anfrage / Zahlung erforderlich (Deposit-Regel).
-- Pflichtfelder pro Standort konfigurierbar (`location_settings.field_rules`).
+- Pflichtfelder pro Standort konfigurierbar – im Adminbereich unter **Einstellungen → Formularfelder im Buchungswidget**: jedes Feld (E-Mail, Telefon, Anlass, Allergien, Anmerkung) ist auf *Ausgeblendet / Optional / Pflichtfeld* stellbar; die Validierung greift serverseitig.
+- **Einbetten auf der eigenen Website:**
+  ```html
+  <div id="gastrobook-widget"></div>
+  <script src="https://ihre-domain.de/embed/<tenant>/<standort>.js" defer></script>
+  ```
+  Das Snippet injiziert die Buchungsseite als iframe mit automatischer Höhenanpassung (postMessage).
 - Spam-Schutz: Honeypot-Feld + Rate Limits (10/min, 50/Tag pro IP).
 - Bestätigungs-Mail mit sicherem Storno-/Änderungslink (Secret-Token, `hash_equals`), Stornofrist wird serverseitig geprüft.
 
@@ -227,6 +236,20 @@ Endpoints pro Tenant (Verwaltung über API `POST /api/v1/webhooks`). Events u. a
 - Retries mit Backoff (1 min → 2 h, 5 Versuche), Delivery-Log in `webhook_deliveries`
 - Automatische Deaktivierung nach 20 Fehlern in Folge
 - Payload-Versionierung (`"version": "1"`)
+
+---
+
+## Newsletter (MailWizz)
+
+Konfiguration im Adminbereich unter **Einstellungen → Newsletter: MailWizz** (Recht `integrations.manage`):
+
+1. API-URL (z. B. `https://news.example.com/api`), API-Key und Listen-UID eintragen – die Verbindung wird beim Speichern sofort getestet.
+2. Credentials werden **verschlüsselt** gespeichert (`integration_connections`, Laravel Crypt); der API-Key wird nach dem Speichern nie wieder angezeigt.
+3. Ab dann: Setzt ein Gast im Buchungswidget die **getrennte Newsletter-Checkbox**, wird er nach der Buchung per Queue-Job (`SyncNewsletterSubscriber`, Retry mit Backoff) in die MailWizz-Liste übertragen (`EMAIL`, `FNAME`, `LNAME`).
+4. **Double-Opt-In** steuert die Listeneinstellung in MailWizz – bei DOI-Listen verschickt MailWizz die Bestätigungsmail selbst.
+5. Jede Übertragung wird in `notification_logs` (Kanal `newsletter`) protokolliert; die Einwilligung selbst liegt unabhängig davon DSGVO-konform in `guest_consents`.
+
+Ohne konfigurierte Integration wird die Einwilligung nur gespeichert – es geht nichts verloren, die Synchronisierung kann später nachgeholt werden. Weitere Provider (Mailchimp, Brevo, CleverReach) lassen sich über das `NewsletterProvider`-Interface ergänzen.
 
 ---
 

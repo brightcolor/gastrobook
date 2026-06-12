@@ -30,6 +30,7 @@ Route::middleware('throttle:booking-slots')->group(function () {
     Route::get('/book/{tenantSlug}/{locationSlug}', [PublicBookingController::class, 'show'])->name('booking.show');
     Route::get('/r/{tenantSlug}/{locationSlug}', [PublicBookingController::class, 'show']);
     Route::get('/book/{tenantSlug}/{locationSlug}/slots', [PublicBookingController::class, 'slots'])->name('booking.slots');
+    Route::get('/embed/{tenantSlug}/{locationSlug}.js', [PublicBookingController::class, 'embedScript'])->name('booking.embed');
 });
 
 Route::middleware('throttle:booking')->group(function () {
@@ -141,6 +142,10 @@ Route::middleware(['auth', 'tenant'])->prefix('admin')->name('admin.')->group(fu
         Route::post('/settings/tables', [SettingsController::class, 'storeTable'])->name('settings.tables.store');
         Route::delete('/settings/tables/{table}', [SettingsController::class, 'deleteTable'])->name('settings.tables.delete');
         Route::post('/settings/combinations', [SettingsController::class, 'storeCombination'])->name('settings.combinations.store');
+        Route::put('/settings/field-rules', [SettingsController::class, 'updateFieldRules'])
+            ->middleware('permission:tenant.settings.manage')->name('settings.field-rules');
+        Route::put('/settings/mailwizz', [SettingsController::class, 'updateMailwizz'])
+            ->middleware('permission:integrations.manage')->name('settings.mailwizz');
         Route::put('/settings/opening-hours', [SettingsController::class, 'updateOpeningHours'])
             ->middleware('permission:opening_hours.manage')->name('settings.opening-hours');
         Route::post('/settings/special-hours', [SettingsController::class, 'storeSpecialHours'])

@@ -212,6 +212,39 @@ class PublicBookingController extends Controller
     }
 
     /**
+     * Embeddable JS snippet: injects the booking page as an iframe.
+     * Usage: <script src="https://app.example.com/embed/{tenant}/{location}.js" defer></script>
+     *        <div id="gastrobook-widget"></div>
+     */
+    public function embedScript(string $tenantSlug, string $locationSlug)
+    {
+        [, $location] = $this->resolve($tenantSlug, $locationSlug);
+
+        $bookingUrl = route('booking.show', [$tenantSlug, $locationSlug]);
+
+        $js = <<<JS
+        (function () {
+            var container = document.getElementById('gastrobook-widget') || document.currentScript.parentNode;
+            var iframe = document.createElement('iframe');
+            iframe.src = {$this->jsString($bookingUrl)};
+            iframe.title = {$this->jsString('Tisch reservieren – '.$location->name)};
+            iframe.style.cssText = 'width:100%;min-height:760px;border:0;border-radius:12px;';
+            iframe.loading = 'lazy';
+            iframe.allow = 'payment';
+            container.appendChild(iframe);
+            window.addEventListener('message', function (e) {
+                if (e.data && e.data.gastrobookHeight) iframe.style.height = e.data.gastrobookHeight + 'px';
+            });
+        })();
+        JS;
+
+        return response($js, 200, [
+            'Content-Type' => 'application/javascript; charset=utf-8',
+            'Cache-Control' => 'public, max-age=3600',
+        ]);
+    }
+
+    /**
      * @return array{0: Tenant, 1: Location}
      */
     private function resolve(string $tenantSlug, string $locationSlug): array
@@ -226,6 +259,11 @@ class PublicBookingController extends Controller
             ->firstOrFail();
 
         return [$tenant, $location];
+    }
+
+    private function jsString(string $value): string
+    {
+        return json_encode($value, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
     }
 
     private function findByCodeAndToken(string $code, string $token): Reservation
