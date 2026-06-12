@@ -30,7 +30,7 @@ services:
   web:
     image: nginx:1.27-alpine
     ports:
-      - "8080:80"
+      - "${GASTROBOOK_PORT:-8080}:80"
     volumes:
       - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - ./docker/data/public:/var/www/html/public:ro
@@ -98,4 +98,4 @@ services:
   mailpit:
     image: axllent/mailpit:latest
     ports:
-      - "8025:8025"   # Web UI for local mail testing
+      - "${MAILPIT_PORT:-8025}:8025"   # Web UI for local mail testing

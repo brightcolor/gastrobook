@@ -10,7 +10,22 @@ GastroBook ist ein eigenständiges Reservierungssystem für Restaurants, Cafés,
 
 ## ⚡ Quickstart
 
-**Mit Docker (empfohlen)** — es wird nichts lokal gebaut, das Image kommt fertig von GitHub (GHCR):
+**Quick-Install-Einzeiler (Linux/macOS, empfohlen)** — lädt alles, generiert den `APP_KEY`, findet automatisch freie Ports und startet den Stack:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/brightcolor/gastrobook/main/install.sh | bash
+```
+
+Bei privatem Repo/Image vorher Token setzen:
+
+```bash
+export GITHUB_TOKEN=<PAT mit repo + read:packages>
+curl -fsSL -H "Authorization: token $GITHUB_TOKEN" https://raw.githubusercontent.com/brightcolor/gastrobook/main/install.sh | bash
+```
+
+Das Skript meldet am Ende die gewählten Ports (Standard 8080, bei Belegung automatisch der nächste freie). Zielordner per `GASTROBOOK_DIR=meinordner` änderbar.
+
+**Manuell mit Docker** — es wird nichts lokal gebaut, das Image kommt fertig von GitHub (GHCR):
 
 ```bash
 git clone https://github.com/brightcolor/gastrobook.git && cd gastrobook
@@ -204,6 +219,8 @@ docker login ghcr.io           # bei privatem Repo nötig
 docker compose up -d
 docker compose exec app php artisan db:seed   # optional: Demodaten
 ```
+
+Die Host-Ports sind über `.env` steuerbar (`GASTROBOOK_PORT`, Standard 8080; `MAILPIT_PORT`, Standard 8025) — das Quick-Install-Skript `install.sh` wählt automatisch freie Ports.
 
 Update auf die neueste Version:
 
