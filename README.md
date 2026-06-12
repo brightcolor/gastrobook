@@ -10,17 +10,24 @@ GastroBook ist ein eigenständiges Reservierungssystem für Restaurants, Cafés,
 
 ## ⚡ Quickstart
 
-**Mit Docker (empfohlen):**
+**Mit Docker (empfohlen)** — es wird nichts lokal gebaut, das Image kommt fertig von GitHub (GHCR):
 
 ```bash
 git clone https://github.com/brightcolor/gastrobook.git && cd gastrobook
 cp .env.example .env
 # APP_KEY eintragen (einmalig generieren, z. B. mit: docker run --rm php:8.3-cli php -r "echo 'base64:'.base64_encode(random_bytes(32)).PHP_EOL;")
-docker compose up -d --build
-docker compose exec app php artisan migrate --seed
+docker login ghcr.io   # bei privatem Repo nötig (GitHub-Username + Token mit read:packages)
+docker compose up -d   # zieht ghcr.io/brightcolor/gastrobook:latest, Migrationen laufen automatisch
 ```
 
 → App: **http://localhost:8080** · Mailpit: http://localhost:8025
+
+**Demodaten (optional, nur lokal):**
+
+```bash
+docker compose exec app php artisan db:seed
+```
+
 → Login: `admin@gastrobook.test` / `password` (SaaS) bzw. `owner@demo.test` / `password` (Restaurant)
 → Demo-Buchungsseite: http://localhost:8080/book/demo/sonne
 
@@ -186,12 +193,23 @@ Adminbereich: `http://localhost:8000/admin` · SaaS-Admin: `http://localhost:800
 
 ## Docker Setup
 
+Die Compose-Datei nutzt das **fertige Image aus der GitHub-CI** (`ghcr.io/brightcolor/gastrobook:latest`) — lokal wird nichts gebaut. Datenbank-Migrationen laufen beim Start des App-Containers automatisch (`php artisan migrate --force`).
+
 ```bash
 cp .env.example .env
-# In .env mindestens APP_KEY setzen: php artisan key:generate --show
-docker compose up -d --build
-docker compose exec app php artisan migrate --seed
+# In .env mindestens APP_KEY setzen
+docker login ghcr.io           # bei privatem Repo nötig
+docker compose up -d
+docker compose exec app php artisan db:seed   # optional: Demodaten
 ```
+
+Update auf die neueste Version:
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+Wer das Image doch lokal bauen will: `docker build -t ghcr.io/brightcolor/gastrobook:latest .`
 
 | Dienst | URL |
 |---|---|
@@ -207,6 +225,7 @@ Enthalten: PHP-FPM-App, nginx, PostgreSQL 17, Redis 7, dedizierter Queue-Worker,
 | `./storage` | app/queue/scheduler | Uploads, Logs, Cache |
 | `./docker/data/postgres` | db | PostgreSQL-Datenbank |
 | `./docker/data/redis` | redis | Redis-Persistenz |
+| `./docker/data/public` | web (nginx) | Statische Assets, vom App-Container beim Start exportiert |
 
 `docker/data/` ist git-ignoriert. Backup = Ordner kopieren (DB-Dump per `docker compose exec db pg_dump -U gastrobook gastrobook` bleibt der saubere Weg).
 
