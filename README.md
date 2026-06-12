@@ -4,7 +4,7 @@
 
 GastroBook ist ein eigenständiges Reservierungssystem für Restaurants, Cafés, Bars, Hotels, Event-Locations und Restaurantgruppen – mit Online-Reservierungswidget, internem Reservierungsbuch, grafischem Tischplan, automatischer Tischzuweisung, Walk-ins, Warteliste, Gäste-CRM, No-Show-Schutz (vorbereitet), Feedback-Booster, Berichten, REST-API, Webhooks, Auditlog und DSGVO-Werkzeugen.
 
-> Laravel 13 · PHP 8.3 · PostgreSQL/SQLite · Redis · Tailwind CSS 4 · Sanctum · PHPUnit · Larastan · Pint
+> Laravel 13 · PHP 8.3–8.5 (Image: 8.4) · PostgreSQL/SQLite · Redis · Tailwind CSS 4 · Sanctum · PHPUnit · Larastan · Pint
 
 ---
 
@@ -15,7 +15,7 @@ GastroBook ist ein eigenständiges Reservierungssystem für Restaurants, Cafés,
 ```bash
 git clone https://github.com/brightcolor/gastrobook.git && cd gastrobook
 cp .env.example .env
-# APP_KEY eintragen (einmalig generieren, z. B. mit: docker run --rm php:8.3-cli php -r "echo 'base64:'.base64_encode(random_bytes(32)).PHP_EOL;")
+# APP_KEY eintragen (einmalig generieren, z. B. mit: docker run --rm php:8.4-cli php -r "echo 'base64:'.base64_encode(random_bytes(32)).PHP_EOL;")
 docker login ghcr.io   # bei privatem Repo nötig (GitHub-Username + Token mit read:packages)
 docker compose up -d   # zieht ghcr.io/brightcolor/gastrobook:latest, Migrationen laufen automatisch
 ```
@@ -33,7 +33,7 @@ docker compose exec app php artisan db:seed
 
 Alle Daten liegen als **Bind-Mounts** im Projektordner: `./storage` (App-Dateien), `./docker/data/postgres`, `./docker/data/redis` — einfach zu sichern, einfach zu migrieren.
 
-**Ohne Docker (PHP 8.3 + Composer + Node 20+):**
+**Ohne Docker (PHP 8.3–8.5 + Composer + Node 20+):**
 
 ```bash
 composer install && cp .env.example .env && php artisan key:generate
@@ -166,7 +166,7 @@ Besondere Rechte: sensible Gastnotizen (`guest_notes.sensitive.view`), manuelle 
 
 ## Lokales Setup
 
-Voraussetzungen: PHP 8.3+ (intl, zip, gd, sqlite), Composer, Node 20+.
+Voraussetzungen: PHP 8.3, 8.4 oder 8.5 (intl, zip, gd, sqlite), Composer, Node 20+ — die CI testet alle drei Versionen.
 
 ```bash
 git clone <repo> gastrobook && cd gastrobook

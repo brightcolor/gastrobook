@@ -1,5 +1,5 @@
 # GastroBook – production-oriented PHP-FPM image
-FROM php:8.3-fpm-alpine AS base
+FROM php:8.4-fpm-alpine AS base
 
 RUN apk add --no-cache \
         icu-dev libzip-dev libpng-dev postgresql-dev oniguruma-dev \
