@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Location;
 use App\Models\Tenant;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
@@ -83,7 +84,7 @@ class AuthController extends Controller
         $validated = $request->validate(['location_id' => ['required', 'integer']]);
         $user = $request->user();
 
-        $location = \App\Models\Location::withoutGlobalScope('tenant')->findOrFail($validated['location_id']);
+        $location = Location::withoutGlobalScope('tenant')->findOrFail($validated['location_id']);
         $tenant = Tenant::findOrFail($location->tenant_id);
 
         if (! $user->canAccessLocation($tenant, $location)) {

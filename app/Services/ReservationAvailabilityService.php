@@ -130,7 +130,7 @@ class ReservationAvailabilityService
         CarbonImmutable $nowLocal
     ): array {
         [$available, $reason] = [true, null];
-        [$available, $reason, ] = $this->checkSlotDetailed($location, $startLocal, $startUtc, $endUtc, $partySize, $online, $nowLocal, []);
+        [$available, $reason] = $this->checkSlotDetailed($location, $startLocal, $startUtc, $endUtc, $partySize, $online, $nowLocal, []);
 
         return [$available, $reason];
     }

@@ -5,11 +5,12 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
- * @property \Illuminate\Support\Carbon $offered_start_at
- * @property \Illuminate\Support\Carbon $offered_end_at
- * @property \Illuminate\Support\Carbon $offer_expires_at
+ * @property Carbon $offered_start_at
+ * @property Carbon $offered_end_at
+ * @property Carbon $offer_expires_at
  */
 class WaitlistOffer extends Model
 {

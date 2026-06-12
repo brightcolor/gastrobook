@@ -9,12 +9,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
- * @property \Illuminate\Support\Carbon|null $birthday
- * @property \Illuminate\Support\Carbon|null $last_visit_at
- * @property \Illuminate\Support\Carbon|null $marketing_consent_at
- * @property \Illuminate\Support\Carbon|null $anonymized_at
+ * @property Carbon|null $birthday
+ * @property Carbon|null $last_visit_at
+ * @property Carbon|null $marketing_consent_at
+ * @property Carbon|null $anonymized_at
  */
 class Guest extends Model
 {

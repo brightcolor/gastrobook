@@ -7,12 +7,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
- * @property \Illuminate\Support\Carbon $desired_date
- * @property \Illuminate\Support\Carbon|null $desired_start_at
- * @property \Illuminate\Support\Carbon|null $expires_at
+ * @property Carbon $desired_date
+ * @property Carbon|null $desired_start_at
+ * @property Carbon|null $expires_at
  */
 class WaitlistEntry extends Model
 {

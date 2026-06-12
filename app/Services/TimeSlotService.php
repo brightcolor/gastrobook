@@ -12,7 +12,7 @@ class TimeSlotService
      * (which fully override regular hours for that date).
      *
      * @return array<int, array{opens: CarbonImmutable, closes: CarbonImmutable, label: ?string}>
-     *         Times are in the location's timezone.
+     *                                                                                            Times are in the location's timezone.
      */
     public function windowsForDate(Location $location, CarbonImmutable $localDate): array
     {

@@ -1,8 +1,11 @@
 <?php
 
+use App\Enums\ReservationStatus;
 use App\Jobs\RunRetentionPolicies;
 use App\Jobs\SendFeedbackRequests;
 use App\Jobs\SendReservationReminders;
+use App\Models\Reservation;
+use App\Services\ReservationLifecycleService;
 use App\Services\WaitlistService;
 use Illuminate\Support\Facades\Schedule;
 
@@ -13,14 +16,14 @@ Schedule::job(new RunRetentionPolicies)->dailyAt('03:30');
 
 // Expire unpaid reservations past their payment deadline
 Schedule::call(function () {
-    \App\Models\Reservation::withoutGlobalScopes()
-        ->where('status', \App\Enums\ReservationStatus::PaymentPending->value)
+    Reservation::withoutGlobalScopes()
+        ->where('status', ReservationStatus::PaymentPending->value)
         ->whereNotNull('payment_due_at')
         ->where('payment_due_at', '<', now())
         ->each(function ($reservation) {
-            app(\App\Services\ReservationLifecycleService::class)->transition(
+            app(ReservationLifecycleService::class)->transition(
                 $reservation,
-                \App\Enums\ReservationStatus::Expired,
+                ReservationStatus::Expired,
                 null,
                 'system',
                 'payment_deadline_exceeded'

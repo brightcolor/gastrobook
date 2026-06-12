@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Location;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\CreatesTenants;
 use Tests\TestCase;
@@ -55,7 +57,7 @@ class PermissionsTest extends TestCase
     public function test_super_admin_can_access_saas_area_and_impersonation_is_audited(): void
     {
         $setup = $this->createTenantSetup();
-        $superAdmin = \App\Models\User::factory()->create(['saas_role' => 'super_admin']);
+        $superAdmin = User::factory()->create(['saas_role' => 'super_admin']);
         $this->clearTenantContext();
 
         $this->actingAs($superAdmin)->get('/saas/tenants')->assertOk();
@@ -74,7 +76,7 @@ class PermissionsTest extends TestCase
     public function test_location_restricted_user_cannot_access_other_location(): void
     {
         $setup = $this->createTenantSetup();
-        $otherLocation = \App\Models\Location::factory()->create(['tenant_id' => $setup['tenant']->id]);
+        $otherLocation = Location::factory()->create(['tenant_id' => $setup['tenant']->id]);
 
         $user = $this->createMember($setup['tenant'], 'location_manager', allLocations: false);
         $user->allowedLocations()->attach($setup['location']->id, ['tenant_id' => $setup['tenant']->id]);

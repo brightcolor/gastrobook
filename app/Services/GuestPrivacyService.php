@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Guest;
+use App\Models\Tenant;
 use Illuminate\Support\Facades\DB;
 
 class GuestPrivacyService
@@ -85,7 +86,7 @@ class GuestPrivacyService
      * Anonymize guests whose last activity is older than the tenant's
      * retention period. Called by the scheduled RunRetentionPolicies job.
      */
-    public function runRetention(\App\Models\Tenant $tenant): int
+    public function runRetention(Tenant $tenant): int
     {
         $cutoff = now()->subMonths(max(1, $tenant->guest_retention_months));
 

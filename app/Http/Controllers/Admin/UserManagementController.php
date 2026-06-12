@@ -10,6 +10,7 @@ use App\Services\AuditLogger;
 use App\Services\PlanLimitService;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class UserManagementController extends Controller
 {
@@ -59,7 +60,7 @@ class UserManagementController extends Controller
                 $locationIds = collect($validated['location_ids'] ?? [])
                     ->filter(fn ($id) => $tenant->locations()->where('id', $id)->exists());
                 foreach ($locationIds as $locationId) {
-                    \Illuminate\Support\Facades\DB::table('location_user')->insertOrIgnore([
+                    DB::table('location_user')->insertOrIgnore([
                         'location_id' => $locationId,
                         'user_id' => $user->id,
                         'tenant_id' => $tenant->id,

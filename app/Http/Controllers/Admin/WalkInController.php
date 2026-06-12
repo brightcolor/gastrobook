@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\ReservationStatus;
 use App\Http\Controllers\Controller;
 use App\Services\ReservationLifecycleService;
 use App\Services\TableAssignmentService;
@@ -31,7 +32,7 @@ class WalkInController extends Controller
             ->map(function ($table) use ($location, $nowUtc) {
                 // How long is this table still free?
                 $next = $table->reservations()
-                    ->whereIn('reservations.status', \App\Enums\ReservationStatus::activeStatuses())
+                    ->whereIn('reservations.status', ReservationStatus::activeStatuses())
                     ->where('start_at', '>', $nowUtc)
                     ->orderBy('start_at')
                     ->first();

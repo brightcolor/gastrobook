@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\ReservationStatus;
+use App\Models\Event;
 use App\Models\Guest;
 use App\Models\Location;
 use App\Models\OpeningHour;
@@ -147,7 +148,7 @@ class DatabaseSeeder extends Seeder
             'label' => 'Betriebsferien',
         ]);
 
-        \App\Models\Event::create([
+        Event::create([
             'tenant_id' => $tenant->id,
             'location_id' => $sonne->id,
             'title' => 'Weinprobe mit 5-Gänge-Menü',

@@ -8,12 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
- * @property \Illuminate\Support\Carbon $starts_at
- * @property \Illuminate\Support\Carbon $ends_at
- * @property \Illuminate\Support\Carbon|null $booking_deadline_at
- * @property \Illuminate\Support\Carbon|null $cancellation_deadline_at
+ * @property Carbon $starts_at
+ * @property Carbon $ends_at
+ * @property Carbon|null $booking_deadline_at
+ * @property Carbon|null $cancellation_deadline_at
  */
 class Event extends Model
 {

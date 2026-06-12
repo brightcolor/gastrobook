@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\Event;
+use App\Models\Reservation;
+use App\Models\RestaurantTable;
 use App\Models\Tenant;
 
 class PlanLimitService
@@ -24,15 +27,15 @@ class PlanLimitService
         return match ($limitKey) {
             'max_locations' => $tenant->locations()->count(),
             'max_users' => $tenant->memberships()->count(),
-            'max_tables' => \App\Models\RestaurantTable::withoutGlobalScope('tenant')
+            'max_tables' => RestaurantTable::withoutGlobalScope('tenant')
                 ->where('tenant_id', $tenant->id)->count(),
-            'max_seats' => (int) \App\Models\RestaurantTable::withoutGlobalScope('tenant')
+            'max_seats' => (int) RestaurantTable::withoutGlobalScope('tenant')
                 ->where('tenant_id', $tenant->id)->where('is_active', true)->sum('max_capacity'),
-            'max_reservations_per_month' => \App\Models\Reservation::withoutGlobalScope('tenant')
+            'max_reservations_per_month' => Reservation::withoutGlobalScope('tenant')
                 ->where('tenant_id', $tenant->id)
                 ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
                 ->count(),
-            'max_events' => \App\Models\Event::withoutGlobalScope('tenant')
+            'max_events' => Event::withoutGlobalScope('tenant')
                 ->where('tenant_id', $tenant->id)->count(),
             default => 0,
         };

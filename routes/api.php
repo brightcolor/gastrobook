@@ -4,10 +4,11 @@ use App\Http\Controllers\Api\V1\AvailabilityController;
 use App\Http\Controllers\Api\V1\GuestApiController;
 use App\Http\Controllers\Api\V1\ReservationApiController;
 use App\Http\Controllers\Api\V1\WebhookApiController;
+use App\Http\Middleware\ResolveApiTenant;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')
-    ->middleware(['auth:sanctum', \App\Http\Middleware\ResolveApiTenant::class, 'throttle:api'])
+    ->middleware(['auth:sanctum', ResolveApiTenant::class, 'throttle:api'])
     ->group(function () {
         Route::get('/availability', [AvailabilityController::class, 'index']);
 

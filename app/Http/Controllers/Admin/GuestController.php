@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Guest;
+use App\Models\Tag;
 use App\Services\AuditLogger;
 use App\Services\GuestPrivacyService;
 use App\Support\TenantContext;
@@ -36,7 +37,7 @@ class GuestController extends Controller
 
         return view('admin.guests.index', [
             'guests' => $guests,
-            'tags' => \App\Models\Tag::where('scope', '!=', 'reservation')->orderBy('name')->get(),
+            'tags' => Tag::where('scope', '!=', 'reservation')->orderBy('name')->get(),
         ]);
     }
 

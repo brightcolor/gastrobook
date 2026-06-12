@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\ReservationStatus;
 use App\Http\Controllers\Controller;
+use App\Models\FeedbackResponse;
 use App\Models\Reservation;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
@@ -58,7 +59,7 @@ class ReportController extends Controller
 
         $avgParty = $total > 0 ? round((clone $base)->avg('party_size'), 1) : 0;
 
-        $feedback = \App\Models\FeedbackResponse::where('location_id', $location->id)
+        $feedback = FeedbackResponse::where('location_id', $location->id)
             ->whereBetween('created_at', [$from, $until->endOfDay()])
             ->selectRaw('count(*) as cnt, avg(score) as avg_score')
             ->first();

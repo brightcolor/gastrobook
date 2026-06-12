@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Mail\TemplatedMail;
 use App\Models\WaitlistEntry;
 use App\Services\WaitlistService;
 use Carbon\CarbonImmutable;
@@ -42,7 +43,7 @@ class WaitlistTest extends TestCase
         $this->assertSame('confirmed', $reservation->status->value);
         $this->assertSame('accepted', $entry->refresh()->status);
         $this->assertSame($reservation->id, $entry->reservation_id);
-        Mail::assertQueued(\App\Mail\TemplatedMail::class);
+        Mail::assertQueued(TemplatedMail::class);
     }
 
     public function test_expired_offers_are_cleaned_up(): void

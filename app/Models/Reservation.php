@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ReservationStatus;
 use App\Models\Concerns\BelongsToTenant;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -129,12 +130,12 @@ class Reservation extends Model
         return $query->where('start_at', '<', $end)->where('end_at', '>', $start);
     }
 
-    public function localStart(): \Carbon\Carbon
+    public function localStart(): Carbon
     {
         return $this->start_at->copy()->setTimezone($this->timezone);
     }
 
-    public function localEnd(): \Carbon\Carbon
+    public function localEnd(): Carbon
     {
         return $this->end_at->copy()->setTimezone($this->timezone);
     }
