@@ -8,8 +8,39 @@ GastroBook ist ein eigenständiges Reservierungssystem für Restaurants, Cafés,
 
 ---
 
+## ⚡ Quickstart
+
+**Mit Docker (empfohlen):**
+
+```bash
+git clone https://github.com/brightcolor/gastrobook.git && cd gastrobook
+cp .env.example .env
+# APP_KEY eintragen (einmalig generieren, z. B. mit: docker run --rm php:8.3-cli php -r "echo 'base64:'.base64_encode(random_bytes(32)).PHP_EOL;")
+docker compose up -d --build
+docker compose exec app php artisan migrate --seed
+```
+
+→ App: **http://localhost:8080** · Mailpit: http://localhost:8025
+→ Login: `admin@gastrobook.test` / `password` (SaaS) bzw. `owner@demo.test` / `password` (Restaurant)
+→ Demo-Buchungsseite: http://localhost:8080/book/demo/sonne
+
+Alle Daten liegen als **Bind-Mounts** im Projektordner: `./storage` (App-Dateien), `./docker/data/postgres`, `./docker/data/redis` — einfach zu sichern, einfach zu migrieren.
+
+**Ohne Docker (PHP 8.3 + Composer + Node 20+):**
+
+```bash
+composer install && cp .env.example .env && php artisan key:generate
+php artisan migrate --seed && npm install && npm run build
+php artisan serve   # http://localhost:8000
+```
+
+Fertige Docker-Images baut die CI automatisch: `ghcr.io/brightcolor/gastrobook:latest`
+
+---
+
 ## Inhaltsverzeichnis
 
+0. [Quickstart](#-quickstart)
 1. [Featureübersicht](#featureübersicht)
 2. [Architektur](#architektur)
 3. [Multi-Tenancy-Konzept](#multi-tenancy-konzept)
@@ -168,6 +199,24 @@ docker compose exec app php artisan migrate --seed
 | Mailpit (lokale Mails) | http://localhost:8025 |
 
 Enthalten: PHP-FPM-App, nginx, PostgreSQL 17, Redis 7, dedizierter Queue-Worker, Scheduler-Container, Mailpit. Storage-Link bei Bedarf: `docker compose exec app php artisan storage:link`.
+
+**Bind-Mounts (alle Daten im Projektordner):**
+
+| Host-Pfad | Container | Inhalt |
+|---|---|---|
+| `./storage` | app/queue/scheduler | Uploads, Logs, Cache |
+| `./docker/data/postgres` | db | PostgreSQL-Datenbank |
+| `./docker/data/redis` | redis | Redis-Persistenz |
+
+`docker/data/` ist git-ignoriert. Backup = Ordner kopieren (DB-Dump per `docker compose exec db pg_dump -U gastrobook gastrobook` bleibt der saubere Weg).
+
+**Fertige Images (GHCR):** Die CI baut bei jedem Push auf `main` (und bei `v*`-Tags) automatisch ein Image:
+
+```bash
+docker pull ghcr.io/brightcolor/gastrobook:latest
+```
+
+Tags: `latest` (main), `sha-<commit>`, `main`, sowie `x.y.z` bei Versions-Tags.
 
 ---
 

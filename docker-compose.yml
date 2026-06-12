@@ -19,7 +19,7 @@ services:
       MAIL_HOST: mailpit
       MAIL_PORT: "1025"
     volumes:
-      - app-storage:/var/www/html/storage
+      - ./storage:/var/www/html/storage
     depends_on:
       db:
         condition: service_healthy
@@ -54,7 +54,7 @@ services:
       MAIL_HOST: mailpit
       MAIL_PORT: "1025"
     volumes:
-      - app-storage:/var/www/html/storage
+      - ./storage:/var/www/html/storage
     depends_on:
       - db
       - redis
@@ -74,7 +74,7 @@ services:
       REDIS_HOST: redis
       QUEUE_CONNECTION: redis
     volumes:
-      - app-storage:/var/www/html/storage
+      - ./storage:/var/www/html/storage
     depends_on:
       - db
       - redis
@@ -86,7 +86,7 @@ services:
       POSTGRES_USER: gastrobook
       POSTGRES_PASSWORD: secret
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - ./docker/data/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U gastrobook"]
       interval: 5s
@@ -96,14 +96,9 @@ services:
   redis:
     image: redis:7-alpine
     volumes:
-      - redis-data:/data
+      - ./docker/data/redis:/data
 
   mailpit:
     image: axllent/mailpit:latest
     ports:
       - "8025:8025"   # Web UI for local mail testing
-
-volumes:
-  db-data:
-  redis-data:
-  app-storage:
