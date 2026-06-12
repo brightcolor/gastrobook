@@ -2,7 +2,7 @@ services:
   app:
     image: ghcr.io/brightcolor/gastrobook:latest
     # Exports the baked public/ assets for nginx, migrates, then serves PHP
-    command: sh -c "cp -a /var/www/html/public/. /public-export/ && php artisan migrate --force && exec php-fpm"
+    command: sh -c "cp -a /var/www/html/public/. /public-export/ && php artisan migrate --force && php artisan db:seed --class=PlanSeeder --force && exec php-fpm"
     env_file: .env
     environment:
       DB_CONNECTION: pgsql

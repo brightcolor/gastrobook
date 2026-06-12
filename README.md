@@ -99,6 +99,8 @@ Fertige Docker-Images baut die CI automatisch: `ghcr.io/brightcolor/gastrobook:l
 | Events & Tickets (öffentl. Buchungsseite, Kapazität, Fristen, Check-in, CSV) | ✅ |
 | SMS/WhatsApp, Telefon-/AI-Assistent (Quelle, ConversationLog, Adapterpunkte) | 🔶 vorbereitet |
 | Stripe/Mollie-Billing für Tenants | 🔶 vorbereitet |
+| SaaS-Website (Landingpage, Preise, FAQ, Kontaktformular, Impressum/Datenschutz/AGB) | ✅ |
+| Self-Service-Registrierung (Trial-Tenant inkl. Standort, ohne Zahlungsdaten) | ✅ |
 
 ---
 
@@ -240,6 +242,10 @@ Tags: `latest` (main), `sha-<commit>`, `main`, sowie `x.y.z` bei Versions-Tags.
 ---
 
 ## Erste Schritte
+
+**Variante A – Self-Service:** Restaurants registrieren sich selbst unter `/register` (Landingpage `/`). Es entsteht ein Trial-Tenant (30 Tage) mit Inhaberkonto und erstem Standort – ganz ohne SaaS-Admin. Voraussetzung: Die Tarife sind eingespielt (`php artisan db:seed --class=PlanSeeder --force`; im Docker-Setup passiert das automatisch beim Start).
+
+**Variante B – über den SaaS-Admin:**
 
 1. **Superadmin anmelden** → `/saas/tenants`
 2. **Tenant erstellen**: Name, Tarif, Inhaber-E-Mail, erster Standort. Das Initialpasswort des Inhabers wird **einmalig** angezeigt.

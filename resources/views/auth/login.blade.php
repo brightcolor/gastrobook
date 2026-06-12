@@ -32,6 +32,10 @@
             </label>
             <button class="w-full rounded-xl bg-stone-900 py-3 font-bold text-white hover:bg-stone-700">Anmelden</button>
         </form>
+
+        <p class="mt-6 text-center text-sm text-stone-500">
+            Noch kein Konto? <a href="{{ route('register') }}" class="font-semibold text-teal-700">Kostenlos testen</a>
+        </p>
     </div>
 </body>
 </html>

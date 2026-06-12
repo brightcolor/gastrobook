@@ -14,7 +14,9 @@ use App\Http\Controllers\Admin\WaitlistAdminController;
 use App\Http\Controllers\Admin\WalkInController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\InvitationController;
+use App\Http\Controllers\Auth\RegistrationController;
 use App\Http\Controllers\Public\FeedbackController;
+use App\Http\Controllers\Public\MarketingController;
 use App\Http\Controllers\Public\PaymentController;
 use App\Http\Controllers\Public\PublicBookingController;
 use App\Http\Controllers\Public\PublicEventController;
@@ -22,7 +24,19 @@ use App\Http\Controllers\Public\WaitlistResponseController;
 use App\Http\Controllers\Saas\SaasTenantController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', fn () => view('welcome'));
+/*
+|--------------------------------------------------------------------------
+| Marketing site
+|--------------------------------------------------------------------------
+*/
+Route::get('/', [MarketingController::class, 'home'])->name('home');
+Route::get('/preise', fn () => redirect(route('home').'#preise'))->name('pricing');
+Route::get('/impressum', [MarketingController::class, 'imprint'])->name('legal.imprint');
+Route::get('/datenschutz', [MarketingController::class, 'privacy'])->name('legal.privacy');
+Route::get('/agb', [MarketingController::class, 'terms'])->name('legal.terms');
+Route::get('/kontakt', [MarketingController::class, 'contact'])->name('contact');
+Route::post('/kontakt', [MarketingController::class, 'sendContact'])
+    ->middleware('throttle:5,10')->name('contact.send');
 
 /*
 |--------------------------------------------------------------------------
@@ -72,6 +86,8 @@ Route::post('/waitlist/{entry}/{token}', [WaitlistResponseController::class, 're
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+    Route::get('/register', [RegistrationController::class, 'show'])->name('register');
+    Route::post('/register', [RegistrationController::class, 'store'])->middleware('throttle:5,10');
     Route::get('/invitation/{token}', [InvitationController::class, 'show'])->name('invitation.accept');
     Route::post('/invitation/{token}', [InvitationController::class, 'accept'])->name('invitation.accept.post');
 });

@@ -26,7 +26,8 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $plans = $this->seedPlans();
+        $this->call(PlanSeeder::class);
+        $plans = Plan::all()->keyBy('key');
 
         // SaaS super admin (local development only — see README)
         User::factory()->create([
@@ -161,35 +162,6 @@ class DatabaseSeeder extends Seeder
             'currency' => 'EUR',
             'is_public' => true,
         ]);
-    }
-
-    /**
-     * @return array<string, Plan>
-     */
-    private function seedPlans(): array
-    {
-        $definitions = [
-            'trial' => ['Trial', 0, ['max_locations' => 1, 'max_users' => 2, 'max_tables' => 10, 'max_reservations_per_month' => 200], ['waitlist_enabled' => true, 'feedback_enabled' => false, 'api_enabled' => false, 'webhooks_enabled' => false, 'deposits_enabled' => false], 30],
-            'starter' => ['Starter', 2900, ['max_locations' => 1, 'max_users' => 3, 'max_tables' => 30, 'max_seats' => 80], ['waitlist_enabled' => false, 'feedback_enabled' => false, 'api_enabled' => false, 'webhooks_enabled' => false, 'deposits_enabled' => false], 0],
-            'professional' => ['Professional', 5900, ['max_locations' => 1, 'max_users' => 10, 'max_tables' => 100], ['waitlist_enabled' => true, 'feedback_enabled' => true, 'api_enabled' => true, 'webhooks_enabled' => true, 'deposits_enabled' => true, 'advanced_reports' => true], 0],
-            'multi_location' => ['Multi-Location', 12900, ['max_locations' => 10, 'max_users' => 50, 'max_tables' => 1000], ['waitlist_enabled' => true, 'feedback_enabled' => true, 'api_enabled' => true, 'webhooks_enabled' => true, 'deposits_enabled' => true, 'advanced_reports' => true, 'multi_location_reports' => true], 0],
-            'enterprise' => ['Enterprise', 0, [], ['waitlist_enabled' => true, 'feedback_enabled' => true, 'api_enabled' => true, 'webhooks_enabled' => true, 'deposits_enabled' => true, 'advanced_reports' => true, 'multi_location_reports' => true, 'custom_domain_enabled' => true, 'remove_branding' => true], 0],
-        ];
-
-        $plans = [];
-        foreach ($definitions as $key => [$name, $price, $limits, $features, $trialDays]) {
-            $plans[$key] = Plan::create([
-                'key' => $key,
-                'name' => $name,
-                'price_monthly_minor' => $price,
-                'limits' => $limits,
-                'features' => $features,
-                'trial_days' => $trialDays,
-                'sort_order' => count($plans),
-            ]);
-        }
-
-        return $plans;
     }
 
     private function seedLocation(Tenant $tenant, string $name, string $slug, bool $small = false): Location
