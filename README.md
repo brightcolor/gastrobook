@@ -1,0 +1,292 @@
+# 🍽️ GastroBook
+
+**Multi-Tenant-SaaS-Plattform für Tischreservierungen und Gästemanagement in der Gastronomie.**
+
+GastroBook ist ein eigenständiges Reservierungssystem für Restaurants, Cafés, Bars, Hotels, Event-Locations und Restaurantgruppen – mit Online-Reservierungswidget, internem Reservierungsbuch, grafischem Tischplan, automatischer Tischzuweisung, Walk-ins, Warteliste, Gäste-CRM, No-Show-Schutz (vorbereitet), Feedback-Booster, Berichten, REST-API, Webhooks, Auditlog und DSGVO-Werkzeugen.
+
+> Laravel 13 · PHP 8.3 · PostgreSQL/SQLite · Redis · Tailwind CSS 4 · Sanctum · PHPUnit · Larastan · Pint
+
+---
+
+## Inhaltsverzeichnis
+
+1. [Featureübersicht](#featureübersicht)
+2. [Architektur](#architektur)
+3. [Multi-Tenancy-Konzept](#multi-tenancy-konzept)
+4. [Rollen & Rechte](#rollen--rechte)
+5. [Lokales Setup](#lokales-setup)
+6. [Docker Setup](#docker-setup)
+7. [Erste Schritte (Superadmin → Tenant → Buchung)](#erste-schritte)
+8. [Öffentliche Buchungsseite](#öffentliche-buchungsseite)
+9. [API](#api)
+10. [Webhooks](#webhooks)
+11. [Queue & Scheduler](#queue--scheduler)
+12. [E-Mails testen](#e-mails-testen)
+13. [Tests & Codequalität](#tests--codequalität)
+14. [Datenschutz (DSGVO)](#datenschutz-dsgvo)
+15. [Backup, Updates, Produktion](#backup-updates-produktion)
+
+---
+
+## Featureübersicht
+
+| Modul | Status |
+|---|---|
+| Multi-Tenancy (Tenants → Standorte) mit globalem Scope + expliziten Checks | ✅ |
+| SaaS-Adminbereich (Mandanten, Tarife, Status, Supportzugriff mit Auditlog) | ✅ |
+| Tarif-/Limit-System (Trial, Starter, Professional, Multi-Location, Enterprise) | ✅ |
+| Rollen & Rechte (8 Tenant-Rollen, 4 SaaS-Rollen, Standorteinschränkung) | ✅ |
+| Öffentliches Buchungswidget (mobile-first, Slots-API, Honeypot, Rate Limits) | ✅ |
+| Verfügbarkeitslogik (Öffnungszeiten, Sonderzeiten, Sperren, Vorlauf, Kapazitätsmodi) | ✅ |
+| Automatische Tischzuweisung (kleinster passender Tisch, Prioritäten, Kombinationen) | ✅ |
+| Internes Reservierungsbuch (Filter, Suche, Schnellaktionen, Statushistorie) | ✅ |
+| Grafischer Tischplan (Statusfarben, Drag&Drop-Editor, Live-Refresh, Touch) | ✅ |
+| Walk-ins (freie Tische sofort, "frei bis", als Reservierung mit Quelle `walk_in`) | ✅ |
+| Warteliste (online + intern, Angebote per Mail mit Ablauf, Annahme-Link) | ✅ |
+| Gäste-CRM (Dedupe, Besuchszähler, No-Show-Zähler, Tags, sensible Notizen) | ✅ |
+| Stornolink / Änderungslink mit Secret-Token und Fristprüfung | ✅ |
+| E-Mail-Vorlagen (pro Tenant/Standort überschreibbar, Platzhalter, DE/EN) | ✅ |
+| Reminder- & Feedback-Follow-up-Jobs (Scheduler) | ✅ |
+| Feedback-Booster (intern erfassen, positives Feedback → externes Portal) | ✅ |
+| Berichte (No-Show-Rate, Auslastung, Quellen, Covers, CSV-Exporte) | ✅ |
+| REST-API v1 (Sanctum, tenant-gebundene Tokens, Scopes, Rate Limits) | ✅ |
+| Webhooks (HMAC-Signatur, Retry/Backoff, Auto-Deaktivierung, Delivery-Log) | ✅ |
+| Auditlog (filterbar, IP-anonymisiert, Impersonation-Kennzeichnung) | ✅ |
+| DSGVO-Werkzeuge (Export, Anonymisierung, Einwilligungshistorie, Retention-Job) | ✅ |
+| No-Show-Schutz / Deposits (Regelwerk + Datenmodell, PaymentProvider abstrahiert) | 🔶 vorbereitet |
+| Events & Tickets (Datenmodell + Kapazitätslogik) | 🔶 vorbereitet |
+| SMS/WhatsApp, Telefon-/AI-Assistent (Quelle, ConversationLog, Adapterpunkte) | 🔶 vorbereitet |
+| Stripe/Mollie-Billing für Tenants | 🔶 vorbereitet |
+
+---
+
+## Architektur
+
+```
+app/
+├── Enums/ReservationStatus.php        # Statusmaschine inkl. Übergangsregeln
+├── Support/TenantContext.php          # Request-Singleton: aktiver Tenant/Standort
+├── Models/                            # 30+ Models, BelongsToTenant-Trait
+├── Services/                          # GESAMTE Businesslogik (keine Logik in Controllern)
+│   ├── ReservationAvailabilityService # Slot-Prüfreihenfolge, Alternativen
+│   ├── TimeSlotService                # Öffnungszeiten → Slots (inkl. über Mitternacht)
+│   ├── TableAssignmentService         # kleinster passender Tisch, Kombinationen
+│   ├── ReservationLifecycleService    # Anlage, Statuswechsel, Mails, Webhooks, Audit
+│   ├── WaitlistService                # Einträge, Angebote, Annahme, Expiry
+│   ├── GuestProfileService            # Dedupe, Einwilligungen, Besuchsstatistik
+│   ├── GuestPrivacyService            # DSGVO-Export, Anonymisierung, Retention
+│   ├── PaymentRequirementService      # Deposit-Regeln (Personenzahl/Zeit/Raum/Event)
+│   ├── NoShowRiskService              # transparente Heuristik (0-100)
+│   ├── NotificationTemplateRenderer   # Vorlagen-Auflösung + Platzhalter
+│   ├── PlanLimitService               # Tariflimits (max_tables, max_users, …)
+│   ├── WebhookDispatchService         # Event → signierte Deliveries
+│   └── AuditLogger                    # zentrales Auditlog, IP-Minimierung
+├── Jobs/                              # DeliverWebhook, Reminder, Feedback, Retention
+└── Http/
+    ├── Middleware/ResolveTenantContext  # Admin-Tenant-Auflösung + Membership-Check
+    ├── Middleware/ResolveApiTenant      # API: tenant-gebundene Tokens
+    ├── Middleware/RequirePermission     # Route-Middleware permission:xyz
+    └── Controllers/{Public,Admin,Saas,Api}
+```
+
+**Zeiten:** Alle Zeitstempel werden in **UTC** gespeichert. Jeder Standort hat eine eigene `timezone`; Anzeige und Slot-Berechnung erfolgen in Standortzeit (DST-sicher via Carbon).
+
+**Snapshots:** Reservierungen speichern `guest_name/email/phone_snapshot`, damit sie auch nach Gaständerung oder Anonymisierung historisch nachvollziehbar bleiben.
+
+---
+
+## Multi-Tenancy-Konzept
+
+- Jede mandantenbezogene Tabelle trägt `tenant_id`, standortbezogene zusätzlich `location_id`.
+- Der `BelongsToTenant`-Trait setzt einen **globalen Eloquent-Scope** auf den aktiven Tenant (aus `TenantContext`) und füllt `tenant_id` beim Erstellen automatisch.
+- **Defense in depth:** Controller prüfen Ownership zusätzlich explizit (`abort_if($model->tenant_id !== …)`), Policies/Middleware prüfen Standortzugriff.
+- Admin: Tenant wird aus `users.current_tenant_id` aufgelöst und **gegen die Mitgliedschaft validiert** (`ResolveTenantContext`).
+- Öffentliche Buchungsseiten: Auflösung über `tenant_slug + location_slug`, nur aktive Tenants/Standorte.
+- API: Jeder Sanctum-Token trägt die Ability `tenant:<id>`; `ResolveApiTenant` validiert Mitgliedschaft + Tenant-Status + `api_enabled`-Feature.
+- Supportzugriff durch SaaS-Admins läuft über einen expliziten, **auditierten** Impersonation-Flow.
+- Tests beweisen die Isolation (siehe `tests/Feature/TenantIsolationTest.php`).
+
+Vorbereitet für später: Subdomain-/Custom-Domain-Auflösung (zusätzlicher Resolver im selben Middleware-Pfad), JS-Embed des Widgets.
+
+---
+
+## Rollen & Rechte
+
+**SaaS-Rollen** (`users.saas_role`): `super_admin`, `support_admin`, `billing_admin`, `readonly_admin`.
+
+**Tenant-Rollen** (`tenant_users.role`): `tenant_owner`, `tenant_admin`, `operations_manager`, `location_manager`, `host`, `staff`, `marketing_manager`, `readonly`.
+
+Die Rolle→Rechte-Matrix liegt in [`config/permissions.php`](config/permissions.php). Benutzer können Mitglied mehrerer Tenants mit unterschiedlichen Rollen sein; optional auf einzelne Standorte eingeschränkt (`tenant_users.all_locations = false` + `location_user`-Pivot). Prüfung via `permission:`-Route-Middleware und `User::canInTenant()`.
+
+Besondere Rechte: sensible Gastnotizen (`guest_notes.sensitive.view`), manuelle Überbuchung (`overbook.manual`, wird auditiert), Anonymisierung (`guests.anonymize`).
+
+---
+
+## Lokales Setup
+
+Voraussetzungen: PHP 8.3+ (intl, zip, gd, sqlite), Composer, Node 20+.
+
+```bash
+git clone <repo> gastrobook && cd gastrobook
+composer install
+cp .env.example .env          # SQLite ist vorkonfiguriert
+php artisan key:generate
+php artisan migrate --seed    # Demodaten inkl. Logins (siehe unten)
+npm install && npm run build
+php artisan serve             # http://localhost:8000
+```
+
+**Demo-Logins (nur lokale Entwicklung!):**
+
+| Rolle | E-Mail | Passwort |
+|---|---|---|
+| SaaS-Superadmin | `admin@gastrobook.test` | `password` |
+| Tenant-Inhaberin | `owner@demo.test` | `password` |
+| Host | `host@demo.test` | `password` |
+
+Demo-Buchungsseite: `http://localhost:8000/book/demo/sonne`
+Adminbereich: `http://localhost:8000/admin` · SaaS-Admin: `http://localhost:8000/saas/tenants`
+
+---
+
+## Docker Setup
+
+```bash
+cp .env.example .env
+# In .env mindestens APP_KEY setzen: php artisan key:generate --show
+docker compose up -d --build
+docker compose exec app php artisan migrate --seed
+```
+
+| Dienst | URL |
+|---|---|
+| App (nginx) | http://localhost:8080 |
+| Mailpit (lokale Mails) | http://localhost:8025 |
+
+Enthalten: PHP-FPM-App, nginx, PostgreSQL 17, Redis 7, dedizierter Queue-Worker, Scheduler-Container, Mailpit. Storage-Link bei Bedarf: `docker compose exec app php artisan storage:link`.
+
+---
+
+## Erste Schritte
+
+1. **Superadmin anmelden** → `/saas/tenants`
+2. **Tenant erstellen**: Name, Tarif, Inhaber-E-Mail, erster Standort. Das Initialpasswort des Inhabers wird **einmalig** angezeigt.
+3. **Als Inhaber anmelden** → `/admin`
+4. **Einstellungen** → Öffnungszeiten, Buchungsregeln (Intervall, Dauer, Vorlauf, Kapazitätsmodus), Räume und Tische anlegen, optional Tischkombinationen.
+5. **Buchungsseite teilen**: Link steht oben auf der Einstellungsseite (`/book/<tenant>/<standort>`), z. B. für Website, Instagram-Bio oder Google Business Profile.
+6. **Benutzer einladen** unter `/admin/users` (bestehende Konten werden direkt verknüpft, neue erhalten einen Einladungslink).
+
+---
+
+## Öffentliche Buchungsseite
+
+`GET /book/{tenant}/{location}` (Alias `/r/...`) – mobile-first, wenige Schritte:
+
+Personenzahl → Datum → verfügbare Uhrzeiten (live via `/slots`-JSON) → Kontaktdaten → DSGVO-Checkbox (Pflicht) + getrennte Newsletter-Checkbox → Bestätigungsseite.
+
+- Bei Ausbuchung: Alternativzeiten am selben Tag, alternative Tage, optional Warteliste.
+- Je nach Standortregel: sofort bestätigt / als Anfrage / Zahlung erforderlich (Deposit-Regel).
+- Pflichtfelder pro Standort konfigurierbar (`location_settings.field_rules`).
+- Spam-Schutz: Honeypot-Feld + Rate Limits (10/min, 50/Tag pro IP).
+- Bestätigungs-Mail mit sicherem Storno-/Änderungslink (Secret-Token, `hash_equals`), Stornofrist wird serverseitig geprüft.
+
+---
+
+## API
+
+REST-API unter `/api/v1`, Auth via Sanctum-Bearer-Token. Tokens werden im Adminbereich (`/admin/api-tokens`) erstellt, sind **tenant-gebunden** und tragen Scopes:
+
+`reservations:read|write`, `guests:read|write`, `availability:read`, `waitlist:write`, `events:read|write`, `webhooks:manage`, `reports:read`
+
+```bash
+# Verfügbare Slots
+curl -H "Authorization: Bearer <TOKEN>" \
+  "http://localhost:8000/api/v1/availability?location_id=1&date=2026-07-01&party_size=2"
+
+# Reservierung anlegen
+curl -X POST -H "Authorization: Bearer <TOKEN>" -H "Content-Type: application/json" \
+  -d '{"location_id":1,"date":"2026-07-01","time":"19:00","party_size":2,"guest_name":"Max Muster","guest_email":"max@example.com"}' \
+  http://localhost:8000/api/v1/reservations
+
+# Stornieren
+curl -X POST -H "Authorization: Bearer <TOKEN>" \
+  http://localhost:8000/api/v1/reservations/R-ABC123/cancel
+```
+
+Rate Limit: 120 Requests/Minute pro Token. Der Telefon-/AI-Assistent (vorbereitet) bucht ausschließlich über diese Availability-API – keine ungeprüften Buchungsentscheidungen.
+
+---
+
+## Webhooks
+
+Endpoints pro Tenant (Verwaltung über API `POST /api/v1/webhooks`). Events u. a.:
+
+`reservation.created|confirmed|updated|cancelled|seated|completed|no_show`, `waitlist.created|offered|accepted`, `feedback.received`
+
+- Payload signiert: Header `X-Gastrobook-Signature: sha256=<HMAC-SHA256(body, secret)>`
+- Retries mit Backoff (1 min → 2 h, 5 Versuche), Delivery-Log in `webhook_deliveries`
+- Automatische Deaktivierung nach 20 Fehlern in Folge
+- Payload-Versionierung (`"version": "1"`)
+
+---
+
+## Queue & Scheduler
+
+```bash
+php artisan queue:work        # Mails, Webhooks
+php artisan schedule:work     # lokal; Produktion: Cron-Eintrag jede Minute
+```
+
+Geplante Jobs: Reservierungs-Reminder (alle 15 min), Feedback-Follow-ups (stündlich), Wartelisten-Expiry (alle 10 min), unbezahlte Reservierungen abräumen (alle 10 min), DSGVO-Retention (täglich 03:30).
+
+---
+
+## E-Mails testen
+
+Lokal: `MAIL_MAILER=log` (Standard) → `storage/logs/laravel.log`, oder Mailpit via Docker (`http://localhost:8025`). Vorlagen liegen als Defaults im `NotificationTemplateRenderer` und sind pro Tenant/Standort über die Tabelle `notification_templates` überschreibbar (Platzhalter: `{guest_name}`, `{reservation_date}`, `{cancel_link}`, …).
+
+---
+
+## Tests & Codequalität
+
+```bash
+php artisan test                                   # 32 Tests, u. a.:
+#  - Tenant-Isolation (Scope, Admin-Routen, API-Tokens)
+#  - Verfügbarkeit (Öffnungszeiten, Sperren, Vorlauf, Doppelbuchung,
+#    kleinster Tisch, Kombinationen, Alternativen, Personenmodus)
+#  - Öffentlicher Buchungsflow inkl. Mail, Storno-Link, Fristen, Honeypot
+#  - Rollen/Rechte inkl. Standorteinschränkung + Impersonation-Audit
+#  - Warteliste (Angebot → Annahme → Reservierung, Expiry)
+
+vendor/bin/pint                                    # Code-Style
+vendor/bin/phpstan analyse --memory-limit=1G       # Statische Analyse (0 Fehler)
+```
+
+CI: GitHub Actions (`.github/workflows/ci.yml`) mit Pint, Larastan, Tests und Frontend-Build.
+
+---
+
+## Datenschutz (DSGVO)
+
+- Einwilligungen werden **getrennt** erfasst (Reservierung ≠ Newsletter ≠ Marketing) mit Historie (`guest_consents`), Kanal und gehashter, gekürzter IP.
+- Gastdaten-Export (Art. 15/20) als JSON, Anonymisierung (Art. 17) inkl. Reservierungs-Snapshots – Statistiken bleiben aggregiert erhalten.
+- Aufbewahrungsfrist je Tenant (`guest_retention_months`, Default 36) mit täglichem Anonymisierungsjob.
+- IP-Adressen werden im Auditlog anonymisiert (letztes Oktett genullt / IPv6 gekürzt).
+- Sensible Gastnotizen mit gesondertem Recht; No-Show-Risiko ist eine transparente, dokumentierte Heuristik, nur Hinweis fürs Personal (kein automatisierter Ausschluss, Art. 22).
+- **Keine Kreditkartendaten** im System – nur Provider-Referenzen (PaymentIntent-IDs).
+- Für den Produktivbetrieb: AVV/DPA mit Hosting- und Mail-/SMS-Providern abschließen; Impressums-/Datenschutz-Links pro Tenant hinterlegbar.
+
+---
+
+## Backup, Updates, Produktion
+
+- **Backups:** PostgreSQL-Dumps (`pg_dump`) + `storage/`-Volume sichern; vor Migrationen immer Backup.
+- **Updates:** `composer install && php artisan migrate --force && npm run build && php artisan config:cache route:cache view:cache`; Queue-Worker neu starten (`php artisan queue:restart`).
+- **Produktion:** `APP_ENV=production`, `APP_DEBUG=false`, HTTPS erzwingen, Redis für Cache/Session/Queue, Horizon optional (`composer require laravel/horizon`), Log-Aggregation, Health-Check unter `/up`.
+- EU-Hosting empfohlen (personenbezogene Gästedaten).
+
+---
+
+## Lizenz / Hinweis
+
+Eigenständiges Produkt. Marktreferenzen (Teburio, resmio, OpenTable u. a.) dienten ausschließlich als funktionale Orientierung – keine Übernahme von Designs, Texten oder geschützten Oberflächen.

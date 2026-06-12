@@ -1,0 +1,14 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    # Level 2 for now: Larastan does not yet fully infer Laravel 13 casts()
+    # return types, producing false positives at higher levels.
+    level: 2
+    paths:
+        - app
+    treatPhpDocTypesAsCertain: false
+    # Larastan's cast/property inference is incomplete for Laravel 13;
+    # treat Eloquent models as magic-property objects until upstream support lands.
+    universalObjectCratesClasses:
+        - Illuminate\Database\Eloquent\Model
