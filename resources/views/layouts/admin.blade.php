@@ -40,6 +40,7 @@
                     ['route' => 'admin.walkins.index', 'label' => 'Walk-ins', 'icon' => '🚶', 'perm' => 'walkins.create'],
                     ['route' => 'admin.waitlist.index', 'label' => 'Warteliste', 'icon' => '⏳', 'perm' => 'waitlist.manage'],
                     ['route' => 'admin.guests.index', 'label' => 'Gäste', 'icon' => '👥', 'perm' => 'guests.view'],
+                    ['route' => 'admin.events.index', 'label' => 'Events', 'icon' => '🎉', 'perm' => 'events.manage'],
                     ['route' => 'admin.reports.index', 'label' => 'Berichte', 'icon' => '📈', 'perm' => 'reports.view'],
                     ['route' => 'admin.settings.index', 'label' => 'Einstellungen', 'icon' => '⚙️', 'perm' => 'tables.manage'],
                     ['route' => 'admin.users.index', 'label' => 'Benutzer', 'icon' => '🔑', 'perm' => 'users.invite'],

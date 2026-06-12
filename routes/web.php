@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\ApiTokenController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\EventAdminController;
 use App\Http\Controllers\Admin\FloorPlanController;
 use App\Http\Controllers\Admin\GuestController;
 use App\Http\Controllers\Admin\ReportController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Public\FeedbackController;
 use App\Http\Controllers\Public\PublicBookingController;
+use App\Http\Controllers\Public\PublicEventController;
 use App\Http\Controllers\Public\WaitlistResponseController;
 use App\Http\Controllers\Saas\SaasTenantController;
 use Illuminate\Support\Facades\Route;
@@ -31,12 +33,18 @@ Route::middleware('throttle:booking-slots')->group(function () {
     Route::get('/r/{tenantSlug}/{locationSlug}', [PublicBookingController::class, 'show']);
     Route::get('/book/{tenantSlug}/{locationSlug}/slots', [PublicBookingController::class, 'slots'])->name('booking.slots');
     Route::get('/embed/{tenantSlug}/{locationSlug}.js', [PublicBookingController::class, 'embedScript'])->name('booking.embed');
+    Route::get('/book/{tenantSlug}/{locationSlug}/events', [PublicEventController::class, 'index'])->name('events.index');
+    Route::get('/book/{tenantSlug}/{locationSlug}/events/{eventSlug}', [PublicEventController::class, 'show'])->name('events.show');
 });
 
 Route::middleware('throttle:booking')->group(function () {
     Route::post('/book/{tenantSlug}/{locationSlug}', [PublicBookingController::class, 'store'])->name('booking.store');
     Route::post('/book/{tenantSlug}/{locationSlug}/waitlist', [PublicBookingController::class, 'joinWaitlist'])->name('booking.waitlist');
+    Route::post('/book/{tenantSlug}/{locationSlug}/events/{eventSlug}', [PublicEventController::class, 'store'])->name('events.store');
 });
+
+Route::get('/event-booking/{code}/{token}', [PublicEventController::class, 'manage'])->name('events.manage');
+Route::post('/event-booking/{code}/{token}/cancel', [PublicEventController::class, 'cancel'])->name('events.cancel');
 
 Route::get('/reservation/{code}/confirmed/{token}', [PublicBookingController::class, 'confirmation'])->name('booking.confirmation');
 Route::get('/reservation/{code}/manage/{token}', [PublicBookingController::class, 'manage'])->name('booking.manage');
@@ -126,6 +134,17 @@ Route::middleware(['auth', 'tenant'])->prefix('admin')->name('admin.')->group(fu
             ->middleware('permission:guests.export')->name('guests.export-single');
         Route::post('/guests/{guest}/anonymize', [GuestController::class, 'anonymize'])
             ->middleware('permission:guests.anonymize')->name('guests.anonymize');
+    });
+
+    // Events
+    Route::middleware('permission:events.manage')->group(function () {
+        Route::get('/events', [EventAdminController::class, 'index'])->name('events.index');
+        Route::post('/events', [EventAdminController::class, 'store'])->name('events.store');
+        Route::get('/events/{event}', [EventAdminController::class, 'show'])->name('events.show');
+        Route::put('/events/{event}/status', [EventAdminController::class, 'updateStatus'])->name('events.status');
+        Route::get('/events/{event}/attendees.csv', [EventAdminController::class, 'exportAttendees'])->name('events.attendees');
+        Route::post('/event-bookings/{booking}/check-in', [EventAdminController::class, 'checkIn'])->name('events.check-in');
+        Route::post('/event-bookings/{booking}/cancel', [EventAdminController::class, 'cancelBooking'])->name('events.cancel-booking');
     });
 
     // Reports

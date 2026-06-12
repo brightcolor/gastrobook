@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Public;
 
 use App\Enums\ReservationStatus;
 use App\Http\Controllers\Controller;
+use App\Models\Event;
 use App\Models\Location;
 use App\Models\Reservation;
 use App\Models\Tenant;
@@ -26,10 +27,18 @@ class PublicBookingController extends Controller
     {
         [$tenant, $location] = $this->resolve($tenantSlug, $locationSlug);
 
+        $upcomingEvents = Event::withoutGlobalScope('tenant')
+            ->where('location_id', $location->id)
+            ->where('is_public', true)
+            ->where('status', 'published')
+            ->where('starts_at', '>', now())
+            ->count();
+
         return view('public.booking', [
             'tenant' => $tenant,
             'location' => $location,
             'settings' => $location->effectiveSettings(),
+            'upcomingEvents' => $upcomingEvents,
         ]);
     }
 

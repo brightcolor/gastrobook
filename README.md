@@ -57,7 +57,7 @@ GastroBook ist ein eigenständiges Reservierungssystem für Restaurants, Cafés,
 | Einbettbares Widget (JS-Snippet → iframe mit Auto-Resize) | ✅ |
 | DSGVO-Werkzeuge (Export, Anonymisierung, Einwilligungshistorie, Retention-Job) | ✅ |
 | No-Show-Schutz / Deposits (Regelwerk + Datenmodell, PaymentProvider abstrahiert) | 🔶 vorbereitet |
-| Events & Tickets (Datenmodell + Kapazitätslogik) | 🔶 vorbereitet |
+| Events & Tickets (öffentl. Buchungsseite, Kapazität, Fristen, Check-in, CSV) | ✅ |
 | SMS/WhatsApp, Telefon-/AI-Assistent (Quelle, ConversationLog, Adapterpunkte) | 🔶 vorbereitet |
 | Stripe/Mollie-Billing für Tenants | 🔶 vorbereitet |
 
@@ -236,6 +236,16 @@ Endpoints pro Tenant (Verwaltung über API `POST /api/v1/webhooks`). Events u. a
 - Retries mit Backoff (1 min → 2 h, 5 Versuche), Delivery-Log in `webhook_deliveries`
 - Automatische Deaktivierung nach 20 Fehlern in Folge
 - Payload-Versionierung (`"version": "1"`)
+
+---
+
+## Events & Tickets
+
+**Admin** (`/admin/events`, Recht `events.manage`): Events anlegen (Titel, Beschreibung, Datum/Uhrzeit auch über Mitternacht, Kapazität, Preis pro Person, Raum, Buchungs- und Stornofrist in Stunden vor Beginn, öffentlich/intern), Status steuern (Entwurf/Veröffentlicht/Abgesagt/Beendet), Teilnehmerliste mit **Check-in** und **CSV-Export**, Buchungen stornieren.
+
+**Öffentlich:** `/book/{tenant}/{location}/events` listet alle veröffentlichten Events (mit Restplatz-Hinweis); die Detailseite bucht Tickets mit Kapazitäts-Recheck in der Transaktion (kein Überbuchen unter Last), Honeypot + Rate Limit, DSGVO-/Newsletter-Checkboxen (Newsletter → MailWizz-Sync). Gäste erhalten eine Bestätigungs-Mail mit sicherem Storno-Link; die Stornofrist wird serverseitig geprüft. Die Tisch-Buchungsseite verlinkt anstehende Events automatisch.
+
+Preise werden in Minor Units gespeichert; `payment_status = required` markiert offene Zahlungen (Online-Zahlung folgt mit der Stripe-Integration).
 
 ---
 

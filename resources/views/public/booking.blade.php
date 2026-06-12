@@ -9,6 +9,14 @@
     @if($location->public_intro)
         <p class="mt-2 text-center text-sm text-stone-600">{{ $location->public_intro }}</p>
     @endif
+    @if(($upcomingEvents ?? 0) > 0)
+        <p class="mt-3 text-center">
+            <a href="{{ route('events.index', [$tenant->slug, $location->slug]) }}"
+               class="inline-block rounded-full bg-amber-50 px-4 py-1.5 text-sm font-semibold text-amber-800 hover:bg-amber-100">
+                🎉 {{ $upcomingEvents }} {{ $upcomingEvents === 1 ? 'Event' : 'Events' }} – jetzt Tickets sichern
+            </a>
+        </p>
+    @endif
 
     <form method="POST" action="{{ route('booking.store', [$tenant->slug, $location->slug]) }}" class="mt-6 space-y-5" id="bookingForm">
         @csrf
