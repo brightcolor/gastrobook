@@ -8,6 +8,7 @@ use App\Models\EventBooking;
 use App\Models\Location;
 use App\Models\Tenant;
 use App\Services\EventBookingService;
+use App\Services\Payments\PaymentProviderManager;
 use Illuminate\Http\Request;
 
 class PublicEventController extends Controller
@@ -88,10 +89,17 @@ class PublicEventController extends Controller
         $event = $booking->event()->withoutGlobalScopes()->first();
         $location = $event?->location()->withoutGlobalScope('tenant')->first();
 
+        $tenant = Tenant::find($booking->tenant_id);
+        $payEnabled = $tenant !== null
+            && in_array($booking->payment_status, ['required', 'pending'], true)
+            && $booking->status === 'confirmed'
+            && app(PaymentProviderManager::class)->isConfigured($tenant);
+
         return view('public.events.manage', [
             'booking' => $booking,
             'event' => $event,
             'location' => $location,
+            'payEnabled' => $payEnabled,
             'cancellable' => $booking->status === 'confirmed'
                 && ($event?->cancellation_deadline_at === null || now()->lt($event->cancellation_deadline_at)),
         ]);

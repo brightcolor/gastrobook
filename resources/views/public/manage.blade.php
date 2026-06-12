@@ -12,6 +12,22 @@
         <div class="flex justify-between"><span class="text-stone-500">Nr.</span><strong>{{ $reservation->code }}</strong></div>
     </div>
 
+    @if(request()->boolean('paid') || $reservation->payment_status === 'paid')
+        <div class="mt-4 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">✅ Anzahlung erhalten – vielen Dank!</div>
+    @elseif($payEnabled ?? false)
+        <a href="{{ route('pay.reservation', ['code' => $reservation->code, 'token' => $reservation->manage_token]) }}"
+           class="mt-6 block rounded-xl bg-emerald-600 py-3.5 text-center text-lg font-bold text-white hover:bg-emerald-700">
+            Anzahlung bezahlen · {{ number_format($reservation->payment_amount_minor / 100, 2, ',', '.') }} {{ $reservation->currency }}
+        </a>
+        <p class="mt-2 rounded-xl bg-stone-50 p-3 text-xs text-stone-600">
+            💶 Die Anzahlung wird bei Ihrem Besuch <strong>vollständig mit der Rechnung verrechnet</strong>.
+            Bei Nichterscheinen (No-Show) erfolgt <strong>keine Rückerstattung</strong>.
+        </p>
+        @if($reservation->payment_due_at)
+            <p class="mt-1 text-xs text-stone-500">Bitte zahlen Sie bis {{ $reservation->payment_due_at->setTimezone($location->timezone)->format('d.m.Y H:i') }} Uhr, sonst verfällt die Reservierung.</p>
+        @endif
+    @endif
+
     @if($cancellable)
         <form method="POST" action="{{ route('booking.cancel', ['code' => $reservation->code, 'token' => $reservation->manage_token]) }}"
               onsubmit="return confirm('Reservierung wirklich stornieren?')" class="mt-6">

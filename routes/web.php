@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\WalkInController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Public\FeedbackController;
+use App\Http\Controllers\Public\PaymentController;
 use App\Http\Controllers\Public\PublicBookingController;
 use App\Http\Controllers\Public\PublicEventController;
 use App\Http\Controllers\Public\WaitlistResponseController;
@@ -45,6 +46,13 @@ Route::middleware('throttle:booking')->group(function () {
 
 Route::get('/event-booking/{code}/{token}', [PublicEventController::class, 'manage'])->name('events.manage');
 Route::post('/event-booking/{code}/{token}/cancel', [PublicEventController::class, 'cancel'])->name('events.cancel');
+
+// Payments (Stripe Checkout + Webhook)
+Route::get('/pay/event/{code}/{token}', [PaymentController::class, 'checkoutEventBooking'])
+    ->middleware('throttle:booking')->name('pay.event');
+Route::get('/pay/reservation/{code}/{token}', [PaymentController::class, 'checkoutReservation'])
+    ->middleware('throttle:booking')->name('pay.reservation');
+Route::post('/webhooks/stripe', [PaymentController::class, 'stripeWebhook'])->name('webhooks.stripe');
 
 Route::get('/reservation/{code}/confirmed/{token}', [PublicBookingController::class, 'confirmation'])->name('booking.confirmation');
 Route::get('/reservation/{code}/manage/{token}', [PublicBookingController::class, 'manage'])->name('booking.manage');
@@ -165,6 +173,12 @@ Route::middleware(['auth', 'tenant'])->prefix('admin')->name('admin.')->group(fu
             ->middleware('permission:tenant.settings.manage')->name('settings.field-rules');
         Route::put('/settings/mailwizz', [SettingsController::class, 'updateMailwizz'])
             ->middleware('permission:integrations.manage')->name('settings.mailwizz');
+        Route::put('/settings/stripe', [SettingsController::class, 'updateStripe'])
+            ->middleware('permission:integrations.manage')->name('settings.stripe');
+        Route::post('/settings/deposit-rules', [SettingsController::class, 'storeDepositRule'])
+            ->middleware('permission:payments.manage')->name('settings.deposit-rules.store');
+        Route::delete('/settings/deposit-rules/{rule}', [SettingsController::class, 'deleteDepositRule'])
+            ->middleware('permission:payments.manage')->name('settings.deposit-rules.delete');
         Route::put('/settings/opening-hours', [SettingsController::class, 'updateOpeningHours'])
             ->middleware('permission:opening_hours.manage')->name('settings.opening-hours');
         Route::post('/settings/special-hours', [SettingsController::class, 'storeSpecialHours'])

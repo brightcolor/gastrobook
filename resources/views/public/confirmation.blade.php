@@ -24,6 +24,17 @@
         <div class="flex justify-between"><span class="text-stone-500">Reservierungsnr.</span><strong>{{ $reservation->code }}</strong></div>
     </div>
 
+    @if($reservation->status->value === 'payment_pending' && $reservation->payment_amount_minor > 0)
+        <a href="{{ route('pay.reservation', ['code' => $reservation->code, 'token' => $reservation->manage_token]) }}"
+           class="mt-6 block rounded-xl bg-emerald-600 py-3.5 text-center text-lg font-bold text-white hover:bg-emerald-700">
+            Jetzt Anzahlung bezahlen · {{ number_format($reservation->payment_amount_minor / 100, 2, ',', '.') }} {{ $reservation->currency }}
+        </a>
+        <p class="mt-2 rounded-xl bg-stone-50 p-3 text-left text-xs text-stone-600">
+            💶 Die Anzahlung wird bei Ihrem Besuch <strong>vollständig mit der Rechnung verrechnet</strong>.
+            Bei Nichterscheinen (No-Show) erfolgt <strong>keine Rückerstattung</strong>.
+        </p>
+    @endif
+
     <a href="{{ route('booking.manage', ['code' => $reservation->code, 'token' => $reservation->manage_token]) }}"
        class="mt-6 inline-block text-sm text-brand underline">Reservierung ändern oder stornieren</a>
 </div>

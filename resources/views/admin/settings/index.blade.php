@@ -186,6 +186,84 @@
     </form>
     @endif
 
+    {{-- Stripe + deposit rules --}}
+    @if(auth()->user()->canInTenant('integrations.manage', app(\App\Support\TenantContext::class)->tenant(), $location))
+    <div class="space-y-6">
+        <form method="POST" action="{{ route('admin.settings.stripe') }}" class="rounded-2xl bg-white p-5 shadow-sm">
+            @csrf @method('PUT')
+            <div class="mb-1 flex items-center justify-between">
+                <h2 class="font-bold">Zahlungen: Stripe</h2>
+                @if($stripe)
+                    <span class="rounded-full px-2.5 py-0.5 text-xs font-semibold
+                        {{ ['connected' => 'bg-emerald-100 text-emerald-800'][$stripe->status] ?? 'bg-stone-100 text-stone-600' }}">
+                        {{ ['connected' => 'verbunden', 'disconnected' => 'deaktiviert'][$stripe->status] ?? $stripe->status }}
+                    </span>
+                @endif
+            </div>
+            <p class="mb-3 text-xs text-stone-500">
+                Für Event-Vorauszahlungen und Reservierungs-Anzahlungen (No-Show-Schutz).
+                Es werden keine Kartendaten gespeichert – die Zahlung läuft komplett über Stripe Checkout.
+            </p>
+            <div class="space-y-2 text-sm">
+                <div>
+                    <label class="mb-1 block text-xs font-semibold text-stone-500">Secret Key (sk_…) {{ $stripe ? '– leer lassen zum Beibehalten' : '' }}</label>
+                    <input type="password" name="secret_key" autocomplete="new-password" class="w-full rounded-lg border-stone-200">
+                </div>
+                <div>
+                    <label class="mb-1 block text-xs font-semibold text-stone-500">Webhook-Signing-Secret (whsec_…)</label>
+                    <input type="password" name="webhook_secret" autocomplete="new-password" class="w-full rounded-lg border-stone-200">
+                </div>
+                <label class="flex items-center gap-2"><input type="checkbox" name="enabled" value="1" @checked(($stripe->status ?? '') === 'connected')> Online-Zahlung aktiv</label>
+            </div>
+            <p class="mt-2 rounded-lg bg-stone-50 p-2 text-xs text-stone-600">
+                Webhook-URL in Stripe hinterlegen: <code class="break-all">{{ route('webhooks.stripe') }}</code><br>
+                Events: <code>checkout.session.completed</code>, <code>checkout.session.expired</code>
+            </p>
+            <button class="mt-3 rounded-xl bg-stone-900 px-5 py-2.5 text-sm font-bold text-white">Speichern</button>
+        </form>
+
+        @if(auth()->user()->canInTenant('payments.manage', app(\App\Support\TenantContext::class)->tenant(), $location))
+        <div class="rounded-2xl bg-white p-5 shadow-sm">
+            <h2 class="mb-1 font-bold">Anzahlungsregeln (No-Show-Schutz)</h2>
+            <p class="mb-3 text-xs text-stone-500">
+                Online-Reservierungen, die eine Regel treffen, müssen vorab anzahlen.
+                Der Betrag wird beim Besuch mit der Rechnung verrechnet; bei Nichterscheinen erfolgt keine Rückerstattung
+                (wird Gästen so angezeigt).
+            </p>
+            <form method="POST" action="{{ route('admin.settings.deposit-rules.store') }}" class="grid grid-cols-2 gap-2 text-sm">
+                @csrf
+                <input type="text" name="name" required placeholder="Name (z. B. Gruppen ab 6) *" class="col-span-2 rounded-lg border-stone-200">
+                <div><label class="mb-1 block text-xs text-stone-500">Ab Personenzahl</label>
+                    <input type="number" name="min_party_size" min="1" placeholder="z. B. 6" class="w-full rounded-lg border-stone-200"></div>
+                <div><label class="mb-1 block text-xs text-stone-500">Betrag p. P. (€) *</label>
+                    <input type="number" name="amount_per_person" required step="0.01" min="0" class="w-full rounded-lg border-stone-200"></div>
+                <div><label class="mb-1 block text-xs text-stone-500">Nur ab Uhrzeit</label>
+                    <input type="time" name="from_time" class="w-full rounded-lg border-stone-200"></div>
+                <div><label class="mb-1 block text-xs text-stone-500">Zahlungsfrist (Min.)</label>
+                    <input type="number" name="payment_deadline_minutes" min="10" placeholder="60" class="w-full rounded-lg border-stone-200"></div>
+                <button class="col-span-2 rounded-lg bg-stone-900 px-4 py-2 font-semibold text-white">Regel anlegen</button>
+            </form>
+            <div class="mt-3 space-y-1 text-sm">
+                @foreach($depositRules as $rule)
+                    <div class="flex items-center justify-between rounded-lg bg-stone-50 px-3 py-2">
+                        <span>
+                            <strong>{{ $rule->name }}</strong>
+                            @if($rule->min_party_size) · ab {{ $rule->min_party_size }} P. @endif
+                            · {{ number_format($rule->amount_per_person_minor / 100, 2, ',', '.') }} € p. P.
+                            @if($rule->from_time) · ab {{ substr($rule->from_time, 0, 5) }} Uhr @endif
+                        </span>
+                        <form method="POST" action="{{ route('admin.settings.deposit-rules.delete', $rule) }}" onsubmit="return confirm('Regel löschen?')">
+                            @csrf @method('DELETE')
+                            <button class="text-red-500">✕</button>
+                        </form>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
+    </div>
+    @endif
+
     {{-- Combinations + special hours --}}
     <div class="space-y-6">
         <div class="rounded-2xl bg-white p-5 shadow-sm">

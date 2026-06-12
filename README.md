@@ -56,7 +56,8 @@ GastroBook ist ein eigenständiges Reservierungssystem für Restaurants, Cafés,
 | Konfigurierbare Widget-Felder (E-Mail/Telefon/Anlass/Allergien/Notiz je Standort) | ✅ |
 | Einbettbares Widget (JS-Snippet → iframe mit Auto-Resize) | ✅ |
 | DSGVO-Werkzeuge (Export, Anonymisierung, Einwilligungshistorie, Retention-Job) | ✅ |
-| No-Show-Schutz / Deposits (Regelwerk + Datenmodell, PaymentProvider abstrahiert) | 🔶 vorbereitet |
+| Stripe-Zahlungen produktiv: Event-Vorauszahlungen + Reservierungs-Deposits (Checkout, signierter Webhook) | ✅ |
+| No-Show-Schutz: Anzahlungsregeln per Admin-UI, Verrechnungshinweis, keine Rückerstattung bei No-Show | ✅ |
 | Events & Tickets (öffentl. Buchungsseite, Kapazität, Fristen, Check-in, CSV) | ✅ |
 | SMS/WhatsApp, Telefon-/AI-Assistent (Quelle, ConversationLog, Adapterpunkte) | 🔶 vorbereitet |
 | Stripe/Mollie-Billing für Tenants | 🔶 vorbereitet |
@@ -246,6 +247,20 @@ Endpoints pro Tenant (Verwaltung über API `POST /api/v1/webhooks`). Events u. a
 **Öffentlich:** `/book/{tenant}/{location}/events` listet alle veröffentlichten Events (mit Restplatz-Hinweis); die Detailseite bucht Tickets mit Kapazitäts-Recheck in der Transaktion (kein Überbuchen unter Last), Honeypot + Rate Limit, DSGVO-/Newsletter-Checkboxen (Newsletter → MailWizz-Sync). Gäste erhalten eine Bestätigungs-Mail mit sicherem Storno-Link; die Stornofrist wird serverseitig geprüft. Die Tisch-Buchungsseite verlinkt anstehende Events automatisch.
 
 Preise werden in Minor Units gespeichert; `payment_status = required` markiert offene Zahlungen (Online-Zahlung folgt mit der Stripe-Integration).
+
+---
+
+## Zahlungen (Stripe)
+
+**Konfiguration** unter *Einstellungen → Zahlungen: Stripe* (Recht `integrations.manage`): Secret Key (`sk_…`) und Webhook-Signing-Secret (`whsec_…`) eintragen — verschlüsselt gespeichert, nie wieder angezeigt. In Stripe die Webhook-URL `https://…/webhooks/stripe` mit den Events `checkout.session.completed` und `checkout.session.expired` hinterlegen. Voraussetzung: Tarif-Feature `deposits_enabled`.
+
+**Event-Vorauszahlungen:** Eventbuchungen mit Preis erhalten in Bestätigungsmail und auf der Verwaltungsseite einen „Jetzt bezahlen"-Button → Stripe Checkout (gehostet, **keine Kartendaten im System**). Nach Zahlungseingang setzt der signierte Webhook die Buchung auf `paid`.
+
+**Reservierungs-Deposits (No-Show-Schutz):** Unter *Einstellungen → Anzahlungsregeln* legst du fest, ab welcher Personenzahl/Uhrzeit eine Anzahlung fällig ist (Betrag pro Person, Zahlungsfrist). Online-Reservierungen, die eine Regel treffen, starten als `payment_pending` mit Zahlungslink; nach Zahlung bestätigt der Webhook die Reservierung automatisch. Unbezahlte Reservierungen laufen per Scheduler nach Fristablauf ab.
+
+**Verrechnungs- und No-Show-Hinweis:** Gäste sehen an jeder Zahlungsstelle (Eventseite, Bestätigungs-/Verwaltungsseite, E-Mail) den Hinweis: *„Die Vorauszahlung wird bei Ihrem Besuch vollständig mit der Rechnung verrechnet. Bei Nichterscheinen (No-Show) erfolgt keine Rückerstattung."* Damit ist die Einbehaltung bei No-Show transparent vereinbart (AGB-Hinterlegung pro Tenant empfohlen).
+
+Sicherheit: Webhook-Signaturprüfung (HMAC, Replay-Schutz ±5 min) gegen das Secret des jeweiligen Tenants, idempotente Verarbeitung, Audit-Log (`payment.checkout_started`, `payment.succeeded`), ausgehender Webhook `payment.succeeded` an Tenant-Endpoints.
 
 ---
 

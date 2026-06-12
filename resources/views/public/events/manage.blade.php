@@ -32,6 +32,19 @@
         </div>
     </div>
 
+    @if(request()->boolean('paid') || $booking->payment_status === 'paid')
+        <div class="mt-4 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">✅ Zahlung erhalten – vielen Dank!</div>
+    @elseif($payEnabled ?? false)
+        <a href="{{ route('pay.event', ['code' => $booking->code, 'token' => $booking->manage_token]) }}"
+           class="mt-6 block rounded-xl bg-emerald-600 py-3.5 text-center text-lg font-bold text-white hover:bg-emerald-700">
+            Jetzt bezahlen · {{ number_format($booking->amount_minor / 100, 2, ',', '.') }} {{ $event?->currency }}
+        </a>
+        <p class="mt-2 rounded-xl bg-stone-50 p-3 text-xs text-stone-600">
+            💶 Die Vorauszahlung wird bei Ihrem Besuch <strong>vollständig mit der Rechnung verrechnet</strong>.
+            Bei Nichterscheinen (No-Show) erfolgt <strong>keine Rückerstattung</strong>.
+        </p>
+    @endif
+
     @if($cancellable)
         <form method="POST" action="{{ route('events.cancel', ['code' => $booking->code, 'token' => $booking->manage_token]) }}"
               onsubmit="return confirm('Buchung wirklich stornieren?')" class="mt-6">

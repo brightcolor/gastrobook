@@ -61,6 +61,12 @@
                     <span>Newsletter mit Angeboten und Veranstaltungen erhalten (jederzeit widerrufbar).</span>
                 </label>
             </div>
+            @if($event->price_minor)
+                <p class="rounded-xl bg-stone-50 p-3 text-xs text-stone-600">
+                    💶 Die Vorauszahlung wird bei Ihrem Besuch <strong>vollständig mit der Rechnung verrechnet</strong>.
+                    Bei Nichterscheinen (No-Show) erfolgt <strong>keine Rückerstattung</strong>.
+                </p>
+            @endif
             <button class="btn-brand w-full rounded-xl py-4 text-lg font-bold text-white shadow hover:opacity-90">
                 Jetzt buchen{{ $event->price_minor ? ' · ' . number_format($event->price_minor / 100, 2, ',', '.') . ' € p. P.' : '' }}
             </button>

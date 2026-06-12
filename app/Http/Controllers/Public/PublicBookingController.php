@@ -8,6 +8,7 @@ use App\Models\Event;
 use App\Models\Location;
 use App\Models\Reservation;
 use App\Models\Tenant;
+use App\Services\Payments\PaymentProviderManager;
 use App\Services\ReservationAvailabilityService;
 use App\Services\ReservationLifecycleService;
 use App\Services\WaitlistService;
@@ -156,11 +157,19 @@ class PublicBookingController extends Controller
         $deadline = $reservation->start_at->copy()->subMinutes($settings->cancellation_deadline_minutes);
         $cancellable = $reservation->status->isActive() && now()->lt($deadline);
 
+        $tenant = Tenant::find($reservation->tenant_id);
+        $payEnabled = $tenant !== null
+            && in_array($reservation->payment_status, ['required', 'pending'], true)
+            && $reservation->payment_amount_minor > 0
+            && $reservation->status->isActive()
+            && app(PaymentProviderManager::class)->isConfigured($tenant);
+
         return view('public.manage', [
             'reservation' => $reservation,
             'location' => $location,
             'cancellable' => $cancellable,
             'deadline' => $deadline,
+            'payEnabled' => $payEnabled,
         ]);
     }
 

@@ -145,6 +145,15 @@ class EventBookingService
         $startLocal = $event->starts_at->copy()->setTimezone($location?->timezone ?? 'Europe/Berlin');
         $manageLink = route('events.manage', ['code' => $booking->code, 'token' => $booking->manage_token]);
 
+        $paymentBlock = '';
+        if ($booking->amount_minor) {
+            $payLink = route('pay.event', ['code' => $booking->code, 'token' => $booking->manage_token]);
+            $paymentBlock = "\nBetrag: ".number_format($booking->amount_minor / 100, 2, ',', '.').' '.$event->currency
+                ."\nJetzt online bezahlen: ".$payLink
+                ."\n\nHinweis: Die Vorauszahlung wird bei Ihrem Besuch vollständig mit der Rechnung verrechnet."
+                ."\nBei Nichterscheinen (No-Show) erfolgt keine Rückerstattung.\n";
+        }
+
         $body = __(":greeting\n\nIhre Buchung für \":event\" ist bestätigt:\n\nDatum: :date\nUhrzeit: :time Uhr\nTickets: :tickets\nBuchungsnummer: :code\n:payment\nStornieren: :link\n\nWir freuen uns auf Sie!\n:location", [
             'greeting' => 'Hallo '.$booking->guest_name.',',
             'event' => $event->title,
@@ -152,9 +161,7 @@ class EventBookingService
             'time' => $startLocal->format('H:i'),
             'tickets' => $booking->ticket_count,
             'code' => $booking->code,
-            'payment' => $booking->amount_minor
-                ? "\nBetrag: ".number_format($booking->amount_minor / 100, 2, ',', '.').' '.$event->currency." (Zahlung vor Ort oder per Zahlungslink)\n"
-                : '',
+            'payment' => $paymentBlock,
             'link' => $manageLink,
             'location' => $location?->name ?? '',
         ]);

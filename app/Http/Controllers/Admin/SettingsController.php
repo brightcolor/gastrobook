@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\DepositRule;
 use App\Models\IntegrationConnection;
 use App\Models\OpeningHour;
 use App\Models\RestaurantTable;
@@ -35,10 +36,16 @@ class SettingsController extends Controller
             $mailwizzCredentials = json_decode(Crypt::decryptString($mailwizz->credentials_encrypted), true) ?: [];
         }
 
+        $stripe = IntegrationConnection::whereNull('location_id')
+            ->where('provider', 'stripe')
+            ->first();
+
         return view('admin.settings.index', [
             'location' => $location,
             'mailwizz' => $mailwizz,
             'mailwizzCredentials' => $mailwizzCredentials,
+            'stripe' => $stripe,
+            'depositRules' => DepositRule::where('location_id', $location->id)->orderBy('name')->get(),
             'settings' => $location->effectiveSettings(),
             'rooms' => $location->rooms()->withCount('tables')->orderBy('sort_order')->get(),
             'tables' => $location->tables()->with('room')->orderBy('sort_order')->get(),
@@ -171,6 +178,96 @@ class SettingsController extends Controller
         }
 
         return back()->with('success', __('MailWizz-Integration gespeichert und Verbindung getestet.'));
+    }
+
+    /**
+     * Stripe payment integration (tenant-wide). Only API references are
+     * stored (encrypted) — card data never touches this system.
+     */
+    public function updateStripe(Request $request)
+    {
+        $tenant = $this->context->tenant();
+
+        $validated = $request->validate([
+            'secret_key' => ['nullable', 'string', 'max:255'],
+            'webhook_secret' => ['nullable', 'string', 'max:255'],
+            'enabled' => ['nullable', 'boolean'],
+        ]);
+
+        $connection = IntegrationConnection::firstOrNew([
+            'tenant_id' => $tenant->id,
+            'location_id' => null,
+            'provider' => 'stripe',
+        ]);
+
+        $credentials = [];
+        if ($connection->credentials_encrypted) {
+            $credentials = json_decode(Crypt::decryptString($connection->credentials_encrypted), true) ?: [];
+        }
+        if (! empty($validated['secret_key'])) {
+            $credentials['secret_key'] = $validated['secret_key'];
+        }
+        if (! empty($validated['webhook_secret'])) {
+            $credentials['webhook_secret'] = $validated['webhook_secret'];
+        }
+
+        if (empty($credentials['secret_key']) || empty($credentials['webhook_secret'])) {
+            return back()->withErrors(['secret_key' => __('Secret Key und Webhook-Secret sind erforderlich.')]);
+        }
+
+        $connection->credentials_encrypted = Crypt::encryptString(json_encode($credentials));
+        $connection->status = $request->boolean('enabled', true) ? 'connected' : 'disconnected';
+        $connection->save();
+
+        $this->audit->log('integration.stripe_updated', $connection, null, ['status' => $connection->status]);
+
+        return back()->with('success', __('Stripe-Integration gespeichert. Webhook-URL: :url', [
+            'url' => route('webhooks.stripe'),
+        ]));
+    }
+
+    /**
+     * Deposit rule for online reservations (no-show protection).
+     */
+    public function storeDepositRule(Request $request)
+    {
+        $location = $this->context->location();
+        abort_if($location === null, 404);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'min_party_size' => ['nullable', 'integer', 'min:1', 'max:200'],
+            'amount_per_person' => ['required', 'numeric', 'min:0', 'max:10000'],
+            'from_time' => ['nullable', 'date_format:H:i'],
+            'until_time' => ['nullable', 'date_format:H:i'],
+            'payment_deadline_minutes' => ['nullable', 'integer', 'min:10', 'max:10080'],
+        ]);
+
+        $rule = DepositRule::create([
+            'tenant_id' => $location->tenant_id,
+            'location_id' => $location->id,
+            'name' => $validated['name'],
+            'type' => 'deposit',
+            'min_party_size' => $validated['min_party_size'] ?? null,
+            'from_time' => $validated['from_time'] ?? null,
+            'until_time' => $validated['until_time'] ?? null,
+            'amount_per_person_minor' => (int) round($validated['amount_per_person'] * 100),
+            'currency' => $location->currency,
+            'payment_deadline_minutes' => (int) ($validated['payment_deadline_minutes'] ?? 60),
+        ]);
+
+        $this->audit->log('deposit_rule.created', $rule, null, $validated);
+
+        return back()->with('success', __('Anzahlungsregel angelegt.'));
+    }
+
+    public function deleteDepositRule(DepositRule $rule)
+    {
+        abort_if($rule->location_id !== $this->context->locationId(), 404);
+        $this->audit->log('deposit_rule.deleted', $rule, ['name' => $rule->name]);
+        $rule->delete();
+
+        return back()->with('success', __('Anzahlungsregel gelöscht.'));
     }
 
     public function storeRoom(Request $request)
