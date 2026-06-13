@@ -12,6 +12,7 @@ use App\Models\SpecialOpeningHour;
 use App\Services\AuditLogger;
 use App\Services\Newsletter\MailwizzProvider;
 use App\Services\PlanLimitService;
+use App\Services\Sms\SevenIoProvider;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -41,11 +42,21 @@ class SettingsController extends Controller
             ->where('provider', 'stripe')
             ->first();
 
+        $sms = IntegrationConnection::whereNull('location_id')
+            ->where('provider', 'sevenio')
+            ->first();
+        $smsCredentials = [];
+        if ($sms?->credentials_encrypted) {
+            $smsCredentials = json_decode(Crypt::decryptString($sms->credentials_encrypted), true) ?: [];
+        }
+
         return view('admin.settings.index', [
             'location' => $location,
             'mailwizz' => $mailwizz,
             'mailwizzCredentials' => $mailwizzCredentials,
             'stripe' => $stripe,
+            'sms' => $sms,
+            'smsCredentials' => $smsCredentials,
             'depositRules' => DepositRule::where('location_id', $location->id)->orderBy('name')->get(),
             'settings' => $location->effectiveSettings(),
             'rooms' => $location->rooms()->withCount('tables')->orderBy('sort_order')->get(),
@@ -76,6 +87,9 @@ class SettingsController extends Controller
             'waitlist_enabled' => ['nullable', 'boolean'],
             'walkins_enabled' => ['nullable', 'boolean'],
             'cancellation_deadline_minutes' => ['required', 'integer', 'min:0', 'max:20160'],
+            'reminder_enabled' => ['nullable', 'boolean'],
+            'reminder_hours_before' => ['required', 'integer', 'min:1', 'max:168'],
+            'sms_reminder_enabled' => ['nullable', 'boolean'],
         ]);
 
         $settings = $location->settings()->firstOrCreate(['tenant_id' => $location->tenant_id]);
@@ -86,6 +100,8 @@ class SettingsController extends Controller
             'request_only' => $request->boolean('request_only'),
             'waitlist_enabled' => $request->boolean('waitlist_enabled'),
             'walkins_enabled' => $request->boolean('walkins_enabled'),
+            'reminder_enabled' => $request->boolean('reminder_enabled'),
+            'sms_reminder_enabled' => $request->boolean('sms_reminder_enabled'),
         ]);
 
         $this->audit->log('location.settings_updated', $settings, $old, $validated);
@@ -225,6 +241,66 @@ class SettingsController extends Controller
         return back()->with('success', __('Stripe-Integration gespeichert. Webhook-URL: :url', [
             'url' => route('webhooks.stripe'),
         ]));
+    }
+
+    /**
+     * SMS integration via seven.io (tenant-wide). API key stored encrypted;
+     * never displayed again after saving. Verified on save via balance lookup.
+     */
+    public function updateSms(Request $request)
+    {
+        $tenant = $this->context->tenant();
+
+        $validated = $request->validate([
+            'api_key' => ['nullable', 'string', 'max:255'],
+            'sender_id' => ['nullable', 'string', 'max:16'],
+            'enabled' => ['nullable', 'boolean'],
+        ]);
+
+        $connection = IntegrationConnection::firstOrNew([
+            'tenant_id' => $tenant->id,
+            'location_id' => null,
+            'provider' => 'sevenio',
+        ]);
+
+        $credentials = [];
+        if ($connection->credentials_encrypted) {
+            $credentials = json_decode(Crypt::decryptString($connection->credentials_encrypted), true) ?: [];
+        }
+        if (! empty($validated['api_key'])) {
+            $credentials['api_key'] = $validated['api_key'];
+        }
+        $credentials['sender_id'] = $validated['sender_id'] ?? ($credentials['sender_id'] ?? '');
+
+        if (empty($credentials['api_key'])) {
+            return back()->withErrors(['api_key' => __('API-Key erforderlich.')]);
+        }
+
+        $connection->credentials_encrypted = Crypt::encryptString(json_encode($credentials));
+        $connection->status = $request->boolean('enabled', true) ? 'connected' : 'disconnected';
+        $connection->save();
+
+        $this->audit->log('integration.sms_updated', $connection, null, [
+            'sender_id' => $credentials['sender_id'],
+            'status' => $connection->status,
+        ]);
+
+        if ($connection->status === 'connected') {
+            $provider = new SevenIoProvider($credentials['api_key'], $credentials['sender_id']);
+            try {
+                if (! $provider->testConnection()) {
+                    $connection->update(['status' => 'error']);
+
+                    return back()->withErrors(['api_key' => __('Verbindungstest fehlgeschlagen – API-Key prüfen.')]);
+                }
+            } catch (\Throwable) {
+                $connection->update(['status' => 'error']);
+
+                return back()->withErrors(['api_key' => __('seven.io nicht erreichbar.')]);
+            }
+        }
+
+        return back()->with('success', __('SMS-Integration (seven.io) gespeichert und Verbindung getestet.'));
     }
 
     /**
@@ -410,7 +486,7 @@ class SettingsController extends Controller
             'type' => ['required', 'string', 'in:restaurant,salon'],
         ]);
 
-        $old = $tenant->type->value;
+        $old = $tenant->getRawOriginal('type');
         $tenant->update(['type' => TenantType::from($validated['type'])]);
 
         $this->audit->log('tenant.type_changed', $tenant, ['type' => $old], ['type' => $validated['type']]);

@@ -233,18 +233,11 @@ class PublicBookingController extends Controller
             $staff = StaffMember::where('location_id', $location->id)
                 ->where('is_active', true)
                 ->findOrFail($staffMemberId);
-            $endUtc = $startUtc->addMinutes($service->duration_minutes);
-            $conflict = $staff->reservations()
-                ->withoutGlobalScope('tenant')
-                ->whereIn('status', ReservationStatus::activeStatuses())
-                ->where('start_at', '<', $endUtc)
-                ->where('end_at', '>', $startUtc)
-                ->exists();
-            if ($conflict) {
+            if (! $this->salonAvailability->isStaffAvailable($staff, $service, $startUtc, $location)) {
                 return back()->withErrors(['time' => __('Dieser Mitarbeiter ist zu diesem Zeitpunkt nicht verfügbar.')])->withInput();
             }
         } else {
-            $staff = $this->salonAvailability->firstAvailableStaff($service, $startUtc);
+            $staff = $this->salonAvailability->firstAvailableStaff($service, $startUtc, $location);
             if ($staff === null) {
                 return back()->withErrors(['time' => __('Zu diesem Zeitpunkt ist kein Mitarbeiter verfügbar. Bitte einen anderen Termin wählen.')])->withInput();
             }

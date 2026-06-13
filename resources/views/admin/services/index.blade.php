@@ -142,15 +142,17 @@
                             <button type="submit" class="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700">
                                 Speichern
                             </button>
-                            <form method="POST" action="{{ route('admin.services.destroy', $service) }}"
-                                  onsubmit="return confirm('Leistung wirklich löschen?')">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="rounded-lg border border-red-200 px-3 py-2 text-sm text-red-600 hover:bg-red-50">
-                                    Löschen
-                                </button>
-                            </form>
                         </div>
                     </form>
+                    <div class="mt-4 border-t border-stone-100 pt-4">
+                        <form method="POST" action="{{ route('admin.services.destroy', $service) }}"
+                              onsubmit="return confirm('Leistung wirklich löschen?')">
+                            @csrf @method('DELETE')
+                            <button type="submit" class="rounded-lg border border-red-200 px-3 py-2 text-sm text-red-600 hover:bg-red-50">
+                                Leistung löschen
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </details>
         @endforeach

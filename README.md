@@ -112,7 +112,12 @@ Fertige Docker-Images baut die CI automatisch: `ghcr.io/brightcolor/gastrobook:l
 | Stripe-Zahlungen produktiv: Event-Vorauszahlungen + Reservierungs-Deposits (Checkout, signierter Webhook) | ✅ |
 | No-Show-Schutz: Anzahlungsregeln per Admin-UI, Verrechnungshinweis, keine Rückerstattung bei No-Show | ✅ |
 | Events & Tickets (öffentl. Buchungsseite, Kapazität, Fristen, Check-in, CSV) | ✅ |
-| SMS/WhatsApp, Telefon-/AI-Assistent (Quelle, ConversationLog, Adapterpunkte) | 🔶 vorbereitet |
+| Betriebstyp umschaltbar: Restaurant **oder** Friseur/Dienstleister (pro Mandant) | ✅ |
+| Salon: Leistungen mit Dauer/Preis, Mitarbeiter (m:n), Termin-Buchung pro Mitarbeiter | ✅ |
+| Salon: individuelle Mitarbeiter-Arbeitszeiten + Abwesenheiten (Urlaub/Krank) | ✅ |
+| Puffer zwischen Terminen (Aufräumzeit) in der Slot-Berechnung | ✅ |
+| SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials) | ✅ |
+| WhatsApp, Telefon-/AI-Assistent (Quelle, ConversationLog, Adapterpunkte) | 🔶 vorbereitet |
 | Stripe/Mollie-Billing für Tenants | 🔶 vorbereitet |
 | SaaS-Website (Landingpage, Preise, FAQ, Kontaktformular, Impressum/Datenschutz/AGB) | ✅ |
 | Self-Service-Registrierung (Trial-Tenant inkl. Standort, ohne Zahlungsdaten) | ✅ |

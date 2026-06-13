@@ -19,7 +19,7 @@ class LocationSettings extends Model
         'auto_confirm', 'request_only', 'capacity_mode', 'max_covers_per_slot',
         'waitlist_enabled', 'walkins_enabled',
         'cancellation_deadline_minutes', 'modification_deadline_minutes',
-        'field_rules', 'reminder_enabled', 'reminder_hours_before',
+        'field_rules', 'reminder_enabled', 'reminder_hours_before', 'sms_reminder_enabled',
         'feedback_enabled', 'feedback_hours_after', 'feedback_external_url',
         'feedback_redirect_min_score', 'settings',
     ];
@@ -41,6 +41,7 @@ class LocationSettings extends Model
         'modification_deadline_minutes' => 120,
         'reminder_enabled' => true,
         'reminder_hours_before' => 24,
+        'sms_reminder_enabled' => false,
         'feedback_enabled' => true,
         'feedback_hours_after' => 18,
         'feedback_redirect_min_score' => 4,
@@ -57,6 +58,7 @@ class LocationSettings extends Model
             'waitlist_enabled' => 'boolean',
             'walkins_enabled' => 'boolean',
             'reminder_enabled' => 'boolean',
+            'sms_reminder_enabled' => 'boolean',
             'feedback_enabled' => 'boolean',
         ];
     }

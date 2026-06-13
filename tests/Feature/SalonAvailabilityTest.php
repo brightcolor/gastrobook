@@ -10,7 +10,9 @@ use App\Models\Location;
 use App\Models\OpeningHour;
 use App\Models\Reservation;
 use App\Models\Service;
+use App\Models\StaffAbsence;
 use App\Models\StaffMember;
+use App\Models\StaffWorkingHour;
 use App\Models\Tenant;
 use App\Services\SalonAvailabilityService;
 use Carbon\CarbonImmutable;
@@ -145,9 +147,95 @@ class SalonAvailabilityTest extends TestCase
 
         $service = app(SalonAvailabilityService::class);
         // Only one staff member, who is busy at 09:00
-        $result = $service->firstAvailableStaff($this->service, $startUtc);
+        $result = $service->firstAvailableStaff($this->service, $startUtc, $this->location);
 
         $this->assertNull($result);
+    }
+
+    public function test_working_hours_restrict_available_slots(): void
+    {
+        // Anna works Monday 13:00-17:00 only
+        StaffWorkingHour::create([
+            'tenant_id' => $this->tenant->id,
+            'staff_member_id' => $this->staff->id,
+            'weekday' => 0, // Monday
+            'starts_at' => '13:00',
+            'ends_at' => '17:00',
+        ]);
+
+        $service = app(SalonAvailabilityService::class);
+        $date = CarbonImmutable::parse('next monday', 'Europe/Berlin')->startOfDay();
+        $slots = collect($service->slotsFor($this->location, $this->staff, $this->service, $date));
+
+        // 09:00 is within opening hours but outside Anna's working hours
+        $this->assertFalse($slots->firstWhere('time', '09:00')['available']);
+        // 13:00 is inside her working hours
+        $this->assertTrue($slots->firstWhere('time', '13:00')['available']);
+        // 16:30 start + 30 min = 17:00 end, still fits
+        $this->assertTrue($slots->firstWhere('time', '16:30')['available']);
+        // 17:00 start would end 17:30 > working window
+        $seventeen = $slots->firstWhere('time', '17:00');
+        if ($seventeen !== null) {
+            $this->assertFalse($seventeen['available']);
+        }
+    }
+
+    public function test_absence_blocks_slots(): void
+    {
+        $date = CarbonImmutable::parse('next monday', 'Europe/Berlin')->startOfDay();
+
+        StaffAbsence::create([
+            'tenant_id' => $this->tenant->id,
+            'staff_member_id' => $this->staff->id,
+            'starts_at' => $date->setTime(10, 0)->utc(),
+            'ends_at' => $date->setTime(12, 0)->utc(),
+            'reason' => 'Arzttermin',
+        ]);
+
+        $service = app(SalonAvailabilityService::class);
+        $slots = collect($service->slotsFor($this->location, $this->staff, $this->service, $date));
+
+        $this->assertFalse($slots->firstWhere('time', '10:00')['available']);
+        $this->assertFalse($slots->firstWhere('time', '11:30')['available']);
+        $this->assertTrue($slots->firstWhere('time', '09:00')['available']);
+        $this->assertTrue($slots->firstWhere('time', '12:00')['available']);
+    }
+
+    public function test_buffer_enforces_gap_between_appointments(): void
+    {
+        // 15 min buffer
+        $this->location->settings()->create([
+            'tenant_id' => $this->tenant->id,
+            'buffer_minutes' => 15,
+        ]);
+
+        $date = CarbonImmutable::parse('next monday', 'Europe/Berlin')->startOfDay();
+        $startUtc = $date->setTime(10, 0)->utc();
+
+        Reservation::create([
+            'tenant_id' => $this->tenant->id,
+            'location_id' => $this->location->id,
+            'staff_member_id' => $this->staff->id,
+            'service_id' => $this->service->id,
+            'party_size' => 1,
+            'reservation_date' => $date->toDateString(),
+            'start_at' => $startUtc,
+            'end_at' => $startUtc->addMinutes(30), // 10:00-10:30
+            'timezone' => 'Europe/Berlin',
+            'status' => ReservationStatus::Confirmed,
+            'source' => 'online',
+            'guest_name_snapshot' => 'Test Guest',
+        ]);
+
+        $service = app(SalonAvailabilityService::class);
+        $slots = collect($service->slotsFor($this->location, $this->staff, $this->service, $date));
+
+        // 10:30 would start exactly when prior ends, but 15 min buffer blocks it
+        $this->assertFalse($slots->firstWhere('time', '10:30')['available']);
+        // 10:00 booked
+        $this->assertFalse($slots->firstWhere('time', '10:00')['available']);
+        // 11:00 is clear of the buffer (10:30 end + 15 min = 10:45 < 11:00)
+        $this->assertTrue($slots->firstWhere('time', '11:00')['available']);
     }
 
     public function test_tenant_type_helpers(): void

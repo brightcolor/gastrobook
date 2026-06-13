@@ -71,6 +71,16 @@
             <label class="flex items-center gap-2"><input type="checkbox" name="waitlist_enabled" value="1" @checked($settings->waitlist_enabled)> Warteliste aktiv</label>
             <label class="flex items-center gap-2"><input type="checkbox" name="walkins_enabled" value="1" @checked($settings->walkins_enabled)> Walk-ins aktiv</label>
         </div>
+        <div class="mt-4 border-t border-stone-100 pt-3">
+            <h3 class="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">Erinnerungen</h3>
+            <div class="flex flex-wrap items-end gap-4 text-sm">
+                <label class="flex items-center gap-2"><input type="checkbox" name="reminder_enabled" value="1" @checked($settings->reminder_enabled)> E-Mail-Erinnerung aktiv</label>
+                <div><label class="mb-1 block text-xs font-semibold text-stone-500">Stunden vorher</label>
+                    <input type="number" name="reminder_hours_before" min="1" max="168" value="{{ $settings->reminder_hours_before }}" class="w-24 rounded-lg border-stone-200"></div>
+                <label class="flex items-center gap-2"><input type="checkbox" name="sms_reminder_enabled" value="1" @checked($settings->sms_reminder_enabled)> SMS-Erinnerung aktiv</label>
+            </div>
+            <p class="mt-1 text-xs text-stone-400">SMS-Erinnerungen erfordern eine konfigurierte seven.io-Integration (siehe unten) und eine Telefonnummer beim Gast.</p>
+        </div>
         <button class="mt-4 rounded-xl bg-stone-900 px-5 py-2.5 text-sm font-bold text-white">Speichern</button>
     </form>
 
@@ -241,6 +251,40 @@
             <p class="mt-2 rounded-lg bg-stone-50 p-2 text-xs text-stone-600">
                 Webhook-URL in Stripe hinterlegen: <code class="break-all">{{ route('webhooks.stripe') }}</code><br>
                 Events: <code>checkout.session.completed</code>, <code>checkout.session.expired</code>
+            </p>
+            <button class="mt-3 rounded-xl bg-stone-900 px-5 py-2.5 text-sm font-bold text-white">Speichern</button>
+        </form>
+
+        {{-- SMS: seven.io --}}
+        <form method="POST" action="{{ route('admin.settings.sms') }}" class="rounded-2xl bg-white p-5 shadow-sm">
+            @csrf @method('PUT')
+            <div class="mb-1 flex items-center justify-between">
+                <h2 class="font-bold">SMS: seven.io</h2>
+                @if($sms)
+                    <span class="rounded-full px-2.5 py-0.5 text-xs font-semibold
+                        {{ ['connected' => 'bg-emerald-100 text-emerald-800', 'error' => 'bg-red-100 text-red-800'][$sms->status] ?? 'bg-stone-100 text-stone-600' }}">
+                        {{ ['connected' => 'verbunden', 'disconnected' => 'deaktiviert', 'error' => 'Fehler'][$sms->status] ?? $sms->status }}
+                    </span>
+                @endif
+            </div>
+            <p class="mb-3 text-xs text-stone-500">
+                Deutscher Anbieter (DSGVO-konform) für Termin-Erinnerungen per SMS – senkt No-Shows.
+                API-Key unter <a href="https://app.seven.io" target="_blank" rel="noopener" class="underline">app.seven.io</a> → Einstellungen → API.
+            </p>
+            <div class="space-y-2 text-sm">
+                <div>
+                    <label class="mb-1 block text-xs font-semibold text-stone-500">API-Key {{ $sms ? '– leer lassen zum Beibehalten' : '' }}</label>
+                    <input type="password" name="api_key" autocomplete="new-password" class="w-full rounded-lg border-stone-200">
+                </div>
+                <div>
+                    <label class="mb-1 block text-xs font-semibold text-stone-500">Absender (Name max. 11 Zeichen oder Nummer)</label>
+                    <input type="text" name="sender_id" maxlength="16" value="{{ $smsCredentials['sender_id'] ?? '' }}"
+                           placeholder="z. B. Salon Anna" class="w-full rounded-lg border-stone-200">
+                </div>
+                <label class="flex items-center gap-2"><input type="checkbox" name="enabled" value="1" @checked(($sms->status ?? '') === 'connected')> SMS-Versand aktiv</label>
+            </div>
+            <p class="mt-2 rounded-lg bg-stone-50 p-2 text-xs text-stone-600">
+                Aktivierung der SMS-Erinnerung erfolgt zusätzlich pro Standort unter „Buchungsregeln → Erinnerungen“.
             </p>
             <button class="mt-3 rounded-xl bg-stone-900 px-5 py-2.5 text-sm font-bold text-white">Speichern</button>
         </form>

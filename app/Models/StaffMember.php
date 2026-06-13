@@ -45,4 +45,16 @@ class StaffMember extends Model
     {
         return $this->hasMany(Reservation::class);
     }
+
+    /** @return HasMany<StaffWorkingHour, $this> */
+    public function workingHours(): HasMany
+    {
+        return $this->hasMany(StaffWorkingHour::class);
+    }
+
+    /** @return HasMany<StaffAbsence, $this> */
+    public function absences(): HasMany
+    {
+        return $this->hasMany(StaffAbsence::class);
+    }
 }

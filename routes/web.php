@@ -193,6 +193,8 @@ Route::middleware(['auth', 'tenant'])->prefix('admin')->name('admin.')->group(fu
             ->middleware('permission:integrations.manage')->name('settings.mailwizz');
         Route::put('/settings/stripe', [SettingsController::class, 'updateStripe'])
             ->middleware('permission:integrations.manage')->name('settings.stripe');
+        Route::put('/settings/sms', [SettingsController::class, 'updateSms'])
+            ->middleware('permission:integrations.manage')->name('settings.sms');
         Route::post('/settings/deposit-rules', [SettingsController::class, 'storeDepositRule'])
             ->middleware('permission:payments.manage')->name('settings.deposit-rules.store');
         Route::delete('/settings/deposit-rules/{rule}', [SettingsController::class, 'deleteDepositRule'])
@@ -219,6 +221,9 @@ Route::middleware(['auth', 'tenant'])->prefix('admin')->name('admin.')->group(fu
         Route::post('/staff', [StaffMemberController::class, 'store'])->name('staff.store');
         Route::put('/staff/{member}', [StaffMemberController::class, 'update'])->name('staff.update');
         Route::delete('/staff/{member}', [StaffMemberController::class, 'destroy'])->name('staff.destroy');
+        Route::put('/staff/{member}/working-hours', [StaffMemberController::class, 'updateWorkingHours'])->name('staff.working-hours');
+        Route::post('/staff/{member}/absences', [StaffMemberController::class, 'storeAbsence'])->name('staff.absences.store');
+        Route::delete('/staff/absences/{absence}', [StaffMemberController::class, 'deleteAbsence'])->name('staff.absences.destroy');
     });
 
     // Users & roles
