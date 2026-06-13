@@ -37,6 +37,16 @@ docker compose up -d   # zieht ghcr.io/brightcolor/gastrobook:latest, Migratione
 
 → App: **http://localhost:8080** (E-Mail-Versand: SMTP-Daten in `.env` hinterlegen, siehe [E-Mail](#e-mail))
 
+**Oberadmin anlegen** (Produktiv – ohne Demodaten):
+
+```bash
+docker compose exec app php artisan gastrobook:create-admin
+```
+
+Interaktiv (oder per `--email=` / `--password=`). Alternativ **automatisch beim ersten Start**:
+`GASTROBOOK_ADMIN_EMAIL` und `GASTROBOOK_ADMIN_PASSWORD` in der `.env` setzen – der Container legt den
+Oberadmin dann an, sofern noch keiner existiert. Mit `--force` wird ein bestehendes Konto zum Oberadmin gemacht.
+
 **Demodaten (optional, nur lokal):**
 
 ```bash

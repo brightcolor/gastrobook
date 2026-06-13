@@ -4,6 +4,16 @@ Alle nennenswerten Änderungen an GastroBook. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.1.0] – 2026-06-13
+
+### Hinzugefügt
+- Artisan-Kommando `php artisan gastrobook:create-admin` legt einen Plattform-
+  Oberadmin an (interaktiv, per Optionen oder per `GASTROBOOK_ADMIN_*`-Env beim
+  ersten Start). `--if-missing` (Boot), `--force` (bestehendes Konto hochstufen).
+- Container-Start ruft das Kommando automatisch mit `--if-missing` auf – der
+  erste Start kann so einen Oberadmin erzeugen, ohne den Demo-Seeder zu nutzen.
+- `config/gastrobook.php` für die Bootstrap-Admin-Daten.
+
 ## [1.0.1] – 2026-06-13
 
 ### Geändert
@@ -40,5 +50,6 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.1.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.1.0
 [1.0.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.0.1
 [1.0.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.0.0
