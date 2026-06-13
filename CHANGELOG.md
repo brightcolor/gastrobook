@@ -4,6 +4,17 @@ Alle nennenswerten Änderungen an GastroBook. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.7.0] – 2026-06-13
+
+### Geändert
+- **Impressum, Datenschutz, AGB jetzt als Markdown-Dateien** unter
+  `storage/app/legal/*.md` (bind-gemountet, auf dem Host editierbar) statt
+  fester Blade-Platzhalter.
+- Der Container legt fehlende Dateien beim Start an
+  (`php artisan gastrobook:install-legal`, aus Vorlagen in `resources/legal`).
+- Inhalte werden pro Request frisch gelesen → **Änderungen sofort wirksam,
+  ohne Stack-Neustart**.
+
 ## [1.6.1] – 2026-06-13
 
 ### Behoben / Verbessert
@@ -144,6 +155,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.7.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.7.0
 [1.6.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.6.1
 [1.6.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.6.0
 [1.5.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.5.0

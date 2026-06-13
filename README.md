@@ -412,6 +412,14 @@ Geplante Jobs: Reservierungs-Reminder (alle 15 min), Feedback-Follow-ups (stünd
 
 ---
 
+## Rechtstexte (Impressum / Datenschutz / AGB)
+
+Liegen als **Markdown** unter `storage/app/legal/{impressum,datenschutz,agb}.md`
+(bind-gemountet → direkt auf dem Host editierbar). Der Container legt beim Start
+fehlende Dateien aus Vorlagen an (`php artisan gastrobook:install-legal`).
+Der Inhalt wird **bei jedem Aufruf frisch** gelesen – Änderungen sind **sofort
+ohne Neustart** wirksam (`/impressum`, `/datenschutz`, `/agb`).
+
 ## E-Mail
 
 Produktiv: echten SMTP-Provider in `.env` eintragen (Postmark, Amazon SES, SMTP2GO, Mailjet …):

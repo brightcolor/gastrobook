@@ -7,6 +7,8 @@ use App\Mail\ContactRequestMail;
 use App\Models\Plan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class MarketingController extends Controller
 {
@@ -22,17 +24,43 @@ class MarketingController extends Controller
 
     public function imprint()
     {
-        return view('marketing.legal.imprint');
+        return $this->legalDocument('impressum');
     }
 
     public function privacy()
     {
-        return view('marketing.legal.privacy');
+        return $this->legalDocument('datenschutz');
     }
 
     public function terms()
     {
-        return view('marketing.legal.terms');
+        return $this->legalDocument('agb');
+    }
+
+    /**
+     * Render a legal document from its Markdown source. Read fresh on every
+     * request (storage/app/legal/<key>.md) so edits take effect without a
+     * restart. Falls back to the shipped template if the file is missing.
+     */
+    private function legalDocument(string $key)
+    {
+        $titles = config('gastrobook.legal.documents');
+        abort_unless(isset($titles[$key]), 404);
+
+        $disk = Storage::disk('local');
+        $path = "legal/{$key}.md";
+
+        if ($disk->exists($path)) {
+            $markdown = (string) $disk->get($path);
+        } else {
+            $fallback = resource_path("legal/{$key}.md");
+            $markdown = is_file($fallback) ? (string) file_get_contents($fallback) : '';
+        }
+
+        return view('marketing.legal.document', [
+            'title' => $titles[$key],
+            'html' => Str::markdown($markdown),
+        ]);
     }
 
     public function contact()

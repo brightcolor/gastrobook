@@ -30,4 +30,24 @@ return [
     'board' => [
         'sse' => env('GASTROBOOK_BOARD_SSE', true),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Rechtstexte (Markdown)
+    |--------------------------------------------------------------------------
+    |
+    | Impressum, Datenschutz und AGB liegen als Markdown unter
+    | storage/app/legal/<key>.md (bind-gemountet → auf dem Host editierbar).
+    | Fehlende Dateien legt `php artisan gastrobook:install-legal` aus den
+    | Vorlagen in resources/legal an. Der Controller liest sie pro Request
+    | frisch – Änderungen wirken sofort, ohne Neustart.
+    |
+    */
+    'legal' => [
+        'documents' => [
+            'impressum' => 'Impressum',
+            'datenschutz' => 'Datenschutzerklärung',
+            'agb' => 'AGB',
+        ],
+    ],
 ];
