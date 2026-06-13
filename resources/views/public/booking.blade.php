@@ -30,45 +30,40 @@
             @csrf
             <input type="text" name="website" class="hidden" tabindex="-1" autocomplete="off" aria-hidden="true">
 
-            {{-- Step 1: Leistung wählen --}}
+            {{-- Step 1: Leistungen wählen (Mehrfachauswahl per Pills) --}}
             <div>
-                <label class="mb-2 block text-sm font-semibold">Leistung wählen *</label>
-                <div class="space-y-2" id="serviceButtons">
+                <label class="mb-2 block text-sm font-semibold">Leistungen wählen * <span class="font-normal text-stone-400">(mehrere kombinierbar)</span></label>
+                <div class="flex flex-wrap gap-2" id="serviceButtons">
                     @foreach($services as $svc)
                         <button type="button" data-service-id="{{ $svc->id }}"
-                                data-service-name="{{ $svc->name }}"
                                 data-duration="{{ $svc->duration_minutes }}"
-                                class="service-btn w-full rounded-xl border-2 border-stone-200 px-4 py-3 text-left hover:border-brand">
-                            <span class="font-semibold">{{ $svc->name }}</span>
-                            <span class="ml-2 text-sm text-stone-500">{{ $svc->durationFormatted() }}</span>
-                            @if($svc->price_minor > 0)
-                                <span class="ml-2 text-sm text-stone-500">· {{ $svc->priceFormatted() }}</span>
-                            @endif
-                            @if($svc->description)
-                                <div class="mt-0.5 text-xs text-stone-400">{{ $svc->description }}</div>
-                            @endif
+                                data-price="{{ $svc->price_minor }}"
+                                class="service-pill rounded-full border-2 border-stone-200 px-4 py-2 text-sm font-semibold hover:border-brand">
+                            {{ $svc->name }}
+                            <span class="ml-1 font-normal text-stone-500">· {{ $svc->durationFormatted() }}@if($svc->price_minor > 0) · {{ $svc->priceFormatted() }}@endif</span>
                         </button>
                     @endforeach
                 </div>
-                <input type="hidden" name="service_id" id="serviceId" value="{{ old('service_id') }}" required>
+                {{-- Hidden inputs service_ids[] werden per JS befüllt --}}
+                <div id="serviceInputs"></div>
+                <div id="serviceSummary" class="mt-3 hidden rounded-xl bg-stone-50 px-4 py-2 text-sm">
+                    <span class="font-semibold">Gesamt:</span>
+                    <span id="summaryDuration"></span><span id="summaryPrice"></span>
+                </div>
             </div>
 
             {{-- Step 2: Mitarbeiter wählen (optional) --}}
-            <div id="staffSection" class="{{ old('service_id') ? '' : 'hidden' }}">
+            <div id="staffSection" class="hidden">
                 <label class="mb-2 block text-sm font-semibold">Mitarbeiter:in (optional)</label>
-                <div id="staffButtons" class="flex flex-wrap gap-2">
-                    <button type="button" data-staff-id="0"
-                            class="staff-btn rounded-xl border-2 border-brand bg-stone-50 px-4 py-2 text-sm font-semibold">
-                        Beliebig
-                    </button>
-                </div>
+                <div id="staffButtons" class="flex flex-wrap gap-2"></div>
                 <input type="hidden" name="staff_member_id" id="staffMemberId" value="0">
+                <p id="noStaffHint" class="mt-1 hidden text-xs text-amber-700">Keine:r Ihrer gewählten Leistungen kann von einer einzelnen Person zusammen ausgeführt werden – bitte Auswahl anpassen.</p>
             </div>
 
             {{-- Step 3: Datum --}}
-            <div id="dateSection" class="{{ old('service_id') ? '' : 'hidden' }}">
+            <div id="dateSection" class="hidden">
                 <label for="date" class="mb-2 block text-sm font-semibold">Datum *</label>
-                <input type="date" name="date" id="date" required
+                <input type="date" name="date" id="date"
                        min="{{ now($location->timezone)->toDateString() }}"
                        max="{{ now($location->timezone)->addDays($settings->max_advance_days)->toDateString() }}"
                        value="{{ old('date', now($location->timezone)->toDateString()) }}"
@@ -76,7 +71,7 @@
             </div>
 
             {{-- Step 4: Uhrzeit / Slots --}}
-            <div id="slotSection" class="{{ old('service_id') ? '' : 'hidden' }}">
+            <div id="slotSection" class="hidden">
                 <label class="mb-2 block text-sm font-semibold">Uhrzeit *</label>
                 <div id="slotContainer" class="grid grid-cols-3 gap-2 sm:grid-cols-4">
                     <p class="col-span-full text-sm text-stone-500">Bitte Leistung und Datum wählen.</p>
@@ -136,9 +131,9 @@
         <script>
         (function () {
             const slotsUrl = @json(route('booking.slots', [$tenant->slug, $location->slug]));
-            const serviceData = @json($services->map(fn($s) => ['id' => $s->id, 'staff' => $s->staff->map(fn($m) => ['id' => $m->id, 'name' => $m->name])->values()])->keyBy('id'));
+            // serviceId -> { staff: [{id,name}], staffIds: Set }
+            const serviceData = @json($services->mapWithKeys(fn($s) => [$s->id => ['staff' => $s->staff->where('is_active', true)->map(fn($m) => ['id' => $m->id, 'name' => $m->name])->values()]])->all());
 
-            const serviceInput = document.getElementById('serviceId');
             const staffInput = document.getElementById('staffMemberId');
             const dateInput = document.getElementById('date');
             const timeInput = document.getElementById('timeInput');
@@ -147,33 +142,86 @@
             const dateSection = document.getElementById('dateSection');
             const slotSection = document.getElementById('slotSection');
             const staffButtons = document.getElementById('staffButtons');
+            const serviceInputs = document.getElementById('serviceInputs');
+            const summary = document.getElementById('serviceSummary');
+            const summaryDuration = document.getElementById('summaryDuration');
+            const summaryPrice = document.getElementById('summaryPrice');
+            const noStaffHint = document.getElementById('noStaffHint');
+
+            const selected = []; // ordered list of service ids
 
             function show(el) { el.classList.remove('hidden'); }
+            function hide(el) { el.classList.add('hidden'); }
 
-            function selectService(btn) {
-                document.querySelectorAll('.service-btn').forEach(b => b.classList.remove('border-brand', 'bg-stone-50'));
-                btn.classList.add('border-brand', 'bg-stone-50');
-                serviceInput.value = btn.dataset.serviceId;
+            function fmtDuration(min) {
+                const h = Math.floor(min / 60), m = min % 60;
+                if (h === 0) return m + ' Min.';
+                return m === 0 ? h + ' Std.' : h + ' Std. ' + m + ' Min.';
+            }
 
-                // Rebuild staff buttons from service data
-                const svc = serviceData[btn.dataset.serviceId];
-                staffButtons.innerHTML = '<button type="button" data-staff-id="0" class="staff-btn rounded-xl border-2 border-brand bg-stone-50 px-4 py-2 text-sm font-semibold">Beliebig</button>';
-                if (svc && svc.staff.length > 0) {
-                    svc.staff.forEach(m => {
-                        const b = document.createElement('button');
-                        b.type = 'button';
-                        b.dataset.staffId = m.id;
-                        b.className = 'staff-btn rounded-xl border-2 border-stone-200 px-4 py-2 text-sm font-semibold hover:border-brand';
-                        b.textContent = m.name;
-                        staffButtons.appendChild(b);
-                    });
+            function toggleService(pill) {
+                const id = parseInt(pill.dataset.serviceId, 10);
+                const idx = selected.indexOf(id);
+                if (idx === -1) {
+                    selected.push(id);
+                    pill.classList.add('border-brand', 'bg-stone-50');
+                } else {
+                    selected.splice(idx, 1);
+                    pill.classList.remove('border-brand', 'bg-stone-50');
                 }
+                refresh();
+            }
+
+            function eligibleStaff() {
+                // Intersection of staff across all selected services
+                if (selected.length === 0) return [];
+                let inter = null;
+                selected.forEach(id => {
+                    const staff = (serviceData[id] || {}).staff || [];
+                    const ids = new Set(staff.map(m => m.id));
+                    if (inter === null) { inter = staff.slice(); }
+                    else { inter = inter.filter(m => ids.has(m.id)); }
+                });
+                return inter || [];
+            }
+
+            function refresh() {
+                // Hidden inputs
+                serviceInputs.innerHTML = '';
+                let dur = 0, price = 0;
+                selected.forEach(id => {
+                    const inp = document.createElement('input');
+                    inp.type = 'hidden'; inp.name = 'service_ids[]'; inp.value = id;
+                    serviceInputs.appendChild(inp);
+                    const pill = document.querySelector('.service-pill[data-service-id="' + id + '"]');
+                    dur += parseInt(pill.dataset.duration, 10);
+                    price += parseInt(pill.dataset.price, 10);
+                });
+
+                if (selected.length === 0) {
+                    hide(summary); hide(staffSection); hide(dateSection); hide(slotSection);
+                    return;
+                }
+
+                summaryDuration.textContent = fmtDuration(dur);
+                summaryPrice.textContent = price > 0 ? ' · ' + (price / 100).toFixed(2).replace('.', ',') + ' €' : '';
+                show(summary);
+
+                // Rebuild eligible staff buttons
+                const staff = eligibleStaff();
+                staffButtons.innerHTML = '<button type="button" data-staff-id="0" class="staff-btn rounded-xl border-2 border-brand bg-stone-50 px-4 py-2 text-sm font-semibold">Beliebig</button>';
+                staff.forEach(m => {
+                    const b = document.createElement('button');
+                    b.type = 'button'; b.dataset.staffId = m.id;
+                    b.className = 'staff-btn rounded-xl border-2 border-stone-200 px-4 py-2 text-sm font-semibold hover:border-brand';
+                    b.textContent = m.name;
+                    staffButtons.appendChild(b);
+                });
                 staffButtons.querySelectorAll('.staff-btn').forEach(b => b.addEventListener('click', () => selectStaff(b)));
                 staffInput.value = 0;
+                noStaffHint.classList.toggle('hidden', staff.length > 0);
 
-                show(staffSection);
-                show(dateSection);
-                show(slotSection);
+                show(staffSection); show(dateSection); show(slotSection);
                 loadSlots();
             }
 
@@ -185,14 +233,15 @@
             }
 
             async function loadSlots() {
-                if (!serviceInput.value || !dateInput.value) return;
+                if (selected.length === 0 || !dateInput.value) return;
                 slotContainer.innerHTML = '<p class="col-span-full text-sm text-stone-500">Lade verfügbare Termine…</p>';
                 timeInput.value = '';
                 try {
-                    const url = slotsUrl + '?date=' + dateInput.value
-                        + '&service_id=' + serviceInput.value
-                        + '&staff_member_id=' + (staffInput.value || 0);
-                    const res = await fetch(url, {headers: {Accept: 'application/json'}});
+                    const params = new URLSearchParams();
+                    params.set('date', dateInput.value);
+                    params.set('staff_member_id', staffInput.value || 0);
+                    selected.forEach(id => params.append('service_ids[]', id));
+                    const res = await fetch(slotsUrl + '?' + params.toString(), {headers: {Accept: 'application/json'}});
                     const data = await res.json();
                     slotContainer.innerHTML = '';
                     if (!data.slots || data.slots.length === 0) {
@@ -216,14 +265,8 @@
                 }
             }
 
-            document.querySelectorAll('.service-btn').forEach(btn => btn.addEventListener('click', () => selectService(btn)));
-            staffButtons.querySelectorAll('.staff-btn').forEach(btn => btn.addEventListener('click', () => selectStaff(btn)));
+            document.querySelectorAll('.service-pill').forEach(pill => pill.addEventListener('click', () => toggleService(pill)));
             dateInput.addEventListener('change', loadSlots);
-
-            @if(old('service_id'))
-                const preselect = document.querySelector('.service-btn[data-service-id="{{ old('service_id') }}"]');
-                if (preselect) selectService(preselect);
-            @endif
         })();
         </script>
         @endif

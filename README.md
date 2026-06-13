@@ -115,6 +115,8 @@ Fertige Docker-Images baut die CI automatisch: `ghcr.io/brightcolor/gastrobook:l
 | Betriebstyp umschaltbar: Restaurant **oder** Friseur/Dienstleister (pro Mandant) | ✅ |
 | Salon: Leistungen mit Dauer/Preis, Mitarbeiter (m:n), Termin-Buchung pro Mitarbeiter | ✅ |
 | Salon: individuelle Mitarbeiter-Arbeitszeiten + Abwesenheiten (Urlaub/Krank) | ✅ |
+| Salon: Kombi-Leistungen frei wählbar (Pills, Dauer/Preis summiert, ein Termin) | ✅ |
+| Salon: Lückenoptimierer (packt „Beliebig"-Termine eng, reduziert Leerlauf) | ✅ |
 | Puffer zwischen Terminen (Aufräumzeit) in der Slot-Berechnung | ✅ |
 | SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials) | ✅ |
 | WhatsApp, Telefon-/AI-Assistent (Quelle, ConversationLog, Adapterpunkte) | 🔶 vorbereitet |

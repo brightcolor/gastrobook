@@ -238,6 +238,134 @@ class SalonAvailabilityTest extends TestCase
         $this->assertTrue($slots->firstWhere('time', '11:00')['available']);
     }
 
+    public function test_combined_duration_sums_services(): void
+    {
+        $second = Service::create([
+            'tenant_id' => $this->tenant->id,
+            'location_id' => $this->location->id,
+            'name' => 'Föhnen',
+            'duration_minutes' => 20,
+            'price_minor' => 1500,
+            'is_active' => true,
+        ]);
+
+        $service = app(SalonAvailabilityService::class);
+        $this->assertSame(50, $service->combinedDuration(collect([$this->service, $second])));
+    }
+
+    public function test_eligible_staff_requires_all_services(): void
+    {
+        $color = Service::create([
+            'tenant_id' => $this->tenant->id,
+            'location_id' => $this->location->id,
+            'name' => 'Färben',
+            'duration_minutes' => 60,
+            'price_minor' => 6000,
+            'is_active' => true,
+        ]);
+
+        // Ben only does the haircut, not colouring
+        $ben = StaffMember::create([
+            'tenant_id' => $this->tenant->id,
+            'location_id' => $this->location->id,
+            'name' => 'Ben',
+            'is_active' => true,
+        ]);
+        $ben->services()->attach($this->service);
+
+        // Anna does both
+        $this->staff->services()->attach($color);
+
+        $service = app(SalonAvailabilityService::class);
+        $eligible = $service->eligibleStaff(
+            Service::with('staff')->whereIn('id', [$this->service->id, $color->id])->get()
+        );
+
+        $this->assertCount(1, $eligible);
+        $this->assertSame($this->staff->id, $eligible->first()->id);
+    }
+
+    public function test_multi_service_booking_creates_pivot_and_combined_duration(): void
+    {
+        $color = Service::create([
+            'tenant_id' => $this->tenant->id,
+            'location_id' => $this->location->id,
+            'name' => 'Färben',
+            'duration_minutes' => 60,
+            'price_minor' => 6000,
+            'is_active' => true,
+        ]);
+        $this->staff->services()->attach($color);
+
+        $date = CarbonImmutable::parse('next monday', 'Europe/Berlin');
+
+        $response = $this->post(route('booking.store', [$this->tenant->slug, $this->location->slug]), [
+            'service_ids' => [$this->service->id, $color->id],
+            'staff_member_id' => 0,
+            'date' => $date->toDateString(),
+            'time' => '10:00',
+            'name' => 'Test Kunde',
+            'email' => 'kunde@example.com',
+            'privacy_accepted' => '1',
+        ]);
+
+        $response->assertRedirect();
+
+        $reservation = Reservation::withoutGlobalScopes()->latest('id')->first();
+        $this->assertNotNull($reservation);
+        $this->assertSame(90, (int) $reservation->start_at->diffInMinutes($reservation->end_at)); // 30 + 60
+        $this->assertSame($this->staff->id, $reservation->staff_member_id);
+        $this->assertCount(2, $reservation->services);
+    }
+
+    public function test_gap_optimizer_prefers_adjacent_staff(): void
+    {
+        // Second staff member, both do the haircut
+        $ben = StaffMember::create([
+            'tenant_id' => $this->tenant->id,
+            'location_id' => $this->location->id,
+            'name' => 'Ben',
+            'is_active' => true,
+            'sort_order' => 0, // would be picked first without optimization
+        ]);
+        $ben->services()->attach($this->service);
+        $this->staff->update(['sort_order' => 1]);
+
+        $date = CarbonImmutable::parse('next monday', 'Europe/Berlin')->startOfDay();
+
+        // Anna already has 09:00-09:30; a 09:30 booking docks onto her
+        Reservation::create([
+            'tenant_id' => $this->tenant->id,
+            'location_id' => $this->location->id,
+            'staff_member_id' => $this->staff->id,
+            'service_id' => $this->service->id,
+            'party_size' => 1,
+            'reservation_date' => $date->toDateString(),
+            'start_at' => $date->setTime(9, 0)->utc(),
+            'end_at' => $date->setTime(9, 30)->utc(),
+            'timezone' => 'Europe/Berlin',
+            'status' => ReservationStatus::Confirmed,
+            'source' => 'online',
+            'guest_name_snapshot' => 'Bestehend',
+        ]);
+
+        $this->location->settings()->create([
+            'tenant_id' => $this->tenant->id,
+            'gap_optimization_enabled' => true,
+        ]);
+
+        $service = app(SalonAvailabilityService::class);
+        $startUtc = $date->setTime(9, 30)->utc();
+        $chosen = $service->firstAvailableStaffForServices(
+            Service::with('staff')->whereIn('id', [$this->service->id])->get(),
+            $startUtc,
+            $this->location->fresh()
+        );
+
+        // Anna (adjacent) preferred over Ben (empty), despite Ben's lower sort_order
+        $this->assertSame($this->staff->id, $chosen->id);
+    }
+
     public function test_tenant_type_helpers(): void
     {
         $this->assertTrue($this->tenant->isSalon());
@@ -252,7 +380,7 @@ class SalonAvailabilityTest extends TestCase
     {
         $response = $this->get(route('booking.show', [$this->tenant->slug, $this->location->slug]));
         $response->assertOk();
-        $response->assertSee('Leistung wählen');
+        $response->assertSee('Leistungen wählen');
         $response->assertSee('Termin buchen');
         $response->assertSee($this->service->name);
     }

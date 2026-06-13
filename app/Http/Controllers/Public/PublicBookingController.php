@@ -19,6 +19,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
 class PublicBookingController extends Controller
@@ -96,18 +97,20 @@ class PublicBookingController extends Controller
     {
         $validated = $request->validate([
             'date' => ['required', 'date_format:Y-m-d'],
-            'service_id' => ['required', 'integer', 'exists:services,id'],
+            'service_ids' => ['required', 'array', 'min:1'],
+            'service_ids.*' => ['integer'],
             'staff_member_id' => ['nullable', 'integer'],
         ]);
 
-        $service = Service::where('location_id', $location->id)
-            ->where('is_active', true)
-            ->findOrFail((int) $validated['service_id']);
+        $services = $this->resolveServices($location, $validated['service_ids']);
+        if ($services->isEmpty()) {
+            return response()->json(['date' => $validated['date'], 'slots' => [], 'staff_slots' => []]);
+        }
 
         $localDate = CarbonImmutable::parse($validated['date'], $location->timezone)->startOfDay();
         $staffId = (int) ($validated['staff_member_id'] ?? 0);
 
-        $slotsByStaff = $this->salonAvailability->slotsByStaff($location, $service, $localDate);
+        $slotsByStaff = $this->salonAvailability->slotsByStaffForServices($location, $services, $localDate);
         $slots = $slotsByStaff[$staffId] ?? $slotsByStaff[0] ?? [];
         $available = array_values(array_filter($slots, fn ($s) => $s['available']));
 
@@ -125,6 +128,28 @@ class PublicBookingController extends Controller
             'slots' => array_map(fn ($s) => $s['time'], $available),
             'staff_slots' => $staffInfo,
         ]);
+    }
+
+    /**
+     * Load active services for a location, preserving the requested order and
+     * eager-loading staff for eligibility checks.
+     *
+     * @param  array<int, int|string>  $serviceIds
+     * @return Collection<int, Service>
+     */
+    private function resolveServices(Location $location, array $serviceIds): Collection
+    {
+        $ids = collect($serviceIds)->map(fn ($id) => (int) $id)->unique()->values();
+
+        $services = Service::where('location_id', $location->id)
+            ->where('is_active', true)
+            ->whereIn('id', $ids)
+            ->with('staff')
+            ->get()
+            ->keyBy('id');
+
+        // Keep the order the customer picked
+        return $ids->map(fn ($id) => $services->get($id))->filter()->values();
     }
 
     public function store(Request $request, string $tenantSlug, string $locationSlug)
@@ -205,10 +230,9 @@ class PublicBookingController extends Controller
             abort(422);
         }
 
-        $settings = $location->effectiveSettings();
-
         $validated = $request->validate([
-            'service_id' => ['required', 'integer', 'exists:services,id'],
+            'service_ids' => ['required', 'array', 'min:1'],
+            'service_ids.*' => ['integer'],
             'staff_member_id' => ['nullable', 'integer'],
             'date' => ['required', 'date_format:Y-m-d'],
             'time' => ['required', 'date_format:H:i'],
@@ -220,24 +244,27 @@ class PublicBookingController extends Controller
             'newsletter' => ['nullable', 'boolean'],
         ]);
 
-        $service = Service::where('location_id', $location->id)
-            ->where('is_active', true)
-            ->findOrFail((int) $validated['service_id']);
+        $services = $this->resolveServices($location, $validated['service_ids']);
+        if ($services->isEmpty()) {
+            return back()->withErrors(['service_ids' => __('Bitte mindestens eine Leistung wählen.')])->withInput();
+        }
 
+        $duration = $this->salonAvailability->combinedDuration($services);
         $startLocal = CarbonImmutable::parse($validated['date'].' '.$validated['time'], $location->timezone);
         $startUtc = $startLocal->utc();
 
-        // Resolve staff member (explicit choice or auto-assign first available)
+        // Resolve staff member (explicit choice or gap-optimised auto-assign).
+        // The member must offer *all* chosen services and be free for the total.
         $staffMemberId = (int) ($validated['staff_member_id'] ?? 0);
         if ($staffMemberId > 0) {
             $staff = StaffMember::where('location_id', $location->id)
                 ->where('is_active', true)
                 ->findOrFail($staffMemberId);
-            if (! $this->salonAvailability->isStaffAvailable($staff, $service, $startUtc, $location)) {
+            if (! $this->salonAvailability->isStaffAvailableForServices($staff, $services, $startUtc, $location)) {
                 return back()->withErrors(['time' => __('Dieser Mitarbeiter ist zu diesem Zeitpunkt nicht verfügbar.')])->withInput();
             }
         } else {
-            $staff = $this->salonAvailability->firstAvailableStaff($service, $startUtc, $location);
+            $staff = $this->salonAvailability->firstAvailableStaffForServices($services, $startUtc, $location);
             if ($staff === null) {
                 return back()->withErrors(['time' => __('Zu diesem Zeitpunkt ist kein Mitarbeiter verfügbar. Bitte einen anderen Termin wählen.')])->withInput();
             }
@@ -247,9 +274,9 @@ class PublicBookingController extends Controller
             $reservation = $this->lifecycle->create($location, [
                 'party_size' => 1,
                 'start_local' => $startLocal,
-                'duration_minutes' => $service->duration_minutes,
+                'duration_minutes' => $duration,
                 'source' => 'online',
-                'service_id' => $service->id,
+                'service_id' => $services->first()->id, // primary service
                 'staff_member_id' => $staff->id,
                 'guest_name' => $validated['name'],
                 'guest_email' => $validated['email'],
@@ -265,6 +292,17 @@ class PublicBookingController extends Controller
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors())->withInput();
         }
+
+        // Record the full service composition (snapshot price/duration)
+        $reservation->services()->sync(
+            $services->values()->mapWithKeys(fn (Service $s, int $i) => [
+                $s->id => [
+                    'sort_order' => $i,
+                    'duration_minutes' => $s->duration_minutes,
+                    'price_minor' => $s->price_minor,
+                ],
+            ])->all()
+        );
 
         return redirect()->route('booking.confirmation', [
             'code' => $reservation->code,

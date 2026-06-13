@@ -100,6 +100,18 @@ class Reservation extends Model
         return $this->belongsTo(Service::class);
     }
 
+    /**
+     * All services that make up this (salon) appointment, in order.
+     *
+     * @return BelongsToMany<Service, $this>
+     */
+    public function services(): BelongsToMany
+    {
+        return $this->belongsToMany(Service::class, 'reservation_service')
+            ->withPivot(['sort_order', 'duration_minutes', 'price_minor'])
+            ->orderBy('sort_order');
+    }
+
     public function staffMember(): BelongsTo
     {
         return $this->belongsTo(StaffMember::class);

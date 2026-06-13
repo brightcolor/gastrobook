@@ -20,6 +20,7 @@ class LocationSettings extends Model
         'waitlist_enabled', 'walkins_enabled',
         'cancellation_deadline_minutes', 'modification_deadline_minutes',
         'field_rules', 'reminder_enabled', 'reminder_hours_before', 'sms_reminder_enabled',
+        'gap_optimization_enabled',
         'feedback_enabled', 'feedback_hours_after', 'feedback_external_url',
         'feedback_redirect_min_score', 'settings',
     ];
@@ -42,6 +43,7 @@ class LocationSettings extends Model
         'reminder_enabled' => true,
         'reminder_hours_before' => 24,
         'sms_reminder_enabled' => false,
+        'gap_optimization_enabled' => false,
         'feedback_enabled' => true,
         'feedback_hours_after' => 18,
         'feedback_redirect_min_score' => 4,
@@ -59,6 +61,7 @@ class LocationSettings extends Model
             'walkins_enabled' => 'boolean',
             'reminder_enabled' => 'boolean',
             'sms_reminder_enabled' => 'boolean',
+            'gap_optimization_enabled' => 'boolean',
             'feedback_enabled' => 'boolean',
         ];
     }
