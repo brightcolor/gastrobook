@@ -309,6 +309,23 @@
                 <div id="alternatives" class="mt-3 hidden rounded-xl bg-amber-50 p-3 text-sm text-amber-900"></div>
             </div>
 
+            @if($settings->public_floorplan_enabled)
+            {{-- Step 3b: Tischplan (optional Tischwahl) --}}
+            <div id="floorplanSection" class="hidden">
+                <div class="mb-2 flex items-center justify-between">
+                    <label class="block text-sm font-semibold">Tischplan <span class="font-normal text-stone-400">(optional)</span></label>
+                    <span class="text-xs text-stone-400">
+                        <span class="inline-block h-2.5 w-2.5 rounded-sm align-middle" style="background:#34d399"></span> frei
+                        <span class="ml-2 inline-block h-2.5 w-2.5 rounded-sm align-middle" style="background:#d6d3d1"></span> belegt
+                    </span>
+                </div>
+                <div id="roomTabs" class="mb-2 flex flex-wrap gap-2"></div>
+                <div id="floorplanCanvas" class="relative w-full overflow-hidden rounded-xl border-2 border-stone-100 bg-stone-50" style="height:340px"></div>
+                <p id="floorplanHint" class="mt-2 text-xs text-stone-500">Tippen Sie auf einen freien Tisch, um ihn zu wählen – oder lassen Sie ihn frei für automatische Zuteilung.</p>
+                <input type="hidden" name="table_id" id="tableId" value="">
+            </div>
+            @endif
+
             {{-- Step 4: contact --}}
             <div class="space-y-3 border-t border-stone-100 pt-4">
                 <div>
@@ -398,6 +415,14 @@
             const slotContainer = document.getElementById('slotContainer');
             const altBox = document.getElementById('alternatives');
 
+            // Floor plan (optional, only present when enabled)
+            const floorplanUrl = @json(route('booking.floorplan', [$tenant->slug, $location->slug]));
+            const fpSection = document.getElementById('floorplanSection');
+            const fpCanvas = document.getElementById('floorplanCanvas');
+            const roomTabs = document.getElementById('roomTabs');
+            const tableIdInput = document.getElementById('tableId');
+            let fpRooms = [];
+
             function selectParty(btn) {
                 document.querySelectorAll('.party-btn').forEach(b => b.classList.remove('border-brand', 'bg-stone-50'));
                 btn.classList.add('border-brand', 'bg-stone-50');
@@ -407,10 +432,18 @@
             document.querySelectorAll('.party-btn').forEach(btn => btn.addEventListener('click', () => selectParty(btn)));
             dateInput.addEventListener('change', loadSlots);
 
+            function resetFloorplan() {
+                if (!fpSection) return;
+                fpSection.classList.add('hidden');
+                if (tableIdInput) tableIdInput.value = '';
+                fpRooms = [];
+            }
+
             async function loadSlots() {
                 if (!partyInput.value || !dateInput.value) return;
                 slotContainer.innerHTML = '<p class="col-span-full text-sm text-stone-500">Lade verfügbare Zeiten…</p>';
                 altBox.classList.add('hidden');
+                resetFloorplan();
                 try {
                     const res = await fetch(slotsUrl + '?date=' + dateInput.value + '&party_size=' + partyInput.value, {headers: {Accept: 'application/json'}});
                     const data = await res.json();
@@ -434,11 +467,109 @@
                             document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('border-brand', 'bg-stone-50'));
                             btn.classList.add('border-brand', 'bg-stone-50');
                             timeInput.value = time;
+                            loadFloorplan();
                         });
                         slotContainer.appendChild(btn);
                     });
                 } catch (e) {
                     slotContainer.innerHTML = '<p class="col-span-full text-sm text-red-600">Fehler beim Laden. Bitte erneut versuchen.</p>';
+                }
+            }
+
+            async function loadFloorplan() {
+                if (!fpSection || !timeInput.value) return;
+                tableIdInput.value = '';
+                try {
+                    const url = floorplanUrl + '?date=' + dateInput.value + '&time=' + timeInput.value + '&party_size=' + partyInput.value;
+                    const res = await fetch(url, {headers: {Accept: 'application/json'}});
+                    const data = await res.json();
+                    fpRooms = data.rooms || [];
+                    if (fpRooms.length === 0) { fpSection.classList.add('hidden'); return; }
+                    fpSection.classList.remove('hidden');
+                    buildRoomTabs();
+                    renderRoom(0);
+                } catch (e) {
+                    fpSection.classList.add('hidden');
+                }
+            }
+
+            function buildRoomTabs() {
+                roomTabs.innerHTML = '';
+                fpRooms.forEach((room, i) => {
+                    const b = document.createElement('button');
+                    b.type = 'button';
+                    b.textContent = (room.is_outdoor ? '☀️ ' : '') + room.name;
+                    b.className = 'room-tab rounded-full border-2 px-3 py-1.5 text-sm font-semibold ' +
+                        (i === 0 ? 'border-brand bg-stone-50' : 'border-stone-200');
+                    b.addEventListener('click', () => {
+                        document.querySelectorAll('.room-tab').forEach(t => t.classList.remove('border-brand', 'bg-stone-50'));
+                        b.classList.add('border-brand', 'bg-stone-50');
+                        renderRoom(i);
+                    });
+                    roomTabs.appendChild(b);
+                });
+                roomTabs.classList.toggle('hidden', fpRooms.length < 2);
+            }
+
+            function renderRoom(index) {
+                const room = fpRooms[index];
+                if (!room) return;
+                fpCanvas.innerHTML = '';
+
+                // Bounding box of the room's tables → scale to fit the canvas
+                const pad = 20;
+                let maxX = 0, maxY = 0;
+                room.tables.forEach(t => {
+                    maxX = Math.max(maxX, t.pos_x + t.width);
+                    maxY = Math.max(maxY, t.pos_y + t.height);
+                });
+                const cw = fpCanvas.clientWidth || 600, ch = fpCanvas.clientHeight || 340;
+                const scale = Math.min((cw - pad * 2) / Math.max(maxX, 1), (ch - pad * 2) / Math.max(maxY, 1), 1);
+
+                const colors = {
+                    available: '#34d399', occupied: '#d6d3d1',
+                    unsuitable: '#fde68a', unavailable: '#e7e5e4',
+                };
+
+                room.tables.forEach(t => {
+                    const el = document.createElement('button');
+                    el.type = 'button';
+                    el.title = 'Tisch ' + t.name + ' · ' + t.capacity + ' Pers.';
+                    el.dataset.tableId = t.id;
+                    el.style.position = 'absolute';
+                    el.style.left = (pad + t.pos_x * scale) + 'px';
+                    el.style.top = (pad + t.pos_y * scale) + 'px';
+                    el.style.width = Math.max(28, t.width * scale) + 'px';
+                    el.style.height = Math.max(28, t.height * scale) + 'px';
+                    el.style.background = colors[t.status] || '#d6d3d1';
+                    el.style.borderRadius = (t.shape === 'round') ? '50%' : '8px';
+                    el.style.border = '2px solid rgba(0,0,0,.12)';
+                    el.style.fontSize = '11px';
+                    el.style.fontWeight = '600';
+                    el.style.color = '#1c1917';
+                    el.style.transform = t.rotation ? ('rotate(' + t.rotation + 'deg)') : '';
+                    el.textContent = t.name;
+                    if (t.selectable) {
+                        el.style.cursor = 'pointer';
+                        el.addEventListener('click', () => selectTable(t.id, el));
+                    } else {
+                        el.disabled = true;
+                        el.style.opacity = (t.status === 'available') ? '1' : '.7';
+                        el.style.cursor = 'not-allowed';
+                    }
+                    fpCanvas.appendChild(el);
+                });
+            }
+
+            function selectTable(id, el) {
+                const wasSelected = tableIdInput.value === String(id);
+                fpCanvas.querySelectorAll('button').forEach(b => b.style.outline = '');
+                if (wasSelected) {
+                    tableIdInput.value = '';
+                } else {
+                    tableIdInput.value = id;
+                    el.style.outline = '3px solid var(--brand)';
+                    el.style.outlineOffset = '1px';
                 }
             }
 

@@ -91,6 +91,7 @@ class SettingsController extends Controller
             'reminder_hours_before' => ['required', 'integer', 'min:1', 'max:168'],
             'sms_reminder_enabled' => ['nullable', 'boolean'],
             'gap_optimization_enabled' => ['nullable', 'boolean'],
+            'public_floorplan_enabled' => ['nullable', 'boolean'],
         ]);
 
         $settings = $location->settings()->firstOrCreate(['tenant_id' => $location->tenant_id]);
@@ -104,6 +105,7 @@ class SettingsController extends Controller
             'reminder_enabled' => $request->boolean('reminder_enabled'),
             'sms_reminder_enabled' => $request->boolean('sms_reminder_enabled'),
             'gap_optimization_enabled' => $request->boolean('gap_optimization_enabled'),
+            'public_floorplan_enabled' => $request->boolean('public_floorplan_enabled'),
         ]);
 
         $this->audit->log('location.settings_updated', $settings, $old, $validated);

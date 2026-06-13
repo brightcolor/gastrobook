@@ -4,6 +4,17 @@ Alle nennenswerten Änderungen an GastroBook. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.2.0] – 2026-06-13
+
+### Hinzugefügt
+- Öffentlicher **Tischplan auf der Buchungsseite** (opt-in pro Standort,
+  `public_floorplan_enabled`): Gäste sehen zum gewählten Datum/Zeit/Personen-
+  zahl die Verfügbarkeit aller Tische, gruppiert nach Räumen/Etagen (Tabs),
+  positioniert wie im Admin-Plan – ohne Gästedaten preiszugeben.
+- **Optionale Tischwahl**: Gast kann einen freien, passenden Tisch direkt
+  wählen; sonst automatische Zuteilung wie bisher.
+- Endpoint `GET /book/{tenant}/{location}/floorplan`.
+
 ## [1.1.1] – 2026-06-13
 
 ### Behoben
@@ -63,6 +74,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.2.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.2.0
 [1.1.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.1.1
 [1.1.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.1.0
 [1.0.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.0.1

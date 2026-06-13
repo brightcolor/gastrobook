@@ -14,6 +14,7 @@ use App\Services\Payments\PaymentProviderManager;
 use App\Services\ReservationAvailabilityService;
 use App\Services\ReservationLifecycleService;
 use App\Services\SalonAvailabilityService;
+use App\Services\TableAssignmentService;
 use App\Services\WaitlistService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -29,6 +30,7 @@ class PublicBookingController extends Controller
         private readonly SalonAvailabilityService $salonAvailability,
         private readonly ReservationLifecycleService $lifecycle,
         private readonly WaitlistService $waitlist,
+        private readonly TableAssignmentService $tableAssignment,
     ) {}
 
     public function show(string $tenantSlug, string $locationSlug)
@@ -152,6 +154,82 @@ class PublicBookingController extends Controller
         return $ids->map(fn ($id) => $services->get($id))->filter()->values();
     }
 
+    /**
+     * Read-only floor plan with table availability for a date/time/party size.
+     * Opt-in per location; restaurant mode only. Exposes no guest data.
+     */
+    public function floorplan(Request $request, string $tenantSlug, string $locationSlug): JsonResponse
+    {
+        [$tenant, $location] = $this->resolve($tenantSlug, $locationSlug);
+        abort_if($tenant->isSalon(), 404);
+
+        $settings = $location->effectiveSettings();
+        abort_unless($settings->public_floorplan_enabled, 404);
+
+        $validated = $request->validate([
+            'date' => ['required', 'date_format:Y-m-d'],
+            'time' => ['required', 'date_format:H:i'],
+            'party_size' => ['required', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $partySize = (int) $validated['party_size'];
+        $duration = $settings->durationFor($partySize);
+        $buffer = (int) $settings->buffer_minutes;
+
+        $startUtc = CarbonImmutable::parse($validated['date'].' '.$validated['time'], $location->timezone)->utc();
+        $windowStart = $startUtc->subMinutes($buffer);
+        $windowEnd = $startUtc->addMinutes($duration + $buffer);
+
+        $busy = $this->tableAssignment->busyTableIds($location, $windowStart, $windowEnd, null);
+
+        $blockedRooms = $location->blackoutPeriods()
+            ->whereNotNull('room_id')
+            ->whereNull('reduce_covers_to')
+            ->where('starts_at', '<', $windowEnd)
+            ->where('ends_at', '>', $windowStart)
+            ->pluck('room_id')
+            ->all();
+
+        $rooms = $location->rooms()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->with(['tables' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order')])
+            ->get()
+            ->map(fn ($room) => [
+                'id' => $room->id,
+                'name' => $room->name,
+                'is_outdoor' => (bool) $room->is_outdoor,
+                'tables' => $room->tables->map(function ($t) use ($busy, $blockedRooms, $partySize) {
+                    $status = 'available';
+                    if (! $t->online_bookable || in_array($t->room_id, $blockedRooms, true)) {
+                        $status = 'unavailable';
+                    } elseif (in_array($t->id, $busy, true)) {
+                        $status = 'occupied';
+                    } elseif ($partySize < $t->min_capacity || $partySize > $t->max_capacity) {
+                        $status = 'unsuitable';
+                    }
+
+                    return [
+                        'id' => $t->id,
+                        'name' => $t->name,
+                        'status' => $status,
+                        'selectable' => $status === 'available',
+                        'capacity' => $t->min_capacity.'–'.$t->max_capacity,
+                        'pos_x' => (int) $t->pos_x,
+                        'pos_y' => (int) $t->pos_y,
+                        'width' => (int) ($t->width ?: 60),
+                        'height' => (int) ($t->height ?: 60),
+                        'rotation' => (int) $t->rotation,
+                        'shape' => $t->shape ?: 'rect',
+                    ];
+                })->values(),
+            ])
+            ->filter(fn ($room) => $room['tables']->isNotEmpty())
+            ->values();
+
+        return response()->json(['rooms' => $rooms]);
+    }
+
     public function store(Request $request, string $tenantSlug, string $locationSlug)
     {
         [$tenant, $location] = $this->resolve($tenantSlug, $locationSlug);
@@ -177,6 +255,7 @@ class PublicBookingController extends Controller
             'allergies' => ['nullable', 'string', 'max:500'],
             'privacy_accepted' => ['accepted'],
             'newsletter' => ['nullable', 'boolean'],
+            'table_id' => ['nullable', 'integer'],
         ];
         foreach (['email' => 'email:rfc', 'phone' => 'string|max:40'] as $field => $rule) {
             $fieldRule = $settings->fieldRule($field);
@@ -191,6 +270,29 @@ class PublicBookingController extends Controller
 
         $startLocal = CarbonImmutable::parse($validated['date'].' '.$validated['time'], $location->timezone);
 
+        // Optional: guest picked a specific table on the public floor plan.
+        $tableIds = [];
+        if (! empty($validated['table_id'])) {
+            $party = (int) $validated['party_size'];
+            $table = $location->tables()
+                ->where('is_active', true)
+                ->where('online_bookable', true)
+                ->where('id', (int) $validated['table_id'])
+                ->first();
+
+            // Capacity check (mirrors RestaurantTable::fitsParty without extra seats)
+            $fits = $table !== null
+                && $party >= $table->min_capacity
+                && $party <= $table->max_capacity;
+
+            if (! $fits) {
+                return back()
+                    ->withErrors(['table_id' => __('Der gewählte Tisch ist für diese Personenzahl nicht verfügbar.')])
+                    ->withInput();
+            }
+            $tableIds = [(int) $table->id];
+        }
+
         try {
             $reservation = $this->lifecycle->create($location, [
                 'party_size' => (int) $validated['party_size'],
@@ -202,6 +304,7 @@ class PublicBookingController extends Controller
                 'guest_note' => $validated['note'] ?? null,
                 'allergy_note' => $validated['allergies'] ?? null,
                 'occasion' => $validated['occasion'] ?? null,
+                'table_ids' => $tableIds,
                 'consents' => array_filter([
                     'privacy' => true,
                     'newsletter' => (bool) ($validated['newsletter'] ?? false),

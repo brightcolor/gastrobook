@@ -72,6 +72,8 @@
             <label class="flex items-center gap-2"><input type="checkbox" name="walkins_enabled" value="1" @checked($settings->walkins_enabled)> Walk-ins aktiv</label>
             @if($tenant->isSalon())
                 <label class="flex items-center gap-2"><input type="checkbox" name="gap_optimization_enabled" value="1" @checked($settings->gap_optimization_enabled)> Lückenoptimierer (bei „Beliebig" Mitarbeiter so wählen, dass möglichst wenig Leerlauf entsteht)</label>
+            @else
+                <label class="flex items-center gap-2"><input type="checkbox" name="public_floorplan_enabled" value="1" @checked($settings->public_floorplan_enabled)> Öffentlichen Tischplan auf der Buchungsseite zeigen (Gäste sehen freie Tische und können einen wählen)</label>
             @endif
         </div>
         <div class="mt-4 border-t border-stone-100 pt-3">
