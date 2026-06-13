@@ -4,6 +4,21 @@ Alle nennenswerten Änderungen an GastroBook. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.7.1] – 2026-06-13
+
+### Geändert
+- **Vollständige Datenschutzerklärung als Vorlage** (`resources/legal/datenschutz.md`),
+  abgestimmt auf die tatsächliche Verarbeitung der Anwendung: Reservierung/Termin,
+  Allergien (Art. 9), Einwilligungsnachweis (gehashte IP), Gästeprofil/No-Show-Hinweis,
+  Magic-Link-Konto & E-Mail-Bestätigung, Zahlungen (Stripe/PayPal, keine Kartendaten),
+  E-Mail/SMS (seven.io), Newsletter, Warteliste/Events/Feedback, Cookies/Logs/Audit,
+  Empfänger/Auftragsverarbeiter, Drittland, Speicherdauer, Betroffenenrechte.
+
+### Hinweis
+- Bestehende Installationen mit eigener `storage/app/legal/datenschutz.md` bleiben
+  unverändert; zum Übernehmen der neuen Vorlage Datei löschen und
+  `php artisan gastrobook:install-legal` ausführen (oder `--force`).
+
 ## [1.7.0] – 2026-06-13
 
 ### Geändert
@@ -155,6 +170,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.7.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.7.1
 [1.7.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.7.0
 [1.6.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.6.1
 [1.6.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.6.0
