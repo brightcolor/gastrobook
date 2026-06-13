@@ -50,11 +50,21 @@ class SettingsController extends Controller
             $smsCredentials = json_decode(Crypt::decryptString($sms->credentials_encrypted), true) ?: [];
         }
 
+        $paypal = IntegrationConnection::whereNull('location_id')
+            ->where('provider', 'paypal')
+            ->first();
+        $paypalCredentials = [];
+        if ($paypal?->credentials_encrypted) {
+            $paypalCredentials = json_decode(Crypt::decryptString($paypal->credentials_encrypted), true) ?: [];
+        }
+
         return view('admin.settings.index', [
             'location' => $location,
             'mailwizz' => $mailwizz,
             'mailwizzCredentials' => $mailwizzCredentials,
             'stripe' => $stripe,
+            'paypal' => $paypal,
+            'paypalCredentials' => $paypalCredentials,
             'sms' => $sms,
             'smsCredentials' => $smsCredentials,
             'depositRules' => DepositRule::where('location_id', $location->id)->orderBy('name')->get(),
@@ -245,6 +255,55 @@ class SettingsController extends Controller
         return back()->with('success', __('Stripe-Integration gespeichert. Webhook-URL: :url', [
             'url' => route('webhooks.stripe'),
         ]));
+    }
+
+    /**
+     * PayPal payment integration (tenant-wide). Only API credentials are
+     * stored (encrypted); funds go to the operator's own PayPal account.
+     */
+    public function updatePaypal(Request $request)
+    {
+        $tenant = $this->context->tenant();
+
+        $validated = $request->validate([
+            'client_id' => ['nullable', 'string', 'max:255'],
+            'secret' => ['nullable', 'string', 'max:255'],
+            'mode' => ['required', 'in:sandbox,live'],
+            'enabled' => ['nullable', 'boolean'],
+        ]);
+
+        $connection = IntegrationConnection::firstOrNew([
+            'tenant_id' => $tenant->id,
+            'location_id' => null,
+            'provider' => 'paypal',
+        ]);
+
+        $credentials = [];
+        if ($connection->credentials_encrypted) {
+            $credentials = json_decode(Crypt::decryptString($connection->credentials_encrypted), true) ?: [];
+        }
+        if (! empty($validated['client_id'])) {
+            $credentials['client_id'] = $validated['client_id'];
+        }
+        if (! empty($validated['secret'])) {
+            $credentials['secret'] = $validated['secret'];
+        }
+        $credentials['mode'] = $validated['mode'];
+
+        if (empty($credentials['client_id']) || empty($credentials['secret'])) {
+            return back()->withErrors(['client_id' => __('Client-ID und Secret sind erforderlich.')]);
+        }
+
+        $connection->credentials_encrypted = Crypt::encryptString(json_encode($credentials));
+        $connection->status = $request->boolean('enabled', true) ? 'connected' : 'disconnected';
+        $connection->save();
+
+        $this->audit->log('integration.paypal_updated', $connection, null, [
+            'mode' => $credentials['mode'],
+            'status' => $connection->status,
+        ]);
+
+        return back()->with('success', __('PayPal-Integration gespeichert.'));
     }
 
     /**

@@ -70,6 +70,8 @@ Route::get('/pay/event/{code}/{token}', [PaymentController::class, 'checkoutEven
     ->middleware('throttle:booking')->name('pay.event');
 Route::get('/pay/reservation/{code}/{token}', [PaymentController::class, 'checkoutReservation'])
     ->middleware('throttle:booking')->name('pay.reservation');
+Route::get('/pay/paypal/return/{intent}', [PaymentController::class, 'paypalReturn'])
+    ->middleware('throttle:booking')->name('pay.paypal.return');
 Route::post('/webhooks/stripe', [PaymentController::class, 'stripeWebhook'])->name('webhooks.stripe');
 
 Route::get('/reservation/{code}/confirmed/{token}', [PublicBookingController::class, 'confirmation'])->name('booking.confirmation');
@@ -202,6 +204,8 @@ Route::middleware(['auth', 'tenant'])->prefix('admin')->name('admin.')->group(fu
             ->middleware('permission:integrations.manage')->name('settings.mailwizz');
         Route::put('/settings/stripe', [SettingsController::class, 'updateStripe'])
             ->middleware('permission:integrations.manage')->name('settings.stripe');
+        Route::put('/settings/paypal', [SettingsController::class, 'updatePaypal'])
+            ->middleware('permission:integrations.manage')->name('settings.paypal');
         Route::put('/settings/sms', [SettingsController::class, 'updateSms'])
             ->middleware('permission:integrations.manage')->name('settings.sms');
         Route::post('/settings/deposit-rules', [SettingsController::class, 'storeDepositRule'])

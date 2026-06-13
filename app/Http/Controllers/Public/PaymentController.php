@@ -9,7 +9,9 @@ use App\Models\PaymentIntent;
 use App\Models\Reservation;
 use App\Models\Tenant;
 use App\Services\AuditLogger;
+use App\Services\Payments\PaymentProvider;
 use App\Services\Payments\PaymentProviderManager;
+use App\Services\Payments\PayPalProvider;
 use App\Services\ReservationLifecycleService;
 use App\Services\WebhookDispatchService;
 use Illuminate\Http\Request;
@@ -24,9 +26,10 @@ class PaymentController extends Controller
     ) {}
 
     /**
-     * Start a Stripe Checkout for a paid event booking.
+     * Start checkout for a paid event booking. Shows a provider chooser when
+     * more than one payment method is configured.
      */
-    public function checkoutEventBooking(string $code, string $token)
+    public function checkoutEventBooking(Request $request, string $code, string $token)
     {
         $booking = EventBooking::withoutGlobalScopes()->where('code', $code)->firstOrFail();
         abort_unless(hash_equals($booking->manage_token, $token), 404);
@@ -35,30 +38,25 @@ class PaymentController extends Controller
 
         $event = $booking->event()->withoutGlobalScopes()->firstOrFail();
         $tenant = Tenant::findOrFail($booking->tenant_id);
-        $provider = $this->payments->providerFor($tenant);
-        abort_if($provider === null, 404, 'Keine Online-Zahlung konfiguriert.');
-
-        $intent = PaymentIntent::withoutGlobalScopes()->firstOrCreate(
-            [
-                'tenant_id' => $booking->tenant_id,
-                'event_booking_id' => $booking->id,
-                'type' => 'prepayment',
-                'status' => 'pending',
-            ],
-            [
-                'provider' => 'stripe',
-                'amount_minor' => $booking->amount_minor,
-                'currency' => $event->currency,
-                'expires_at' => now()->addHour(),
-            ]
-        );
-
         $manageUrl = route('events.manage', ['code' => $booking->code, 'token' => $booking->manage_token]);
 
-        $session = $provider->createCheckout($intent, [
+        $available = $this->payments->available($tenant);
+        abort_if($available === [], 404, 'Keine Online-Zahlung konfiguriert.');
+        $key = $this->chosenProviderKey($available, $request);
+        if ($key === null) {
+            return $this->providerChooser($available, route('pay.event', ['code' => $code, 'token' => $token]), $manageUrl, $booking->amount_minor, $event->currency);
+        }
+
+        $intent = PaymentIntent::withoutGlobalScopes()->firstOrCreate(
+            ['tenant_id' => $booking->tenant_id, 'event_booking_id' => $booking->id, 'type' => 'prepayment', 'status' => 'pending'],
+            ['provider' => $key, 'amount_minor' => $booking->amount_minor, 'currency' => $event->currency, 'expires_at' => now()->addHour()]
+        );
+        $intent->update(['provider' => $key]);
+
+        $session = $available[$key]->createCheckout($intent, [
             'description' => $event->title.' – '.$booking->ticket_count.' Ticket(s)',
             'customer_email' => $booking->guest_email,
-            'success_url' => $manageUrl.'?paid=1',
+            'success_url' => $this->successUrl($key, $intent, $manageUrl),
             'cancel_url' => $manageUrl,
         ]);
 
@@ -66,16 +64,17 @@ class PaymentController extends Controller
         $booking->update(['payment_status' => 'pending']);
 
         $this->audit->log('payment.checkout_started', $intent, null, [
-            'event_booking' => $booking->code, 'amount_minor' => $intent->amount_minor,
+            'event_booking' => $booking->code, 'provider' => $key, 'amount_minor' => $intent->amount_minor,
         ], null, null, $booking->tenant_id);
 
         return redirect()->away($session['url']);
     }
 
     /**
-     * Start a Stripe Checkout for a reservation deposit/prepayment.
+     * Start checkout for a reservation deposit/prepayment. Shows a provider
+     * chooser when more than one payment method is configured.
      */
-    public function checkoutReservation(string $code, string $token)
+    public function checkoutReservation(Request $request, string $code, string $token)
     {
         $reservation = Reservation::withoutGlobalScope('tenant')->where('code', $code)->firstOrFail();
         abort_unless(hash_equals($reservation->manage_token, $token), 404);
@@ -83,34 +82,28 @@ class PaymentController extends Controller
         abort_unless($reservation->payment_amount_minor > 0, 410);
 
         $tenant = Tenant::findOrFail($reservation->tenant_id);
-        $provider = $this->payments->providerFor($tenant);
-        abort_if($provider === null, 404, 'Keine Online-Zahlung konfiguriert.');
+        $currency = $reservation->currency ?? 'EUR';
+        $manageUrl = route('booking.manage', ['code' => $reservation->code, 'token' => $reservation->manage_token]);
+
+        $available = $this->payments->available($tenant);
+        abort_if($available === [], 404, 'Keine Online-Zahlung konfiguriert.');
+        $key = $this->chosenProviderKey($available, $request);
+        if ($key === null) {
+            return $this->providerChooser($available, route('pay.reservation', ['code' => $code, 'token' => $token]), $manageUrl, $reservation->payment_amount_minor, $currency);
+        }
 
         $intent = PaymentIntent::withoutGlobalScopes()->firstOrCreate(
-            [
-                'tenant_id' => $reservation->tenant_id,
-                'reservation_id' => $reservation->id,
-                'type' => 'deposit',
-                'status' => 'pending',
-            ],
-            [
-                'provider' => 'stripe',
-                'amount_minor' => $reservation->payment_amount_minor,
-                'currency' => $reservation->currency ?? 'EUR',
-                'expires_at' => $reservation->payment_due_at ?? now()->addHour(),
-            ]
+            ['tenant_id' => $reservation->tenant_id, 'reservation_id' => $reservation->id, 'type' => 'deposit', 'status' => 'pending'],
+            ['provider' => $key, 'amount_minor' => $reservation->payment_amount_minor, 'currency' => $currency, 'expires_at' => $reservation->payment_due_at ?? now()->addHour()]
         );
+        $intent->update(['provider' => $key]);
 
-        $manageUrl = route('booking.manage', ['code' => $reservation->code, 'token' => $reservation->manage_token]);
         $location = $reservation->location()->withoutGlobalScope('tenant')->first();
 
-        $session = $provider->createCheckout($intent, [
-            'description' => __('Anzahlung Reservierung :code – :location', [
-                'code' => $reservation->code,
-                'location' => $location?->name ?? '',
-            ]),
+        $session = $available[$key]->createCheckout($intent, [
+            'description' => __('Anzahlung Reservierung :code – :location', ['code' => $reservation->code, 'location' => $location?->name ?? '']),
             'customer_email' => $reservation->guest_email_snapshot,
-            'success_url' => $manageUrl.'?paid=1',
+            'success_url' => $this->successUrl($key, $intent, $manageUrl),
             'cancel_url' => $manageUrl,
         ]);
 
@@ -118,10 +111,90 @@ class PaymentController extends Controller
         $reservation->update(['payment_status' => 'pending']);
 
         $this->audit->log('payment.checkout_started', $intent, null, [
-            'reservation' => $reservation->code, 'amount_minor' => $intent->amount_minor,
+            'reservation' => $reservation->code, 'provider' => $key, 'amount_minor' => $intent->amount_minor,
         ], null, null, $reservation->tenant_id);
 
         return redirect()->away($session['url']);
+    }
+
+    /**
+     * PayPal return handler: captures the approved order, then finalises.
+     */
+    public function paypalReturn(Request $request, int $intent)
+    {
+        $paymentIntent = PaymentIntent::withoutGlobalScopes()->findOrFail($intent);
+        $orderId = (string) $request->query('token'); // PayPal appends the order id
+
+        abort_unless($orderId !== '' && hash_equals((string) $paymentIntent->provider_intent_id, $orderId), 403);
+
+        $tenant = Tenant::findOrFail($paymentIntent->tenant_id);
+        $provider = $this->payments->provider($tenant, 'paypal');
+        $manageUrl = $this->manageUrlFor($paymentIntent);
+
+        if ($paymentIntent->status !== 'paid'
+            && $provider instanceof PayPalProvider
+            && $provider->captureOrder($orderId)) {
+            $this->handlePaid($paymentIntent, $tenant, $orderId);
+
+            return redirect()->to($manageUrl.'?paid=1');
+        }
+
+        return redirect()->to($manageUrl);
+    }
+
+    /**
+     * @param  array<string, PaymentProvider>  $available
+     */
+    private function chosenProviderKey(array $available, Request $request): ?string
+    {
+        $key = $request->query('provider');
+        if (is_string($key) && isset($available[$key])) {
+            return $key;
+        }
+
+        return count($available) === 1 ? (string) array_key_first($available) : null;
+    }
+
+    /**
+     * @param  array<string, PaymentProvider>  $available
+     */
+    private function providerChooser(array $available, string $payUrl, string $cancelUrl, int $amountMinor, string $currency)
+    {
+        $labels = ['stripe' => 'Kreditkarte (Stripe)', 'paypal' => 'PayPal'];
+        $options = [];
+        foreach (array_keys($available) as $providerKey) {
+            $options[] = [
+                'key' => $providerKey,
+                'label' => $labels[$providerKey] ?? ucfirst($providerKey),
+                'url' => $payUrl.'?provider='.$providerKey,
+            ];
+        }
+
+        return view('public.pay-select', [
+            'options' => $options,
+            'cancel_url' => $cancelUrl,
+            'amount' => number_format($amountMinor / 100, 2, ',', '.').' '.$currency,
+        ]);
+    }
+
+    private function successUrl(string $providerKey, PaymentIntent $intent, string $manageUrl): string
+    {
+        return $providerKey === 'paypal'
+            ? route('pay.paypal.return', ['intent' => $intent->id])
+            : $manageUrl.'?paid=1';
+    }
+
+    private function manageUrlFor(PaymentIntent $intent): string
+    {
+        if ($intent->reservation_id) {
+            $reservation = Reservation::withoutGlobalScope('tenant')->findOrFail($intent->reservation_id);
+
+            return route('booking.manage', ['code' => $reservation->code, 'token' => $reservation->manage_token]);
+        }
+
+        $booking = EventBooking::withoutGlobalScopes()->findOrFail($intent->event_booking_id);
+
+        return route('events.manage', ['code' => $booking->code, 'token' => $booking->manage_token]);
     }
 
     /**
@@ -149,7 +222,7 @@ class PaymentController extends Controller
         }
 
         $tenant = Tenant::find($intent->tenant_id);
-        $provider = $tenant ? $this->payments->providerFor($tenant) : null;
+        $provider = $tenant ? $this->payments->provider($tenant, 'stripe') : null;
 
         if ($provider === null
             || ! $provider->verifyWebhookSignature($payload, (string) $request->header('Stripe-Signature'))) {

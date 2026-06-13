@@ -4,6 +4,19 @@ Alle nennenswerten Änderungen an GastroBook. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.4.0] – 2026-06-13
+
+### Hinzugefügt
+- **PayPal als Zahlungsanbieter** (Orders v2, REST, Capture-on-Return) – jeder
+  Mandant hinterlegt eigene Client-ID/Secret (verschlüsselt), Sandbox/Live-Modus.
+- **Mehrere Zahlungsanbieter gleichzeitig**: Sind Stripe *und* PayPal aktiv,
+  wählt der Gast an der Kasse die Zahlungsart; bei nur einem geht es direkt weiter.
+- `PaymentProviderManager::available()` / `provider($key)`; Settings-UI-Karte für PayPal.
+
+### Behoben
+- Stripe-Webhook verwendet jetzt gezielt den Stripe-Provider zur Signaturprüfung
+  (statt „erster verfügbarer"), wichtig wenn auch PayPal verbunden ist.
+
 ## [1.3.0] – 2026-06-13
 
 ### Hinzugefügt
@@ -91,6 +104,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.4.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.4.0
 [1.3.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.3.0
 [1.2.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.2.0
 [1.1.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.1.1
