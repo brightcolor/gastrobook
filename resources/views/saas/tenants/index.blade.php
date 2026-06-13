@@ -90,6 +90,10 @@
             </form>
         </div>
     </div>
+
+    <footer class="mt-10 text-center text-[11px] text-stone-400">
+        GastroBook v{{ config('version.number') }}
+    </footer>
 </div>
 </body>
 </html>

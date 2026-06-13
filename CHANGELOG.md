@@ -1,0 +1,35 @@
+# Changelog
+
+Alle nennenswerten Änderungen an GastroBook. Das Projekt folgt
+[Semantic Versioning](https://semver.org). Die aktuelle Version steht in
+`config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
+
+## [1.0.0] – 2026-06-13
+
+Erste versionierte Veröffentlichung. Enthält den gesamten bisherigen
+Funktionsumfang.
+
+### Plattform
+- Multi-Tenant-SaaS (Laravel 13), Tenant-Isolation via globalem Scope + TenantContext
+- Rollen/Rechte-Matrix, Auditlog, DSGVO-Werkzeuge (Export, Anonymisierung, Retention)
+- REST-API v1 (Sanctum), Webhooks (HMAC), SaaS-Website + Self-Service-Registrierung
+- Docker-Image via CI nach GHCR, Quick-Install-Skript mit Autoport
+
+### Restaurant-Modus
+- Reservierungsbuch, grafischer Tischplan, Walk-ins, Warteliste
+- Verfügbarkeits-Engine (Öffnungszeiten, Kapazität, Tische/Kombinationen)
+- Events & Tickets, Stripe-Anzahlungen, Gäste-CRM, Berichte
+
+### Salon-/Dienstleister-Modus
+- Umschaltbarer Betriebstyp (Restaurant ⇄ Friseur/Dienstleister) pro Mandant
+- Leistungen (Dauer/Preis) und Mitarbeiter (m:n), Termin-Buchung pro Mitarbeiter
+- Individuelle Mitarbeiter-Arbeitszeiten und Abwesenheiten (Urlaub/Krank)
+- Puffer zwischen Terminen in der Slot-Berechnung
+- Kombi-Leistungen: frei per Pills kombinierbar, Dauer/Preis summiert, ein Termin
+- Lückenoptimierer: packt „Beliebig"-Termine eng, reduziert Leerlauf (opt-in)
+
+### Integrationen
+- SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
+- MailWizz-Newsletter-Sync
+
+[1.0.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.0.0
