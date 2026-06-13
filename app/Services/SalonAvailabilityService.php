@@ -179,6 +179,9 @@ class SalonAvailabilityService
 
         $windows = $this->staffWindowsForDate($staff, $localDate);
         $absences = $this->absencesForDate($staff, $localDate);
+        // Load the day's bookings once and check overlaps in memory (avoids a
+        // DB query per slot).
+        $bookings = $this->dayBookings($staff, $localDate, $buffer);
 
         $results = [];
         foreach ($this->timeSlots->slotStarts($location, $localDate, $duration) as $startLocal) {
@@ -197,7 +200,7 @@ class SalonAvailabilityService
             if ($available && $this->overlapsAbsence($startUtc, $endUtc, $absences)) {
                 $available = false;
             }
-            if ($available && $this->hasConflict($staff, $startUtc, $endUtc, $buffer)) {
+            if ($available && $this->overlapsBooking($bookings, $startUtc, $endUtc, $buffer)) {
                 $available = false;
             }
 
@@ -209,6 +212,46 @@ class SalonAvailabilityService
         }
 
         return $results;
+    }
+
+    /**
+     * Active bookings overlapping the local date (± buffer margin), as
+     * [start: CarbonImmutable, end: CarbonImmutable] for in-memory checks.
+     *
+     * @return Collection<int, array{start: CarbonImmutable, end: CarbonImmutable}>
+     */
+    private function dayBookings(StaffMember $staff, CarbonImmutable $localDate, int $buffer): Collection
+    {
+        $from = $localDate->startOfDay()->utc()->subMinutes($buffer);
+        $to = $localDate->endOfDay()->utc()->addMinutes($buffer);
+
+        return $staff->reservations()
+            ->withoutGlobalScope('tenant')
+            ->whereIn('status', ReservationStatus::activeStatuses())
+            ->where('start_at', '<', $to)
+            ->where('end_at', '>', $from)
+            ->get(['start_at', 'end_at'])
+            ->map(fn ($b) => [
+                'start' => CarbonImmutable::parse($b->start_at),
+                'end' => CarbonImmutable::parse($b->end_at),
+            ]);
+    }
+
+    /**
+     * @param  Collection<int, array{start: CarbonImmutable, end: CarbonImmutable}>  $bookings
+     */
+    private function overlapsBooking(Collection $bookings, CarbonImmutable $startUtc, CarbonImmutable $endUtc, int $buffer): bool
+    {
+        $from = $startUtc->subMinutes($buffer);
+        $to = $endUtc->addMinutes($buffer);
+
+        foreach ($bookings as $b) {
+            if ($b['start']->lt($to) && $b['end']->gt($from)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function staffAvailableAt(StaffMember $staff, int $duration, CarbonImmutable $startUtc, Location $location): bool

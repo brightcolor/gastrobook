@@ -4,6 +4,19 @@ Alle nennenswerten Änderungen an GastroBook. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.1.1] – 2026-06-13
+
+### Behoben
+- Arbeitszeiten: Ende-vor-Beginn wird jetzt zuverlässig abgewiesen (statt
+  unzuverlässigem Wildcard-`after` in der Validierung).
+- Abwesenheiten: invertierte Zeiträume (Ende ≤ Beginn) werden abgewiesen –
+  vorher entstand ein wirkungsloser Eintrag.
+
+### Geändert
+- Salon-Slot-Berechnung lädt die Tagesbuchungen einmal und prüft Überschneidungen
+  im Speicher (vorher eine DB-Abfrage pro Slot) – deutlich weniger Queries.
+- Totes Farbfeld in der Leistungs-Bearbeitung entfernt.
+
 ## [1.1.0] – 2026-06-13
 
 ### Hinzugefügt
@@ -50,6 +63,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.1.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.1.1
 [1.1.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.1.0
 [1.0.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.0.1
 [1.0.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.0.0

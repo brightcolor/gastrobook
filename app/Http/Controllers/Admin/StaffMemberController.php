@@ -130,8 +130,18 @@ class StaffMemberController extends Controller
             'hours' => ['nullable', 'array'],
             'hours.*.weekday' => ['required', 'integer', 'min:0', 'max:6'],
             'hours.*.starts_at' => ['required', 'date_format:H:i'],
-            'hours.*.ends_at' => ['required', 'date_format:H:i', 'after:hours.*.starts_at'],
+            'hours.*.ends_at' => ['required', 'date_format:H:i'],
         ]);
+
+        // Ende muss nach Start liegen (zeilenweise, da Wildcard-Querverweise
+        // in der Validierung unzuverlässig sind).
+        foreach ($validated['hours'] ?? [] as $i => $hour) {
+            if ($hour['ends_at'] <= $hour['starts_at']) {
+                return back()
+                    ->withErrors(["hours.{$i}.ends_at" => __('Das Ende muss nach dem Beginn liegen.')])
+                    ->withInput();
+            }
+        }
 
         $member->workingHours()->delete();
         foreach ($validated['hours'] ?? [] as $hour) {
@@ -172,6 +182,12 @@ class StaffMemberController extends Controller
         $endsLocal = $validated['ends_time'] ?? null
             ? CarbonImmutable::parse($validated['ends_on'].' '.$validated['ends_time'], $tz)
             : CarbonImmutable::parse($validated['ends_on'], $tz)->endOfDay();
+
+        if ($endsLocal->lte($startsLocal)) {
+            return back()
+                ->withErrors(['ends_time' => __('Das Ende der Abwesenheit muss nach dem Beginn liegen.')])
+                ->withInput();
+        }
 
         $absence = StaffAbsence::create([
             'tenant_id' => $member->tenant_id,

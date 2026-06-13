@@ -112,14 +112,9 @@
                                        class="w-full rounded-lg border-stone-200 text-sm">
                             </div>
                             <div>
-                                <label class="mb-1 block text-xs font-semibold text-stone-500">Farbe (Hex)</label>
-                                <div class="flex gap-2">
-                                    <input type="color" name="color" value="{{ $service->color ?? '#6b7280' }}"
-                                           class="h-9 w-12 rounded border-stone-200">
-                                    <input type="text" id="colorText_{{ $service->id }}"
-                                           value="{{ $service->color ?? '' }}" placeholder="#6b7280"
-                                           class="flex-1 rounded-lg border-stone-200 text-sm font-mono">
-                                </div>
+                                <label class="mb-1 block text-xs font-semibold text-stone-500">Farbe</label>
+                                <input type="color" name="color" value="{{ $service->color ?? '#6b7280' }}"
+                                       class="h-9 w-12 rounded border-stone-200">
                             </div>
                         </div>
                         <div>
