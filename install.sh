@@ -56,7 +56,6 @@ else
 
     APP_KEY="base64:$(head -c 32 /dev/urandom | base64)"
     APP_PORT="$(find_port 8080)"
-    MAIL_PORT="$(find_port 8025)"
 
     sed -i.bak \
         -e "s|^APP_KEY=.*|APP_KEY=${APP_KEY}|" \
@@ -64,12 +63,12 @@ else
         .env && rm -f .env.bak
     {
         echo ""
-        echo "# Von install.sh automatisch gewählte freie Host-Ports"
+        echo "# Von install.sh automatisch gewählter freier Host-Port"
         echo "GASTROBOOK_PORT=${APP_PORT}"
-        echo "MAILPIT_PORT=${MAIL_PORT}"
     } >> .env
 
-    say "APP_KEY generiert, freie Ports gewählt: App ${APP_PORT}, Mailpit ${MAIL_PORT}"
+    say "APP_KEY generiert, freier Port gewählt: App ${APP_PORT}"
+    say "Hinweis: Für E-Mail-Versand SMTP-Daten in .env eintragen (MAIL_HOST, MAIL_USERNAME, MAIL_PASSWORD …)."
 fi
 
 APP_PORT="$(grep -E '^GASTROBOOK_PORT=' .env | cut -d= -f2)"
@@ -87,5 +86,5 @@ docker compose up -d
 
 say "Fertig! GastroBook läuft auf http://localhost:${APP_PORT}"
 echo "    Registrierung:  http://localhost:${APP_PORT}/register"
-echo "    Mailpit (Mails): http://localhost:$(grep -E '^MAILPIT_PORT=' .env | cut -d= -f2)"
+echo "    E-Mail-Versand: SMTP-Daten in .env hinterlegen (MAIL_*)"
 echo "    Demodaten (optional): docker compose exec app php artisan db:seed"

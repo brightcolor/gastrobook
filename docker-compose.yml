@@ -15,9 +15,8 @@ services:
       CACHE_STORE: redis
       SESSION_DRIVER: redis
       QUEUE_CONNECTION: redis
-      MAIL_MAILER: smtp
-      MAIL_HOST: mailpit
-      MAIL_PORT: "1025"
+      # Mail (SMTP) is configured via .env: MAIL_MAILER, MAIL_HOST, MAIL_PORT,
+      # MAIL_USERNAME, MAIL_PASSWORD, MAIL_SCHEME, MAIL_FROM_ADDRESS/NAME.
     volumes:
       - ./storage:/var/www/html/storage
       - ./docker/data/public:/public-export
@@ -49,9 +48,7 @@ services:
       DB_PASSWORD: secret
       REDIS_HOST: redis
       QUEUE_CONNECTION: redis
-      MAIL_MAILER: smtp
-      MAIL_HOST: mailpit
-      MAIL_PORT: "1025"
+      # Mail (SMTP) for queued notifications is configured via .env
     volumes:
       - ./storage:/var/www/html/storage
     depends_on:
@@ -94,8 +91,3 @@ services:
     image: redis:7-alpine
     volumes:
       - ./docker/data/redis:/data
-
-  mailpit:
-    image: axllent/mailpit:latest
-    ports:
-      - "${MAILPIT_PORT:-8025}:8025"   # Web UI for local mail testing

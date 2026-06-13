@@ -35,7 +35,7 @@ docker login ghcr.io   # bei privatem Repo nötig (GitHub-Username + Token mit r
 docker compose up -d   # zieht ghcr.io/brightcolor/gastrobook:latest, Migrationen laufen automatisch
 ```
 
-→ App: **http://localhost:8080** · Mailpit: http://localhost:8025
+→ App: **http://localhost:8080** (E-Mail-Versand: SMTP-Daten in `.env` hinterlegen, siehe [E-Mail](#e-mail))
 
 **Demodaten (optional, nur lokal):**
 
@@ -227,7 +227,7 @@ docker compose up -d
 docker compose exec app php artisan db:seed   # optional: Demodaten
 ```
 
-Die Host-Ports sind über `.env` steuerbar (`GASTROBOOK_PORT`, Standard 8080; `MAILPIT_PORT`, Standard 8025) — das Quick-Install-Skript `install.sh` wählt automatisch freie Ports.
+Der Host-Port ist über `.env` steuerbar (`GASTROBOOK_PORT`, Standard 8080) — das Quick-Install-Skript `install.sh` wählt automatisch einen freien Port.
 
 Update auf die neueste Version:
 
@@ -240,9 +240,8 @@ Wer das Image doch lokal bauen will: `docker build -t ghcr.io/brightcolor/gastro
 | Dienst | URL |
 |---|---|
 | App (nginx) | http://localhost:8080 |
-| Mailpit (lokale Mails) | http://localhost:8025 |
 
-Enthalten: PHP-FPM-App, nginx, PostgreSQL 17, Redis 7, dedizierter Queue-Worker, Scheduler-Container, Mailpit. Storage-Link bei Bedarf: `docker compose exec app php artisan storage:link`.
+Enthalten: PHP-FPM-App, nginx, PostgreSQL 17, Redis 7, dedizierter Queue-Worker, Scheduler-Container. E-Mail-Versand läuft über einen echten SMTP-Provider (in `.env` konfigurieren). Storage-Link bei Bedarf: `docker compose exec app php artisan storage:link`.
 
 **Bind-Mounts (alle Daten im Projektordner):**
 
@@ -387,9 +386,22 @@ Geplante Jobs: Reservierungs-Reminder (alle 15 min), Feedback-Follow-ups (stünd
 
 ---
 
-## E-Mails testen
+## E-Mail
 
-Lokal: `MAIL_MAILER=log` (Standard) → `storage/logs/laravel.log`, oder Mailpit via Docker (`http://localhost:8025`). Vorlagen liegen als Defaults im `NotificationTemplateRenderer` und sind pro Tenant/Standort über die Tabelle `notification_templates` überschreibbar (Platzhalter: `{guest_name}`, `{reservation_date}`, `{cancel_link}`, …).
+Produktiv: echten SMTP-Provider in `.env` eintragen (Postmark, Amazon SES, SMTP2GO, Mailjet …):
+
+```dotenv
+MAIL_MAILER=smtp
+MAIL_SCHEME=tls          # tls = Port 587 (STARTTLS), smtps = Port 465 (SSL)
+MAIL_HOST=smtp.example.com
+MAIL_PORT=587
+MAIL_USERNAME=...
+MAIL_PASSWORD=...
+MAIL_FROM_ADDRESS="no-reply@example.com"
+MAIL_FROM_NAME="GastroBook"
+```
+
+Zum lokalen Testen ohne echten Versand: `MAIL_MAILER=log` → Mails landen in `storage/logs/laravel.log`. Vorlagen liegen als Defaults im `NotificationTemplateRenderer` und sind pro Tenant/Standort über die Tabelle `notification_templates` überschreibbar (Platzhalter: `{guest_name}`, `{reservation_date}`, `{cancel_link}`, …).
 
 ---
 

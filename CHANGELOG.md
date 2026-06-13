@@ -4,6 +4,14 @@ Alle nennenswerten Änderungen an GastroBook. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.0.1] – 2026-06-13
+
+### Geändert
+- Mailpit aus dem Docker-Stack entfernt; E-Mail-Versand läuft jetzt über einen
+  echten, in `.env` konfigurierbaren SMTP-Provider (`MAIL_*`-Gerüst in
+  `.env.example`, Doku im README-Abschnitt „E-Mail").
+- `install.sh` und `docker-compose.yml` ohne Mailpit/`MAILPIT_PORT`.
+
 ## [1.0.0] – 2026-06-13
 
 Erste versionierte Veröffentlichung. Enthält den gesamten bisherigen
@@ -32,4 +40,5 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.0.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.0.1
 [1.0.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.0.0
