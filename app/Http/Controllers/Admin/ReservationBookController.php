@@ -179,6 +179,13 @@ class ReservationBookController extends Controller
 
         $this->lifecycle->transition($reservation, $target, $request->user(), 'user', $validated['reason'] ?? null);
 
+        if ($request->wantsJson()) {
+            return response()->json([
+                'ok' => true,
+                'status' => $reservation->fresh()->status->value,
+            ]);
+        }
+
         return back()->with('success', __('Status geändert.'));
     }
 

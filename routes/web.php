@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\ApiTokenController;
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\BoardController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EventAdminController;
 use App\Http\Controllers\Admin\FloorPlanController;
@@ -104,6 +105,13 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->n
 */
 Route::middleware(['auth', 'tenant'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', DashboardController::class)->name('dashboard');
+
+    // Live operations board (staff)
+    Route::middleware('permission:reservations.view')->group(function () {
+        Route::get('/board', [BoardController::class, 'index'])->name('board');
+        Route::get('/board/data', [BoardController::class, 'data'])->name('board.data');
+        Route::get('/board/stream', [BoardController::class, 'stream'])->name('board.stream');
+    });
 
     Route::post('/switch-tenant', [AuthController::class, 'switchTenant'])->name('switch-tenant');
     Route::post('/switch-location', [AuthController::class, 'switchLocation'])->name('switch-location');

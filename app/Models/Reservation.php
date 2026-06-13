@@ -109,7 +109,7 @@ class Reservation extends Model
     {
         return $this->belongsToMany(Service::class, 'reservation_service')
             ->withPivot(['sort_order', 'duration_minutes', 'price_minor'])
-            ->orderBy('sort_order');
+            ->orderByPivot('sort_order');
     }
 
     public function staffMember(): BelongsTo

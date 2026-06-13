@@ -4,6 +4,23 @@ Alle nennenswerten Änderungen an GastroBook. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.3.0] – 2026-06-13
+
+### Hinzugefügt
+- **Live-Board fürs Personal** (`/admin/board`): neue & offene Buchungen sowie
+  der heutige Ablauf in zwei Spalten, mit Inline-Aktionen (Bestätigen,
+  Eingetroffen, Fertig, No-Show, Storno) über den bestehenden Status-Endpoint.
+- **Dark Mode** (umschaltbar, gemerkt) und **Vollbild** für den Wand-/Tresen-Einsatz.
+- **Echtzeit via Server-Sent Events** (`/admin/board/stream`) mit automatischem
+  Fallback auf Polling; abschaltbar via `GASTROBOOK_BOARD_SSE=false` (z. B. auf
+  dem Single-Worker-Dev-Server).
+- KPIs (heute, Gäste, anwesend, Ankünfte <1h, offen, Warteliste); No-Show-Risiko-
+  und Allergie-Hinweise; funktioniert für Restaurant- und Salon-Modus.
+
+### Behoben
+- Mehrdeutige Spalte `sort_order` beim Laden der Reservierungs-Leistungen
+  (`orderByPivot`).
+
 ## [1.2.0] – 2026-06-13
 
 ### Hinzugefügt
@@ -74,6 +91,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.3.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.3.0
 [1.2.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.2.0
 [1.1.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.1.1
 [1.1.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.1.0

@@ -36,6 +36,7 @@
                 $isSalon = $tenant?->isSalon();
                 $items = [
                     ['route' => 'admin.dashboard', 'label' => 'Dashboard', 'icon' => '📊', 'perm' => null],
+                    ['route' => 'admin.board', 'label' => 'Live-Board', 'icon' => '🟢', 'perm' => 'reservations.view'],
                     ['route' => 'admin.reservations.index', 'label' => $isSalon ? 'Termine' : 'Reservierungen', 'icon' => '📖', 'perm' => 'reservations.view'],
                     ...($isSalon ? [
                         ['route' => 'admin.services.index', 'label' => 'Leistungen', 'icon' => '✂️', 'perm' => 'tables.manage'],

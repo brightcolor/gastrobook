@@ -16,4 +16,18 @@ return [
         'password' => env('GASTROBOOK_ADMIN_PASSWORD'),
         'name' => env('GASTROBOOK_ADMIN_NAME', 'Administrator'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Live-Board
+    |--------------------------------------------------------------------------
+    |
+    | Echtzeit-Updates per Server-Sent Events (SSE). Eine offene SSE-Verbindung
+    | belegt einen PHP-Worker – auf dem Single-Worker-Dev-Server (`php artisan
+    | serve`) daher auf false setzen; dann nutzt das Board Polling.
+    |
+    */
+    'board' => [
+        'sse' => env('GASTROBOOK_BOARD_SSE', true),
+    ],
 ];
