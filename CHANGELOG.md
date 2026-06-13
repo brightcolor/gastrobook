@@ -4,6 +4,14 @@ Alle nennenswerten Änderungen an GastroBook. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.6.1] – 2026-06-13
+
+### Behoben / Verbessert
+- **Reverse-Proxy-Support**: App vertraut jetzt `X-Forwarded-*` (Trusted Proxies in
+  `bootstrap/app.php`) → korrekte `https`-URLs in Mails, Magic-Links und Zahlungs-
+  Rücksprüngen hinter Traefik/nginx/Caddy. README-Abschnitt „Hinter einem Reverse
+  Proxy" (APP_URL, SSE-Pufferung, Port nur lokal binden).
+
 ## [1.6.0] – 2026-06-13
 
 ### Hinzugefügt
@@ -136,6 +144,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.6.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.6.1
 [1.6.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.6.0
 [1.5.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.5.0
 [1.4.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.4.0

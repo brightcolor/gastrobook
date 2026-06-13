@@ -20,6 +20,18 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => RequirePermission::class,
         ]);
 
+        // Behind the bundled nginx and/or an external reverse proxy (TLS
+        // termination): honour X-Forwarded-* so generated URLs use the correct
+        // scheme/host (https links in mails, payment returns, magic links).
+        $middleware->trustProxies(
+            at: '*',
+            headers: Request::HEADER_X_FORWARDED_FOR
+                | Request::HEADER_X_FORWARDED_HOST
+                | Request::HEADER_X_FORWARDED_PORT
+                | Request::HEADER_X_FORWARDED_PROTO
+                | Request::HEADER_X_FORWARDED_AWS_ELB,
+        );
+
         // Signed provider webhooks authenticate via signature, not session
         $middleware->validateCsrfTokens(except: [
             'webhooks/stripe',
