@@ -26,4 +26,12 @@ interface PaymentProvider
      * Verify a webhook payload signature.
      */
     public function verifyWebhookSignature(string $payload, string $signatureHeader): bool;
+
+    /**
+     * Refund (part of) a captured payment.
+     *
+     * @param  string  $reference  Provider charge reference (Stripe payment_intent id, PayPal capture id)
+     * @return array{ok: bool, id: ?string}
+     */
+    public function refund(string $reference, int $amountMinor, string $currency): array;
 }

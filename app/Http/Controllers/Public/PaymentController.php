@@ -131,12 +131,15 @@ class PaymentController extends Controller
         $provider = $this->payments->provider($tenant, 'paypal');
         $manageUrl = $this->manageUrlFor($paymentIntent);
 
-        if ($paymentIntent->status !== 'paid'
-            && $provider instanceof PayPalProvider
-            && $provider->captureOrder($orderId)) {
-            $this->handlePaid($paymentIntent, $tenant, $orderId);
+        if ($paymentIntent->status !== 'paid' && $provider instanceof PayPalProvider) {
+            $captureId = $provider->captureOrder($orderId);
+            if ($captureId !== null) {
+                // Store the capture id so the payment can later be refunded
+                $paymentIntent->update(['metadata' => array_merge($paymentIntent->metadata ?? [], ['refund_ref' => $captureId])]);
+                $this->handlePaid($paymentIntent, $tenant, $orderId);
 
-            return redirect()->to($manageUrl.'?paid=1');
+                return redirect()->to($manageUrl.'?paid=1');
+            }
         }
 
         return redirect()->to($manageUrl);
@@ -230,7 +233,12 @@ class PaymentController extends Controller
         }
 
         match ($event['type']) {
-            'checkout.session.completed' => $this->handlePaid($intent, $tenant, (string) ($event['data']['object']['id'] ?? '')),
+            'checkout.session.completed' => $this->handlePaid(
+                $intent,
+                $tenant,
+                (string) ($event['data']['object']['id'] ?? ''),
+                $event['data']['object']['payment_intent'] ?? null,
+            ),
             'checkout.session.expired' => $this->handleExpired($intent),
             default => null,
         };
@@ -238,13 +246,18 @@ class PaymentController extends Controller
         return response()->json(['received' => true]);
     }
 
-    private function handlePaid(PaymentIntent $intent, Tenant $tenant, string $sessionId): void
+    private function handlePaid(PaymentIntent $intent, Tenant $tenant, string $sessionId, ?string $refundRef = null): void
     {
         if ($intent->status === 'paid') {
             return; // idempotent
         }
 
-        $intent->update(['status' => 'paid', 'provider_intent_id' => $sessionId ?: $intent->provider_intent_id]);
+        $updates = ['status' => 'paid', 'provider_intent_id' => $sessionId ?: $intent->provider_intent_id];
+        if ($refundRef) {
+            // Stripe payment_intent id, needed to issue a refund later
+            $updates['metadata'] = array_merge($intent->metadata ?? [], ['refund_ref' => $refundRef]);
+        }
+        $intent->update($updates);
 
         if ($intent->event_booking_id) {
             EventBooking::withoutGlobalScopes()

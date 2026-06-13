@@ -82,20 +82,21 @@ class PayPalProvider implements PaymentProvider
     }
 
     /**
-     * Capture an approved order. Returns true when the payment completed.
+     * Capture an approved order. Returns the capture id (needed for refunds)
+     * when completed, or null on failure.
      */
-    public function captureOrder(string $orderId): bool
+    public function captureOrder(string $orderId): ?string
     {
         $response = Http::withToken($this->accessToken())
             ->withHeaders(['Content-Type' => 'application/json'])
             ->timeout(15)
             ->post($this->baseUrl()."/v2/checkout/orders/{$orderId}/capture");
 
-        if (! $response->successful()) {
-            return false;
+        if (! $response->successful() || $response->json('status') !== 'COMPLETED') {
+            return null;
         }
 
-        return $response->json('status') === 'COMPLETED';
+        return $response->json('purchase_units.0.payments.captures.0.id');
     }
 
     /**
@@ -105,5 +106,28 @@ class PayPalProvider implements PaymentProvider
     public function verifyWebhookSignature(string $payload, string $signatureHeader): bool
     {
         return false;
+    }
+
+    public function refund(string $reference, int $amountMinor, string $currency): array
+    {
+        $response = Http::withToken($this->accessToken())
+            ->timeout(15)
+            ->post($this->baseUrl()."/v2/payments/captures/{$reference}/refund", [
+                'amount' => [
+                    'value' => number_format($amountMinor / 100, 2, '.', ''),
+                    'currency_code' => strtoupper($currency),
+                ],
+            ]);
+
+        if (! $response->successful()) {
+            return ['ok' => false, 'id' => null];
+        }
+
+        $status = (string) $response->json('status');
+
+        return [
+            'ok' => in_array($status, ['COMPLETED', 'PENDING'], true),
+            'id' => (string) $response->json('id'),
+        ];
     }
 }

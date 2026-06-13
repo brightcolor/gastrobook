@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EventAdminController;
 use App\Http\Controllers\Admin\FloorPlanController;
 use App\Http\Controllers\Admin\GuestController;
+use App\Http\Controllers\Admin\RefundController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ReservationBookController;
 use App\Http\Controllers\Admin\ServiceController;
@@ -182,6 +183,14 @@ Route::middleware(['auth', 'tenant'])->prefix('admin')->name('admin.')->group(fu
         Route::get('/events/{event}/attendees.csv', [EventAdminController::class, 'exportAttendees'])->name('events.attendees');
         Route::post('/event-bookings/{booking}/check-in', [EventAdminController::class, 'checkIn'])->name('events.check-in');
         Route::post('/event-bookings/{booking}/cancel', [EventAdminController::class, 'cancelBooking'])->name('events.cancel-booking');
+    });
+
+    // Refunds
+    Route::middleware('permission:payments.manage')->group(function () {
+        Route::get('/refunds', [RefundController::class, 'index'])->name('refunds.index');
+        Route::post('/refunds/{refund}/approve', [RefundController::class, 'approve'])->name('refunds.approve');
+        Route::post('/refunds/{refund}/reject', [RefundController::class, 'reject'])->name('refunds.reject');
+        Route::post('/refunds/{refund}/retry', [RefundController::class, 'retry'])->name('refunds.retry');
     });
 
     // Reports

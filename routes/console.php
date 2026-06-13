@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\ReservationStatus;
+use App\Jobs\ProcessScheduledRefunds;
 use App\Jobs\RunRetentionPolicies;
 use App\Jobs\SendFeedbackRequests;
 use App\Jobs\SendReservationReminders;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\Schedule;
 
 Schedule::job(new SendReservationReminders)->everyFifteenMinutes();
 Schedule::job(new SendFeedbackRequests)->hourly();
+Schedule::job(new ProcessScheduledRefunds)->everyFifteenMinutes();
 Schedule::call(fn () => app(WaitlistService::class)->expireStale())->everyTenMinutes();
 Schedule::job(new RunRetentionPolicies)->dailyAt('03:30');
 

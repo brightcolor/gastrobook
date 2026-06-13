@@ -86,6 +86,25 @@
             </div>
             <p class="mt-1 text-xs text-stone-400">SMS-Erinnerungen erfordern eine konfigurierte seven.io-Integration (siehe unten) und eine Telefonnummer beim Gast.</p>
         </div>
+        <div class="mt-4 border-t border-stone-100 pt-3">
+            <h3 class="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">Rückerstattung der Anzahlung</h3>
+            <div class="flex flex-wrap items-end gap-4 text-sm">
+                <div><label class="mb-1 block text-xs font-semibold text-stone-500">Modus</label>
+                    <select name="refund_mode" class="w-full rounded-lg border-stone-200">
+                        <option value="off" @selected($settings->refund_mode === 'off')>Aus</option>
+                        <option value="manual" @selected($settings->refund_mode === 'manual')>Manuell (Freigabe durch Personal)</option>
+                        <option value="auto" @selected($settings->refund_mode === 'auto')>Automatisch</option>
+                    </select></div>
+                <div><label class="mb-1 block text-xs font-semibold text-stone-500">Erstattung in %</label>
+                    <input type="number" name="refund_percent" min="0" max="100" value="{{ $settings->refund_percent }}" class="w-24 rounded-lg border-stone-200"></div>
+                <div><label class="mb-1 block text-xs font-semibold text-stone-500">Ausführung</label>
+                    <select name="refund_processing" class="w-full rounded-lg border-stone-200">
+                        <option value="immediate" @selected($settings->refund_processing === 'immediate')>Sofort</option>
+                        <option value="scheduled" @selected($settings->refund_processing === 'scheduled')>Nach Zeitplan (Sammellauf)</option>
+                    </select></div>
+            </div>
+            <p class="mt-1 text-xs text-stone-400">Greift bei Storno innerhalb der Frist. Nach Frist und bei No-Show erfolgt keine Erstattung. Offene Freigaben unter „Rückerstattungen".</p>
+        </div>
         <button class="mt-4 rounded-xl bg-stone-900 px-5 py-2.5 text-sm font-bold text-white">Speichern</button>
     </form>
 

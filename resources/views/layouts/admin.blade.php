@@ -48,6 +48,7 @@
                     ['route' => 'admin.waitlist.index', 'label' => 'Warteliste', 'icon' => '⏳', 'perm' => 'waitlist.manage'],
                     ['route' => 'admin.guests.index', 'label' => 'Kunden', 'icon' => '👥', 'perm' => 'guests.view'],
                     ['route' => 'admin.events.index', 'label' => 'Events', 'icon' => '🎉', 'perm' => 'events.manage'],
+                    ['route' => 'admin.refunds.index', 'label' => 'Rückerstattungen', 'icon' => '💶', 'perm' => 'payments.manage'],
                     ['route' => 'admin.reports.index', 'label' => 'Berichte', 'icon' => '📈', 'perm' => 'reports.view'],
                     ['route' => 'admin.settings.index', 'label' => 'Einstellungen', 'icon' => '⚙️', 'perm' => 'tables.manage'],
                     ['route' => 'admin.users.index', 'label' => 'Benutzer', 'icon' => '🔑', 'perm' => 'users.invite'],

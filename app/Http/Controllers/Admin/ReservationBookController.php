@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\ReservationStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Reservation;
+use App\Services\RefundService;
 use App\Services\ReservationAvailabilityService;
 use App\Services\ReservationLifecycleService;
 use App\Support\TenantContext;
@@ -18,6 +19,7 @@ class ReservationBookController extends Controller
         private readonly TenantContext $context,
         private readonly ReservationLifecycleService $lifecycle,
         private readonly ReservationAvailabilityService $availability,
+        private readonly RefundService $refunds,
     ) {}
 
     public function index(Request $request)
@@ -178,6 +180,15 @@ class ReservationBookController extends Controller
         }
 
         $this->lifecycle->transition($reservation, $target, $request->user(), 'user', $validated['reason'] ?? null);
+
+        // Staff cancellation → request a deposit refund per the location's policy
+        if (in_array($target, [
+            ReservationStatus::CancelledByGuest,
+            ReservationStatus::CancelledByRestaurant,
+            ReservationStatus::Rejected,
+        ], true)) {
+            $this->refunds->requestForReservation($reservation->fresh(), 'staff', $request->user());
+        }
 
         if ($request->wantsJson()) {
             return response()->json([

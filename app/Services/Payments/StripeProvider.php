@@ -84,4 +84,26 @@ class StripeProvider implements PaymentProvider
 
         return false;
     }
+
+    public function refund(string $reference, int $amountMinor, string $currency): array
+    {
+        $response = Http::asForm()
+            ->withToken($this->secretKey)
+            ->timeout(15)
+            ->post(self::API_BASE.'/refunds', [
+                'payment_intent' => $reference,
+                'amount' => $amountMinor,
+            ]);
+
+        if (! $response->successful()) {
+            return ['ok' => false, 'id' => null];
+        }
+
+        $status = (string) $response->json('status');
+
+        return [
+            'ok' => in_array($status, ['succeeded', 'pending'], true),
+            'id' => (string) $response->json('id'),
+        ];
+    }
 }

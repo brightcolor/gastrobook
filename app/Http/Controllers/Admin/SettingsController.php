@@ -102,6 +102,9 @@ class SettingsController extends Controller
             'sms_reminder_enabled' => ['nullable', 'boolean'],
             'gap_optimization_enabled' => ['nullable', 'boolean'],
             'public_floorplan_enabled' => ['nullable', 'boolean'],
+            'refund_mode' => ['required', 'in:off,manual,auto'],
+            'refund_percent' => ['required', 'integer', 'min:0', 'max:100'],
+            'refund_processing' => ['required', 'in:immediate,scheduled'],
         ]);
 
         $settings = $location->settings()->firstOrCreate(['tenant_id' => $location->tenant_id]);

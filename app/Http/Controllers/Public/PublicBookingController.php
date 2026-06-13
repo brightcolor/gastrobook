@@ -11,6 +11,7 @@ use App\Models\Service;
 use App\Models\StaffMember;
 use App\Models\Tenant;
 use App\Services\Payments\PaymentProviderManager;
+use App\Services\RefundService;
 use App\Services\ReservationAvailabilityService;
 use App\Services\ReservationLifecycleService;
 use App\Services\SalonAvailabilityService;
@@ -31,6 +32,7 @@ class PublicBookingController extends Controller
         private readonly ReservationLifecycleService $lifecycle,
         private readonly WaitlistService $waitlist,
         private readonly TableAssignmentService $tableAssignment,
+        private readonly RefundService $refunds,
     ) {}
 
     public function show(string $tenantSlug, string $locationSlug)
@@ -470,7 +472,13 @@ class PublicBookingController extends Controller
             $request->input('reason')
         );
 
-        return view('public.cancelled', ['location' => $location]);
+        // Within the cancellation deadline → request a deposit refund per policy
+        $refund = $this->refunds->requestForReservation($reservation->fresh(), 'guest_cancel');
+
+        return view('public.cancelled', [
+            'location' => $location,
+            'refund' => $refund,
+        ]);
     }
 
     public function joinWaitlist(Request $request, string $tenantSlug, string $locationSlug)

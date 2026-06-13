@@ -4,6 +4,23 @@ Alle nennenswerten Änderungen an GastroBook. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.5.0] – 2026-06-13
+
+### Hinzugefügt
+- **Anzahlungs-Rückerstattung bei fristgerechtem Storno** – voll konfigurierbar
+  pro Standort:
+  - Modus: **aus / manuell (Freigabe durch Personal) / automatisch**
+  - Ausführung: **sofort** oder **nach Zeitplan** (Sammellauf via Cron)
+  - variabler **Erstattungssatz in %** (z. B. Bearbeitungsgebühr einbehalten)
+- Provider-Refunds für Stripe (`/v1/refunds`) und PayPal (Capture-Refund);
+  Zahlungsreferenz wird bei der Zahlung gespeichert.
+- Admin-Bereich **Rückerstattungen** (Freigeben/Ablehnen/erneut versuchen);
+  Hook bei Gast- und Personal-Storno; Status-Hinweis auf der Storno-Seite.
+- Geplanter Job `ProcessScheduledRefunds` (alle 15 Min).
+
+### Hinweise
+- Nach Ablauf der Stornofrist und bei No-Show erfolgt **keine** Erstattung.
+
 ## [1.4.0] – 2026-06-13
 
 ### Hinzugefügt
@@ -104,6 +121,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.5.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.5.0
 [1.4.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.4.0
 [1.3.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.3.0
 [1.2.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.2.0

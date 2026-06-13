@@ -70,7 +70,10 @@ class PaymentProvidersTest extends TestCase
                 'id' => 'ORDER123',
                 'links' => [['rel' => 'approve', 'href' => 'https://www.sandbox.paypal.com/checkoutnow?token=ORDER123']],
             ], 201),
-            'api-m.sandbox.paypal.com/v2/checkout/orders/ORDER123/capture' => Http::response(['status' => 'COMPLETED'], 201),
+            'api-m.sandbox.paypal.com/v2/checkout/orders/ORDER123/capture' => Http::response([
+                'status' => 'COMPLETED',
+                'purchase_units' => [['payments' => ['captures' => [['id' => 'CAP1']]]]],
+            ], 201),
         ]);
 
         $intent = new PaymentIntent(['amount_minor' => 2500, 'currency' => 'EUR']);
@@ -83,7 +86,7 @@ class PaymentProvidersTest extends TestCase
 
         $this->assertSame('ORDER123', $session['id']);
         $this->assertStringContainsString('paypal.com', $session['url']);
-        $this->assertTrue($provider->captureOrder('ORDER123'));
+        $this->assertSame('CAP1', $provider->captureOrder('ORDER123'));
     }
 
     public function test_chooser_shown_when_both_providers_active(): void
@@ -106,7 +109,10 @@ class PaymentProvidersTest extends TestCase
     {
         Http::fake([
             'api-m.sandbox.paypal.com/v1/oauth2/token' => Http::response(['access_token' => 'tok'], 200),
-            'api-m.sandbox.paypal.com/v2/checkout/orders/ORDER123/capture' => Http::response(['status' => 'COMPLETED'], 201),
+            'api-m.sandbox.paypal.com/v2/checkout/orders/ORDER123/capture' => Http::response([
+                'status' => 'COMPLETED',
+                'purchase_units' => [['payments' => ['captures' => [['id' => 'CAP1']]]]],
+            ], 201),
         ]);
 
         $tenant = $this->tenantWithDeposits();
