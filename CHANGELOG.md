@@ -4,6 +4,21 @@ Alle nennenswerten Änderungen an GastroBook. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.6.0] – 2026-06-13
+
+### Hinzugefügt
+- **Online-Umbuchung**: Gast verschiebt seinen Termin selbst (über Verwalten-Link
+  oder Kundenkonto), innerhalb der Umbuchungsfrist; Verfügbarkeit wird neu geprüft
+  (Tisch beim Restaurant, Mitarbeiter beim Salon).
+- **Kundenkonto per Magic-Link** (passwortlos, pro Mandant): Anmeldelink per
+  E-Mail → Übersicht aller Termine mit Umbuchen/Verwalten.
+- **E-Mail-Bestätigung** (opt-in pro Standort): unbestätigte Gäste bestätigen ihre
+  Adresse beim ersten Buchen; die Buchung wird bis dahin als Anfrage gehalten und
+  nach Bestätigung automatisch bestätigt. Einmal verifiziert = künftig kein Schritt mehr.
+
+### Behoben
+- Zeitabhängiger (flaky) Test `min_lead_time` deterministisch gemacht.
+
 ## [1.5.0] – 2026-06-13
 
 ### Hinzugefügt
@@ -121,6 +136,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.6.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.6.0
 [1.5.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.5.0
 [1.4.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.4.0
 [1.3.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.3.0

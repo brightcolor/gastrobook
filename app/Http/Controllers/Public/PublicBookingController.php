@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Public;
 use App\Enums\ReservationStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
+use App\Models\Guest;
 use App\Models\Location;
 use App\Models\Reservation;
 use App\Models\Service;
 use App\Models\StaffMember;
 use App\Models\Tenant;
+use App\Services\GuestAuthService;
 use App\Services\Payments\PaymentProviderManager;
 use App\Services\RefundService;
 use App\Services\ReservationAvailabilityService;
@@ -33,7 +35,26 @@ class PublicBookingController extends Controller
         private readonly WaitlistService $waitlist,
         private readonly TableAssignmentService $tableAssignment,
         private readonly RefundService $refunds,
+        private readonly GuestAuthService $guestAuth,
     ) {}
+
+    /**
+     * Whether a booking with this email must be confirmed via email first.
+     * True only when the setting is on and the guest hasn't verified before.
+     */
+    private function needsEmailConfirmation(Location $location, ?string $email): bool
+    {
+        if (! $email || ! $location->effectiveSettings()->require_email_confirmation) {
+            return false;
+        }
+
+        $guest = Guest::withoutGlobalScopes()
+            ->where('tenant_id', $location->tenant_id)
+            ->whereRaw('lower(email) = ?', [strtolower(trim($email))])
+            ->first();
+
+        return $guest === null || $guest->email_verified_at === null;
+    }
 
     public function show(string $tenantSlug, string $locationSlug)
     {
@@ -295,6 +316,8 @@ class PublicBookingController extends Controller
             $tableIds = [(int) $table->id];
         }
 
+        $needsConfirm = $this->needsEmailConfirmation($location, $validated['email'] ?? null);
+
         try {
             $reservation = $this->lifecycle->create($location, [
                 'party_size' => (int) $validated['party_size'],
@@ -307,6 +330,7 @@ class PublicBookingController extends Controller
                 'allergy_note' => $validated['allergies'] ?? null,
                 'occasion' => $validated['occasion'] ?? null,
                 'table_ids' => $tableIds,
+                'email_confirmation_required' => $needsConfirm,
                 'consents' => array_filter([
                     'privacy' => true,
                     'newsletter' => (bool) ($validated['newsletter'] ?? false),
@@ -323,10 +347,14 @@ class PublicBookingController extends Controller
                 ->with('alternatives', $alternatives);
         }
 
+        if ($needsConfirm && $reservation->guest) {
+            $this->guestAuth->sendVerification($reservation->guest, $reservation);
+        }
+
         return redirect()->route('booking.confirmation', [
             'code' => $reservation->code,
             'token' => $reservation->manage_token,
-        ]);
+        ])->with('email_confirmation_sent', $needsConfirm);
     }
 
     private function storeSalon(Request $request, Location $location): RedirectResponse
@@ -375,6 +403,8 @@ class PublicBookingController extends Controller
             }
         }
 
+        $needsConfirm = $this->needsEmailConfirmation($location, $validated['email']);
+
         try {
             $reservation = $this->lifecycle->create($location, [
                 'party_size' => 1,
@@ -388,6 +418,7 @@ class PublicBookingController extends Controller
                 'guest_phone' => $validated['phone'] ?? null,
                 'guest_note' => $validated['note'] ?? null,
                 'skip_availability_check' => true,
+                'email_confirmation_required' => $needsConfirm,
                 'consents' => [
                     'privacy' => true,
                     'newsletter' => (bool) ($validated['newsletter'] ?? false),
@@ -409,10 +440,14 @@ class PublicBookingController extends Controller
             ])->all()
         );
 
+        if ($needsConfirm && $reservation->guest) {
+            $this->guestAuth->sendVerification($reservation->guest, $reservation);
+        }
+
         return redirect()->route('booking.confirmation', [
             'code' => $reservation->code,
             'token' => $reservation->manage_token,
-        ]);
+        ])->with('email_confirmation_sent', $needsConfirm);
     }
 
     public function confirmation(string $code, string $token)
@@ -479,6 +514,62 @@ class PublicBookingController extends Controller
             'location' => $location,
             'refund' => $refund,
         ]);
+    }
+
+    public function rescheduleShow(string $code, string $token)
+    {
+        $reservation = $this->findByCodeAndToken($code, $token);
+        $location = $reservation->location()->withoutGlobalScope('tenant')->first();
+        $tenant = Tenant::find($reservation->tenant_id);
+        $settings = $location->effectiveSettings();
+
+        abort_unless($reservation->status->isActive(), 410);
+        if (now()->gte($reservation->start_at->copy()->subMinutes($settings->modification_deadline_minutes))) {
+            return view('public.reschedule', [
+                'reservation' => $reservation, 'location' => $location, 'tenant' => $tenant,
+                'tooLate' => true, 'isSalon' => $tenant?->isSalon() ?? false,
+                'serviceIds' => [], 'staffId' => 0,
+            ]);
+        }
+
+        return view('public.reschedule', [
+            'reservation' => $reservation,
+            'location' => $location,
+            'tenant' => $tenant,
+            'tooLate' => false,
+            'isSalon' => $tenant?->isSalon() ?? false,
+            'serviceIds' => $reservation->services->pluck('id')->all(),
+            'staffId' => (int) ($reservation->staff_member_id ?? 0),
+        ]);
+    }
+
+    public function reschedule(Request $request, string $code, string $token)
+    {
+        $reservation = $this->findByCodeAndToken($code, $token);
+        $location = $reservation->location()->withoutGlobalScope('tenant')->first();
+        $settings = $location->effectiveSettings();
+
+        abort_unless($reservation->status->isActive(), 410);
+        if (now()->gte($reservation->start_at->copy()->subMinutes($settings->modification_deadline_minutes))) {
+            return back()->withErrors(['time' => __('Die Umbuchungsfrist ist abgelaufen.')]);
+        }
+
+        $validated = $request->validate([
+            'date' => ['required', 'date_format:Y-m-d'],
+            'time' => ['required', 'date_format:H:i'],
+        ]);
+
+        $newStartLocal = CarbonImmutable::parse($validated['date'].' '.$validated['time'], $reservation->timezone);
+
+        try {
+            $this->lifecycle->reschedule($reservation, $newStartLocal, null, 'guest');
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
+
+        return redirect()->route('booking.manage', [
+            'code' => $reservation->code, 'token' => $reservation->manage_token,
+        ])->with('success', __('Ihr Termin wurde umgebucht.'));
     }
 
     public function joinWaitlist(Request $request, string $tenantSlug, string $locationSlug)

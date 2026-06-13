@@ -29,7 +29,7 @@ class Guest extends Model
         'visit_count', 'no_show_count', 'cancellation_count',
         'last_visit_at', 'avg_party_size', 'source',
         'marketing_consent', 'marketing_consent_at',
-        'anonymized', 'anonymized_at',
+        'anonymized', 'anonymized_at', 'email_verified_at',
     ];
 
     protected function casts(): array
@@ -37,6 +37,7 @@ class Guest extends Model
         return [
             'birthday' => 'date',
             'is_vip' => 'boolean',
+            'email_verified_at' => 'datetime',
             'last_visit_at' => 'datetime',
             'marketing_consent' => 'boolean',
             'marketing_consent_at' => 'datetime',

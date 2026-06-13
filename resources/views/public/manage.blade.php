@@ -28,16 +28,22 @@
         @endif
     @endif
 
+    @if($reservation->status->isActive())
+        <a href="{{ route('booking.reschedule', ['code' => $reservation->code, 'token' => $reservation->manage_token]) }}"
+           class="mt-6 block rounded-xl border-2 border-stone-200 py-3 text-center font-bold hover:border-brand">
+            Termin umbuchen
+        </a>
+    @endif
+
     @if($cancellable)
         <form method="POST" action="{{ route('booking.cancel', ['code' => $reservation->code, 'token' => $reservation->manage_token]) }}"
-              onsubmit="return confirm('Reservierung wirklich stornieren?')" class="mt-6">
+              onsubmit="return confirm('Reservierung wirklich stornieren?')" class="mt-3">
             @csrf
             <label for="reason" class="mb-1 block text-sm font-semibold">Grund (optional)</label>
             <input type="text" name="reason" id="reason" class="mb-3 w-full rounded-xl border-2 border-stone-200 px-4 py-3">
             <button class="w-full rounded-xl bg-red-600 py-3 font-bold text-white hover:bg-red-700">Reservierung stornieren</button>
         </form>
         <p class="mt-3 text-xs text-stone-500">Kostenfreie Stornierung bis {{ $deadline->setTimezone($location->timezone)->format('d.m.Y H:i') }} Uhr.</p>
-        <p class="mt-2 text-xs text-stone-500">Für Änderungen (Uhrzeit, Personenzahl) stornieren Sie bitte und buchen neu – oder rufen Sie uns an: {{ $location->phone }}</p>
     @elseif($reservation->status->isActive())
         <p class="mt-6 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
             Die Online-Stornierungsfrist ist abgelaufen. Bitte kontaktieren Sie uns telefonisch: <strong>{{ $location->phone }}</strong>

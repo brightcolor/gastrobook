@@ -21,7 +21,7 @@ class LocationSettings extends Model
         'cancellation_deadline_minutes', 'modification_deadline_minutes',
         'field_rules', 'reminder_enabled', 'reminder_hours_before', 'sms_reminder_enabled',
         'gap_optimization_enabled', 'public_floorplan_enabled',
-        'refund_mode', 'refund_percent', 'refund_processing',
+        'refund_mode', 'refund_percent', 'refund_processing', 'require_email_confirmation',
         'feedback_enabled', 'feedback_hours_after', 'feedback_external_url',
         'feedback_redirect_min_score', 'settings',
     ];
@@ -49,6 +49,7 @@ class LocationSettings extends Model
         'refund_mode' => 'off',
         'refund_percent' => 100,
         'refund_processing' => 'immediate',
+        'require_email_confirmation' => false,
         'feedback_enabled' => true,
         'feedback_hours_after' => 18,
         'feedback_redirect_min_score' => 4,
@@ -68,6 +69,7 @@ class LocationSettings extends Model
             'sms_reminder_enabled' => 'boolean',
             'gap_optimization_enabled' => 'boolean',
             'public_floorplan_enabled' => 'boolean',
+            'require_email_confirmation' => 'boolean',
             'feedback_enabled' => 'boolean',
         ];
     }

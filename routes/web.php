@@ -20,6 +20,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\RegistrationController;
 use App\Http\Controllers\Public\FeedbackController;
+use App\Http\Controllers\Public\GuestPortalController;
 use App\Http\Controllers\Public\MarketingController;
 use App\Http\Controllers\Public\PaymentController;
 use App\Http\Controllers\Public\PublicBookingController;
@@ -78,6 +79,18 @@ Route::post('/webhooks/stripe', [PaymentController::class, 'stripeWebhook'])->na
 Route::get('/reservation/{code}/confirmed/{token}', [PublicBookingController::class, 'confirmation'])->name('booking.confirmation');
 Route::get('/reservation/{code}/manage/{token}', [PublicBookingController::class, 'manage'])->name('booking.manage');
 Route::post('/reservation/{code}/cancel/{token}', [PublicBookingController::class, 'cancel'])->name('booking.cancel');
+Route::get('/reservation/{code}/reschedule/{token}', [PublicBookingController::class, 'rescheduleShow'])->name('booking.reschedule');
+Route::post('/reservation/{code}/reschedule/{token}', [PublicBookingController::class, 'reschedule'])
+    ->middleware('throttle:booking')->name('booking.reschedule.post');
+
+// Guest account (passwordless magic link) + email confirmation
+Route::get('/konto/verify/{token}', [GuestPortalController::class, 'verify'])->name('guest.verify');
+Route::get('/konto/{tenantSlug}', [GuestPortalController::class, 'request'])->name('guest.portal.request');
+Route::post('/konto/{tenantSlug}', [GuestPortalController::class, 'sendLink'])
+    ->middleware('throttle:5,10')->name('guest.portal.link');
+Route::get('/konto/{tenantSlug}/login/{token}', [GuestPortalController::class, 'login'])->name('guest.portal.login');
+Route::get('/konto/{tenantSlug}/start', [GuestPortalController::class, 'dashboard'])->name('guest.portal.dashboard');
+Route::post('/konto/{tenantSlug}/logout', [GuestPortalController::class, 'logout'])->name('guest.portal.logout');
 
 Route::get('/feedback/{token}', [FeedbackController::class, 'show'])->name('feedback.show');
 Route::post('/feedback/{token}', [FeedbackController::class, 'store'])->name('feedback.store');

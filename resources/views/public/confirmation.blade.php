@@ -21,6 +21,13 @@
         @endif
     </p>
 
+    @if(session('email_confirmation_sent'))
+        <div class="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+            📧 Bitte bestätigen Sie Ihre E-Mail-Adresse über den Link, den wir Ihnen gerade geschickt haben –
+            erst danach ist Ihre Buchung verbindlich.
+        </div>
+    @endif
+
     <div class="mt-6 space-y-2 rounded-xl bg-stone-50 p-4 text-left text-sm">
         <div class="flex justify-between"><span class="text-stone-500">{{ $isSalon ? 'Salon' : 'Restaurant' }}</span><strong>{{ $location->name }}</strong></div>
         <div class="flex justify-between"><span class="text-stone-500">Datum</span><strong>{{ $reservation->localStart()->format('d.m.Y') }}</strong></div>

@@ -94,10 +94,15 @@ class ReservationLifecycleService
             }
 
             // Initial status
+            $emailConfirm = $data['email_confirmation_required'] ?? false;
             $status = ReservationStatus::Confirmed;
             if ($data['source'] === 'walk_in') {
                 $status = ReservationStatus::Seated;
             } elseif ($online && ($settings->request_only || ! $settings->auto_confirm)) {
+                $status = ReservationStatus::Requested;
+            }
+            // Hold the booking until the guest confirms their email (once)
+            if ($emailConfirm) {
                 $status = ReservationStatus::Requested;
             }
 
@@ -166,9 +171,11 @@ class ReservationLifecycleService
                 'start_at' => $startUtc->toIso8601String(),
             ], null, $actor, $location->tenant_id);
 
-            DB::afterCommit(function () use ($reservation, $location, $status) {
+            DB::afterCommit(function () use ($reservation, $location, $status, $emailConfirm) {
                 $this->webhooks->dispatch($location->tenant, 'reservation.created', $this->webhookPayload($reservation));
-                if ($reservation->guest_email_snapshot) {
+                // When email confirmation is required, the caller sends the
+                // verification mail instead of the normal confirmation mail.
+                if ($reservation->guest_email_snapshot && ! $emailConfirm) {
                     $templateKey = $status === ReservationStatus::Requested ? 'reservation_requested' : 'reservation_confirmed';
                     if (in_array($status, [ReservationStatus::Confirmed, ReservationStatus::Requested], true)) {
                         $this->sendGuestMail($reservation, $templateKey);
@@ -307,6 +314,85 @@ class ReservationLifecycleService
             $actor,
             $reservation->tenant_id
         );
+    }
+
+    /**
+     * Move a reservation to a new start time (guest/staff reschedule). Keeps the
+     * duration, re-checks availability (tables for restaurants, staff for salons)
+     * and reassigns tables when needed.
+     */
+    public function reschedule(Reservation $reservation, CarbonImmutable $newStartLocal, ?User $actor = null, string $actorType = 'guest'): Reservation
+    {
+        $location = $reservation->location()->withoutGlobalScope('tenant')->first();
+        $duration = (int) $reservation->start_at->diffInMinutes($reservation->end_at);
+        $startUtc = $newStartLocal->utc();
+        $endUtc = $startUtc->addMinutes($duration);
+
+        return DB::transaction(function () use ($reservation, $location, $newStartLocal, $startUtc, $endUtc, $actor, $actorType) {
+            $tableIds = null;
+
+            if ($reservation->staff_member_id) {
+                // Salon: the assigned staff member must be free at the new slot
+                $conflict = Reservation::withoutGlobalScope('tenant')
+                    ->where('staff_member_id', $reservation->staff_member_id)
+                    ->where('id', '!=', $reservation->id)
+                    ->whereIn('status', ReservationStatus::activeStatuses())
+                    ->where('start_at', '<', $endUtc)
+                    ->where('end_at', '>', $startUtc)
+                    ->exists();
+                if ($conflict) {
+                    throw ValidationException::withMessages(['time' => __('Der neue Zeitpunkt ist nicht mehr verfügbar.')]);
+                }
+            } else {
+                // Restaurant: reassign a fitting free table/combination
+                $assignment = $this->tableAssignment->findTables($location, $startUtc, $endUtc, $reservation->party_size, [
+                    'online' => true,
+                    'exclude_reservation_id' => $reservation->id,
+                ]);
+                if ($assignment === null) {
+                    throw ValidationException::withMessages(['time' => __('Der neue Zeitpunkt ist nicht mehr verfügbar.')]);
+                }
+                $tableIds = $assignment['table_ids'];
+            }
+
+            $old = [
+                'start_at' => $reservation->start_at->toIso8601String(),
+                'end_at' => $reservation->end_at->toIso8601String(),
+            ];
+
+            $reservation->update([
+                'reservation_date' => $newStartLocal->toDateString(),
+                'start_at' => $startUtc,
+                'end_at' => $endUtc,
+            ]);
+            if ($tableIds !== null) {
+                $reservation->tables()->sync($tableIds);
+            }
+
+            ReservationStatusHistory::create([
+                'tenant_id' => $reservation->tenant_id,
+                'reservation_id' => $reservation->id,
+                'from_status' => $reservation->status->value,
+                'to_status' => $reservation->status->value,
+                'user_id' => $actor?->id,
+                'actor' => $actorType,
+                'reason' => 'rescheduled',
+            ]);
+
+            $this->audit->log('reservation.rescheduled', $reservation, $old, [
+                'start_at' => $startUtc->toIso8601String(),
+                'end_at' => $endUtc->toIso8601String(),
+            ], null, $actor, $reservation->tenant_id);
+
+            DB::afterCommit(function () use ($reservation, $location) {
+                $this->webhooks->dispatch($location->tenant, 'reservation.updated', $this->webhookPayload($reservation));
+                if ($reservation->guest_email_snapshot) {
+                    $this->sendGuestMail($reservation, 'reservation_confirmed');
+                }
+            });
+
+            return $reservation->refresh();
+        });
     }
 
     public function sendGuestMail(Reservation $reservation, string $templateKey, array $extra = []): void

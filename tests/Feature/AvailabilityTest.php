@@ -69,6 +69,9 @@ class AvailabilityTest extends TestCase
 
     public function test_min_lead_time_is_enforced_for_online(): void
     {
+        // Freeze time so "tomorrow 12:00" is reliably within the 24h lead window
+        $this->travelTo(CarbonImmutable::parse('2026-06-15 20:00:00'));
+
         $setup = $this->createTenantSetup();
         $setup['location']->settings->update(['min_lead_minutes' => 24 * 60]);
         $setup['location']->refresh();

@@ -70,6 +70,7 @@
             <label class="flex items-center gap-2"><input type="checkbox" name="request_only" value="1" @checked($settings->request_only)> Nur als Anfrage annehmen</label>
             <label class="flex items-center gap-2"><input type="checkbox" name="waitlist_enabled" value="1" @checked($settings->waitlist_enabled)> Warteliste aktiv</label>
             <label class="flex items-center gap-2"><input type="checkbox" name="walkins_enabled" value="1" @checked($settings->walkins_enabled)> Walk-ins aktiv</label>
+            <label class="flex items-center gap-2"><input type="checkbox" name="require_email_confirmation" value="1" @checked($settings->require_email_confirmation)> E-Mail-Bestätigung verlangen (Gast bestätigt seine Adresse beim ersten Buchen)</label>
             @if($tenant->isSalon())
                 <label class="flex items-center gap-2"><input type="checkbox" name="gap_optimization_enabled" value="1" @checked($settings->gap_optimization_enabled)> Lückenoptimierer (bei „Beliebig" Mitarbeiter so wählen, dass möglichst wenig Leerlauf entsteht)</label>
             @else

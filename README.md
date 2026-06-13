@@ -110,6 +110,9 @@ Fertige Docker-Images baut die CI automatisch: `ghcr.io/brightcolor/gastrobook:l
 | Warteliste (online + intern, Angebote per Mail mit Ablauf, Annahme-Link) | ✅ |
 | Gäste-CRM (Dedupe, Besuchszähler, No-Show-Zähler, Tags, sensible Notizen) | ✅ |
 | Stornolink / Änderungslink mit Secret-Token und Fristprüfung | ✅ |
+| Online-Umbuchung durch den Gast (Frist, Re-Check Tisch/Mitarbeiter) | ✅ |
+| Kundenkonto per Magic-Link (passwortlos): Termine ansehen, umbuchen, stornieren | ✅ |
+| E-Mail-Bestätigung aktivierbar (Gast bestätigt Adresse beim ersten Buchen) | ✅ |
 | E-Mail-Vorlagen (pro Tenant/Standort überschreibbar, Platzhalter, DE/EN) | ✅ |
 | Reminder- & Feedback-Follow-up-Jobs (Scheduler) | ✅ |
 | Feedback-Booster (intern erfassen, positives Feedback → externes Portal) | ✅ |
