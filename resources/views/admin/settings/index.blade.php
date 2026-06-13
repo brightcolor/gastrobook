@@ -3,6 +3,29 @@
 @section('content')
 <h1 class="mb-5 text-2xl font-bold">Einstellungen – {{ $location->name }}</h1>
 
+{{-- Betriebstyp --}}
+@php $tenant = app(\App\Support\TenantContext::class)->tenant(); @endphp
+<div class="mb-6 rounded-2xl bg-white p-5 shadow-sm">
+    <h2 class="mb-3 font-bold">Betriebstyp</h2>
+    <p class="mb-3 text-sm text-stone-500">Bestimmt das Buchungsmodell für diesen Mandanten. Umschalten ändert die Navigation und die öffentliche Buchungsseite.</p>
+    <form method="POST" action="{{ route('admin.settings.tenant-type') }}" class="flex flex-wrap items-end gap-4">
+        @csrf @method('PUT')
+        <div class="flex gap-3">
+            @foreach(\App\Enums\TenantType::cases() as $type)
+                <label class="flex cursor-pointer items-center gap-2 rounded-xl border-2 px-4 py-3 text-sm font-semibold
+                    {{ $tenant->type === $type ? 'border-teal-600 bg-teal-50 text-teal-800' : 'border-stone-200 hover:border-stone-400' }}">
+                    <input type="radio" name="type" value="{{ $type->value }}"
+                           @checked($tenant->type === $type) class="sr-only">
+                    {{ $type->icon() }} {{ $type->label() }}
+                </label>
+            @endforeach
+        </div>
+        <button type="submit" class="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700">
+            Speichern
+        </button>
+    </form>
+</div>
+
 <div class="mb-4 rounded-2xl bg-white p-4 text-sm shadow-sm">
     Öffentliche Buchungsseite:
     <a href="{{ route('booking.show', [$location->tenant->slug, $location->slug]) }}" target="_blank"

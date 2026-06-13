@@ -33,13 +33,19 @@
         @endif
         <nav class="flex-1 space-y-0.5 px-3 text-sm">
             @php
+                $isSalon = $tenant?->isSalon();
                 $items = [
                     ['route' => 'admin.dashboard', 'label' => 'Dashboard', 'icon' => '📊', 'perm' => null],
-                    ['route' => 'admin.reservations.index', 'label' => 'Reservierungen', 'icon' => '📖', 'perm' => 'reservations.view'],
-                    ['route' => 'admin.floorplan.index', 'label' => 'Tischplan', 'icon' => '🪑', 'perm' => 'reservations.view'],
+                    ['route' => 'admin.reservations.index', 'label' => $isSalon ? 'Termine' : 'Reservierungen', 'icon' => '📖', 'perm' => 'reservations.view'],
+                    ...($isSalon ? [
+                        ['route' => 'admin.services.index', 'label' => 'Leistungen', 'icon' => '✂️', 'perm' => 'tables.manage'],
+                        ['route' => 'admin.staff.index', 'label' => 'Mitarbeiter', 'icon' => '👤', 'perm' => 'tables.manage'],
+                    ] : [
+                        ['route' => 'admin.floorplan.index', 'label' => 'Tischplan', 'icon' => '🪑', 'perm' => 'reservations.view'],
+                    ]),
                     ['route' => 'admin.walkins.index', 'label' => 'Walk-ins', 'icon' => '🚶', 'perm' => 'walkins.create'],
                     ['route' => 'admin.waitlist.index', 'label' => 'Warteliste', 'icon' => '⏳', 'perm' => 'waitlist.manage'],
-                    ['route' => 'admin.guests.index', 'label' => 'Gäste', 'icon' => '👥', 'perm' => 'guests.view'],
+                    ['route' => 'admin.guests.index', 'label' => 'Kunden', 'icon' => '👥', 'perm' => 'guests.view'],
                     ['route' => 'admin.events.index', 'label' => 'Events', 'icon' => '🎉', 'perm' => 'events.manage'],
                     ['route' => 'admin.reports.index', 'label' => 'Berichte', 'icon' => '📈', 'perm' => 'reports.view'],
                     ['route' => 'admin.settings.index', 'label' => 'Einstellungen', 'icon' => '⚙️', 'perm' => 'tables.manage'],

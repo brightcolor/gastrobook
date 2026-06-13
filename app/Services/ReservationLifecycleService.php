@@ -134,6 +134,8 @@ class ReservationLifecycleService
                 'guest_note' => $data['guest_note'] ?? null,
                 'allergy_note' => $data['allergy_note'] ?? null,
                 'internal_note' => $data['internal_note'] ?? null,
+                'service_id' => $data['service_id'] ?? null,
+                'staff_member_id' => $data['staff_member_id'] ?? null,
                 'payment_status' => $paymentStatus,
                 'payment_amount_minor' => $paymentAmount,
                 'currency' => $paymentAmount !== null ? $location->currency : null,

@@ -8,7 +8,9 @@ use App\Http\Controllers\Admin\FloorPlanController;
 use App\Http\Controllers\Admin\GuestController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ReservationBookController;
+use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\StaffMemberController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Admin\WaitlistAdminController;
 use App\Http\Controllers\Admin\WalkInController;
@@ -199,6 +201,24 @@ Route::middleware(['auth', 'tenant'])->prefix('admin')->name('admin.')->group(fu
             ->middleware('permission:opening_hours.manage')->name('settings.opening-hours');
         Route::post('/settings/special-hours', [SettingsController::class, 'storeSpecialHours'])
             ->middleware('permission:special_hours.manage')->name('settings.special-hours');
+        Route::put('/settings/tenant-type', [SettingsController::class, 'updateTenantType'])
+            ->middleware('permission:tenant.settings.manage')->name('settings.tenant-type');
+    });
+
+    // Salon: Leistungen
+    Route::middleware(['permission:tables.manage'])->group(function () {
+        Route::get('/services', [ServiceController::class, 'index'])->name('services.index');
+        Route::post('/services', [ServiceController::class, 'store'])->name('services.store');
+        Route::put('/services/{service}', [ServiceController::class, 'update'])->name('services.update');
+        Route::delete('/services/{service}', [ServiceController::class, 'destroy'])->name('services.destroy');
+    });
+
+    // Salon: Mitarbeiter
+    Route::middleware(['permission:tables.manage'])->group(function () {
+        Route::get('/staff', [StaffMemberController::class, 'index'])->name('staff.index');
+        Route::post('/staff', [StaffMemberController::class, 'store'])->name('staff.store');
+        Route::put('/staff/{member}', [StaffMemberController::class, 'update'])->name('staff.update');
+        Route::delete('/staff/{member}', [StaffMemberController::class, 'destroy'])->name('staff.destroy');
     });
 
     // Users & roles

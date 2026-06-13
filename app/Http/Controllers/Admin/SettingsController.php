@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\TenantType;
 use App\Http\Controllers\Controller;
 use App\Models\DepositRule;
 use App\Models\IntegrationConnection;
@@ -399,6 +400,24 @@ class SettingsController extends Controller
         $this->audit->log('opening_hours.updated', null, null, ['count' => count($validated['hours'])]);
 
         return back()->with('success', __('Öffnungszeiten gespeichert.'));
+    }
+
+    public function updateTenantType(Request $request)
+    {
+        $tenant = $this->context->tenant();
+
+        $validated = $request->validate([
+            'type' => ['required', 'string', 'in:restaurant,salon'],
+        ]);
+
+        $old = $tenant->type->value;
+        $tenant->update(['type' => TenantType::from($validated['type'])]);
+
+        $this->audit->log('tenant.type_changed', $tenant, ['type' => $old], ['type' => $validated['type']]);
+
+        return back()->with('success', __('Betriebstyp geändert auf: :type', [
+            'type' => TenantType::from($validated['type'])->label(),
+        ]));
     }
 
     public function storeSpecialHours(Request $request)

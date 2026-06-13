@@ -34,7 +34,7 @@ class Reservation extends Model
     use BelongsToTenant, HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'tenant_id', 'location_id', 'guest_id', 'event_id',
+        'tenant_id', 'location_id', 'guest_id', 'event_id', 'service_id', 'staff_member_id',
         'code', 'manage_token', 'party_size', 'reservation_date',
         'start_at', 'end_at', 'timezone', 'status', 'source', 'occasion',
         'guest_name_snapshot', 'guest_email_snapshot', 'guest_phone_snapshot',
@@ -93,6 +93,16 @@ class Reservation extends Model
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class);
+    }
+
+    public function service(): BelongsTo
+    {
+        return $this->belongsTo(Service::class);
+    }
+
+    public function staffMember(): BelongsTo
+    {
+        return $this->belongsTo(StaffMember::class);
     }
 
     public function tables(): BelongsToMany

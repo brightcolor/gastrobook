@@ -7,12 +7,17 @@ use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\Location;
 use App\Models\Reservation;
+use App\Models\Service;
+use App\Models\StaffMember;
 use App\Models\Tenant;
 use App\Services\Payments\PaymentProviderManager;
 use App\Services\ReservationAvailabilityService;
 use App\Services\ReservationLifecycleService;
+use App\Services\SalonAvailabilityService;
 use App\Services\WaitlistService;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -20,6 +25,7 @@ class PublicBookingController extends Controller
 {
     public function __construct(
         private readonly ReservationAvailabilityService $availability,
+        private readonly SalonAvailabilityService $salonAvailability,
         private readonly ReservationLifecycleService $lifecycle,
         private readonly WaitlistService $waitlist,
     ) {}
@@ -35,17 +41,32 @@ class PublicBookingController extends Controller
             ->where('starts_at', '>', now())
             ->count();
 
-        return view('public.booking', [
+        $data = [
             'tenant' => $tenant,
             'location' => $location,
             'settings' => $location->effectiveSettings(),
             'upcomingEvents' => $upcomingEvents,
-        ]);
+        ];
+
+        if ($tenant->isSalon()) {
+            $data['services'] = Service::where('location_id', $location->id)
+                ->where('is_active', true)
+                ->with('staff')
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get();
+        }
+
+        return view('public.booking', $data);
     }
 
     public function slots(Request $request, string $tenantSlug, string $locationSlug)
     {
-        [, $location] = $this->resolve($tenantSlug, $locationSlug);
+        [$tenant, $location] = $this->resolve($tenantSlug, $locationSlug);
+
+        if ($tenant->isSalon()) {
+            return $this->salonSlots($request, $location);
+        }
 
         $validated = $request->validate([
             'date' => ['required', 'date_format:Y-m-d'],
@@ -71,9 +92,49 @@ class PublicBookingController extends Controller
         return response()->json($response);
     }
 
+    private function salonSlots(Request $request, Location $location): JsonResponse
+    {
+        $validated = $request->validate([
+            'date' => ['required', 'date_format:Y-m-d'],
+            'service_id' => ['required', 'integer', 'exists:services,id'],
+            'staff_member_id' => ['nullable', 'integer'],
+        ]);
+
+        $service = Service::where('location_id', $location->id)
+            ->where('is_active', true)
+            ->findOrFail((int) $validated['service_id']);
+
+        $localDate = CarbonImmutable::parse($validated['date'], $location->timezone)->startOfDay();
+        $staffId = (int) ($validated['staff_member_id'] ?? 0);
+
+        $slotsByStaff = $this->salonAvailability->slotsByStaff($location, $service, $localDate);
+        $slots = $slotsByStaff[$staffId] ?? $slotsByStaff[0] ?? [];
+        $available = array_values(array_filter($slots, fn ($s) => $s['available']));
+
+        // Provide per-staff availability so the frontend can show who is free
+        $staffInfo = [];
+        foreach ($slotsByStaff as $id => $staffSlots) {
+            if ($id === 0) {
+                continue;
+            }
+            $staffInfo[$id] = array_values(array_filter($staffSlots, fn ($s) => $s['available']));
+        }
+
+        return response()->json([
+            'date' => $validated['date'],
+            'slots' => array_map(fn ($s) => $s['time'], $available),
+            'staff_slots' => $staffInfo,
+        ]);
+    }
+
     public function store(Request $request, string $tenantSlug, string $locationSlug)
     {
-        [, $location] = $this->resolve($tenantSlug, $locationSlug);
+        [$tenant, $location] = $this->resolve($tenantSlug, $locationSlug);
+
+        if ($tenant->isSalon()) {
+            return $this->storeSalon($request, $location);
+        }
+
         $settings = $location->effectiveSettings();
 
         // Honeypot: bots fill the hidden "website" field
@@ -130,6 +191,86 @@ class PublicBookingController extends Controller
                 ->withErrors($e->errors())
                 ->withInput()
                 ->with('alternatives', $alternatives);
+        }
+
+        return redirect()->route('booking.confirmation', [
+            'code' => $reservation->code,
+            'token' => $reservation->manage_token,
+        ]);
+    }
+
+    private function storeSalon(Request $request, Location $location): RedirectResponse
+    {
+        if ($request->filled('website')) {
+            abort(422);
+        }
+
+        $settings = $location->effectiveSettings();
+
+        $validated = $request->validate([
+            'service_id' => ['required', 'integer', 'exists:services,id'],
+            'staff_member_id' => ['nullable', 'integer'],
+            'date' => ['required', 'date_format:Y-m-d'],
+            'time' => ['required', 'date_format:H:i'],
+            'name' => ['required', 'string', 'max:120'],
+            'email' => ['required', 'email:rfc'],
+            'phone' => ['nullable', 'string', 'max:40'],
+            'note' => ['nullable', 'string', 'max:1000'],
+            'privacy_accepted' => ['accepted'],
+            'newsletter' => ['nullable', 'boolean'],
+        ]);
+
+        $service = Service::where('location_id', $location->id)
+            ->where('is_active', true)
+            ->findOrFail((int) $validated['service_id']);
+
+        $startLocal = CarbonImmutable::parse($validated['date'].' '.$validated['time'], $location->timezone);
+        $startUtc = $startLocal->utc();
+
+        // Resolve staff member (explicit choice or auto-assign first available)
+        $staffMemberId = (int) ($validated['staff_member_id'] ?? 0);
+        if ($staffMemberId > 0) {
+            $staff = StaffMember::where('location_id', $location->id)
+                ->where('is_active', true)
+                ->findOrFail($staffMemberId);
+            $endUtc = $startUtc->addMinutes($service->duration_minutes);
+            $conflict = $staff->reservations()
+                ->withoutGlobalScope('tenant')
+                ->whereIn('status', ReservationStatus::activeStatuses())
+                ->where('start_at', '<', $endUtc)
+                ->where('end_at', '>', $startUtc)
+                ->exists();
+            if ($conflict) {
+                return back()->withErrors(['time' => __('Dieser Mitarbeiter ist zu diesem Zeitpunkt nicht verfügbar.')])->withInput();
+            }
+        } else {
+            $staff = $this->salonAvailability->firstAvailableStaff($service, $startUtc);
+            if ($staff === null) {
+                return back()->withErrors(['time' => __('Zu diesem Zeitpunkt ist kein Mitarbeiter verfügbar. Bitte einen anderen Termin wählen.')])->withInput();
+            }
+        }
+
+        try {
+            $reservation = $this->lifecycle->create($location, [
+                'party_size' => 1,
+                'start_local' => $startLocal,
+                'duration_minutes' => $service->duration_minutes,
+                'source' => 'online',
+                'service_id' => $service->id,
+                'staff_member_id' => $staff->id,
+                'guest_name' => $validated['name'],
+                'guest_email' => $validated['email'],
+                'guest_phone' => $validated['phone'] ?? null,
+                'guest_note' => $validated['note'] ?? null,
+                'skip_availability_check' => true,
+                'consents' => [
+                    'privacy' => true,
+                    'newsletter' => (bool) ($validated['newsletter'] ?? false),
+                ],
+                'ip' => $request->ip(),
+            ]);
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
         }
 
         return redirect()->route('booking.confirmation', [

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\TenantType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,7 +16,7 @@ class Tenant extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'name', 'slug', 'plan_id', 'status', 'trial_ends_at',
+        'name', 'slug', 'type', 'plan_id', 'status', 'trial_ends_at',
         'default_locale', 'default_currency',
         'brand_logo_path', 'brand_primary_color', 'brand_accent_color',
         'mail_from_name', 'mail_reply_to',
@@ -26,6 +27,7 @@ class Tenant extends Model
     protected function casts(): array
     {
         return [
+            'type' => TenantType::class,
             'trial_ends_at' => 'datetime',
             'settings' => 'array',
             'feature_overrides' => 'array',
@@ -68,6 +70,16 @@ class Tenant extends Model
     public function isActive(): bool
     {
         return $this->status === 'active';
+    }
+
+    public function isRestaurant(): bool
+    {
+        return ($this->type ?? TenantType::Restaurant) === TenantType::Restaurant;
+    }
+
+    public function isSalon(): bool
+    {
+        return $this->type === TenantType::Salon;
     }
 
     public function hasFeature(string $feature): bool
