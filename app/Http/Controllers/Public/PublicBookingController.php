@@ -56,10 +56,44 @@ class PublicBookingController extends Controller
         return $guest === null || $guest->email_verified_at === null;
     }
 
+    /**
+     * Short entry point: /book/{tenant}
+     *  - exactly one bookable location → show its booking page directly
+     *    (so the shop name only appears once in the URL)
+     *  - several locations → a chooser; picking one appends its slug
+     */
+    public function landing(string $tenantSlug)
+    {
+        $tenant = Tenant::where('slug', $tenantSlug)->where('status', 'active')->firstOrFail();
+
+        $locations = Location::withoutGlobalScope('tenant')
+            ->where('tenant_id', $tenant->id)
+            ->where('is_active', true)
+            ->where('online_booking_enabled', true)
+            ->orderBy('name')
+            ->get();
+
+        abort_if($locations->isEmpty(), 404);
+
+        if ($locations->count() === 1) {
+            return $this->renderBooking($tenant, $locations->first());
+        }
+
+        return view('public.locations', [
+            'tenant' => $tenant,
+            'locations' => $locations,
+        ]);
+    }
+
     public function show(string $tenantSlug, string $locationSlug)
     {
         [$tenant, $location] = $this->resolve($tenantSlug, $locationSlug);
 
+        return $this->renderBooking($tenant, $location);
+    }
+
+    private function renderBooking(Tenant $tenant, Location $location)
+    {
         $upcomingEvents = Event::withoutGlobalScope('tenant')
             ->where('location_id', $location->id)
             ->where('is_public', true)

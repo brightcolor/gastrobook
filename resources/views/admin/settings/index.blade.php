@@ -26,10 +26,18 @@
     </form>
 </div>
 
+@php
+    $bookableLocations = $location->tenant->locations()->where('is_active', true)->where('online_booking_enabled', true)->count();
+    $bookingUrl = $bookableLocations <= 1
+        ? route('booking.landing', $location->tenant->slug)
+        : route('booking.show', [$location->tenant->slug, $location->slug]);
+@endphp
 <div class="mb-4 rounded-2xl bg-white p-4 text-sm shadow-sm">
     Öffentliche Buchungsseite:
-    <a href="{{ route('booking.show', [$location->tenant->slug, $location->slug]) }}" target="_blank"
-       class="font-mono text-teal-700 underline">{{ route('booking.show', [$location->tenant->slug, $location->slug]) }}</a>
+    <a href="{{ $bookingUrl }}" target="_blank" class="font-mono text-teal-700 underline">{{ $bookingUrl }}</a>
+    @if($bookableLocations > 1)
+        <p class="mt-1 text-xs text-stone-500">Mehrere Standorte aktiv – unter <span class="font-mono">/book/{{ $location->tenant->slug }}</span> können Gäste den Standort wählen.</p>
+    @endif
 </div>
 
 <div class="grid gap-6 xl:grid-cols-2">

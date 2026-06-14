@@ -112,6 +112,7 @@ Fertige Docker-Images baut die CI automatisch: `ghcr.io/brightcolor/gastrobook:l
 | Walk-ins (freie Tische sofort, "frei bis", als Reservierung mit Quelle `walk_in`) | ✅ |
 | Warteliste (online + intern, Angebote per Mail mit Ablauf, Annahme-Link) | ✅ |
 | Nächste freie Termine bei ausgebuchtem Tag (Datum + Uhrzeit für die gewünschte Personenzahl, direkt anklickbar) | ✅ |
+| Kurze Buchungs-URL `/book/{laden}` (1 Standort: direkt; mehrere: Standortauswahl, Slug wird angehängt) | ✅ |
 | Gäste-CRM (Dedupe, Besuchszähler, No-Show-Zähler, Tags, sensible Notizen) | ✅ |
 | Stornolink / Änderungslink mit Secret-Token und Fristprüfung | ✅ |
 | Online-Umbuchung durch den Gast (Frist, Re-Check Tisch/Mitarbeiter) | ✅ |

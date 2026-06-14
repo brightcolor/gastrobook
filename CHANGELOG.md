@@ -4,6 +4,17 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.20.0] – 2026-06-14
+
+### Neu / Geändert
+- **Kürzere Buchungs-URL `/book/{laden}`:**
+  - Bei **nur einem Standort** öffnet diese URL direkt die Buchungsseite – der
+    Ladenname steht also nur **einmal** in der Adresse (kein doppelter Slug mehr).
+  - Bei **mehreren Standorten** erscheint eine **Auswahlseite**; nach der Wahl
+    wird der **Standortname an die URL angehängt** (`/book/{laden}/{standort}`).
+  - Die Einstellungen zeigen automatisch die passende (kurze) öffentliche URL.
+  - Die bisherige URL `/book/{laden}/{standort}` funktioniert weiterhin.
+
 ## [1.19.1] – 2026-06-14
 
 ### Geändert
@@ -433,6 +444,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.20.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.20.0
 [1.19.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.19.1
 [1.19.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.19.0
 [1.18.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.18.0
