@@ -106,7 +106,49 @@
         .tbl.occupied { background: var(--red-bg); border-color: var(--red); color: var(--red); }
         .tbl.blocked { background: var(--panel); border-color: var(--muted); color: var(--muted); border-style: dashed; }
         .tbl.round { border-radius: 50%; }
+        .tbl { cursor: pointer; transition: filter .12s, box-shadow .12s; }
+        .tbl:hover { filter: brightness(1.04); box-shadow: 0 0 0 3px var(--border), var(--shadow); }
+        .tbl.sel { box-shadow: 0 0 0 3px var(--brand), var(--shadow); }
         .plan-empty { color: var(--muted); font-size: 14px; padding: 40px; text-align: center; }
+
+        /* ---- Table detail drawer ---- */
+        .drawer-back { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 40; opacity: 0; pointer-events: none; transition: opacity .18s; }
+        .drawer-back.open { opacity: 1; pointer-events: auto; }
+        .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 400px; max-width: 92vw; z-index: 41; background: var(--panel);
+            border-left: 1px solid var(--border); box-shadow: -8px 0 24px rgba(0,0,0,.18); transform: translateX(100%);
+            transition: transform .2s ease; display: flex; flex-direction: column; }
+        .drawer.open { transform: translateX(0); }
+        .dwr-head { padding: 16px 18px; border-bottom: 1px solid var(--border); }
+        .dwr-head.st-free { background: var(--green-bg); } .dwr-head.st-soon { background: var(--amber-bg); }
+        .dwr-head.st-awaiting { background: var(--blue-bg); } .dwr-head.st-occupied { background: var(--red-bg); }
+        .dwr-head.st-no_show_risk { background: var(--amber-bg); } .dwr-head.st-blocked { background: var(--panel-2); }
+        .bs-free { background: var(--green); color: #fff; } .bs-soon { background: var(--amber); color: #fff; }
+        .bs-awaiting { background: var(--blue); color: #fff; } .bs-occupied { background: var(--red); color: #fff; }
+        .bs-no_show_risk { background: var(--red); color: #fff; } .bs-blocked { background: var(--muted); color: #fff; }
+        .dwr-top { display: flex; align-items: center; gap: 10px; }
+        .dwr-title { font-size: 22px; font-weight: 800; }
+        .dwr-x { margin-left: auto; cursor: pointer; border: none; background: transparent; font-size: 22px; line-height: 1; color: var(--muted); padding: 4px 8px; border-radius: 8px; }
+        .dwr-x:hover { background: rgba(0,0,0,.08); }
+        .dwr-sub { margin-top: 6px; font-size: 14px; font-weight: 700; }
+        .dwr-body { padding: 14px 18px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 14px; }
+        .dwr-sec h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 8px; }
+        .res { border: 1px solid var(--border); border-radius: 12px; padding: 11px 12px; background: var(--panel-2); }
+        .res + .res { margin-top: 8px; }
+        .res.now { border-color: var(--brand); }
+        .res .r1 { display: flex; align-items: baseline; gap: 8px; }
+        .res .r1 .t { font-weight: 800; font-variant-numeric: tabular-nums; }
+        .res .r1 .nm { font-weight: 700; }
+        .res .rl { color: var(--muted); font-size: 13px; margin-top: 4px; display: flex; flex-wrap: wrap; gap: 6px 12px; }
+        .res .rl a { color: var(--brand); text-decoration: none; font-weight: 600; }
+        .dwr-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+        .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+        .field label { font-size: 13px; font-weight: 600; color: var(--muted); }
+        .field input { border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; font-size: 15px; background: var(--panel-2); color: var(--text); }
+        .field input:focus { outline: none; border-color: var(--brand); }
+        .btn-block { width: 100%; padding: 11px; border: none; border-radius: 10px; background: var(--brand); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
+        .btn-block:disabled { opacity: .5; cursor: default; }
+        .btn-ghost { display: block; text-align: center; width: 100%; padding: 11px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-2); color: var(--text); font-size: 15px; font-weight: 700; cursor: pointer; text-decoration: none; }
+        @media (max-width: 520px) { .drawer { width: 100vw; } }
     </style>
 </head>
 <body>
@@ -150,6 +192,19 @@
     </div>
 </section>
 
+<div class="drawer-back" id="drawerBack"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+    <div class="dwr-head" id="dwrHead">
+        <div class="dwr-top">
+            <span class="dwr-title" id="dwrTitle">Tisch</span>
+            <span class="badge" id="dwrBadge"></span>
+            <button class="dwr-x" id="dwrClose" title="Schließen">×</button>
+        </div>
+        <div class="dwr-sub" id="dwrSub"></div>
+    </div>
+    <div class="dwr-body" id="dwrBody"></div>
+</aside>
+
 <main id="listView">
     <section class="col col-new">
         <h2>Neu &amp; offen</h2>
@@ -171,6 +226,8 @@
     const root = document.getElementById('root');
     let seenIds = new Set();
     let firstLoad = true;
+    let selectedTableId = null;   // currently opened table in the detail drawer
+    let meta = {};                // can_walkin, walkin_url, create_url
 
     // ---- Dark mode ----
     function applyDark(on) {
@@ -296,7 +353,9 @@
         firstLoad = false;
         setLive(true);
 
+        meta = { can_walkin: d.can_walkin, walkin_url: d.walkin_url, create_url: d.create_url };
         plan.update(d.floorplan);
+        drawer.refresh();   // live-update the open table panel
     }
 
     // ---- Floor plan view ----
@@ -358,12 +417,23 @@
                 const guest = t.guest ? '<span class="tg">' + esc(t.guest) + (t.party ? ' · ' + t.party + 'P' : '') + '</span>' : '';
                 const time = t.time ? '<span class="tt">' + esc(t.time) + '</span>' : '';
                 const rot = t.rotation ? 'transform:rotate(' + t.rotation + 'deg);' : '';
-                return '<div class="tbl ' + t.status + (t.shape === 'round' ? ' round' : '') + '" title="' + esc(t.name) + ' (' + esc(t.capacity) + ')'
+                return '<div class="tbl ' + t.status + (t.shape === 'round' ? ' round' : '')
+                    + (t.id === selectedTableId ? ' sel' : '') + '" data-table="' + t.id + '" title="' + esc(t.name) + ' (' + esc(t.capacity) + ')'
                     + (t.guest ? ' — ' + esc(t.guest) : '') + '" style="left:' + t.pos_x + 'px;top:' + t.pos_y
                     + 'px;width:' + t.width + 'px;height:' + t.height + 'px;' + rot + '">'
                     + '<span class="tn">' + esc(t.name) + '</span>' + guest + time + '</div>';
             }).join('');
             canvas.innerHTML = '<div class="roomname">' + esc(r.name) + '</div>' + tables;
+        }
+
+        canvas.addEventListener('click', e => {
+            const el = e.target.closest('.tbl');
+            if (el) drawer.open(+el.dataset.table);
+        });
+
+        function markSelected() {
+            canvas.querySelectorAll('.tbl').forEach(el =>
+                el.classList.toggle('sel', +el.dataset.table === selectedTableId));
         }
 
         function applyZoom() {
@@ -426,7 +496,152 @@
         }
 
         // restore persisted view once data lands (handled in update)
-        return { update };
+        return { update, markSelected, findTable: (id) => {
+            for (const r of rooms) {
+                const t = r.tables.find(x => x.id === id);
+                if (t) return { table: t, room: r };
+            }
+            return null;
+        } };
+    })();
+
+    // ---- Table detail drawer ----
+    const drawer = (function () {
+        const back = document.getElementById('drawerBack');
+        const el = document.getElementById('drawer');
+        const head = document.getElementById('dwrHead');
+        const title = document.getElementById('dwrTitle');
+        const badge = document.getElementById('dwrBadge');
+        const sub = document.getElementById('dwrSub');
+        const body = document.getElementById('dwrBody');
+
+        const LABEL = { free: 'Frei', soon: 'Ankunft bald', awaiting: 'Erwartet',
+            occupied: 'Belegt', no_show_risk: 'No-Show-Risiko', blocked: 'Gesperrt' };
+
+        function open(id) {
+            selectedTableId = id;
+            plan.markSelected();
+            render();
+            back.classList.add('open');
+            el.classList.add('open');
+            el.setAttribute('aria-hidden', 'false');
+        }
+        function close() {
+            selectedTableId = null;
+            plan.markSelected();
+            back.classList.remove('open');
+            el.classList.remove('open');
+            el.setAttribute('aria-hidden', 'true');
+        }
+        function refresh() { if (selectedTableId !== null) render(); }
+
+        function resCard(r) {
+            const seated = r.seated_since ? '<span>🪑 sitzt seit ' + esc(r.seated_since) + '</span>' : '';
+            const phone = r.phone ? '<a href="tel:' + esc(r.phone) + '">📞 ' + esc(r.phone) + '</a>' : '';
+            const src = r.source === 'walk_in' ? '<span>🚶 Walk-in</span>' : '';
+            const risk = r.risk >= 50 ? '<span style="color:var(--red)">⚠ No-Show-Risiko</span>' : '';
+            const note = r.note ? '<div class="rl">📝 ' + esc(r.note) + '</div>' : '';
+            const allergy = r.allergy ? '<div class="rl" style="color:var(--red)">⚠ ' + esc(r.allergy) + '</div>' : '';
+            const actions = (r.actions || []).map(a =>
+                '<button class="act ' + a.style + '" data-id="' + r.id + '" data-status="' + a.status + '">' + esc(a.label) + '</button>'
+            ).join('');
+            return '<div class="res ' + (r.is_current ? 'now' : '') + '">'
+                + '<div class="r1"><span class="t">' + esc(r.from) + '–' + esc(r.to) + '</span>'
+                + '<span class="nm">' + esc(r.name) + '</span>'
+                + '<span class="party">' + r.party + ' P</span>'
+                + '<span style="flex:1"></span><span class="badge s-' + r.status + '">' + esc(r.status_label) + '</span></div>'
+                + '<div class="rl">' + seated + src + phone + risk + '</div>'
+                + note + allergy
+                + (actions ? '<div class="dwr-actions">' + actions + '</div>' : '')
+                + '</div>';
+        }
+
+        function render() {
+            const found = plan.findTable(selectedTableId);
+            if (!found) { close(); return; }
+            const t = found.table;
+
+            head.className = 'dwr-head st-' + t.status;
+            title.textContent = 'Tisch ' + t.name;
+            badge.textContent = LABEL[t.status] || t.status;
+            badge.className = 'badge bs-' + t.status;
+            sub.textContent = found.room.name + ' · ' + t.capacity + ' Pers.';
+
+            const resv = t.reservations || [];
+            let html = '';
+
+            if (resv.length) {
+                const current = resv.filter(r => r.is_current);
+                const later = resv.filter(r => !r.is_current);
+                if (current.length) html += '<div class="dwr-sec"><h3>Aktuell</h3>' + current.map(resCard).join('') + '</div>';
+                if (later.length) html += '<div class="dwr-sec"><h3>' + (current.length ? 'Weitere heute' : 'Heute') + '</h3>' + later.map(resCard).join('') + '</div>';
+            } else if (t.status === 'blocked') {
+                html += '<div class="dwr-sec"><p style="color:var(--muted);font-size:14px;margin:0">Dieser Tisch ist aktuell gesperrt.</p></div>';
+            } else {
+                html += '<div class="dwr-sec"><p style="color:var(--muted);font-size:14px;margin:0">Aktuell frei – keine Buchungen für heute.</p></div>';
+            }
+
+            // Walk-in form (only when no one currently sitting and walk-ins enabled)
+            const occupied = resv.some(r => r.is_current);
+            if (!occupied && t.status !== 'blocked' && meta.can_walkin) {
+                html += '<div class="dwr-sec"><h3>Walk-in platzieren</h3>'
+                    + '<form id="walkinForm">'
+                    + '<div class="field"><label>Personen</label><input type="number" name="party_size" min="1" max="' + (t.max_capacity || 20) + '" value="' + (t.min_capacity || 2) + '" required></div>'
+                    + '<div class="field"><label>Name (optional)</label><input type="text" name="name" maxlength="120" placeholder="Laufkundschaft"></div>'
+                    + '<div class="field"><label>Telefon (optional)</label><input type="tel" name="phone" maxlength="40"></div>'
+                    + '<button type="submit" class="btn-block" id="walkinSubmit">🚶 Hier platzieren</button>'
+                    + '<div id="walkinErr" style="color:var(--red);font-size:13px;margin-top:8px;display:none"></div>'
+                    + '</form></div>';
+            }
+
+            // Always offer a full booking for this table
+            html += '<div class="dwr-sec"><a class="btn-ghost" href="' + meta.create_url + '?table_id=' + t.id + '">＋ Reservierung für diesen Tisch</a></div>';
+
+            body.innerHTML = html;
+
+            // wire status actions (reuse the board transition action)
+            body.querySelectorAll('.act').forEach(b =>
+                b.addEventListener('click', () => act(b.dataset.id, b.dataset.status, b)));
+
+            const form = document.getElementById('walkinForm');
+            if (form) form.addEventListener('submit', e => submitWalkin(e, t.id));
+        }
+
+        async function submitWalkin(e, tableId) {
+            e.preventDefault();
+            const form = e.target;
+            const btn = document.getElementById('walkinSubmit');
+            const errEl = document.getElementById('walkinErr');
+            errEl.style.display = 'none';
+            btn.disabled = true;
+            try {
+                const res = await fetch(meta.walkin_url, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        table_id: tableId,
+                        party_size: +form.party_size.value,
+                        name: form.name.value || null,
+                        phone: form.phone.value || null,
+                    }),
+                });
+                if (!res.ok) {
+                    const j = await res.json().catch(() => ({}));
+                    throw new Error(j.message || (j.errors ? Object.values(j.errors)[0][0] : 'Walk-in fehlgeschlagen.'));
+                }
+                await load();   // refresh board + drawer (table becomes occupied)
+            } catch (err) {
+                btn.disabled = false;
+                errEl.textContent = err.message;
+                errEl.style.display = 'block';
+            }
+        }
+
+        back.addEventListener('click', close);
+        document.getElementById('dwrClose').addEventListener('click', close);
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+
+        return { open, close, refresh };
     })();
 
     async function load() {

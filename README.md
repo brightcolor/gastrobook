@@ -104,6 +104,7 @@ Fertige Docker-Images baut die CI automatisch: `ghcr.io/brightcolor/gastrobook:l
 | Automatische Tischzuweisung (kleinster passender Tisch, Prioritäten, Kombinationen) | ✅ |
 | Live-Board fürs Personal (neue/anstehende Buchungen, Inline-Aktionen, Dark Mode, Vollbild, Echtzeit via SSE) | ✅ |
 | Live-Board mit Tischplan-Ansicht (Tische wie im Admin angelegt, Statusfarben, mehrere Räume mit Tabs, Zoom/Einpassen, Touch-Swipe, Raumname) | ✅ |
+| Tisch-Detail-Panel im Board (Tisch antippen: Belegung, Zeiten, Gast/Telefon, Statuswechsel, Walk-in platzieren, Reservierung für den Tisch anlegen) | ✅ |
 | Internes Reservierungsbuch (Filter, Suche, Schnellaktionen, Statushistorie) | ✅ |
 | Grafischer Tischplan (Statusfarben, Drag&Drop-Editor, Live-Refresh, Touch) | ✅ |
 | Öffentlicher Tischplan auf der Buchungsseite (Verfügbarkeit live, optionale Tischwahl, Räume/Etagen) | ✅ |

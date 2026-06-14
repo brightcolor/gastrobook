@@ -94,6 +94,7 @@ class ReservationBookController extends Controller
                 'date' => $request->input('date', CarbonImmutable::now($location->timezone)->toDateString()),
                 'time' => $request->input('time', '19:00'),
                 'party_size' => (int) $request->input('party_size', 2),
+                'table_id' => $request->filled('table_id') ? (int) $request->input('table_id') : null,
             ],
         ]);
     }

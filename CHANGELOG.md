@@ -4,6 +4,22 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.14.0] – 2026-06-14
+
+### Neu
+- **Tisch antippen → Detail-Panel:** Klick/Tipp auf einen Tisch im Live-Board
+  öffnet eine Übersicht – Status (farblich passend), Kapazität, alle heutigen
+  Buchungen mit Zeit (von–bis), Personenzahl, Gast, Telefon (Tel-Link),
+  Notiz/Allergien, No-Show-Risiko und „belegt/sitzt seit". Aktualisiert sich
+  live mit dem Board.
+- **Aktionen direkt am Tisch:** Statuswechsel (z. B. Eingetroffen, Fertig,
+  No-Show, Bestätigen) lassen sich direkt aus dem Panel auslösen.
+- **Walk-in vom Plan platzieren:** Freie Tische bieten ein Schnellformular
+  (Personen, optional Name/Telefon) zum sofortigen Platzieren – sichtbar nur,
+  wenn Walk-ins aktiviert sind und die Berechtigung vorliegt.
+- **Reservierung für einen Tisch anlegen:** Direktlink ins Buchungsformular mit
+  vorausgewähltem Tisch.
+
 ## [1.13.0] – 2026-06-14
 
 ### Neu
@@ -275,6 +291,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.14.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.14.0
 [1.13.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.13.0
 [1.12.2]: https://github.com/brightcolor/gastrobook/releases/tag/v1.12.2
 [1.12.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.12.1

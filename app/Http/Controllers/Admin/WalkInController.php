@@ -86,6 +86,14 @@ class WalkInController extends Controller
             'skip_availability_check' => false,
         ], $request->user());
 
+        if ($request->wantsJson()) {
+            return response()->json([
+                'ok' => true,
+                'code' => $reservation->code,
+                'message' => __('Walk-in platziert (:code).', ['code' => $reservation->code]),
+            ]);
+        }
+
         return redirect()->route('admin.walkins.index')
             ->with('success', __('Walk-in platziert (:code).', ['code' => $reservation->code]));
     }

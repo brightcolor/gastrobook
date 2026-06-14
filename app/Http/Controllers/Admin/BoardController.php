@@ -151,6 +151,45 @@ class BoardController extends Controller
             'new' => $new->values()->all(),
             'timeline' => $timeline->values()->all(),
             'floorplan' => $isSalon ? null : $this->floorplan($location, $nowLocal),
+            'can_walkin' => ! $isSalon
+                && (bool) $location->effectiveSettings()->walkins_enabled
+                && (bool) auth()->user()?->canInTenant('walkins.create', $this->context->tenant(), $location),
+            'walkin_url' => route('admin.walkins.store'),
+            'create_url' => route('admin.reservations.create'),
+        ];
+    }
+
+    /**
+     * One reservation as shown in a table's detail panel.
+     *
+     * @return array<string, mixed>
+     */
+    private function presentTableReservation(Reservation $r, CarbonImmutable $nowLocal): array
+    {
+        $status = $r->status->value;
+        $start = $r->localStart();
+        $seatedSince = $r->seated_at?->copy()->setTimezone($nowLocal->timezone)->format('H:i');
+
+        return [
+            'id' => $r->id,
+            'code' => $r->code,
+            'name' => $r->guest_name_snapshot,
+            'party' => $r->party_size,
+            'from' => $start->format('H:i'),
+            'to' => $r->localEnd()->format('H:i'),
+            'status' => $status,
+            'status_label' => __('reservations.status.'.$status),
+            'source' => $r->source,
+            'phone' => $r->guest_phone_snapshot,
+            'note' => $r->guest_note,
+            'allergy' => $r->allergy_note,
+            'risk' => (int) $r->no_show_risk,
+            'seated_since' => in_array($status, [
+                ReservationStatus::Seated->value,
+                ReservationStatus::PartiallyArrived->value,
+            ], true) ? ($seatedSince ?? $start->format('H:i')) : null,
+            'is_current' => $r->start_at->lte($nowLocal->utc()) && $r->end_at->gt($nowLocal->utc()),
+            'actions' => $this->actionsFor($r->status),
         ];
     }
 
@@ -197,7 +236,7 @@ class BoardController extends Controller
             'is_outdoor' => (bool) $room->is_outdoor,
             'plan_width' => (int) ($room->plan_width ?: 1000),
             'plan_height' => (int) ($room->plan_height ?: 700),
-            'tables' => $room->tables->map(function ($t) use ($reservations, $atUtc, $soonUtc, $blockedIds) {
+            'tables' => $room->tables->map(function ($t) use ($reservations, $atUtc, $soonUtc, $blockedIds, $nowLocal) {
                 $current = $reservations->first(fn ($r) => $r->tables->contains('id', $t->id)
                     && $r->start_at->lte($atUtc) && $r->end_at->gt($atUtc));
                 $upcoming = $reservations->first(fn ($r) => $r->tables->contains('id', $t->id)
@@ -217,6 +256,14 @@ class BoardController extends Controller
 
                 $info = $current ?? $upcoming;
 
+                // Full schedule of this table for today (for the detail panel).
+                $schedule = $reservations
+                    ->filter(fn ($r) => $r->tables->contains('id', $t->id))
+                    ->sortBy('start_at')
+                    ->map(fn ($r) => $this->presentTableReservation($r, $nowLocal))
+                    ->values()
+                    ->all();
+
                 return [
                     'id' => $t->id,
                     'name' => $t->name,
@@ -228,11 +275,15 @@ class BoardController extends Controller
                     'shape' => $t->shape ?: 'rect',
                     'rotation' => (int) $t->rotation,
                     'capacity' => $t->min_capacity.'–'.$t->max_capacity,
+                    'min_capacity' => (int) $t->min_capacity,
+                    'max_capacity' => (int) $t->max_capacity,
                     'guest' => $info?->guest_name_snapshot,
                     'party' => $info?->party_size,
                     'time' => $current
                         ? 'bis '.$current->localEnd()->format('H:i')
                         : ($upcoming ? 'ab '.$upcoming->localStart()->format('H:i') : null),
+                    'current_id' => $current?->id,
+                    'reservations' => $schedule,
                 ];
             })->values()->all(),
         ])->values()->all();

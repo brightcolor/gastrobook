@@ -111,6 +111,58 @@ class BoardTest extends TestCase
         $this->assertSame('free', $free['status']);
     }
 
+    public function test_floorplan_table_carries_reservation_details_and_actions(): void
+    {
+        $setup = $this->createTenantSetup();
+        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
+
+        $reservation = $this->todayReservation($setup['location']->id, $setup['tenant']->id, ReservationStatus::Seated);
+        $start = CarbonImmutable::now('Europe/Berlin')->subMinutes(30);
+        $reservation->update([
+            'start_at' => $start->utc(),
+            'end_at' => $start->addHours(2)->utc(),
+            'seated_at' => $start->utc(),
+            'guest_phone_snapshot' => '+49 30 999',
+        ]);
+        $reservation->tables()->attach($setup['tables'][0]->id);
+        $this->clearTenantContext();
+
+        $response = $this->actingAs($admin)->getJson('/admin/board/data')->assertOk()
+            ->assertJson(['can_walkin' => true]);
+
+        $rooms = $response->json('floorplan');
+        $table = collect($rooms[0]['tables'])->firstWhere('id', $setup['tables'][0]->id);
+
+        $this->assertCount(1, $table['reservations']);
+        $res = $table['reservations'][0];
+        $this->assertSame('Board Gast', $res['name']);
+        $this->assertSame('+49 30 999', $res['phone']);
+        $this->assertTrue($res['is_current']);
+        $this->assertNotNull($res['seated_since']);
+        // Seated reservation offers a "Fertig" (completed) action.
+        $this->assertSame('completed', $res['actions'][0]['status']);
+    }
+
+    public function test_walkin_can_be_placed_from_board_as_json(): void
+    {
+        $setup = $this->createTenantSetup();
+        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
+        $this->clearTenantContext();
+
+        $response = $this->actingAs($admin)->postJson('/admin/walkins', [
+            'table_id' => $setup['tables'][0]->id,
+            'party_size' => 2,
+            'name' => 'Spontan',
+        ])->assertOk()->assertJson(['ok' => true]);
+
+        $this->assertNotEmpty($response->json('code'));
+        $this->assertDatabaseHas('reservations', [
+            'location_id' => $setup['location']->id,
+            'source' => 'walk_in',
+            'guest_name_snapshot' => 'Spontan',
+        ]);
+    }
+
     public function test_salon_board_has_no_floorplan(): void
     {
         $setup = $this->createTenantSetup();

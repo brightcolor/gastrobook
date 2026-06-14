@@ -61,7 +61,7 @@
             @foreach($rooms as $room)
                 <optgroup label="{{ $room->name }}">
                     @foreach($room->tables as $table)
-                        <option value="{{ $table->id }}">{{ $table->name }} ({{ $table->min_capacity }}–{{ $table->max_capacity }} P.)</option>
+                        <option value="{{ $table->id }}" @selected(collect(old('table_ids', $prefill['table_id'] ? [$prefill['table_id']] : []))->contains($table->id))>{{ $table->name }} ({{ $table->min_capacity }}–{{ $table->max_capacity }} P.)</option>
                     @endforeach
                 </optgroup>
             @endforeach
