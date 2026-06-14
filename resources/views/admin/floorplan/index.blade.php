@@ -265,8 +265,18 @@
         const pct = t.seats ? Math.round((t.occupied || 0) / t.seats * 100) : 0;
         let body;
         if (t.current) {
+            const cur = t.current.party, full = cur >= t.seats;
             body = `<p class="pp-line"><strong>${esc(t.current.name)}</strong></p>
-                <p class="pp-sub">${t.current.party} Personen · bis ${t.current.until} Uhr</p>
+                <p class="pp-sub">bis ${t.current.until} Uhr</p>
+                <div class="pp-party">
+                    <span class="pp-plabel">Gäste am Tisch</span>
+                    <div class="pp-step-row">
+                        <button class="pp-step" data-d="-1" ${cur <= 1 ? 'disabled' : ''}>−</button>
+                        <span class="pp-pcount">${cur} / ${t.seats}</span>
+                        <button class="pp-step" data-d="1" ${full ? 'disabled' : ''}>＋</button>
+                    </div>
+                </div>
+                ${full ? '<p class="pp-note">Tisch voll – für mehr Gäste einen größeren oder zusätzlichen Tisch nutzen.</p>' : ''}
                 <a href="/admin/reservations/${t.current.id}" class="pp-btn pp-dark">Reservierung öffnen</a>`;
         } else if (t.upcoming) {
             body = `<p class="pp-line">Nächste: <strong>${esc(t.upcoming.name)}</strong></p>
@@ -287,6 +297,27 @@
             <div class="pp-bar"><span style="width:${pct}%"></span></div>
             <div class="pp-body">${body}</div>`;
         popup.classList.remove('hidden');
+
+        popup.querySelectorAll('.pp-step').forEach(b => b.addEventListener('click', () => {
+            const next = (t.current.party || 0) + (+b.dataset.d);
+            if (next >= 1) setParty(t.id, t.current.id, next);
+        }));
+    }
+
+    async function setParty(tableId, reservationId, size) {
+        const res = await fetch('/admin/reservations/' + reservationId + '/party', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, Accept: 'application/json'},
+            body: JSON.stringify({party_size: size}),
+        });
+        if (!res.ok) {
+            const j = await res.json().catch(() => ({}));
+            alert(j.message || 'Personenzahl konnte nicht geändert werden.');
+            return;
+        }
+        await load();
+        const t = tablesData.find(x => x.id === tableId);
+        if (t) showPopup(t); // reopen with refreshed occupancy
     }
 
     function makeDraggable(el, room) {
@@ -555,6 +586,14 @@
     .fp-popup .pp-bar { height:5px; background:#f0efed; } .fp-popup .pp-bar span { display:block; height:100%; background:#0f766e; transition:width .3s; }
     .fp-popup .pp-body { padding:14px 16px; }
     .fp-popup .pp-line { font-size:14px; } .fp-popup .pp-sub { font-size:13px; color:#57534e; margin-top:2px; }
+    .fp-popup .pp-party { margin-top:12px; padding:10px 12px; background:#fafaf9; border:1px solid #f0efed; border-radius:12px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .fp-popup .pp-plabel { font-size:13px; font-weight:600; color:#57534e; }
+    .fp-popup .pp-step-row { display:flex; align-items:center; gap:10px; }
+    .fp-popup .pp-step { width:34px; height:34px; border-radius:9px; border:1px solid #e7e5e4; background:#fff; font-size:18px; font-weight:800; cursor:pointer; line-height:1; color:#1c1917; }
+    .fp-popup .pp-step:hover:not(:disabled) { border-color:#0f766e; color:#0f766e; }
+    .fp-popup .pp-step:disabled { opacity:.4; cursor:default; }
+    .fp-popup .pp-pcount { font-size:15px; font-weight:800; font-variant-numeric:tabular-nums; min-width:48px; text-align:center; }
+    .fp-popup .pp-note { margin-top:8px; font-size:12px; color:#b45309; }
     .fp-popup .pp-btn { display:block; text-align:center; margin-top:12px; border-radius:12px; padding:10px; font-size:14px; font-weight:700; text-decoration:none; }
     .fp-popup .pp-dark { background:#1c1917; color:#fff; } .fp-popup .pp-green { background:#0f766e; color:#fff; }
     .fp-popup .pp-soft { background:#f5f5f4; color:#1c1917; }

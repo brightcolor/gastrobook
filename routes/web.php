@@ -146,6 +146,8 @@ Route::middleware(['auth', 'tenant'])->prefix('admin')->name('admin.')->group(fu
             ->middleware('permission:reservations.create')->name('reservations.store');
         Route::get('/reservations/{reservation}', [ReservationBookController::class, 'show'])->name('reservations.show');
         Route::post('/reservations/{reservation}/transition', [ReservationBookController::class, 'transition'])->name('reservations.transition');
+        Route::post('/reservations/{reservation}/party', [ReservationBookController::class, 'updateParty'])
+            ->middleware('permission:reservations.update')->name('reservations.party');
         Route::post('/reservations/{reservation}/tables', [ReservationBookController::class, 'moveTable'])
             ->middleware('permission:tables.assign')->name('reservations.tables');
     });

@@ -4,6 +4,18 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.17.0] – 2026-06-14
+
+### Neu
+- **Gäste am Tisch dazubuchen:** Wenn z. B. ein 2er-Walk-in an einem 4er-Tisch
+  sitzt und weitere Gäste dazukommen, lässt sich die Personenzahl direkt am
+  Tisch erhöhen (＋/− Stepper) – im **Tischplan** (Tisch antippen) und im
+  **Live-Board** (Tisch-Detail). Die Belegung/Stuhlanzeige aktualisiert sich
+  sofort. Begrenzt auf die Tischkapazität (inkl. Zusatzplätze); darüber kommt
+  ein klarer Hinweis, einen größeren oder zusätzlichen Tisch zu wählen.
+  (Endpoint `POST /admin/reservations/{id}/party`, Recht `reservations.update`,
+  Auditlog.)
+
 ## [1.16.3] – 2026-06-14
 
 ### Geändert
@@ -385,6 +397,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.17.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.17.0
 [1.16.3]: https://github.com/brightcolor/gastrobook/releases/tag/v1.16.3
 [1.16.2]: https://github.com/brightcolor/gastrobook/releases/tag/v1.16.2
 [1.16.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.16.1

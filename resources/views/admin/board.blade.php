@@ -140,6 +140,13 @@
         .res .r1 .nm { font-weight: 700; }
         .res .rl { color: var(--muted); font-size: 13px; margin-top: 4px; display: flex; flex-wrap: wrap; gap: 6px 12px; }
         .res .rl a { color: var(--brand); text-decoration: none; font-weight: 600; }
+        .dwr-party { margin-top: 10px; padding: 8px 10px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; font-weight: 600; color: var(--muted); }
+        .dwr-step-row { display: flex; align-items: center; gap: 10px; color: var(--text); }
+        .dwr-step-row b { font-size: 15px; font-variant-numeric: tabular-nums; min-width: 44px; text-align: center; }
+        .bd-step { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel); color: var(--text); font-size: 17px; font-weight: 800; cursor: pointer; line-height: 1; }
+        .bd-step:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); }
+        .bd-step:disabled { opacity: .4; cursor: default; }
+        .dwr-note { margin-top: 6px; font-size: 12px; color: var(--amber); }
         .dwr-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
         .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
         .field label { font-size: 13px; font-weight: 600; color: var(--muted); }
@@ -535,7 +542,7 @@
         }
         function refresh() { if (selectedTableId !== null) render(); }
 
-        function resCard(r) {
+        function resCard(r, seats) {
             const seated = r.seated_since ? '<span>🪑 sitzt seit ' + esc(r.seated_since) + '</span>' : '';
             const phone = r.phone ? '<a href="tel:' + esc(r.phone) + '">📞 ' + esc(r.phone) + '</a>' : '';
             const src = r.source === 'walk_in' ? '<span>🚶 Walk-in</span>' : '';
@@ -545,15 +552,40 @@
             const actions = (r.actions || []).map(a =>
                 '<button class="act ' + a.style + '" data-id="' + r.id + '" data-status="' + a.status + '">' + esc(a.label) + '</button>'
             ).join('');
+            // Guests at the table can grow (e.g. a walk-in that more people join)
+            let stepper = '';
+            if (r.is_current && seats) {
+                const full = r.party >= seats;
+                stepper = '<div class="dwr-party"><span>Gäste am Tisch</span><div class="dwr-step-row">'
+                    + '<button class="bd-step" data-id="' + r.id + '" data-cur="' + r.party + '" data-d="-1"' + (r.party <= 1 ? ' disabled' : '') + '>−</button>'
+                    + '<b>' + r.party + '/' + seats + '</b>'
+                    + '<button class="bd-step" data-id="' + r.id + '" data-cur="' + r.party + '" data-d="1"' + (full ? ' disabled' : '') + '>＋</button>'
+                    + '</div></div>'
+                    + (full ? '<div class="dwr-note">Tisch voll – für mehr Gäste größeren/zusätzlichen Tisch nutzen.</div>' : '');
+            }
             return '<div class="res ' + (r.is_current ? 'now' : '') + '">'
                 + '<div class="r1"><span class="t">' + esc(r.from) + '–' + esc(r.to) + '</span>'
                 + '<span class="nm">' + esc(r.name) + '</span>'
                 + '<span class="party">' + r.party + ' P</span>'
                 + '<span style="flex:1"></span><span class="badge s-' + r.status + '">' + esc(r.status_label) + '</span></div>'
                 + '<div class="rl">' + seated + src + phone + risk + '</div>'
-                + note + allergy
+                + note + allergy + stepper
                 + (actions ? '<div class="dwr-actions">' + actions + '</div>' : '')
                 + '</div>';
+        }
+
+        async function setParty(id, size) {
+            const res = await fetch(transitionBase + '/' + id + '/party', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                body: JSON.stringify({ party_size: size }),
+            });
+            if (!res.ok) {
+                const j = await res.json().catch(() => ({}));
+                alert(j.message || 'Personenzahl konnte nicht geändert werden.');
+                return;
+            }
+            await load(); // refresh board + drawer
         }
 
         function render() {
@@ -573,8 +605,8 @@
             if (resv.length) {
                 const current = resv.filter(r => r.is_current);
                 const later = resv.filter(r => !r.is_current);
-                if (current.length) html += '<div class="dwr-sec"><h3>Aktuell</h3>' + current.map(resCard).join('') + '</div>';
-                if (later.length) html += '<div class="dwr-sec"><h3>' + (current.length ? 'Weitere heute' : 'Heute') + '</h3>' + later.map(resCard).join('') + '</div>';
+                if (current.length) html += '<div class="dwr-sec"><h3>Aktuell</h3>' + current.map(r => resCard(r, t.max_capacity)).join('') + '</div>';
+                if (later.length) html += '<div class="dwr-sec"><h3>' + (current.length ? 'Weitere heute' : 'Heute') + '</h3>' + later.map(r => resCard(r, t.max_capacity)).join('') + '</div>';
             } else if (t.status === 'blocked') {
                 html += '<div class="dwr-sec"><p style="color:var(--muted);font-size:14px;margin:0">Dieser Tisch ist aktuell gesperrt.</p></div>';
             } else {
@@ -602,6 +634,10 @@
             // wire status actions (reuse the board transition action)
             body.querySelectorAll('.act').forEach(b =>
                 b.addEventListener('click', () => act(b.dataset.id, b.dataset.status, b)));
+            body.querySelectorAll('.bd-step').forEach(b => b.addEventListener('click', () => {
+                const next = (+b.dataset.cur) + (+b.dataset.d);
+                if (next >= 1) setParty(+b.dataset.id, next);
+            }));
 
             const form = document.getElementById('walkinForm');
             if (form) form.addEventListener('submit', e => submitWalkin(e, t.id));

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\ReservationStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Reservation;
+use App\Services\AuditLogger;
 use App\Services\RefundService;
 use App\Services\ReservationAvailabilityService;
 use App\Services\ReservationLifecycleService;
@@ -199,6 +200,43 @@ class ReservationBookController extends Controller
         }
 
         return back()->with('success', __('Status geändert.'));
+    }
+
+    /**
+     * Adjust the party size of an existing reservation – e.g. a seated walk-in
+     * grows when more guests join. Capped at the assigned table's seats
+     * (incl. squeeze seats); beyond that a bigger/extra table is required.
+     */
+    public function updateParty(Request $request, Reservation $reservation, AuditLogger $audit)
+    {
+        $this->authorizeReservation($reservation);
+        if (! $request->user()->canInTenant('reservations.update', $this->context->tenant(), $this->context->location())) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'party_size' => ['required', 'integer', 'min:1', 'max:100'],
+        ]);
+        $new = (int) $validated['party_size'];
+
+        $reservation->loadMissing('tables');
+        $capacity = (int) $reservation->tables->sum(fn ($t) => $t->max_capacity + $t->extra_capacity);
+        if ($capacity > 0 && $new > $capacity) {
+            return response()->json([
+                'message' => __('An diesem Tisch ist Platz für höchstens :n Personen. Bitte einen größeren Tisch wählen oder einen weiteren Tisch dazunehmen.', ['n' => $capacity]),
+                'max' => $capacity,
+            ], 422);
+        }
+
+        $old = $reservation->party_size;
+        $reservation->update(['party_size' => $new]);
+        $audit->log('reservation.party_updated', $reservation, ['party_size' => $old], ['party_size' => $new]);
+
+        if ($request->wantsJson()) {
+            return response()->json(['ok' => true, 'party_size' => $new]);
+        }
+
+        return back()->with('success', __('Personenzahl aktualisiert.'));
     }
 
     public function moveTable(Request $request, Reservation $reservation)
