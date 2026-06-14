@@ -204,7 +204,10 @@
 <section id="preise" class="mx-auto max-w-6xl px-4 py-20">
     <p class="text-center text-sm font-bold uppercase tracking-wide text-teal-700">Preise</p>
     <h2 class="mt-2 text-center text-3xl font-extrabold tracking-tight">Fair &amp; monatlich kündbar</h2>
-    <p class="mx-auto mt-3 max-w-2xl text-center text-stone-500">30 Tage kostenlos testen. Keine Einrichtungsgebühr, keine Provision pro Buchung.</p>
+    <p class="mx-auto mt-3 max-w-2xl text-center text-stone-500">
+        <strong class="text-stone-700">Voller Funktionsumfang in jedem Tarif</strong> – unbegrenzte Benutzer, API, Zahlungen, alles inklusive.
+        Sie zahlen nur nach Größe: Standorte und Tische. 30 Tage kostenlos, keine Provision.
+    </p>
 
     <div class="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         @forelse($plans as $plan)
@@ -222,29 +225,24 @@
                         <span class="text-sm text-stone-500">/ Monat</span>
                     @endif
                 </p>
-                <ul class="mt-5 flex-1 space-y-2 text-sm text-stone-600">
-                    @if(isset($plan->limits['max_locations']))
-                        <li>✓ {{ $plan->limits['max_locations'] == 1 ? '1 Standort' : 'Bis zu '.$plan->limits['max_locations'].' Standorte' }}</li>
-                    @else
-                        <li>✓ Unbegrenzte Standorte</li>
-                    @endif
-                    @if(isset($plan->limits['max_users']))
-                        <li>✓ {{ $plan->limits['max_users'] }} Benutzer</li>
-                    @else
-                        <li>✓ Unbegrenzte Benutzer</li>
-                    @endif
-                    @if(isset($plan->limits['max_tables']))
-                        <li>✓ Bis zu {{ $plan->limits['max_tables'] }} Tische/Ressourcen</li>
-                    @else
-                        <li>✓ Unbegrenzt Tische/Ressourcen</li>
-                    @endif
-                    <li>{{ ($plan->features['waitlist_enabled'] ?? false) ? '✓' : '–' }} Warteliste</li>
-                    <li>{{ ($plan->features['deposits_enabled'] ?? false) ? '✓' : '–' }} Zahlungen &amp; No-Show-Schutz</li>
-                    <li>{{ ($plan->features['api_enabled'] ?? false) ? '✓' : '–' }} REST-API &amp; Webhooks</li>
-                    @if($plan->features['remove_branding'] ?? false)
-                        <li>✓ Ohne Swayy-Branding</li>
-                    @endif
-                </ul>
+
+                {{-- Differentiators: locations & tables --}}
+                <div class="mt-5 space-y-3 border-y border-stone-100 py-4">
+                    <div>
+                        <p class="text-2xl font-extrabold">{{ isset($plan->limits['max_locations']) ? ($plan->limits['max_locations'] == 1 ? '1' : $plan->limits['max_locations']) : '∞' }}</p>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-stone-500">{{ (isset($plan->limits['max_locations']) && $plan->limits['max_locations'] == 1) ? 'Standort' : 'Standorte' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-2xl font-extrabold">{{ isset($plan->limits['max_tables']) ? 'bis '.$plan->limits['max_tables'] : '∞' }}</p>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-stone-500">Tische / Ressourcen</p>
+                    </div>
+                </div>
+
+                <p class="mt-4 flex-1 text-sm text-stone-600">
+                    <span class="font-semibold text-stone-800">Alle Funktionen inklusive</span><br>
+                    Unbegrenzte Benutzer · API &amp; Webhooks · Zahlungen &amp; No-Show-Schutz · Warteliste · Berichte · eigenes Branding
+                </p>
+
                 @if($plan->key === 'enterprise')
                     <a href="{{ route('contact') }}" class="mt-6 rounded-xl border border-stone-300 py-3 text-center font-bold hover:bg-stone-50">Kontakt aufnehmen</a>
                 @else
@@ -255,6 +253,10 @@
             <p class="col-span-full text-center text-stone-500">Preise auf Anfrage – <a href="{{ route('contact') }}" class="font-semibold text-teal-700">kontaktieren Sie uns</a>.</p>
         @endforelse
     </div>
+
+    <p class="mx-auto mt-8 max-w-2xl text-center text-sm text-stone-500">
+        Mehr Tische oder Standorte nötig? Jederzeit upgraden – Sie zahlen nur, wenn Ihr Betrieb wächst.
+    </p>
 </section>
 
 {{-- ===================== FAQ ===================== --}}

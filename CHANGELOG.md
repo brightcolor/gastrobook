@@ -4,6 +4,18 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.10.0] – 2026-06-13
+
+### Geändert
+- **Preismodell: Feature-Parität.** Alle Tarife enthalten den **vollen
+  Funktionsumfang** (unbegrenzte Benutzer, API/Webhooks, Zahlungen, Warteliste,
+  Berichte, eigenes Branding). Tarife unterscheiden sich **nur** in den
+  umsatzrelevanten Limits: **Standorte** und **Tische/Ressourcen**.
+  - Starter 19 € (1 Standort, bis 15 Tische), Professional 39 € (1, bis 50),
+    Multi-Location 59 € (bis 5 Standorte, bis 200), Enterprise auf Anfrage (∞).
+- Landingpage-Preissektion zeigt Standorte/Tische als Differenzierer +
+  „Alle Funktionen inklusive".
+
 ## [1.9.0] – 2026-06-13
 
 ### Geändert
@@ -202,6 +214,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.10.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.10.0
 [1.9.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.9.0
 [1.8.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.8.1
 [1.8.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.8.0
