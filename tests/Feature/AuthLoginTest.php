@@ -64,4 +64,25 @@ class AuthLoginTest extends TestCase
 
         $this->assertAuthenticatedAs($user);
     }
+
+    public function test_logged_in_user_visiting_login_goes_to_admin_not_homepage(): void
+    {
+        $user = User::factory()->create(['is_active' => true]);
+
+        $this->actingAs($user)->get('/login')->assertRedirect('/admin');
+    }
+
+    public function test_logout_confirm_page_is_reachable_when_logged_in(): void
+    {
+        $user = User::factory()->create(['is_active' => true]);
+
+        $this->actingAs($user)->get('/abmelden')
+            ->assertOk()
+            ->assertSee('Abmelden');
+    }
+
+    public function test_logout_confirm_redirects_guests_to_login(): void
+    {
+        $this->get('/abmelden')->assertRedirect(route('login'));
+    }
 }

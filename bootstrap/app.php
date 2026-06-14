@@ -20,6 +20,17 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => RequirePermission::class,
         ]);
 
+        // Already-logged-in visitors hitting a "guest" page (e.g. /login) should
+        // land in the app, not on the public marketing homepage – otherwise a
+        // stale session silently bounces them to the front page.
+        $middleware->redirectUsersTo(function (Request $request) {
+            $user = $request->user();
+
+            return $user && $user->isSaasAdmin() && $user->current_tenant_id === null
+                ? route('saas.tenants.index')
+                : route('admin.dashboard');
+        });
+
         // Behind the bundled nginx and/or an external reverse proxy (TLS
         // termination): honour X-Forwarded-* so generated URLs use the correct
         // scheme/host (https links in mails, payment returns, magic links).

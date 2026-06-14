@@ -4,6 +4,21 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.15.0] – 2026-06-14
+
+### Behoben
+- **Login-Falle bei alter Session:** Wer durch ein noch gültiges Session-Cookie
+  bereits angemeldet war, wurde von `/login` auf die öffentliche Startseite
+  („Hauptdomain") umgeleitet und kam scheinbar nicht mehr rein. Eingeloggte
+  Besucher landen jetzt direkt im Backend (`/admin`, bzw. SaaS-Adminübersicht)
+  statt auf der Marketing-Seite.
+
+### Neu
+- **Abmelde-Seite per URL:** `/abmelden` ist jederzeit direkt aufrufbar und
+  zeigt einen Abmelden-Button (plus „Zum Dashboard"). So lässt sich eine alte
+  Session beenden, ohne Cookies manuell löschen zu müssen. Gäste werden von dort
+  zur Anmeldung geleitet.
+
 ## [1.14.1] – 2026-06-14
 
 ### Behoben
@@ -301,6 +316,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.15.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.15.0
 [1.14.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.14.1
 [1.14.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.14.0
 [1.13.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.13.0

@@ -112,6 +112,9 @@ Route::middleware('guest')->group(function () {
     Route::post('/invitation/{token}', [InvitationController::class, 'accept'])->name('invitation.accept.post');
 });
 
+// Abmelde-Seite per URL erreichbar (auch wenn man durch eine alte Session auf
+// /login zur Startseite umgeleitet wird) – zeigt einen Abmelden-Button.
+Route::get('/abmelden', [AuthController::class, 'logoutConfirm'])->name('logout.confirm');
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 
 /*

@@ -52,6 +52,15 @@ class AuthController extends Controller
         );
     }
 
+    public function logoutConfirm(Request $request)
+    {
+        if ($request->user() === null) {
+            return redirect()->route('login');
+        }
+
+        return view('auth.logout', ['user' => $request->user()]);
+    }
+
     public function logout(Request $request)
     {
         Auth::logout();
