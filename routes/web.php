@@ -49,6 +49,8 @@ Route::post('/kontakt', [MarketingController::class, 'sendContact'])
 |--------------------------------------------------------------------------
 */
 Route::middleware('throttle:booking-slots')->group(function () {
+    Route::get('/brand/{tenantSlug}/logo', [PublicBookingController::class, 'tenantLogo'])->name('brand.tenant.logo');
+    Route::get('/brand/{tenantSlug}/{locationSlug}/logo', [PublicBookingController::class, 'locationLogo'])->name('brand.location.logo');
     Route::get('/book/{tenantSlug}', [PublicBookingController::class, 'landing'])->name('booking.landing');
     Route::get('/book/{tenantSlug}/{locationSlug}', [PublicBookingController::class, 'show'])->name('booking.show');
     Route::get('/r/{tenantSlug}/{locationSlug}', [PublicBookingController::class, 'show']);
@@ -238,6 +240,10 @@ Route::middleware(['auth', 'tenant'])->prefix('admin')->name('admin.')->group(fu
         Route::post('/settings/combinations', [SettingsController::class, 'storeCombination'])->name('settings.combinations.store');
         Route::put('/settings/field-rules', [SettingsController::class, 'updateFieldRules'])
             ->middleware('permission:tenant.settings.manage')->name('settings.field-rules');
+        Route::post('/settings/logo', [SettingsController::class, 'uploadLogo'])
+            ->middleware('permission:tenant.settings.manage')->name('settings.logo.upload');
+        Route::delete('/settings/logo', [SettingsController::class, 'deleteLogo'])
+            ->middleware('permission:tenant.settings.manage')->name('settings.logo.delete');
         Route::put('/settings/mailwizz', [SettingsController::class, 'updateMailwizz'])
             ->middleware('permission:integrations.manage')->name('settings.mailwizz');
         Route::put('/settings/stripe', [SettingsController::class, 'updateStripe'])

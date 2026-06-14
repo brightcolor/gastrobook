@@ -24,6 +24,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class PublicBookingController extends Controller
@@ -90,6 +91,30 @@ class PublicBookingController extends Controller
         [$tenant, $location] = $this->resolve($tenantSlug, $locationSlug);
 
         return $this->renderBooking($tenant, $location);
+    }
+
+    /** Public branding logo for a location (falls back to the tenant logo). */
+    public function locationLogo(string $tenantSlug, string $locationSlug)
+    {
+        [$tenant, $location] = $this->resolve($tenantSlug, $locationSlug);
+        $path = $location->brand_logo_path ?: $tenant->brand_logo_path;
+
+        return $this->streamLogo($path);
+    }
+
+    /** Public branding logo for a tenant. */
+    public function tenantLogo(string $tenantSlug)
+    {
+        $tenant = Tenant::where('slug', $tenantSlug)->where('status', 'active')->firstOrFail();
+
+        return $this->streamLogo($tenant->brand_logo_path);
+    }
+
+    private function streamLogo(?string $path)
+    {
+        abort_if($path === null || $path === '' || ! Storage::disk('public')->exists($path), 404);
+
+        return Storage::disk('public')->response($path);
     }
 
     private function renderBooking(Tenant $tenant, Location $location)

@@ -9,25 +9,28 @@
 
 <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
     @foreach([
-        ['Reservierungen heute', $stats['today_count'], '📖'],
-        ['Gäste heute', $stats['today_covers'], '👥'],
-        ['Aktuell am Tisch', $stats['seated_now'], '🪑'],
-        ['Offene Anfragen', $stats['open_requests'], '🕐'],
-        ['Morgen', $stats['tomorrow_count'], '📅'],
-        ['Warteliste', $stats['waitlist_waiting'], '⏳'],
-        ['Gäste diese Woche', $stats['week_covers'], '📈'],
-        ['No-Shows (7 Tage)', $stats['no_shows_week'], '🚫'],
-    ] as [$label, $value, $icon])
-        <div class="rounded-2xl bg-white p-4 shadow-sm">
-            <div class="text-sm text-stone-500">{{ $icon }} {{ $label }}</div>
-            <div class="mt-1 text-3xl font-bold">{{ $value }}</div>
+        ['Reservierungen heute', $stats['today_count'], '📖', 'bg-teal-50'],
+        ['Gäste heute', $stats['today_covers'], '👥', 'bg-sky-50'],
+        ['Aktuell am Tisch', $stats['seated_now'], '🪑', 'bg-emerald-50'],
+        ['Offene Anfragen', $stats['open_requests'], '🕐', 'bg-amber-50'],
+        ['Morgen', $stats['tomorrow_count'], '📅', 'bg-stone-100'],
+        ['Warteliste', $stats['waitlist_waiting'], '⏳', 'bg-stone-100'],
+        ['Gäste diese Woche', $stats['week_covers'], '📈', 'bg-stone-100'],
+        ['No-Shows (7 Tage)', $stats['no_shows_week'], '🚫', 'bg-red-50'],
+    ] as [$label, $value, $icon, $chip])
+        <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-100 transition hover:-translate-y-0.5 hover:shadow-md">
+            <div class="flex items-center gap-2">
+                <span class="flex h-8 w-8 items-center justify-center rounded-lg {{ $chip }} text-base">{{ $icon }}</span>
+                <span class="text-xs font-medium uppercase tracking-wide text-stone-500">{{ $label }}</span>
+            </div>
+            <div class="mt-2 text-3xl font-extrabold tabular-nums">{{ $value }}</div>
         </div>
     @endforeach
 </div>
 
 <div class="mt-6 grid gap-6 lg:grid-cols-2">
-    <div class="rounded-2xl bg-white p-5 shadow-sm">
-        <h2 class="font-bold">Nächste Ankünfte</h2>
+    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
+        <h2 class="flex items-center gap-2 font-bold"><span>⏭️</span> Nächste Ankünfte</h2>
         <div class="mt-3 divide-y divide-stone-100">
             @forelse($upcoming as $r)
                 <a href="{{ route('admin.reservations.show', $r) }}" class="flex items-center justify-between py-2.5 hover:bg-stone-50">
@@ -44,8 +47,8 @@
         </div>
     </div>
 
-    <div class="rounded-2xl bg-white p-5 shadow-sm">
-        <h2 class="font-bold">Überfällige Gäste</h2>
+    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
+        <h2 class="flex items-center gap-2 font-bold"><span>⏰</span> Überfällige Gäste</h2>
         <div class="mt-3 divide-y divide-stone-100">
             @forelse($overdue as $r)
                 <div class="flex items-center justify-between py-2.5">
@@ -74,8 +77,8 @@
     </div>
 </div>
 
-<div class="mt-6 rounded-2xl bg-white p-5 shadow-sm">
-    <h2 class="font-bold">Reservierungsquellen (30 Tage)</h2>
+<div class="mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
+    <h2 class="flex items-center gap-2 font-bold"><span>📊</span> Reservierungsquellen (30 Tage)</h2>
     <div class="mt-3 flex flex-wrap gap-4 text-sm">
         @forelse($sources as $source => $count)
             <span class="rounded-full bg-stone-100 px-4 py-1.5">{{ __('reservations.source.' . $source) }}: <strong>{{ $count }}</strong></span>

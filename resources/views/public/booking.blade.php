@@ -1,13 +1,16 @@
 @extends('layouts.public')
 @section('title', ($tenant->isSalon() ? 'Termin buchen' : 'Tisch reservieren') . ' – ' . $location->name)
 @section('content')
-<div class="rounded-2xl bg-white p-6 shadow-sm">
+<div class="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-stone-100">
+    <div class="h-1.5 bg-brand"></div>
+    <div class="p-6">
     @if($location->brand_logo_path || $tenant->brand_logo_path)
-        <img src="{{ asset('storage/' . ($location->brand_logo_path ?? $tenant->brand_logo_path)) }}" alt="" class="mx-auto mb-4 h-16 object-contain">
+        <img src="{{ route('brand.location.logo', [$tenant->slug, $location->slug]) }}" alt="{{ $location->name }}" class="mx-auto mb-4 h-20 object-contain">
     @endif
-    <h1 class="text-center text-2xl font-bold">{{ $location->name }}</h1>
+    <h1 class="text-center text-2xl font-extrabold tracking-tight">{{ $location->name }}</h1>
+    <div class="mx-auto mt-3 h-1 w-12 rounded-full bg-brand/70"></div>
     @if($location->public_intro)
-        <p class="mt-2 text-center text-sm text-stone-600">{{ $location->public_intro }}</p>
+        <p class="mt-3 text-center text-sm text-stone-600">{{ $location->public_intro }}</p>
     @endif
     @if(($upcomingEvents ?? 0) > 0)
         <p class="mt-3 text-center">
@@ -625,5 +628,34 @@
         })();
         </script>
     @endif
+    </div>
 </div>
+
+@if($location->address_line1 || $location->city || $location->phone || $location->email)
+<div class="mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
+    <h2 class="mb-3 text-sm font-bold uppercase tracking-wide text-stone-500">Kontakt &amp; Anfahrt</h2>
+    <div class="grid gap-4 text-sm sm:grid-cols-3">
+        @if($location->address_line1 || $location->city)
+            <div class="flex items-start gap-2">
+                <span class="text-lg leading-none">📍</span>
+                <span class="text-stone-700">
+                    {{ $location->address_line1 }}@if($location->address_line1 && ($location->postal_code || $location->city))<br>@endif{{ trim(($location->postal_code ? $location->postal_code.' ' : '').$location->city) }}
+                </span>
+            </div>
+        @endif
+        @if($location->phone)
+            <div class="flex items-start gap-2">
+                <span class="text-lg leading-none">📞</span>
+                <a href="tel:{{ preg_replace('/\s+/', '', $location->phone) }}" class="font-semibold text-brand hover:underline">{{ $location->phone }}</a>
+            </div>
+        @endif
+        @if($location->email)
+            <div class="flex items-start gap-2">
+                <span class="text-lg leading-none">✉️</span>
+                <a href="mailto:{{ $location->email }}" class="break-all font-semibold text-brand hover:underline">{{ $location->email }}</a>
+            </div>
+        @endif
+    </div>
+</div>
+@endif
 @endsection

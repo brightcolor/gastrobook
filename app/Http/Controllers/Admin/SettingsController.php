@@ -16,6 +16,7 @@ use App\Services\Sms\SevenIoProvider;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Storage;
 
 class SettingsController extends Controller
 {
@@ -477,6 +478,40 @@ class SettingsController extends Controller
         $this->audit->log('table.created', $table, null, $validated);
 
         return back()->with('success', __('Tisch angelegt.'));
+    }
+
+    public function uploadLogo(Request $request)
+    {
+        $location = $this->context->location();
+        abort_if($location === null, 404);
+
+        $request->validate([
+            'logo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:3072'],
+        ]);
+
+        if ($location->brand_logo_path) {
+            Storage::disk('public')->delete($location->brand_logo_path);
+        }
+
+        $path = $request->file('logo')->store('logos/'.$location->id, 'public');
+        $location->update(['brand_logo_path' => $path]);
+        $this->audit->log('location.logo.updated', $location);
+
+        return back()->with('success', __('Logo aktualisiert.'));
+    }
+
+    public function deleteLogo()
+    {
+        $location = $this->context->location();
+        abort_if($location === null, 404);
+
+        if ($location->brand_logo_path) {
+            Storage::disk('public')->delete($location->brand_logo_path);
+            $location->update(['brand_logo_path' => null]);
+        }
+        $this->audit->log('location.logo.deleted', $location);
+
+        return back()->with('success', __('Logo entfernt.'));
     }
 
     public function deleteTable(RestaurantTable $table)

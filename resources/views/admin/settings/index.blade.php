@@ -40,6 +40,34 @@
     @endif
 </div>
 
+@if(auth()->user()->canInTenant('tenant.settings.manage', app(\App\Support\TenantContext::class)->tenant(), $location))
+<div class="mb-4 rounded-2xl bg-white p-5 shadow-sm">
+    <h2 class="mb-1 font-bold">Logo dieses Standorts</h2>
+    <p class="mb-3 text-xs text-stone-500">Erscheint oben auf der Buchungsseite. PNG, JPG, WebP oder SVG, max. 3 MB.</p>
+    <div class="flex flex-wrap items-center gap-4">
+        <div class="flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl border border-stone-200 bg-stone-50">
+            @if($location->brand_logo_path)
+                <img src="{{ route('brand.location.logo', [$location->tenant->slug, $location->slug]) }}?t={{ now()->timestamp }}" alt="Logo" class="h-full w-full object-contain">
+            @else
+                <span class="text-2xl text-stone-300">🍽</span>
+            @endif
+        </div>
+        <form method="POST" action="{{ route('admin.settings.logo.upload') }}" enctype="multipart/form-data" class="flex flex-wrap items-center gap-2">
+            @csrf
+            <input type="file" name="logo" accept="image/png,image/jpeg,image/webp,image/svg+xml" required
+                   class="text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-stone-900 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white">
+            <button class="rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white">Hochladen</button>
+        </form>
+        @if($location->brand_logo_path)
+            <form method="POST" action="{{ route('admin.settings.logo.delete') }}" onsubmit="return confirm('Logo entfernen?')">
+                @csrf @method('DELETE')
+                <button class="rounded-lg bg-stone-100 px-4 py-2 text-sm font-semibold text-stone-600 hover:bg-stone-200">Entfernen</button>
+            </form>
+        @endif
+    </div>
+</div>
+@endif
+
 <div class="grid gap-6 xl:grid-cols-2">
     {{-- Booking rules --}}
     <form method="POST" action="{{ route('admin.settings.booking-rules') }}" class="rounded-2xl bg-white p-5 shadow-sm">

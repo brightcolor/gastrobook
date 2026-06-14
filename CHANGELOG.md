@@ -4,6 +4,24 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.21.0] – 2026-06-14
+
+### Neu
+- **Logo pro Standort:** In den Einstellungen lässt sich je Standort ein Logo
+  hochladen (PNG/JPG/WebP/SVG, max. 3 MB) und wieder entfernen; es erscheint
+  oben auf der Buchungsseite. Logos werden tenant-sicher über die App
+  ausgeliefert (eigener `/brand/...`-Endpoint, kein Public-Symlink nötig –
+  behebt auch die zuvor nicht angezeigten Logos via `asset('storage/…')`).
+- **Kontakt & Anfahrt auf der Buchungsseite:** Adresse, Telefon (Tel-Link) und
+  E-Mail (Mail-Link) des Standorts werden unter dem Buchungsformular angezeigt.
+
+### Geändert
+- **Politur der Buchungsseite:** Markenakzent, größeres Logo, klarere Typografie,
+  Kontaktkarte.
+- **Politur im Backend (erster Durchgang):** Dashboard mit Icon-Kacheln, Hover
+  und ruhigeren Karten (Ring statt nur Schatten); Logo-Bereich in den
+  Einstellungen.
+
 ## [1.20.0] – 2026-06-14
 
 ### Neu / Geändert
@@ -444,6 +462,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.21.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.21.0
 [1.20.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.20.0
 [1.19.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.19.1
 [1.19.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.19.0
