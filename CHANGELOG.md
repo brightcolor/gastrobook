@@ -4,6 +4,15 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.23.1] – 2026-06-15
+
+### Geändert
+- **Edles, stylisches Design der öffentlichen Seiten:** Buchungsseite,
+  Standortauswahl und Bestätigung mit hochwertigem Look – sanfter, marken­farbiger
+  Hintergrund-Verlauf, größere abgerundete Karten mit weichem Schatten,
+  feinere Typografie, Markenakzent. Ausgewählte Datums-/Uhrzeit-/Personen-Buttons
+  werden jetzt in der Markenfarbe gefüllt (statt nur umrandet).
+
 ## [1.23.0] – 2026-06-15
 
 ### Sicherheit
@@ -520,6 +529,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.23.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.23.1
 [1.23.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.23.0
 [1.22.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.22.0
 [1.21.2]: https://github.com/brightcolor/gastrobook/releases/tag/v1.21.2

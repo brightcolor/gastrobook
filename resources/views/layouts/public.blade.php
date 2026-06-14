@@ -7,20 +7,27 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @php($primary = $tenant->brand_primary_color ?? '#0f766e')
     <style>
-        :root { --brand: {{ $primary }}; }
-        .btn-brand { background-color: var(--brand); }
+        :root { --brand: {{ $primary }}; --brand-strong: color-mix(in oklab, {{ $primary }} 82%, black); }
         .text-brand { color: var(--brand); }
         .ring-brand { --tw-ring-color: var(--brand); }
         .border-brand { border-color: var(--brand); }
+        body {
+            background:
+                radial-gradient(1100px 460px at 50% -12%, color-mix(in oklab, var(--brand) 16%, transparent), transparent 72%),
+                linear-gradient(180deg, #fbfbfa 0%, #f4f4f2 100%);
+            background-attachment: fixed;
+        }
     </style>
 </head>
-<body class="min-h-screen bg-stone-100 text-stone-900 antialiased">
-    <main class="mx-auto max-w-lg px-4 py-6">
+<body class="min-h-screen text-stone-900 antialiased">
+    <main class="mx-auto max-w-xl px-4 py-10 sm:py-14">
         @yield('content')
         @hasSection('hide_branding')
         @else
             @if(($tenant ?? null) && $tenant->plan?->key === 'trial')
-                <p class="mt-8 text-center text-xs text-stone-400">Bereitgestellt mit Swayy</p>
+                <p class="mt-10 text-center text-xs font-medium text-stone-400">
+                    Bereitgestellt mit <span class="font-semibold text-stone-500">Swayy</span>
+                </p>
             @endif
         @endif
     </main>

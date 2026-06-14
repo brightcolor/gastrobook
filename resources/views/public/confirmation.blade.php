@@ -2,9 +2,11 @@
 @php($isSalon = $location->tenant?->isSalon())
 @section('title', $isSalon ? 'Termin bestätigt' : 'Reservierung bestätigt')
 @section('content')
-<div class="rounded-2xl bg-white p-6 text-center shadow-sm">
-    <div class="text-5xl">{{ $reservation->status->value === 'requested' ? '🕐' : '✅' }}</div>
-    <h1 class="mt-3 text-2xl font-bold">
+<div class="overflow-hidden rounded-3xl bg-white text-center shadow-xl shadow-stone-400/15 ring-1 ring-black/5">
+    <div class="h-1.5 bg-brand"></div>
+    <div class="p-6 sm:p-8">
+    <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-brand/10 text-4xl">{{ $reservation->status->value === 'requested' ? '🕐' : '✅' }}</div>
+    <h1 class="mt-4 text-2xl font-extrabold tracking-tight">
         @if($reservation->status->value === 'requested')
             Anfrage erhalten
         @else
@@ -59,5 +61,6 @@
 
     <a href="{{ route('booking.manage', ['code' => $reservation->code, 'token' => $reservation->manage_token]) }}"
        class="mt-6 inline-block text-sm text-brand underline">Reservierung ändern oder stornieren</a>
+    </div>
 </div>
 @endsection

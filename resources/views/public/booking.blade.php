@@ -1,13 +1,13 @@
 @extends('layouts.public')
 @section('title', ($tenant->isSalon() ? 'Termin buchen' : 'Tisch reservieren') . ' – ' . $location->name)
 @section('content')
-<div class="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-stone-100">
+<div class="overflow-hidden rounded-3xl bg-white shadow-xl shadow-stone-400/15 ring-1 ring-black/5">
     <div class="h-1.5 bg-brand"></div>
-    <div class="p-6">
+    <div class="p-6 sm:p-8">
     @if($location->brand_logo_path || $tenant->brand_logo_path)
-        <img src="{{ route('brand.location.logo', [$tenant->slug, $location->slug]) }}" alt="{{ $location->name }}" class="mx-auto mb-4 h-20 object-contain">
+        <img src="{{ route('brand.location.logo', [$tenant->slug, $location->slug]) }}" alt="{{ $location->name }}" class="mx-auto mb-5 h-20 object-contain">
     @endif
-    <h1 class="text-center text-2xl font-extrabold tracking-tight">{{ $location->name }}</h1>
+    <h1 class="text-center text-3xl font-extrabold tracking-tight">{{ $location->name }}</h1>
     <div class="mx-auto mt-3 h-1 w-12 rounded-full bg-brand/70"></div>
     @if($location->public_intro)
         <p class="mt-3 text-center text-sm text-stone-600">{{ $location->public_intro }}</p>
@@ -167,10 +167,10 @@
                 const idx = selected.indexOf(id);
                 if (idx === -1) {
                     selected.push(id);
-                    pill.classList.add('border-brand', 'bg-stone-50');
+                    pill.classList.add('border-brand', 'bg-brand', 'text-white');
                 } else {
                     selected.splice(idx, 1);
-                    pill.classList.remove('border-brand', 'bg-stone-50');
+                    pill.classList.remove('border-brand', 'bg-brand', 'text-white');
                 }
                 refresh();
             }
@@ -229,8 +229,8 @@
             }
 
             function selectStaff(btn) {
-                document.querySelectorAll('.staff-btn').forEach(b => b.classList.remove('border-brand', 'bg-stone-50'));
-                btn.classList.add('border-brand', 'bg-stone-50');
+                document.querySelectorAll('.staff-btn').forEach(b => b.classList.remove('border-brand', 'bg-brand', 'text-white'));
+                btn.classList.add('border-brand', 'bg-brand', 'text-white');
                 staffInput.value = btn.dataset.staffId;
                 loadSlots();
             }
@@ -257,8 +257,8 @@
                         btn.textContent = time;
                         btn.className = 'slot-btn rounded-xl border-2 border-stone-200 py-2.5 font-semibold hover:border-brand';
                         btn.addEventListener('click', () => {
-                            document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('border-brand', 'bg-stone-50'));
-                            btn.classList.add('border-brand', 'bg-stone-50');
+                            document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('border-brand', 'bg-brand', 'text-white'));
+                            btn.classList.add('border-brand', 'bg-brand', 'text-white');
                             timeInput.value = time;
                         });
                         slotContainer.appendChild(btn);
@@ -427,8 +427,8 @@
             let fpRooms = [];
 
             function selectParty(btn) {
-                document.querySelectorAll('.party-btn').forEach(b => b.classList.remove('border-brand', 'bg-stone-50'));
-                btn.classList.add('border-brand', 'bg-stone-50');
+                document.querySelectorAll('.party-btn').forEach(b => b.classList.remove('border-brand', 'bg-brand', 'text-white'));
+                btn.classList.add('border-brand', 'bg-brand', 'text-white');
                 partyInput.value = btn.dataset.party;
                 loadSlots();
             }
@@ -514,8 +514,8 @@
                         btn.dataset.time = time;
                         btn.className = 'slot-btn rounded-xl border-2 border-stone-200 py-2.5 font-semibold hover:border-brand';
                         btn.addEventListener('click', () => {
-                            document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('border-brand', 'bg-stone-50'));
-                            btn.classList.add('border-brand', 'bg-stone-50');
+                            document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('border-brand', 'bg-brand', 'text-white'));
+                            btn.classList.add('border-brand', 'bg-brand', 'text-white');
                             timeInput.value = time;
                             loadFloorplan();
                         });
@@ -552,8 +552,8 @@
                     b.className = 'room-tab rounded-full border-2 px-3 py-1.5 text-sm font-semibold ' +
                         (i === 0 ? 'border-brand bg-stone-50' : 'border-stone-200');
                     b.addEventListener('click', () => {
-                        document.querySelectorAll('.room-tab').forEach(t => t.classList.remove('border-brand', 'bg-stone-50'));
-                        b.classList.add('border-brand', 'bg-stone-50');
+                        document.querySelectorAll('.room-tab').forEach(t => t.classList.remove('border-brand', 'bg-brand', 'text-white'));
+                        b.classList.add('border-brand', 'bg-brand', 'text-white');
                         renderRoom(i);
                     });
                     roomTabs.appendChild(b);
@@ -632,7 +632,7 @@
 </div>
 
 @if($location->address_line1 || $location->city || $location->phone || $location->email)
-<div class="mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
+<div class="mt-5 rounded-3xl bg-white p-6 shadow-xl shadow-stone-400/15 ring-1 ring-black/5">
     <h2 class="mb-3 text-sm font-bold uppercase tracking-wide text-stone-500">Kontakt &amp; Anfahrt</h2>
     <div class="grid gap-4 text-sm sm:grid-cols-3">
         @if($location->address_line1 || $location->city)
