@@ -6,10 +6,13 @@ use App\Enums\ReservationStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Reservation;
 use App\Models\RestaurantTable;
+use App\Models\Room;
 use App\Services\AuditLogger;
+use App\Services\PlanLimitService;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class FloorPlanController extends Controller
 {
@@ -85,6 +88,11 @@ class FloorPlanController extends Controller
                 $status = 'soon';
             }
 
+            $occupiedSeats = $reservations
+                ->filter(fn ($r) => $r->tables->contains('id', $table->id)
+                    && $r->start_at->lte($atUtc) && $r->end_at->gt($atUtc))
+                ->sum('party_size');
+
             $tableStates[] = [
                 'id' => $table->id,
                 'name' => $table->name,
@@ -94,6 +102,8 @@ class FloorPlanController extends Controller
                 'width' => $table->width, 'height' => $table->height,
                 'rotation' => $table->rotation, 'shape' => $table->shape,
                 'capacity' => $table->min_capacity.'-'.$table->max_capacity,
+                'seats' => (int) $table->max_capacity,
+                'occupied' => min((int) $occupiedSeats, (int) $table->max_capacity),
                 'current' => $current ? [
                     'id' => $current->id,
                     'name' => $current->guest_name_snapshot,
@@ -123,6 +133,120 @@ class FloorPlanController extends Controller
                 'risk' => $r->no_show_risk,
             ])->values(),
         ]);
+    }
+
+    /**
+     * Create a table directly from the floor-plan editor and place it at the
+     * given position. Returns the new table in the same shape as state().
+     */
+    public function storeTable(Request $request, PlanLimitService $limits)
+    {
+        $location = $this->context->location();
+        abort_if($location === null, 404);
+
+        if (! $limits->canAdd($location->tenant, 'max_tables')) {
+            return response()->json(['message' => __('Tisch-Limit Ihres Tarifs erreicht.')], 422);
+        }
+
+        $validated = $request->validate([
+            'room_id' => ['required', 'integer'],
+            'name' => ['required', 'string', 'max:40'],
+            'min_capacity' => ['required', 'integer', 'min:1', 'max:50'],
+            'max_capacity' => ['required', 'integer', 'min:1', 'max:50', 'gte:min_capacity'],
+            'shape' => ['nullable', 'in:rect,round'],
+            'pos_x' => ['nullable', 'integer', 'min:0', 'max:5000'],
+            'pos_y' => ['nullable', 'integer', 'min:0', 'max:5000'],
+        ]);
+
+        abort_unless($location->rooms()->where('id', $validated['room_id'])->exists(), 422);
+
+        $table = $location->tables()->create([
+            'tenant_id' => $location->tenant_id,
+            'room_id' => (int) $validated['room_id'],
+            'name' => $validated['name'],
+            'min_capacity' => (int) $validated['min_capacity'],
+            'max_capacity' => (int) $validated['max_capacity'],
+            'shape' => $validated['shape'] ?? 'rect',
+            'pos_x' => (int) ($validated['pos_x'] ?? 40),
+            'pos_y' => (int) ($validated['pos_y'] ?? 40),
+        ]);
+
+        $this->audit->log('table.created', $table, null, $validated);
+
+        return response()->json(['table' => [
+            'id' => $table->id,
+            'name' => $table->name,
+            'room_id' => $table->room_id,
+            'status' => 'free',
+            'pos_x' => $table->pos_x, 'pos_y' => $table->pos_y,
+            'width' => $table->width, 'height' => $table->height,
+            'rotation' => $table->rotation, 'shape' => $table->shape,
+            'capacity' => $table->min_capacity.'-'.$table->max_capacity,
+            'seats' => (int) $table->max_capacity,
+            'occupied' => 0,
+            'current' => null,
+            'upcoming' => null,
+        ]]);
+    }
+
+    /**
+     * Upload a background image (floor sketch / photo) for a room.
+     */
+    public function uploadBackground(Request $request, Room $room)
+    {
+        $this->authorizeRoom($room);
+
+        $request->validate([
+            'image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:6144'],
+        ]);
+
+        // Remove the previous file so we don't orphan storage.
+        if ($room->background_path) {
+            Storage::disk('public')->delete($room->background_path);
+        }
+
+        $path = $request->file('image')->store(
+            'floorplan/'.$room->location_id,
+            'public'
+        );
+        $room->update(['background_path' => $path]);
+
+        $this->audit->log('floorplan.background.updated', null, null, null, ['room_id' => $room->id]);
+
+        return response()->json(['url' => route('admin.floorplan.background', $room)]);
+    }
+
+    /**
+     * Remove a room's background image.
+     */
+    public function deleteBackground(Room $room)
+    {
+        $this->authorizeRoom($room);
+
+        if ($room->background_path) {
+            Storage::disk('public')->delete($room->background_path);
+            $room->update(['background_path' => null]);
+        }
+
+        return response()->json(['ok' => true]);
+    }
+
+    /**
+     * Stream a room's background image (served through the app so no public
+     * symlink is required and access stays tenant-scoped).
+     */
+    public function background(Room $room)
+    {
+        $this->authorizeRoom($room);
+        abort_if(! $room->background_path || ! Storage::disk('public')->exists($room->background_path), 404);
+
+        return Storage::disk('public')->response($room->background_path);
+    }
+
+    private function authorizeRoom(Room $room): void
+    {
+        $location = $this->context->location();
+        abort_if($location === null || $room->location_id !== $location->id, 404);
     }
 
     /**

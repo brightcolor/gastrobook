@@ -154,8 +154,18 @@ Route::middleware(['auth', 'tenant'])->prefix('admin')->name('admin.')->group(fu
     Route::middleware('permission:reservations.view')->group(function () {
         Route::get('/floorplan', [FloorPlanController::class, 'index'])->name('floorplan.index');
         Route::get('/floorplan/state', [FloorPlanController::class, 'state'])->name('floorplan.state');
-        Route::post('/floorplan/positions', [FloorPlanController::class, 'updatePositions'])
-            ->middleware('permission:floorplan.update')->name('floorplan.positions');
+        Route::get('/floorplan/rooms/{room}/background', [FloorPlanController::class, 'background'])
+            ->name('floorplan.background');
+        Route::middleware('permission:floorplan.update')->group(function () {
+            Route::post('/floorplan/positions', [FloorPlanController::class, 'updatePositions'])
+                ->name('floorplan.positions');
+            Route::post('/floorplan/tables', [FloorPlanController::class, 'storeTable'])
+                ->name('floorplan.tables.store');
+            Route::post('/floorplan/rooms/{room}/background', [FloorPlanController::class, 'uploadBackground'])
+                ->name('floorplan.background.upload');
+            Route::delete('/floorplan/rooms/{room}/background', [FloorPlanController::class, 'deleteBackground'])
+                ->name('floorplan.background.delete');
+        });
     });
 
     // Walk-ins

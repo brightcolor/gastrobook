@@ -4,6 +4,27 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.16.0] – 2026-06-14
+
+### Behoben
+- **Tischplan-Editor: Tische lassen sich wieder platzieren.** Das Verschieben
+  per Drag & Drop wurde auf Pointer-Events (Maus + Touch, mit Pointer-Capture)
+  umgestellt und der Maßstab vereinheitlicht – das bisherige Hängenbleiben beim
+  Ziehen ist behoben.
+
+### Neu
+- **Tisch direkt im Editor anlegen:** „＋ Tisch" öffnet ein Formular (Name,
+  Plätze min./max., eckig/rund) und platziert den Tisch sofort auf dem Plan.
+- **Hintergrundbild pro Raum:** Grundriss/Foto hochladen (JPG/PNG/WebP, max.
+  6 MB) und als Plan-Hintergrund anzeigen; jederzeit wieder entfernbar. Bilder
+  werden tenant-geschützt über die App ausgeliefert (kein Public-Symlink nötig).
+- **Sitzplätze sichtbar:** Um jeden Tisch werden die Stühle entsprechend der
+  Kapazität dargestellt (eckig: oben/unten, rund: im Kreis).
+- **Belegung der Plätze farblich:** Belegte Stühle werden gefüllt, freie hell
+  dargestellt – man sieht die Anzahl belegter Plätze (z. B. 3/4), ohne dass ein
+  konkreter Sitz zugeordnet wird.
+- **Drehen** einzelner Tische im Editor (⟳-Knopf, in 45°-Schritten).
+
 ## [1.15.0] – 2026-06-14
 
 ### Behoben
@@ -316,6 +337,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.16.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.16.0
 [1.15.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.15.0
 [1.14.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.14.1
 [1.14.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.14.0
