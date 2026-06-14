@@ -23,7 +23,7 @@
         ['Feedback-Antworten', $stats['feedback_count']],
         ['Ø Bewertung', $stats['feedback_avg'] !== null ? $stats['feedback_avg'] . ' / 5' : '–'],
     ] as [$label, $value])
-        <div class="rounded-2xl bg-white p-4 shadow-sm">
+        <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-100">
             <div class="text-xs text-stone-500">{{ $label }}</div>
             <div class="mt-1 text-2xl font-bold">{{ $value }}</div>
         </div>
@@ -31,7 +31,7 @@
 </div>
 
 <div class="mt-6 grid gap-6 lg:grid-cols-2">
-    <div class="rounded-2xl bg-white p-5 shadow-sm">
+    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
         <h2 class="mb-3 font-bold">Reservierungen pro Tag</h2>
         @php($max = max(1, $byDay->max('cnt')))
         <div class="space-y-1.5 text-xs">
@@ -46,7 +46,7 @@
     </div>
 
     <div class="space-y-6">
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
             <h2 class="mb-3 font-bold">Auslastung nach Uhrzeit</h2>
             @php($maxH = max(1, $byHour->max()))
             <div class="space-y-1.5 text-xs">
@@ -59,7 +59,7 @@
                 @endforeach
             </div>
         </div>
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
             <h2 class="mb-3 font-bold">Nach Quelle</h2>
             <div class="flex flex-wrap gap-3 text-sm">
                 @foreach($bySource as $source => $count)

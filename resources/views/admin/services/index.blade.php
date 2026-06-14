@@ -6,7 +6,7 @@
 </div>
 
 {{-- Neue Leistung anlegen --}}
-<div class="mb-6 rounded-2xl bg-white p-5 shadow-sm">
+<div class="mb-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
     <h2 class="mb-4 font-bold">Neue Leistung</h2>
     <form method="POST" action="{{ route('admin.services.store') }}" class="space-y-3">
         @csrf

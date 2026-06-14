@@ -12,7 +12,7 @@
     <div class="lg:col-span-2">
         <div class="space-y-3">
             @forelse($entries as $entry)
-                <div class="rounded-2xl bg-white p-4 shadow-sm">
+                <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-100">
                     <div class="flex flex-wrap items-center justify-between gap-3">
                         <div>
                             <strong>{{ $entry->guest_name }}</strong> · {{ $entry->party_size }} P.
@@ -58,7 +58,7 @@
         </div>
     </div>
 
-    <div class="rounded-2xl bg-white p-5 shadow-sm">
+    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
         <h2 class="font-bold">Gast hinzufügen</h2>
         <form method="POST" action="{{ route('admin.waitlist.store') }}" class="mt-3 space-y-3 text-sm">
             @csrf

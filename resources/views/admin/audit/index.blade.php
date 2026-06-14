@@ -3,7 +3,7 @@
 @section('content')
 <h1 class="mb-5 text-2xl font-bold">Auditlog</h1>
 
-<form method="GET" class="mb-4 flex flex-wrap items-end gap-3 rounded-2xl bg-white p-4 shadow-sm text-sm">
+<form method="GET" class="mb-4 flex flex-wrap items-end gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-100 text-sm">
     <input type="text" name="action" value="{{ request('action') }}" placeholder="Aktion (z. B. reservation.)" class="rounded-lg border-stone-200">
     <input type="date" name="from" value="{{ request('from') }}" class="rounded-lg border-stone-200">
     <input type="date" name="until" value="{{ request('until') }}" class="rounded-lg border-stone-200">

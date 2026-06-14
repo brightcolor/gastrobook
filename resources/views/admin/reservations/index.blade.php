@@ -11,7 +11,7 @@
     </div>
 </div>
 
-<form method="GET" class="mb-4 flex flex-wrap items-end gap-3 rounded-2xl bg-white p-4 shadow-sm">
+<form method="GET" class="mb-4 flex flex-wrap items-end gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-100">
     <div>
         <label class="mb-1 block text-xs font-semibold text-stone-500">Datum</label>
         <input type="date" name="date" value="{{ $date }}" class="rounded-lg border-stone-200 text-sm" onchange="this.form.submit()">

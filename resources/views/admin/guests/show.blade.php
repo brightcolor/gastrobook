@@ -9,7 +9,7 @@
 <div class="grid gap-6 lg:grid-cols-3">
     <div class="space-y-6 lg:col-span-2">
         {{-- Profile form --}}
-        <form method="POST" action="{{ route('admin.guests.update', $guest) }}" class="rounded-2xl bg-white p-5 shadow-sm">
+        <form method="POST" action="{{ route('admin.guests.update', $guest) }}" class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
             @csrf @method('PUT')
             <h2 class="mb-3 font-bold">Profil</h2>
             <div class="grid gap-3 text-sm sm:grid-cols-2">
@@ -35,7 +35,7 @@
         </form>
 
         {{-- Reservation history --}}
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
             <h2 class="mb-3 font-bold">Reservierungshistorie</h2>
             <div class="divide-y divide-stone-50 text-sm">
                 @forelse($reservations as $r)
@@ -52,7 +52,7 @@
 
     <div class="space-y-6">
         {{-- Stats --}}
-        <div class="rounded-2xl bg-white p-5 shadow-sm text-sm">
+        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100 text-sm">
             <h2 class="mb-3 font-bold">Statistik</h2>
             <dl class="space-y-1.5">
                 <div class="flex justify-between"><dt class="text-stone-500">Besuche</dt><dd class="font-bold">{{ $guest->visit_count }}</dd></div>
@@ -66,7 +66,7 @@
         </div>
 
         {{-- Notes --}}
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
             <h2 class="mb-3 font-bold">Notizen</h2>
             <form method="POST" action="{{ route('admin.guests.notes', $guest) }}" class="mb-3 space-y-2">
                 @csrf
@@ -88,7 +88,7 @@
         </div>
 
         {{-- GDPR --}}
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
             <h2 class="mb-3 font-bold">Datenschutz (DSGVO)</h2>
             <div class="space-y-2">
                 @if(auth()->user()->canInTenant('guests.export', app(\App\Support\TenantContext::class)->tenant()))

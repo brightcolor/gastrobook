@@ -5,7 +5,7 @@
 
 {{-- Betriebstyp --}}
 @php $tenant = app(\App\Support\TenantContext::class)->tenant(); @endphp
-<div class="mb-6 rounded-2xl bg-white p-5 shadow-sm">
+<div class="mb-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
     <h2 class="mb-3 font-bold">Betriebstyp</h2>
     <p class="mb-3 text-sm text-stone-500">Bestimmt das Buchungsmodell für diesen Mandanten. Umschalten ändert die Navigation und die öffentliche Buchungsseite.</p>
     <form method="POST" action="{{ route('admin.settings.tenant-type') }}" class="flex flex-wrap items-end gap-4">
@@ -41,7 +41,7 @@
 </div>
 
 @if(auth()->user()->canInTenant('tenant.settings.manage', app(\App\Support\TenantContext::class)->tenant(), $location))
-<div class="mb-4 rounded-2xl bg-white p-5 shadow-sm">
+<div class="mb-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
     <h2 class="mb-1 font-bold">Logo dieses Standorts</h2>
     <p class="mb-3 text-xs text-stone-500">Erscheint oben auf der Buchungsseite. PNG, JPG, WebP oder SVG, max. 3 MB.</p>
     <div class="flex flex-wrap items-center gap-4">
@@ -70,7 +70,7 @@
 
 <div class="grid gap-6 xl:grid-cols-2">
     {{-- Booking rules --}}
-    <form method="POST" action="{{ route('admin.settings.booking-rules') }}" class="rounded-2xl bg-white p-5 shadow-sm">
+    <form method="POST" action="{{ route('admin.settings.booking-rules') }}" class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
         @csrf @method('PUT')
         <h2 class="mb-3 font-bold">Buchungsregeln</h2>
         <div class="grid grid-cols-2 gap-3 text-sm">
@@ -146,7 +146,7 @@
     </form>
 
     {{-- Opening hours --}}
-    <form method="POST" action="{{ route('admin.settings.opening-hours') }}" class="rounded-2xl bg-white p-5 shadow-sm">
+    <form method="POST" action="{{ route('admin.settings.opening-hours') }}" class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
         @csrf @method('PUT')
         <h2 class="mb-3 font-bold">Öffnungszeiten</h2>
         <div id="hoursContainer" class="space-y-2 text-sm">
@@ -169,7 +169,7 @@
     </form>
 
     {{-- Rooms & tables --}}
-    <div class="rounded-2xl bg-white p-5 shadow-sm">
+    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
         <h2 class="mb-3 font-bold">Räume & Tische</h2>
         <form method="POST" action="{{ route('admin.settings.rooms.store') }}" class="mb-4 flex items-end gap-2 text-sm">
             @csrf
@@ -285,7 +285,7 @@
 
     {{-- Booking form fields --}}
     @if(auth()->user()->canInTenant('tenant.settings.manage', app(\App\Support\TenantContext::class)->tenant(), $location))
-    <form method="POST" action="{{ route('admin.settings.field-rules') }}" class="rounded-2xl bg-white p-5 shadow-sm">
+    <form method="POST" action="{{ route('admin.settings.field-rules') }}" class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
         @csrf @method('PUT')
         <h2 class="mb-1 font-bold">Formularfelder im Buchungswidget</h2>
         <p class="mb-3 text-xs text-stone-500">Steuert pro Feld, ob es Gästen angezeigt wird und ob es Pflicht ist. Der Name ist immer Pflicht.</p>
@@ -314,7 +314,7 @@
 
     {{-- MailWizz newsletter integration --}}
     @if(auth()->user()->canInTenant('integrations.manage', app(\App\Support\TenantContext::class)->tenant(), $location))
-    <form method="POST" action="{{ route('admin.settings.mailwizz') }}" class="rounded-2xl bg-white p-5 shadow-sm">
+    <form method="POST" action="{{ route('admin.settings.mailwizz') }}" class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
         @csrf @method('PUT')
         <div class="mb-1 flex items-center justify-between">
             <h2 class="font-bold">Newsletter: MailWizz</h2>
@@ -351,7 +351,7 @@
     {{-- Stripe + deposit rules --}}
     @if(auth()->user()->canInTenant('integrations.manage', app(\App\Support\TenantContext::class)->tenant(), $location))
     <div class="space-y-6">
-        <form method="POST" action="{{ route('admin.settings.stripe') }}" class="rounded-2xl bg-white p-5 shadow-sm">
+        <form method="POST" action="{{ route('admin.settings.stripe') }}" class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
             @csrf @method('PUT')
             <div class="mb-1 flex items-center justify-between">
                 <h2 class="font-bold">Zahlungen: Stripe</h2>
@@ -385,7 +385,7 @@
         </form>
 
         {{-- PayPal --}}
-        <form method="POST" action="{{ route('admin.settings.paypal') }}" class="rounded-2xl bg-white p-5 shadow-sm">
+        <form method="POST" action="{{ route('admin.settings.paypal') }}" class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
             @csrf @method('PUT')
             <div class="mb-1 flex items-center justify-between">
                 <h2 class="font-bold">Zahlungen: PayPal</h2>
@@ -426,7 +426,7 @@
         </form>
 
         {{-- SMS: seven.io --}}
-        <form method="POST" action="{{ route('admin.settings.sms') }}" class="rounded-2xl bg-white p-5 shadow-sm">
+        <form method="POST" action="{{ route('admin.settings.sms') }}" class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
             @csrf @method('PUT')
             <div class="mb-1 flex items-center justify-between">
                 <h2 class="font-bold">SMS: seven.io</h2>
@@ -460,7 +460,7 @@
         </form>
 
         @if(auth()->user()->canInTenant('payments.manage', app(\App\Support\TenantContext::class)->tenant(), $location))
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
             <h2 class="mb-1 font-bold">Anzahlungsregeln (No-Show-Schutz)</h2>
             <p class="mb-3 text-xs text-stone-500">
                 Online-Reservierungen, die eine Regel treffen, müssen vorab anzahlen.
@@ -503,7 +503,7 @@
 
     {{-- Combinations + special hours --}}
     <div class="space-y-6">
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
             <h2 class="mb-3 font-bold">Tischkombinationen</h2>
             <form method="POST" action="{{ route('admin.settings.combinations.store') }}" class="space-y-2 text-sm">
                 @csrf
@@ -526,7 +526,7 @@
             </div>
         </div>
 
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
             <h2 class="mb-3 font-bold">Sonderöffnungszeiten / Schließtage</h2>
             <form method="POST" action="{{ route('admin.settings.special-hours') }}" class="grid grid-cols-2 gap-2 text-sm">
                 @csrf

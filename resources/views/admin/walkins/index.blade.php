@@ -4,7 +4,7 @@
 <h1 class="mb-5 text-2xl font-bold">Walk-ins</h1>
 
 <div class="grid gap-6 lg:grid-cols-2">
-    <div class="rounded-2xl bg-white p-5 shadow-sm">
+    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
         <h2 class="font-bold">Gast platzieren</h2>
         <form method="GET" class="mt-3 flex items-end gap-2">
             <div>
@@ -41,7 +41,7 @@
         </div>
     </div>
 
-    <div class="rounded-2xl bg-white p-5 shadow-sm">
+    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
         <h2 class="font-bold">Heutige Walk-ins</h2>
         <div class="mt-3 divide-y divide-stone-100">
             @forelse($walkIns as $w)

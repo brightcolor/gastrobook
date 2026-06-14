@@ -15,7 +15,7 @@
 @endunless
 
 <div class="grid gap-6 lg:grid-cols-2">
-    <div class="rounded-2xl bg-white p-5 shadow-sm">
+    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
         <h2 class="font-bold">Aktive Tokens</h2>
         <div class="mt-3 divide-y divide-stone-50 text-sm">
             @forelse($tokens as $token)
@@ -36,7 +36,7 @@
         </div>
     </div>
 
-    <div class="rounded-2xl bg-white p-5 shadow-sm">
+    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
         <h2 class="font-bold">Token erstellen</h2>
         <form method="POST" action="{{ route('admin.api-tokens.store') }}" class="mt-3 space-y-3 text-sm">
             @csrf

@@ -55,7 +55,7 @@
         @endif
     </div>
 
-    <div class="rounded-2xl bg-white p-5 shadow-sm">
+    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
         <h2 class="font-bold">Benutzer einladen</h2>
         <form method="POST" action="{{ route('admin.users.invite') }}" class="mt-3 space-y-3 text-sm">
             @csrf

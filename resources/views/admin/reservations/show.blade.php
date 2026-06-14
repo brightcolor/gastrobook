@@ -12,7 +12,7 @@
 <div class="grid gap-6 lg:grid-cols-3">
     <div class="space-y-6 lg:col-span-2">
         {{-- Details --}}
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
             <div class="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
                 <div><div class="text-stone-500">Datum</div><div class="font-bold">{{ $reservation->localStart()->format('d.m.Y') }}</div></div>
                 <div><div class="text-stone-500">Uhrzeit</div><div class="font-bold">{{ $reservation->localStart()->format('H:i') }}–{{ $reservation->localEnd()->format('H:i') }}</div></div>
@@ -41,7 +41,7 @@
         </div>
 
         {{-- Quick actions --}}
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
             <h2 class="mb-3 font-bold">Aktionen</h2>
             <div class="flex flex-wrap gap-2">
                 @foreach(\App\Enums\ReservationStatus::transitions()[$reservation->status->value] ?? [] as $target)
@@ -91,7 +91,7 @@
         </div>
 
         {{-- History --}}
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
             <h2 class="mb-3 font-bold">Verlauf</h2>
             <div class="space-y-2 text-sm">
                 @foreach($reservation->statusHistories->sortByDesc('created_at') as $h)
@@ -108,7 +108,7 @@
 
     <div class="space-y-6">
         {{-- Guest profile --}}
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
             <h2 class="mb-3 font-bold">Gastprofil</h2>
             @if($reservation->guest)
                 <a href="{{ route('admin.guests.show', $reservation->guest) }}" class="font-semibold text-brand hover:underline">{{ $reservation->guest->fullName() }} @if($reservation->guest->is_vip)⭐@endif</a>
@@ -134,7 +134,7 @@
         </div>
 
         {{-- Internal notes --}}
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
             <h2 class="mb-3 font-bold">Notizen</h2>
             <div class="space-y-2 text-sm">
                 @foreach($reservation->notes->sortByDesc('created_at') as $note)

@@ -49,7 +49,7 @@
         </div>
     </div>
 
-    <div class="rounded-2xl bg-white p-5 shadow-sm">
+    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
         <h2 class="font-bold">Event anlegen</h2>
         <form method="POST" action="{{ route('admin.events.store') }}" class="mt-3 space-y-3 text-sm">
             @csrf

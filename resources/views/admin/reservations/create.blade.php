@@ -3,7 +3,7 @@
 @section('content')
 <h1 class="mb-5 text-2xl font-bold">Neue Reservierung</h1>
 
-<form method="POST" action="{{ route('admin.reservations.store') }}" class="max-w-3xl space-y-5 rounded-2xl bg-white p-6 shadow-sm">
+<form method="POST" action="{{ route('admin.reservations.store') }}" class="max-w-3xl space-y-5 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-stone-100">
     @csrf
     <div class="grid gap-4 sm:grid-cols-4">
         <div>
