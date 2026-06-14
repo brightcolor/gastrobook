@@ -17,7 +17,7 @@
 <div class="grid gap-6 lg:grid-cols-2">
     <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
         <h2 class="font-bold">Aktive Tokens</h2>
-        <div class="mt-3 divide-y divide-stone-50 text-sm">
+        <div class="mt-3 divide-y divide-stone-50 [&>tr:hover]:bg-stone-50/70 text-sm">
             @forelse($tokens as $token)
                 <div class="flex items-center justify-between py-2.5">
                     <div>

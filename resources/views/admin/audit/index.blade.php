@@ -10,9 +10,9 @@
     <button class="rounded-lg bg-stone-900 px-4 py-2 font-semibold text-white">Filtern</button>
 </form>
 
-<div class="overflow-x-auto rounded-2xl bg-white shadow-sm">
+<div class="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-stone-100">
     <table class="w-full text-sm">
-        <thead class="border-b border-stone-100 text-left text-xs uppercase text-stone-500">
+        <thead class="border-b border-stone-100 text-left text-xs font-semibold uppercase tracking-wide text-stone-500">
             <tr>
                 <th class="px-4 py-3">Zeit</th>
                 <th class="px-4 py-3">Benutzer</th>
@@ -21,7 +21,7 @@
                 <th class="px-4 py-3">Änderungen</th>
             </tr>
         </thead>
-        <tbody class="divide-y divide-stone-50">
+        <tbody class="divide-y divide-stone-50 [&>tr:hover]:bg-stone-50/70">
             @forelse($logs as $log)
                 <tr>
                     <td class="whitespace-nowrap px-4 py-2.5 text-stone-500">{{ $log->created_at->format('d.m.Y H:i:s') }}</td>

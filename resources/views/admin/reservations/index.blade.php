@@ -50,9 +50,9 @@
     <button class="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Filtern</button>
 </form>
 
-<div class="overflow-x-auto rounded-2xl bg-white shadow-sm">
+<div class="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-stone-100">
     <table class="w-full text-sm">
-        <thead class="border-b border-stone-100 text-left text-xs uppercase text-stone-500">
+        <thead class="border-b border-stone-100 text-left text-xs font-semibold uppercase tracking-wide text-stone-500">
             <tr>
                 <th class="px-4 py-3">Zeit</th>
                 <th class="px-4 py-3">Gast</th>
@@ -63,7 +63,7 @@
                 <th class="px-4 py-3">Aktionen</th>
             </tr>
         </thead>
-        <tbody class="divide-y divide-stone-50">
+        <tbody class="divide-y divide-stone-50 [&>tr:hover]:bg-stone-50/70">
             @forelse($reservations as $r)
                 <tr class="hover:bg-stone-50">
                     <td class="px-4 py-3 font-semibold">{{ $r->localStart()->format('H:i') }}<span class="font-normal text-stone-400">–{{ $r->localEnd()->format('H:i') }}</span></td>

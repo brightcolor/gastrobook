@@ -59,7 +59,7 @@
 @else
     <div class="space-y-3">
         @foreach($members as $member)
-            <details class="rounded-2xl bg-white shadow-sm">
+            <details class="rounded-2xl bg-white shadow-sm ring-1 ring-stone-100">
                 <summary class="flex cursor-pointer items-center gap-3 p-4 hover:bg-stone-50">
                     @if($member->color)
                         <span class="inline-block h-5 w-5 rounded-full" style="background:{{ $member->color }}"></span>

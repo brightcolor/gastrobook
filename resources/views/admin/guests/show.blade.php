@@ -37,7 +37,7 @@
         {{-- Reservation history --}}
         <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
             <h2 class="mb-3 font-bold">Reservierungshistorie</h2>
-            <div class="divide-y divide-stone-50 text-sm">
+            <div class="divide-y divide-stone-50 [&>tr:hover]:bg-stone-50/70 text-sm">
                 @forelse($reservations as $r)
                     <a href="{{ route('admin.reservations.show', $r) }}" class="flex items-center justify-between py-2 hover:bg-stone-50">
                         <span>{{ $r->localStart()->format('d.m.Y H:i') }} · {{ $r->party_size }} P. · {{ $r->code }}</span>

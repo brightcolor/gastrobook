@@ -4,6 +4,14 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.21.2] – 2026-06-14
+
+### Geändert
+- **Tabellen-Politur (durchgehend):** Einheitliche Spaltenköpfe (kräftigere,
+  gesperrte Versalien) und dezenter **Zeilen-Hover** in allen Admin-Tabellen
+  (Reservierungen, Gäste, Nutzer, Events, Refunds, Auditlog, Tische). Auch die
+  Tabellen-Karten ohne Innenabstand haben jetzt den einheitlichen Rahmen.
+
 ## [1.21.1] – 2026-06-14
 
 ### Geändert
@@ -470,6 +478,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.21.2]: https://github.com/brightcolor/gastrobook/releases/tag/v1.21.2
 [1.21.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.21.1
 [1.21.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.21.0
 [1.20.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.20.0

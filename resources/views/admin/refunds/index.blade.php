@@ -21,9 +21,9 @@
 @if($refunds->isEmpty())
     <p class="rounded-2xl bg-white p-6 text-center text-sm text-stone-500 shadow-sm">Keine Rückerstattungen vorhanden.</p>
 @else
-    <div class="overflow-x-auto rounded-2xl bg-white shadow-sm">
+    <div class="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-stone-100">
         <table class="w-full text-sm">
-            <thead class="border-b border-stone-100 text-left text-xs uppercase text-stone-500">
+            <thead class="border-b border-stone-100 text-left text-xs font-semibold uppercase tracking-wide text-stone-500">
                 <tr>
                     <th class="px-4 py-3">Reservierung</th>
                     <th class="px-4 py-3">Betrag</th>
@@ -34,7 +34,7 @@
                     <th class="px-4 py-3"></th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody class="[&>tr:hover]:bg-stone-50/70">
                 @foreach($refunds as $refund)
                     <tr class="border-b border-stone-50">
                         <td class="px-4 py-3">

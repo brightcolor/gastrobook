@@ -69,7 +69,7 @@
 @else
     <div class="space-y-3">
         @foreach($services as $service)
-            <details class="rounded-2xl bg-white shadow-sm">
+            <details class="rounded-2xl bg-white shadow-sm ring-1 ring-stone-100">
                 <summary class="flex cursor-pointer items-center gap-4 p-4 hover:bg-stone-50">
                     @if($service->color)
                         <span class="inline-block h-4 w-4 rounded-full" style="background:{{ $service->color }}"></span>

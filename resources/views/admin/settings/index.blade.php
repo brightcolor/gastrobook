@@ -187,8 +187,8 @@
 
         <div class="max-h-80 overflow-y-auto">
             <table class="w-full text-sm">
-                <thead class="text-left text-xs uppercase text-stone-500"><tr><th class="py-1.5">Tisch</th><th>Raum</th><th>Kapazität</th><th>Eigenschaften</th><th></th></tr></thead>
-                <tbody class="divide-y divide-stone-50">
+                <thead class="text-left text-xs font-semibold uppercase tracking-wide text-stone-500"><tr><th class="py-1.5">Tisch</th><th>Raum</th><th>Kapazität</th><th>Eigenschaften</th><th></th></tr></thead>
+                <tbody class="divide-y divide-stone-50 [&>tr:hover]:bg-stone-50/70">
                     @foreach($tables as $table)
                         <tr>
                             <td class="py-1.5 font-semibold">{{ $table->name }}</td>
