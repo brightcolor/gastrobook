@@ -2,90 +2,106 @@
 @section('title', 'Tischplan')
 @php($canEdit = auth()->user()->canInTenant('floorplan.update', app(\App\Support\TenantContext::class)->tenant(), $location))
 @section('content')
-<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-    <h1 class="text-2xl font-bold">Tischplan</h1>
-    <div class="flex items-center gap-2">
-        <input type="date" id="planDate" value="{{ $date }}" class="rounded-lg border-stone-200 text-sm">
-        <input type="time" id="planTime" value="{{ now($location->timezone)->format('H:i') }}" class="rounded-lg border-stone-200 text-sm">
-        @if($canEdit)
-            <button id="editToggle" class="rounded-lg bg-stone-200 px-3 py-2 text-sm font-semibold">✏️ Bearbeiten</button>
-            <button id="saveLayout" class="hidden rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white">💾 Speichern</button>
-        @endif
-    </div>
-</div>
-
-<div class="mb-3 flex flex-wrap gap-3 text-xs">
-    @foreach([['frei', 'bg-emerald-200'], ['bald belegt', 'bg-amber-200'], ['reserviert/wartet', 'bg-orange-300'], ['belegt', 'bg-blue-300'], ['No-Show-Risiko', 'bg-red-300'], ['blockiert', 'bg-stone-400']] as [$label, $cls])
-        <span class="flex items-center gap-1.5"><span class="inline-block h-3 w-3 rounded {{ $cls }}"></span>{{ $label }}</span>
-    @endforeach
-    <span class="flex items-center gap-1.5"><span class="inline-block h-3 w-3 rounded-full bg-slate-700"></span>Platz belegt</span>
-    <span class="flex items-center gap-1.5"><span class="inline-block h-3 w-3 rounded-full border border-slate-400 bg-slate-200"></span>Platz frei</span>
-</div>
-
-@foreach($rooms as $room)
-    <div class="mb-6" data-room-wrap="{{ $room->id }}">
-        <div class="mb-2 flex flex-wrap items-center gap-2">
-            <h2 class="font-bold">{{ $room->name }} @if($room->is_outdoor)<span class="text-sm font-normal text-stone-500">(Außenbereich)</span>@endif</h2>
+<div class="fp">
+    <div class="fp-bar">
+        <div class="fp-bar-l">
+            <h1 class="text-2xl font-bold">Tischplan</h1>
+            <span class="fp-live"><span class="fp-live-dot"></span>live</span>
+        </div>
+        <div class="fp-bar-r">
+            <div class="fp-when">
+                <input type="date" id="planDate" value="{{ $date }}">
+                <span class="fp-when-sep">·</span>
+                <input type="time" id="planTime" value="{{ now($location->timezone)->format('H:i') }}">
+            </div>
             @if($canEdit)
-                <div class="room-edit ml-auto hidden flex-wrap items-center gap-2 text-sm">
-                    <button type="button" class="add-table rounded-lg bg-stone-900 px-3 py-1.5 font-semibold text-white" data-room="{{ $room->id }}">＋ Tisch</button>
-                    <label class="cursor-pointer rounded-lg bg-stone-200 px-3 py-1.5 font-semibold">
-                        🖼 Hintergrund
-                        <input type="file" accept="image/png,image/jpeg,image/webp" class="bg-upload hidden" data-room="{{ $room->id }}">
-                    </label>
-                    <button type="button" class="bg-clear rounded-lg bg-stone-100 px-3 py-1.5 font-semibold text-stone-600 {{ $room->background_path ? '' : 'hidden' }}" data-room="{{ $room->id }}">Hintergrund entfernen</button>
-                </div>
+                <button id="editToggle" class="fp-btn">✏️ <span>Bearbeiten</span></button>
+                <button id="saveLayout" class="fp-btn fp-btn-save hidden">💾 <span>Speichern</span></button>
             @endif
         </div>
-        <div class="floor-scroll overflow-auto rounded-2xl border border-stone-200 bg-white shadow-sm">
-            <div class="floor-room relative"
-                 data-room="{{ $room->id }}"
-                 data-w="{{ $room->plan_width }}" data-h="{{ $room->plan_height }}"
-                 style="width:{{ (int) round($room->plan_width * 0.8) }}px;height:{{ (int) round($room->plan_height * 0.8) }}px;
-                        background-color:#fff;background-position:center;background-repeat:no-repeat;background-size:cover;
-                        @if($room->background_path)background-image:url('{{ route('admin.floorplan.background', $room) }}');@endif">
-                <div class="grid-overlay pointer-events-none absolute inset-0"
-                     style="background-image:radial-gradient(circle,rgba(120,113,108,.25) 1px,transparent 1px);background-size:20px 20px;"></div>
+    </div>
+
+    @if($canEdit)
+        <div id="editHint" class="fp-hint hidden">
+            <span>✦ Bearbeiten aktiv</span>
+            <span class="fp-hint-tip">Ziehen zum Verschieben · ⟳ drehen · am Raster ausgerichtet · „Speichern" nicht vergessen</span>
+        </div>
+    @endif
+
+    <div class="fp-legend">
+        @foreach([['frei', 'free'], ['bald belegt', 'soon'], ['reserviert/wartet', 'awaiting'], ['belegt', 'occupied'], ['No-Show-Risiko', 'no_show_risk'], ['blockiert', 'blocked']] as [$label, $key])
+            <span class="fp-leg"><span class="fp-leg-dot lg-{{ $key }}"></span>{{ $label }}</span>
+        @endforeach
+        <span class="fp-leg-sep"></span>
+        <span class="fp-leg"><span class="fp-chip occ"></span>Platz belegt</span>
+        <span class="fp-leg"><span class="fp-chip"></span>Platz frei</span>
+    </div>
+
+    @foreach($rooms as $room)
+        <div class="fp-room-wrap" data-room-wrap="{{ $room->id }}">
+            <div class="fp-room-head">
+                <div class="fp-room-title">
+                    <span class="fp-room-ic">{{ $room->is_outdoor ? '🌤' : '🪟' }}</span>
+                    <h2>{{ $room->name }}</h2>
+                    @if($room->is_outdoor)<span class="fp-tag">Außenbereich</span>@endif
+                    <span class="fp-room-meta" data-meta="{{ $room->id }}"></span>
+                </div>
+                @if($canEdit)
+                    <div class="room-edit hidden">
+                        <button type="button" class="add-table fp-mini fp-mini-dark" data-room="{{ $room->id }}">＋ Tisch</button>
+                        <label class="fp-mini cursor-pointer">
+                            🖼 <span>Hintergrund</span>
+                            <input type="file" accept="image/png,image/jpeg,image/webp" class="bg-upload hidden" data-room="{{ $room->id }}">
+                        </label>
+                        <button type="button" class="bg-clear fp-mini fp-mini-ghost {{ $room->background_path ? '' : 'hidden' }}" data-room="{{ $room->id }}">Hintergrund entfernen</button>
+                    </div>
+                @endif
+            </div>
+            <div class="floor-scroll">
+                <div class="floor-room"
+                     data-room="{{ $room->id }}"
+                     data-w="{{ $room->plan_width }}" data-h="{{ $room->plan_height }}"
+                     style="width:{{ (int) round($room->plan_width * 0.8) }}px;height:{{ (int) round($room->plan_height * 0.8) }}px;
+                            @if($room->background_path)background-image:url('{{ route('admin.floorplan.background', $room) }}');@endif">
+                    <div class="grid-overlay"></div>
+                </div>
             </div>
         </div>
-    </div>
-@endforeach
+    @endforeach
+</div>
 
 {{-- Reservation popup --}}
-<div id="tablePopup" class="fixed inset-x-4 bottom-4 z-50 hidden rounded-2xl border border-stone-200 bg-white p-4 shadow-2xl md:inset-x-auto md:right-6 md:w-96"></div>
+<div id="tablePopup" class="fp-popup hidden"></div>
 
 {{-- New table modal --}}
 @if($canEdit)
-<div id="newTableBack" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4">
-    <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
-        <h3 class="text-lg font-bold">Neuer Tisch</h3>
-        <form id="newTableForm" class="mt-4 space-y-3">
+<div id="newTableBack" class="fp-modal-back hidden">
+    <div class="fp-modal">
+        <div class="fp-modal-head"><span>🪑</span><h3>Neuer Tisch</h3></div>
+        <form id="newTableForm" class="fp-modal-body">
             <input type="hidden" name="room_id">
-            <div>
-                <label class="mb-1 block text-sm font-semibold">Name / Nummer</label>
-                <input name="name" required maxlength="40" placeholder="z. B. 12" class="w-full rounded-lg border-2 border-stone-200 px-3 py-2">
-            </div>
-            <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="mb-1 block text-sm font-semibold">Plätze min.</label>
-                    <input name="min_capacity" type="number" min="1" max="50" value="2" required class="w-full rounded-lg border-2 border-stone-200 px-3 py-2">
+            <label class="fp-field">
+                <span>Name / Nummer</span>
+                <input name="name" required maxlength="40" placeholder="z. B. 12" autocomplete="off">
+            </label>
+            <div class="fp-field">
+                <span>Form</span>
+                <div class="fp-seg" id="shapeSeg">
+                    <button type="button" data-shape="rect" class="on">▭ Eckig</button>
+                    <button type="button" data-shape="round">⬭ Rund</button>
                 </div>
-                <div>
-                    <label class="mb-1 block text-sm font-semibold">Plätze max.</label>
-                    <input name="max_capacity" type="number" min="1" max="50" value="4" required class="w-full rounded-lg border-2 border-stone-200 px-3 py-2">
-                </div>
+                <input type="hidden" name="shape" value="rect">
             </div>
-            <div>
-                <label class="mb-1 block text-sm font-semibold">Form</label>
-                <select name="shape" class="w-full rounded-lg border-2 border-stone-200 px-3 py-2">
-                    <option value="rect">Eckig</option>
-                    <option value="round">Rund</option>
-                </select>
+            <div class="fp-grid2">
+                <label class="fp-field"><span>Plätze min.</span>
+                    <input name="min_capacity" type="number" min="1" max="50" value="2" required></label>
+                <label class="fp-field"><span>Plätze max.</span>
+                    <input name="max_capacity" type="number" min="1" max="50" value="4" required></label>
             </div>
-            <p id="newTableErr" class="hidden text-sm text-red-600"></p>
-            <div class="flex gap-2 pt-1">
-                <button type="submit" class="flex-1 rounded-lg bg-emerald-600 py-2.5 font-semibold text-white">Anlegen</button>
-                <button type="button" id="newTableCancel" class="rounded-lg bg-stone-200 px-4 py-2.5 font-semibold">Abbrechen</button>
+            <p id="newTableErr" class="fp-err hidden"></p>
+            <div class="fp-modal-foot">
+                <button type="button" id="newTableCancel" class="fp-btn">Abbrechen</button>
+                <button type="submit" class="fp-btn fp-btn-save">Anlegen</button>
             </div>
         </form>
     </div>
@@ -95,21 +111,20 @@
 <script>
 (function () {
     const SCALE = 0.8;
+    const SNAP = 10; // grid snap in plan units
     const stateUrl = @json(route('admin.floorplan.state'));
     const posUrl = @json(route('admin.floorplan.positions'));
     const tableStoreUrl = @json($canEdit ? route('admin.floorplan.tables.store') : '');
     const bgBase = @json(url('/admin/floorplan/rooms'));
     const csrf = @json(csrf_token());
-    const statusColors = {
-        free: '#a7f3d0', soon: '#fde68a', awaiting: '#fdba74',
-        occupied: '#93c5fd', no_show_risk: '#fca5a5', blocked: '#a8a29e',
-    };
     let editMode = false;
     let tablesData = [];
+    let selectedId = null;
 
     const dateInput = document.getElementById('planDate');
     const timeInput = document.getElementById('planTime');
     const popup = document.getElementById('tablePopup');
+    const editHint = document.getElementById('editHint');
 
     async function load() {
         const res = await fetch(stateUrl + '?date=' + dateInput.value + '&time=' + timeInput.value, {headers: {Accept: 'application/json'}});
@@ -118,29 +133,28 @@
         render();
     }
 
-    // Build the chairs (seats) around a table, colouring the occupied ones.
+    function esc(s) { return (s ?? '').toString().replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+    // Chairs around a table (chair-shaped, backrest facing outward), occupied filled.
     function chairsHtml(t, w, h) {
         const n = Math.max(0, t.seats || 0);
         if (!n) return '';
         const occ = Math.min(t.occupied || 0, n);
-        const cs = Math.max(8, Math.min(14, Math.round(Math.min(w, h) / 3.5)));
-        const gap = 3;
-        const seat = (x, y, i) => {
-            const filled = i < occ;
-            return `<span class="chair" style="left:${x - cs / 2}px;top:${y - cs / 2}px;width:${cs}px;height:${cs}px;`
-                + `background:${filled ? '#334155' : '#e2e8f0'};border:1px solid ${filled ? '#1e293b' : '#94a3b8'};"></span>`;
+        const cs = Math.max(11, Math.min(18, Math.round(Math.min(w, h) / 3)));
+        const off = cs / 2 + 4;
+        const cw = Math.round(cs * 1.1);
+        const seat = (x, y, ang, i) => {
+            const cls = i < occ ? 'chair occ' : 'chair';
+            return `<span class="${cls}" style="left:${x - cw / 2}px;top:${y - cs / 2}px;width:${cw}px;height:${cs}px;transform:rotate(${ang}deg)"></span>`;
         };
         let out = '';
-        const off = cs / 2 + gap;
         if (t.shape === 'round') {
             const r = Math.max(w, h) / 2 + off;
             for (let i = 0; i < n; i++) {
                 const a = (Math.PI * 2 * i) / n - Math.PI / 2;
-                out += seat(w / 2 + r * Math.cos(a), h / 2 + r * Math.sin(a), i);
+                out += seat(w / 2 + r * Math.cos(a), h / 2 + r * Math.sin(a), (a * 180 / Math.PI) + 90, i);
             }
         } else {
-            // Distribute evenly around the whole perimeter (all four sides),
-            // pushed outward along each edge's normal.
             const per = 2 * (w + h);
             for (let i = 0; i < n; i++) {
                 let d = ((i + 0.5) / n) * per, x, y, nx, ny;
@@ -148,10 +162,20 @@
                 else if ((d -= w) < h) { x = w; y = d; nx = 1; ny = 0; }
                 else if ((d -= h) < w) { x = w - d; y = h; nx = 0; ny = 1; }
                 else { d -= w; x = 0; y = h - d; nx = -1; ny = 0; }
-                out += seat(x + nx * off, y + ny * off, i);
+                const ang = Math.atan2(ny, nx) * 180 / Math.PI + 90;
+                out += seat(x + nx * off, y + ny * off, ang, i);
             }
         }
         return out;
+    }
+
+    function roomMeta() {
+        document.querySelectorAll('[data-meta]').forEach(span => {
+            const id = +span.dataset.meta;
+            const ts = tablesData.filter(t => t.room_id === id);
+            const seats = ts.reduce((s, t) => s + (t.seats || 0), 0);
+            span.textContent = ts.length ? `${ts.length} Tische · ${seats} Plätze` : 'noch keine Tische';
+        });
     }
 
     function render() {
@@ -160,40 +184,43 @@
             room.classList.toggle('is-editing', editMode);
         });
         document.querySelectorAll('.room-edit').forEach(b => b.classList.toggle('hidden', !editMode));
+        if (editHint) editHint.classList.toggle('hidden', !editMode);
 
         tablesData.forEach(t => {
             const room = document.querySelector('.floor-room[data-room="' + t.room_id + '"]');
             if (!room) return;
             const w = t.width * SCALE, h = t.height * SCALE;
             const el = document.createElement('div');
-            el.className = 'table-el';
-            el.style.cssText = `position:absolute;left:${t.pos_x * SCALE}px;top:${t.pos_y * SCALE}px;width:${w}px;height:${h}px;`
-                + `background:${statusColors[t.status] || '#e7e5e4'};transform:rotate(${t.rotation}deg);`
-                + `border-radius:${t.shape === 'round' ? '9999px' : '10px'};border:2px solid rgba(0,0,0,.18);`
-                + 'display:flex;flex-direction:column;align-items:center;justify-content:center;'
-                + 'font-size:11px;font-weight:700;color:#1c1917;box-shadow:0 1px 3px rgba(0,0,0,.15);user-select:none;touch-action:none;';
+            el.className = 'table-el st-' + t.status + (t.shape === 'round' ? ' is-round' : '') + (t.id === selectedId ? ' selected' : '');
+            el.style.left = (t.pos_x * SCALE) + 'px';
+            el.style.top = (t.pos_y * SCALE) + 'px';
+            el.style.width = w + 'px';
+            el.style.height = h + 'px';
+            el.style.setProperty('--rot', (t.rotation || 0) + 'deg');
             el.dataset.id = t.id;
 
             const occLine = (t.occupied > 0)
-                ? `<span style="font-weight:600">${t.occupied}/${t.seats} 🪑</span>`
-                : `<span style="font-weight:600;color:#57534e">${t.seats} 🪑</span>`;
-            const guest = (t.current && !editMode) ? `<span style="font-weight:500">${esc(t.current.name.split(' ').pop())}</span>` : '';
-            const next = (t.upcoming && !t.current && !editMode) ? `<span style="font-weight:500;color:#57534e">ab ${t.upcoming.at}</span>` : '';
-            // Chairs rotate with the table; the label stays upright (counter-rotated).
+                ? `<span class="t-occ">${t.occupied}/${t.seats}</span>`
+                : `<span class="t-seats">${t.seats} 🪑</span>`;
+            const guest = (t.current && !editMode) ? `<span class="t-guest">${esc(t.current.name.split(' ').pop())}</span>` : '';
+            const next = (t.upcoming && !t.current && !editMode) ? `<span class="t-next">ab ${t.upcoming.at}</span>` : '';
+
             el.innerHTML = (editMode ? '' : chairsHtml(t, w, h))
                 + `<div class="tbl-label" style="transform:rotate(${-(t.rotation || 0)}deg)">`
-                + `<span>${esc(t.name)}</span>${editMode ? '' : occLine}${guest}${next}</div>`
+                + `<span class="t-name"><span class="st-dot"></span>${esc(t.name)}</span>`
+                + `${editMode ? '' : occLine}${guest}${next}</div>`
                 + (editMode ? `<button class="rot-btn" title="Drehen">⟳</button>` : '');
 
             if (editMode) {
                 makeDraggable(el, room);
-                el.querySelector('.rot-btn').addEventListener('pointerdown', e => e.stopPropagation());
-                el.querySelector('.rot-btn').addEventListener('click', e => {
+                const rb = el.querySelector('.rot-btn');
+                rb.addEventListener('pointerdown', e => e.stopPropagation());
+                rb.addEventListener('click', e => {
                     e.stopPropagation();
                     let r = ((t.rotation || 0) + 45);
                     if (r > 180) r -= 360;
                     t.rotation = r;
-                    el.style.transform = `rotate(${r}deg)`;
+                    el.style.setProperty('--rot', r + 'deg');
                     el.querySelector('.tbl-label').style.transform = `rotate(${-r}deg)`;
                 });
             } else {
@@ -201,56 +228,72 @@
             }
             room.appendChild(el);
         });
+        roomMeta();
     }
 
-    function esc(s) { return (s ?? '').toString().replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-
     function showPopup(t) {
-        let html = `<div class="flex items-center justify-between"><h3 class="font-bold">Tisch ${esc(t.name)}</h3>
-            <button onclick="document.getElementById('tablePopup').classList.add('hidden')" class="text-stone-400">✕</button></div>
-            <p class="mt-1 text-xs text-stone-500">${t.occupied || 0}/${t.seats} Plätze belegt</p>`;
+        const pct = t.seats ? Math.round((t.occupied || 0) / t.seats * 100) : 0;
+        let body;
         if (t.current) {
-            html += `<p class="mt-2 text-sm"><strong>${esc(t.current.name)}</strong> · ${t.current.party} Personen · bis ${t.current.until} Uhr</p>
-                <a href="/admin/reservations/${t.current.id}" class="mt-3 block rounded-xl bg-stone-900 py-2.5 text-center text-sm font-semibold text-white">Reservierung öffnen</a>`;
+            body = `<p class="pp-line"><strong>${esc(t.current.name)}</strong></p>
+                <p class="pp-sub">${t.current.party} Personen · bis ${t.current.until} Uhr</p>
+                <a href="/admin/reservations/${t.current.id}" class="pp-btn pp-dark">Reservierung öffnen</a>`;
         } else if (t.upcoming) {
-            html += `<p class="mt-2 text-sm">Nächste Reservierung: <strong>${esc(t.upcoming.name)}</strong> um ${t.upcoming.at} Uhr (${t.upcoming.party} P.)</p>
-                <a href="/admin/reservations/${t.upcoming.id}" class="mt-3 block rounded-xl bg-stone-900 py-2.5 text-center text-sm font-semibold text-white">Reservierung öffnen</a>`;
+            body = `<p class="pp-line">Nächste: <strong>${esc(t.upcoming.name)}</strong></p>
+                <p class="pp-sub">um ${t.upcoming.at} Uhr · ${t.upcoming.party} P.</p>
+                <a href="/admin/reservations/${t.upcoming.id}" class="pp-btn pp-dark">Reservierung öffnen</a>`;
         } else if (t.status === 'blocked') {
-            html += `<p class="mt-2 text-sm text-stone-500">Dieser Tisch ist aktuell gesperrt.</p>`;
+            body = `<p class="pp-sub">Dieser Tisch ist aktuell gesperrt.</p>`;
         } else {
-            html += `<p class="mt-2 text-sm text-emerald-700">Frei.</p>
-                <a href="{{ route('admin.reservations.create') }}?date=${dateInput.value}&time=${timeInput.value}&table_id=${t.id}" class="mt-3 block rounded-xl bg-emerald-600 py-2.5 text-center text-sm font-semibold text-white">Hier reservieren</a>
-                <a href="{{ route('admin.walkins.index') }}" class="mt-2 block rounded-xl bg-stone-200 py-2.5 text-center text-sm font-semibold">Walk-in platzieren</a>`;
+            body = `<p class="pp-sub" style="color:#047857">Frei.</p>
+                <a href="{{ route('admin.reservations.create') }}?date=${dateInput.value}&time=${timeInput.value}&table_id=${t.id}" class="pp-btn pp-green">Hier reservieren</a>
+                <a href="{{ route('admin.walkins.index') }}" class="pp-btn pp-soft">Walk-in platzieren</a>`;
         }
-        popup.innerHTML = html;
+        popup.innerHTML = `<div class="pp-head st-${t.status}">
+                <div><div class="pp-title">Tisch ${esc(t.name)}</div>
+                <div class="pp-cap">${t.occupied || 0}/${t.seats} Plätze belegt</div></div>
+                <button class="pp-x" onclick="document.getElementById('tablePopup').classList.add('hidden')">✕</button>
+            </div>
+            <div class="pp-bar"><span style="width:${pct}%"></span></div>
+            <div class="pp-body">${body}</div>`;
         popup.classList.remove('hidden');
     }
 
     function makeDraggable(el, room) {
-        el.style.cursor = 'move';
-        let sx, sy, ox, oy, rw, rh, ew, eh;
+        let sx, sy, ox, oy, rw, rh, ew, eh, moved;
         el.addEventListener('pointerdown', e => {
             if (!editMode || e.target.classList.contains('rot-btn')) return;
             el.setPointerCapture(e.pointerId);
-            sx = e.clientX; sy = e.clientY;
+            sx = e.clientX; sy = e.clientY; moved = false;
             ox = parseFloat(el.style.left) || 0; oy = parseFloat(el.style.top) || 0;
             rw = room.clientWidth; rh = room.clientHeight; ew = el.offsetWidth; eh = el.offsetHeight;
-            el.style.zIndex = 20; el.style.opacity = '.85';
+            el.classList.add('dragging');
             e.preventDefault();
         });
         el.addEventListener('pointermove', e => {
             if (!el.hasPointerCapture(e.pointerId)) return;
-            const nx = Math.min(Math.max(0, ox + (e.clientX - sx)), Math.max(0, rw - ew));
-            const ny = Math.min(Math.max(0, oy + (e.clientY - sy)), Math.max(0, rh - eh));
-            el.style.left = nx + 'px'; el.style.top = ny + 'px';
+            const dx = e.clientX - sx, dy = e.clientY - sy;
+            if (Math.abs(dx) > 3 || Math.abs(dy) > 3) moved = true;
+            el.style.left = Math.min(Math.max(0, ox + dx), Math.max(0, rw - ew)) + 'px';
+            el.style.top = Math.min(Math.max(0, oy + dy), Math.max(0, rh - eh)) + 'px';
         });
         const end = e => {
             try { el.releasePointerCapture(e.pointerId); } catch (_) {}
-            el.style.zIndex = ''; el.style.opacity = '';
+            el.classList.remove('dragging');
             const t = tablesData.find(x => x.id == el.dataset.id);
-            if (t) {
-                t.pos_x = Math.round((parseFloat(el.style.left) || 0) / SCALE);
-                t.pos_y = Math.round((parseFloat(el.style.top) || 0) / SCALE);
+            if (!t) return;
+            if (moved) {
+                // snap to grid
+                let px = Math.round((parseFloat(el.style.left) || 0) / SCALE / SNAP) * SNAP;
+                let py = Math.round((parseFloat(el.style.top) || 0) / SCALE / SNAP) * SNAP;
+                t.pos_x = px; t.pos_y = py;
+                el.style.left = (px * SCALE) + 'px';
+                el.style.top = (py * SCALE) + 'px';
+            } else {
+                // tap = select
+                selectedId = selectedId === t.id ? null : t.id;
+                document.querySelectorAll('.table-el').forEach(x =>
+                    x.classList.toggle('selected', +x.dataset.id === selectedId));
             }
         };
         el.addEventListener('pointerup', end);
@@ -263,9 +306,10 @@
     if (editToggle) {
         editToggle.addEventListener('click', () => {
             editMode = !editMode;
-            editToggle.classList.toggle('bg-amber-300', editMode);
+            editToggle.classList.toggle('on', editMode);
             saveBtn.classList.toggle('hidden', !editMode);
             popup.classList.add('hidden');
+            selectedId = null;
             render();
         });
         saveBtn.addEventListener('click', async () => {
@@ -277,8 +321,9 @@
             });
             saveBtn.disabled = false;
             editMode = false;
-            editToggle.classList.remove('bg-amber-300');
+            editToggle.classList.remove('on');
             saveBtn.classList.add('hidden');
+            selectedId = null;
             load();
         });
     }
@@ -288,9 +333,17 @@
     if (modal) {
         const form = document.getElementById('newTableForm');
         const errEl = document.getElementById('newTableErr');
+        const seg = document.getElementById('shapeSeg');
+        seg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+            seg.querySelectorAll('button').forEach(x => x.classList.remove('on'));
+            b.classList.add('on');
+            form.shape.value = b.dataset.shape;
+        }));
         document.querySelectorAll('.add-table').forEach(b => b.addEventListener('click', () => {
             form.reset();
             form.room_id.value = b.dataset.room;
+            form.shape.value = 'rect';
+            seg.querySelectorAll('button').forEach((x, i) => x.classList.toggle('on', i === 0));
             errEl.classList.add('hidden');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
@@ -316,6 +369,7 @@
             }
             const j = await res.json();
             tablesData.push(j.table);
+            selectedId = j.table.id;
             closeModal();
             render();
         });
@@ -329,9 +383,7 @@
         const fd = new FormData();
         fd.append('image', file);
         const res = await fetch(`${bgBase}/${roomId}/background`, {
-            method: 'POST',
-            headers: {'X-CSRF-TOKEN': csrf, Accept: 'application/json'},
-            body: fd,
+            method: 'POST', headers: {'X-CSRF-TOKEN': csrf, Accept: 'application/json'}, body: fd,
         });
         input.value = '';
         if (!res.ok) { alert('Bild konnte nicht hochgeladen werden (max. 6 MB, JPG/PNG/WebP).'); return; }
@@ -342,28 +394,155 @@
     }));
     document.querySelectorAll('.bg-clear').forEach(btn => btn.addEventListener('click', async () => {
         const roomId = btn.dataset.room;
-        await fetch(`${bgBase}/${roomId}/background`, {
-            method: 'DELETE',
-            headers: {'X-CSRF-TOKEN': csrf, Accept: 'application/json'},
-        });
-        const room = document.querySelector('.floor-room[data-room="' + roomId + '"]');
-        room.style.backgroundImage = '';
+        await fetch(`${bgBase}/${roomId}/background`, {method: 'DELETE', headers: {'X-CSRF-TOKEN': csrf, Accept: 'application/json'}});
+        document.querySelector('.floor-room[data-room="' + roomId + '"]').style.backgroundImage = '';
         btn.classList.add('hidden');
     }));
 
     dateInput.addEventListener('change', load);
     timeInput.addEventListener('change', load);
     load();
-    setInterval(() => { if (!editMode) load(); }, 30000); // live refresh
+    setInterval(() => { if (!editMode) load(); }, 30000);
 })();
 </script>
 
 <style>
-    .floor-room .chair { position: absolute; border-radius: 9999px; }
-    .floor-room .tbl-label { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; pointer-events: none; }
-    .floor-room .rot-btn { position: absolute; top: -10px; right: -10px; width: 22px; height: 22px; border-radius: 9999px;
-        border: none; background: #1c1917; color: #fff; font-size: 13px; line-height: 1; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
-    .floor-room.is-editing { cursor: crosshair; outline: 2px dashed #fbbf24; outline-offset: -2px; }
-    .floor-room .table-el { transition: box-shadow .1s; }
+    .fp { --r-free:#34d399; --d-free:#059669;
+          --r-soon:#fbbf24; --d-soon:#d97706;
+          --r-awaiting:#fb923c; --d-awaiting:#ea580c;
+          --r-occupied:#60a5fa; --d-occupied:#2563eb;
+          --r-no_show_risk:#f87171; --d-no_show_risk:#dc2626;
+          --r-blocked:#a8a29e; --d-blocked:#78716c; }
+
+    /* Toolbar */
+    .fp-bar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
+    .fp-bar-l { display:flex; align-items:center; gap:10px; }
+    .fp-live { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600; color:#16a34a; background:#dcfce7; padding:3px 9px; border-radius:999px; }
+    .fp-live-dot { width:7px; height:7px; border-radius:50%; background:#22c55e; box-shadow:0 0 0 0 rgba(34,197,94,.5); animation:fpPulse 2s infinite; }
+    @keyframes fpPulse { 0%{box-shadow:0 0 0 0 rgba(34,197,94,.5)} 70%{box-shadow:0 0 0 6px rgba(34,197,94,0)} 100%{box-shadow:0 0 0 0 rgba(34,197,94,0)} }
+    .fp-bar-r { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+    .fp-when { display:flex; align-items:center; gap:6px; background:#fff; border:1px solid #e7e5e4; border-radius:10px; padding:4px 10px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+    .fp-when input { border:none; background:transparent; font-size:14px; color:#1c1917; padding:2px; }
+    .fp-when input:focus { outline:none; }
+    .fp-when-sep { color:#d6d3d1; }
+    .fp-btn { display:inline-flex; align-items:center; gap:6px; border:1px solid #e7e5e4; background:#fff; color:#1c1917; border-radius:10px; padding:8px 14px; font-size:14px; font-weight:600; cursor:pointer; transition:all .12s; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+    .fp-btn:hover { border-color:#0f766e; }
+    .fp-btn.on { background:#fef3c7; border-color:#f59e0b; color:#92400e; }
+    .fp-btn-save { background:#0f766e; border-color:#0f766e; color:#fff; }
+    .fp-btn-save:hover { background:#0d5f59; }
+
+    .fp-hint { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:14px; padding:9px 14px; border-radius:12px;
+        background:linear-gradient(90deg,#fef3c7,#fffbeb); border:1px solid #fde68a; font-size:13px; font-weight:600; color:#92400e; }
+    .fp-hint-tip { font-weight:500; color:#a16207; }
+
+    /* Legend */
+    .fp-legend { display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; margin-bottom:18px; padding:10px 14px; background:#fafaf9; border:1px solid #f0efed; border-radius:12px; font-size:12px; color:#57534e; }
+    .fp-leg { display:inline-flex; align-items:center; gap:6px; }
+    .fp-leg-dot { width:12px; height:12px; border-radius:4px; }
+    .fp-leg-sep { width:1px; height:16px; background:#e7e5e4; }
+    .lg-free{background:var(--r-free)} .lg-soon{background:var(--r-soon)} .lg-awaiting{background:var(--r-awaiting)}
+    .lg-occupied{background:var(--r-occupied)} .lg-no_show_risk{background:var(--r-no_show_risk)} .lg-blocked{background:var(--r-blocked)}
+    .fp-chip { width:12px; height:12px; border-radius:50%; background:#e2e8f0; border:1px solid #94a3b8; }
+    .fp-chip.occ { background:#475569; border-color:#1e293b; }
+
+    /* Room */
+    .fp-room-wrap { margin-bottom:26px; }
+    .fp-room-head { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:10px; }
+    .fp-room-title { display:flex; align-items:center; gap:8px; }
+    .fp-room-ic { font-size:18px; }
+    .fp-room-title h2 { font-size:17px; font-weight:800; margin:0; }
+    .fp-tag { font-size:11px; font-weight:600; color:#0c4a6e; background:#e0f2fe; padding:2px 8px; border-radius:999px; }
+    .fp-room-meta { font-size:12px; color:#a8a29e; font-weight:500; }
+    .room-edit { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-left:auto; }
+    .fp-mini { display:inline-flex; align-items:center; gap:5px; border:1px solid #e7e5e4; background:#fff; color:#1c1917; border-radius:9px; padding:6px 12px; font-size:13px; font-weight:600; cursor:pointer; transition:all .12s; }
+    .fp-mini:hover { border-color:#0f766e; }
+    .fp-mini-dark { background:#1c1917; border-color:#1c1917; color:#fff; }
+    .fp-mini-dark:hover { background:#000; }
+    .fp-mini-ghost { background:#fafaf9; color:#78716c; }
+
+    .floor-scroll { overflow:auto; border-radius:18px; border:1px solid #e7e5e4; box-shadow:0 1px 3px rgba(0,0,0,.05), inset 0 1px 0 #fff; background:#fff; }
+    .floor-room { position:relative; background-color:#fcfcfb; background-position:center; background-repeat:no-repeat; background-size:cover;
+        transition:box-shadow .2s; }
+    .floor-room .grid-overlay { position:absolute; inset:0; pointer-events:none;
+        background-image:linear-gradient(rgba(120,113,108,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(120,113,108,.06) 1px,transparent 1px);
+        background-size:20px 20px; }
+    .floor-room.is-editing { box-shadow:inset 0 0 0 2px rgba(245,158,11,.5), inset 0 0 40px rgba(245,158,11,.08); }
+    .floor-room.is-editing .grid-overlay { background-image:linear-gradient(rgba(245,158,11,.18) 1px,transparent 1px),linear-gradient(90deg,rgba(245,158,11,.18) 1px,transparent 1px); }
+
+    /* Tables */
+    .floor-room .table-el { position:absolute; box-sizing:border-box; display:flex; align-items:center; justify-content:center;
+        border-radius:14px; border:2px solid var(--ring,#cbd5e1);
+        background:linear-gradient(150deg,#ffffff 0%, var(--tint,#f5f5f4) 130%);
+        color:#1c1917; font-weight:700; transform:rotate(var(--rot,0deg));
+        box-shadow:0 1px 2px rgba(0,0,0,.10), 0 8px 16px -10px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.8);
+        transition:box-shadow .12s, filter .12s; user-select:none; touch-action:none; }
+    .floor-room .table-el.is-round { border-radius:9999px; }
+    .floor-room.is-editing .table-el { cursor:grab; }
+    .floor-room .table-el:hover { box-shadow:0 2px 6px rgba(0,0,0,.14), 0 14px 22px -12px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.8); filter:brightness(1.02); }
+    .floor-room .table-el.dragging { cursor:grabbing; z-index:30; filter:brightness(1.03);
+        box-shadow:0 6px 14px rgba(0,0,0,.22), 0 24px 36px -16px rgba(0,0,0,.55); }
+    .floor-room .table-el.selected { outline:2px solid #0f766e; outline-offset:2px; }
+
+    .table-el.st-free{--ring:var(--r-free);--tint:#ecfdf5;--dot:var(--d-free)}
+    .table-el.st-soon{--ring:var(--r-soon);--tint:#fffbeb;--dot:var(--d-soon)}
+    .table-el.st-awaiting{--ring:var(--r-awaiting);--tint:#fff7ed;--dot:var(--d-awaiting)}
+    .table-el.st-occupied{--ring:var(--r-occupied);--tint:#eff6ff;--dot:var(--d-occupied)}
+    .table-el.st-no_show_risk{--ring:var(--r-no_show_risk);--tint:#fef2f2;--dot:var(--d-no_show_risk)}
+    .table-el.st-blocked{--ring:var(--r-blocked);--tint:#f5f5f4;--dot:var(--d-blocked); border-style:dashed}
+
+    .floor-room .tbl-label { display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.15; pointer-events:none; gap:1px; }
+    .tbl-label .t-name { display:inline-flex; align-items:center; gap:4px; font-size:13px; font-weight:800; color:#1c1917; }
+    .tbl-label .st-dot { width:7px; height:7px; border-radius:50%; background:var(--dot,#a8a29e); flex:none; box-shadow:0 0 0 2px rgba(255,255,255,.7); }
+    .tbl-label .t-seats { font-size:10px; font-weight:600; color:#78716c; }
+    .tbl-label .t-occ { font-size:11px; font-weight:800; color:#1e293b; background:rgba(255,255,255,.7); padding:0 6px; border-radius:999px; }
+    .tbl-label .t-guest { font-size:10px; font-weight:600; color:#44403c; max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .tbl-label .t-next { font-size:10px; font-weight:600; color:#78716c; }
+
+    /* Chairs (seat + outward backrest) */
+    .floor-room .chair { position:absolute; border-radius:5px 5px 4px 4px; background:linear-gradient(#efeae3,#ddd6cc);
+        box-shadow:0 1px 2px rgba(0,0,0,.22); transform-origin:center; }
+    .floor-room .chair::after { content:''; position:absolute; left:18%; right:18%; top:-2px; height:3px; border-radius:3px; background:rgba(120,113,108,.7); }
+    .floor-room .chair.occ { background:linear-gradient(#64748b,#475569); }
+    .floor-room .chair.occ::after { background:#1e293b; }
+
+    /* Rotate handle (reveal on hover/select) */
+    .floor-room .rot-btn { position:absolute; top:-11px; right:-11px; width:24px; height:24px; border-radius:9999px; border:2px solid #fff;
+        background:#0f766e; color:#fff; font-size:13px; line-height:1; cursor:pointer; box-shadow:0 2px 5px rgba(0,0,0,.3);
+        opacity:0; transform:scale(.7); transition:opacity .12s, transform .12s; }
+    .floor-room .table-el:hover .rot-btn, .floor-room .table-el.selected .rot-btn { opacity:1; transform:scale(1); }
+
+    /* Reservation popup */
+    .fp-popup { position:fixed; inset-inline:16px; bottom:16px; z-index:50; border-radius:18px; overflow:hidden; background:#fff;
+        border:1px solid #e7e5e4; box-shadow:0 20px 40px -12px rgba(0,0,0,.35); }
+    @media(min-width:768px){ .fp-popup{ inset-inline:auto; right:24px; width:340px; } }
+    .fp-popup .pp-head { display:flex; align-items:flex-start; justify-content:space-between; padding:14px 16px; }
+    .fp-popup .pp-head.st-free{background:#ecfdf5} .fp-popup .pp-head.st-soon{background:#fffbeb}
+    .fp-popup .pp-head.st-awaiting{background:#fff7ed} .fp-popup .pp-head.st-occupied{background:#eff6ff}
+    .fp-popup .pp-head.st-no_show_risk{background:#fef2f2} .fp-popup .pp-head.st-blocked{background:#f5f5f4}
+    .fp-popup .pp-title { font-size:17px; font-weight:800; }
+    .fp-popup .pp-cap { font-size:12px; color:#78716c; margin-top:2px; }
+    .fp-popup .pp-x { border:none; background:rgba(0,0,0,.05); width:28px; height:28px; border-radius:8px; cursor:pointer; color:#78716c; }
+    .fp-popup .pp-bar { height:5px; background:#f0efed; } .fp-popup .pp-bar span { display:block; height:100%; background:#0f766e; transition:width .3s; }
+    .fp-popup .pp-body { padding:14px 16px; }
+    .fp-popup .pp-line { font-size:14px; } .fp-popup .pp-sub { font-size:13px; color:#57534e; margin-top:2px; }
+    .fp-popup .pp-btn { display:block; text-align:center; margin-top:12px; border-radius:12px; padding:10px; font-size:14px; font-weight:700; text-decoration:none; }
+    .fp-popup .pp-dark { background:#1c1917; color:#fff; } .fp-popup .pp-green { background:#0f766e; color:#fff; }
+    .fp-popup .pp-soft { background:#f5f5f4; color:#1c1917; }
+
+    /* Modal */
+    .fp-modal-back { position:fixed; inset:0; z-index:50; align-items:center; justify-content:center; padding:16px; background:rgba(28,25,23,.45); backdrop-filter:blur(3px); }
+    .fp-modal-back.flex { display:flex; }
+    .fp-modal { width:100%; max-width:380px; background:#fff; border-radius:20px; box-shadow:0 30px 60px -15px rgba(0,0,0,.5); overflow:hidden; }
+    .fp-modal-head { display:flex; align-items:center; gap:10px; padding:18px 20px; background:#fafaf9; border-bottom:1px solid #f0efed; }
+    .fp-modal-head span { font-size:20px; } .fp-modal-head h3 { font-size:17px; font-weight:800; margin:0; }
+    .fp-modal-body { padding:18px 20px; display:flex; flex-direction:column; gap:14px; }
+    .fp-field { display:flex; flex-direction:column; gap:5px; } .fp-field > span { font-size:13px; font-weight:600; color:#57534e; }
+    .fp-field input { border:2px solid #e7e5e4; border-radius:10px; padding:9px 12px; font-size:15px; }
+    .fp-field input:focus { outline:none; border-color:#0f766e; }
+    .fp-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .fp-seg { display:flex; gap:6px; } .fp-seg button { flex:1; border:2px solid #e7e5e4; background:#fff; border-radius:10px; padding:9px; font-weight:700; cursor:pointer; }
+    .fp-seg button.on { border-color:#0f766e; background:#f0fdfa; color:#0f766e; }
+    .fp-err { font-size:13px; color:#dc2626; }
+    .fp-modal-foot { display:flex; gap:10px; justify-content:flex-end; }
 </style>
 @endsection

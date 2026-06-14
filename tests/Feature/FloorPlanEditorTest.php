@@ -23,6 +23,18 @@ class FloorPlanEditorTest extends TestCase
         $this->travelTo(CarbonImmutable::parse('2026-06-15 12:00:00')); // 14:00 Europe/Berlin
     }
 
+    public function test_editor_page_renders(): void
+    {
+        $setup = $this->createTenantSetup();
+        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
+        $this->clearTenantContext();
+
+        $this->actingAs($admin)->get('/admin/floorplan')
+            ->assertOk()
+            ->assertSee('Tischplan')
+            ->assertSee('Bearbeiten');
+    }
+
     public function test_table_can_be_created_from_the_editor(): void
     {
         $setup = $this->createTenantSetup();

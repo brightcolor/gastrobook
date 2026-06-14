@@ -4,6 +4,21 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.16.2] – 2026-06-14
+
+### Geändert
+- **Tischplan-Editor optisch überarbeitet (Polish):**
+  - Tische mit edler Oberfläche (Verlauf, Innenglanz, Schlagschatten),
+    statusfarbigem Rand + Statuspunkt; Hover hebt den Tisch hervor.
+  - Stühle als echte Stuhl-Form mit Lehne nach außen, gleichmäßig um den Tisch;
+    belegte Plätze gefüllt, freie hell.
+  - Aufgeräumte Toolbar (Datum/Zeit-Gruppe, Live-Indikator), Hinweis­banner im
+    Bearbeiten-Modus, dezent leuchtendes Raster beim Bearbeiten.
+  - Raumkopf mit Tisch-/Platz­zähler; Auswahl & Drehgriff erscheinen am Tisch.
+  - **Raster-Snap** beim Verschieben für aufgeräumte Layouts.
+  - Schöneres Tisch-Popup (Statusfarbe + Belegungsbalken) und Anlegen-Dialog
+    (Form als Umschalter, Blur-Hintergrund).
+
 ## [1.16.1] – 2026-06-14
 
 ### Behoben
@@ -354,6 +369,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.16.2]: https://github.com/brightcolor/gastrobook/releases/tag/v1.16.2
 [1.16.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.16.1
 [1.16.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.16.0
 [1.15.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.15.0
