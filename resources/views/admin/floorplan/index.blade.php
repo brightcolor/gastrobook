@@ -41,7 +41,7 @@
             <div class="floor-room relative"
                  data-room="{{ $room->id }}"
                  data-w="{{ $room->plan_width }}" data-h="{{ $room->plan_height }}"
-                 style="width:{{ (int) round($room->plan_width * 0.6) }}px;height:{{ (int) round($room->plan_height * 0.6) }}px;
+                 style="width:{{ (int) round($room->plan_width * 0.8) }}px;height:{{ (int) round($room->plan_height * 0.8) }}px;
                         background-color:#fff;background-position:center;background-repeat:no-repeat;background-size:cover;
                         @if($room->background_path)background-image:url('{{ route('admin.floorplan.background', $room) }}');@endif">
                 <div class="grid-overlay pointer-events-none absolute inset-0"
@@ -94,7 +94,7 @@
 
 <script>
 (function () {
-    const SCALE = 0.6;
+    const SCALE = 0.8;
     const stateUrl = @json(route('admin.floorplan.state'));
     const posUrl = @json(route('admin.floorplan.positions'));
     const tableStoreUrl = @json($canEdit ? route('admin.floorplan.tables.store') : '');
@@ -131,22 +131,25 @@
                 + `background:${filled ? '#334155' : '#e2e8f0'};border:1px solid ${filled ? '#1e293b' : '#94a3b8'};"></span>`;
         };
         let out = '';
+        const off = cs / 2 + gap;
         if (t.shape === 'round') {
-            const r = Math.max(w, h) / 2 + cs / 2 + gap;
+            const r = Math.max(w, h) / 2 + off;
             for (let i = 0; i < n; i++) {
                 const a = (Math.PI * 2 * i) / n - Math.PI / 2;
                 out += seat(w / 2 + r * Math.cos(a), h / 2 + r * Math.sin(a), i);
             }
         } else {
-            const top = Math.ceil(n / 2), bottom = n - top;
-            const place = (count, yPos, from) => {
-                for (let i = 0; i < count; i++) {
-                    const x = (w * (i + 1)) / (count + 1);
-                    out += seat(x, yPos, from + i);
-                }
-            };
-            place(top, -(cs / 2 + gap), 0);
-            place(bottom, h + cs / 2 + gap, top);
+            // Distribute evenly around the whole perimeter (all four sides),
+            // pushed outward along each edge's normal.
+            const per = 2 * (w + h);
+            for (let i = 0; i < n; i++) {
+                let d = ((i + 0.5) / n) * per, x, y, nx, ny;
+                if (d < w) { x = d; y = 0; nx = 0; ny = -1; }
+                else if ((d -= w) < h) { x = w; y = d; nx = 1; ny = 0; }
+                else if ((d -= h) < w) { x = w - d; y = h; nx = 0; ny = 1; }
+                else { d -= w; x = 0; y = h - d; nx = -1; ny = 0; }
+                out += seat(x + nx * off, y + ny * off, i);
+            }
         }
         return out;
     }
@@ -176,8 +179,10 @@
                 : `<span style="font-weight:600;color:#57534e">${t.seats} 🪑</span>`;
             const guest = (t.current && !editMode) ? `<span style="font-weight:500">${esc(t.current.name.split(' ').pop())}</span>` : '';
             const next = (t.upcoming && !t.current && !editMode) ? `<span style="font-weight:500;color:#57534e">ab ${t.upcoming.at}</span>` : '';
-            el.innerHTML = `<span>${esc(t.name)}</span>${editMode ? '' : occLine}${guest}${next}`
-                + (editMode ? '' : chairsHtml(t, w, h))
+            // Chairs rotate with the table; the label stays upright (counter-rotated).
+            el.innerHTML = (editMode ? '' : chairsHtml(t, w, h))
+                + `<div class="tbl-label" style="transform:rotate(${-(t.rotation || 0)}deg)">`
+                + `<span>${esc(t.name)}</span>${editMode ? '' : occLine}${guest}${next}</div>`
                 + (editMode ? `<button class="rot-btn" title="Drehen">⟳</button>` : '');
 
             if (editMode) {
@@ -189,6 +194,7 @@
                     if (r > 180) r -= 360;
                     t.rotation = r;
                     el.style.transform = `rotate(${r}deg)`;
+                    el.querySelector('.tbl-label').style.transform = `rotate(${-r}deg)`;
                 });
             } else {
                 el.addEventListener('click', () => showPopup(t));
@@ -354,6 +360,7 @@
 
 <style>
     .floor-room .chair { position: absolute; border-radius: 9999px; }
+    .floor-room .tbl-label { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; pointer-events: none; }
     .floor-room .rot-btn { position: absolute; top: -10px; right: -10px; width: 22px; height: 22px; border-radius: 9999px;
         border: none; background: #1c1917; color: #fff; font-size: 13px; line-height: 1; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
     .floor-room.is-editing { cursor: crosshair; outline: 2px dashed #fbbf24; outline-offset: -2px; }

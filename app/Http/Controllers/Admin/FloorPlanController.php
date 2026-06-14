@@ -160,13 +160,29 @@ class FloorPlanController extends Controller
 
         abort_unless($location->rooms()->where('id', $validated['room_id'])->exists(), 422);
 
+        // Size the table by its capacity so it isn't a tiny box and leaves room
+        // for the chairs. Set width/height explicitly – otherwise the in-memory
+        // model returns null (DB defaults only apply on read) and the editor
+        // would render a zero-sized, invisible table.
+        $shape = $validated['shape'] ?? 'rect';
+        $max = (int) $validated['max_capacity'];
+        if ($shape === 'round') {
+            $width = $height = min(180, 80 + $max * 9);
+        } else {
+            $width = min(240, 90 + (int) ceil($max / 2) * 26);
+            $height = 88;
+        }
+
         $table = $location->tables()->create([
             'tenant_id' => $location->tenant_id,
             'room_id' => (int) $validated['room_id'],
             'name' => $validated['name'],
             'min_capacity' => (int) $validated['min_capacity'],
-            'max_capacity' => (int) $validated['max_capacity'],
-            'shape' => $validated['shape'] ?? 'rect',
+            'max_capacity' => $max,
+            'shape' => $shape,
+            'width' => $width,
+            'height' => $height,
+            'rotation' => 0,
             'pos_x' => (int) ($validated['pos_x'] ?? 40),
             'pos_y' => (int) ($validated['pos_y'] ?? 40),
         ]);
