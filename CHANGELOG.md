@@ -4,6 +4,18 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.12.0] – 2026-06-13
+
+### Geändert
+- **UI-Politur (Backend & Frontend)** über zentrale Stile in `app.css`:
+  einheitliche, moderne Formularfelder mit Brand-Fokusring; klare Focus-States
+  für Tastaturbedienung; sanfte Button-/Link-Übergänge; dezente Scrollbars;
+  feinere Typografie; wiederverwendbare `.card`/`.card-hover`-Flächen und
+  `.btn-brand`. Hebt das gesamte (formularlastige) Backend auf einmal.
+- Admin-Erfolgs-/Fehlermeldungen mit Rahmen + Symbol vereinheitlicht.
+- Landingpage: Feature-/Pricing-Karten mit dezentem Hover-Lift; gepflegte
+  Rechtstext-Typografie (Markdown-Blockquote als Hinweis-Box).
+
 ## [1.11.0] – 2026-06-13
 
 ### Hinzugefügt
@@ -226,6 +238,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.12.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.12.0
 [1.11.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.11.0
 [1.10.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.10.0
 [1.9.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.9.0

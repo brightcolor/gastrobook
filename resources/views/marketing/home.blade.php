@@ -120,7 +120,7 @@
                 ['🟢', 'Live-Board in Echtzeit', 'Neue &amp; anstehende Buchungen auf einen Blick, Inline-Aktionen, Dark Mode und Vollbild – ideal für den Tresen. Updates per SSE.'],
                 ['💳', 'Zahlungen &amp; No-Show-Schutz', 'Anzahlungen über Stripe &amp; PayPal, automatische oder manuelle Rückerstattung, Erinnerungen – No-Shows runter, Umsatz hoch.'],
             ] as [$icon, $title, $text])
-                <div class="rounded-2xl border border-stone-200 bg-white p-7 shadow-sm">
+                <div class="card-hover rounded-2xl border border-stone-200 bg-white p-7 shadow-sm">
                     <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-50 text-2xl">{{ $icon }}</div>
                     <h3 class="mt-4 text-lg font-bold">{!! $title !!}</h3>
                     <p class="mt-2 text-sm leading-relaxed text-stone-600">{!! $text !!}</p>
@@ -138,7 +138,7 @@
                 ['👥', 'Gäste-CRM', 'Stammgäste erkennen, Besuchshistorie, Tags, Allergien – inkl. DSGVO-Export &amp; Anonymisierung.'],
                 ['📊', 'Berichte, API &amp; Webhooks', 'Auslastung, No-Show-Rate, Quellen, CSV-Export. REST-API und Webhooks für eigene Integrationen.'],
             ] as [$icon, $title, $text])
-                <div class="rounded-2xl border border-stone-200 bg-white p-6">
+                <div class="card-hover rounded-2xl border border-stone-200 bg-white p-6">
                     <div class="text-2xl">{{ $icon }}</div>
                     <h3 class="mt-3 font-bold">{!! $title !!}</h3>
                     <p class="mt-1.5 text-sm text-stone-500">{!! $text !!}</p>

@@ -93,7 +93,9 @@
 
         <main class="flex-1 p-4 md:p-6">
             @if(session('success'))
-                <div class="mb-4 rounded-lg bg-emerald-100 px-4 py-3 text-sm text-emerald-900">{{ session('success') }}</div>
+                <div class="mb-4 flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                    <span class="mt-px font-bold">✓</span><span>{{ session('success') }}</span>
+                </div>
             @endif
             @if($errors->any())
                 <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">

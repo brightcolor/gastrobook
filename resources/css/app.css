@@ -8,8 +8,128 @@
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
+/* Brand accent (default Swayy teal). Public pages may override --brand per tenant. */
+:root {
+    --brand: #0f766e;
+    --brand-strong: #115e59;
+    --ring: color-mix(in oklab, var(--brand) 28%, transparent);
+}
+
+@layer base {
+    html {
+        scroll-behavior: smooth;
+        -webkit-text-size-adjust: 100%;
+    }
+    body {
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+    }
+    h1, h2, h3, h4 {
+        letter-spacing: -0.011em;
+    }
+    ::selection {
+        background: color-mix(in oklab, var(--brand) 22%, transparent);
+    }
+
+    /* Consistent, modern form controls across the whole app */
+    input:not([type='checkbox']):not([type='radio']):not([type='color']):not([type='range']):not([type='file']),
+    select,
+    textarea {
+        border-radius: 0.625rem;
+        border: 1px solid var(--color-stone-300);
+        background-color: #fff;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    input:not([type='checkbox']):not([type='radio']):not([type='color']):not([type='range']):not([type='file']):focus,
+    select:focus,
+    textarea:focus {
+        outline: none;
+        border-color: var(--brand);
+        box-shadow: 0 0 0 3px var(--ring);
+    }
+    input::placeholder,
+    textarea::placeholder {
+        color: var(--color-stone-400);
+    }
+    input:disabled,
+    select:disabled,
+    textarea:disabled {
+        background-color: var(--color-stone-100);
+        cursor: not-allowed;
+        opacity: 0.7;
+    }
+    input[type='checkbox'],
+    input[type='radio'] {
+        accent-color: var(--brand);
+    }
+
+    /* Smooth, accessible interaction for buttons & links */
+    button,
+    a,
+    [role='button'],
+    summary {
+        transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease,
+            box-shadow 0.15s ease, opacity 0.15s ease, transform 0.05s ease;
+    }
+    button:not(:disabled):active {
+        transform: translateY(0.5px);
+    }
+    a:focus-visible,
+    button:focus-visible,
+    [role='button']:focus-visible,
+    summary:focus-visible {
+        outline: 2px solid var(--brand);
+        outline-offset: 2px;
+        border-radius: 0.5rem;
+    }
+    summary { cursor: pointer; }
+
+    /* Subtle, unobtrusive scrollbars */
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--color-stone-300) transparent;
+    }
+    *::-webkit-scrollbar { width: 10px; height: 10px; }
+    *::-webkit-scrollbar-thumb {
+        background: var(--color-stone-300);
+        border-radius: 9999px;
+        border: 2px solid transparent;
+        background-clip: padding-box;
+    }
+    *::-webkit-scrollbar-thumb:hover { background: var(--color-stone-400); background-clip: padding-box; }
+}
+
+@layer components {
+    /* Brand button (also used on public booking pages) */
+    .btn-brand { background-color: var(--brand); }
+    .btn-brand:hover { background-color: var(--brand-strong); }
+    .text-brand { color: var(--brand); }
+    .ring-brand { --tw-ring-color: var(--brand); }
+    .border-brand { border-color: var(--brand); }
+
+    /* Reusable surfaces */
+    .card {
+        border-radius: 1rem;
+        border: 1px solid var(--color-stone-200);
+        background: #fff;
+        box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 1px 3px rgb(0 0 0 / 0.04);
+    }
+    .card-hover { transition: box-shadow 0.18s ease, transform 0.18s ease; }
+    .card-hover:hover { box-shadow: 0 8px 24px rgb(0 0 0 / 0.08); transform: translateY(-2px); }
+}
+
 /* Long-form legal pages (Impressum, Datenschutz, AGB) */
 .legal h1 { font-size: 1.875rem; font-weight: 800; margin-bottom: 1rem; }
 .legal h2 { font-size: 1.25rem; font-weight: 700; margin-top: 2rem; margin-bottom: 0.5rem; }
+.legal h3 { font-size: 1.05rem; font-weight: 700; margin-top: 1.25rem; margin-bottom: 0.35rem; }
 .legal p, .legal li { color: var(--color-stone-600); line-height: 1.7; margin-bottom: 0.75rem; }
 .legal ul { list-style: disc; padding-left: 1.5rem; }
+.legal a { color: var(--brand); text-decoration: underline; }
+.legal blockquote {
+    border-left: 3px solid var(--color-amber-400);
+    background: var(--color-amber-50);
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    margin: 1rem 0;
+}
+.legal blockquote p { margin: 0; color: var(--color-amber-900); }
