@@ -23,7 +23,7 @@
 </form>
 
 <div class="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-stone-100">
-    <table class="w-full text-sm">
+    <table class="w-full min-w-[42rem] text-sm">
         <thead class="border-b border-stone-100 text-left text-xs font-semibold uppercase tracking-wide text-stone-500">
             <tr>
                 <th class="px-4 py-3">Name</th>
@@ -41,6 +41,7 @@
                         <a href="{{ route('admin.guests.show', $guest) }}" class="font-semibold hover:underline">
                             {{ $guest->fullName() }} @if($guest->is_vip)⭐@endif
                         </a>
+                        @if($guest->isRegular())<span class="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Stammgast</span>@endif
                         @if($guest->anonymized)<span class="text-xs text-stone-400">(anonymisiert)</span>@endif
                     </td>
                     <td class="px-4 py-3 text-stone-500">{{ $guest->email }}<br>{{ $guest->phone }}</td>

@@ -28,6 +28,7 @@ use Illuminate\Support\Str;
  * @property \Illuminate\Support\Carbon|null $reminder_sent_at
  * @property \Illuminate\Support\Carbon|null $feedback_requested_at
  * @property \Illuminate\Support\Carbon $created_at
+ * @property-read Guest|null $guest
  */
 class Reservation extends Model
 {

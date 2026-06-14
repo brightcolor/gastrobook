@@ -84,6 +84,15 @@ class Guest extends Model
         return trim(($this->first_name ?? '').' '.$this->last_name);
     }
 
+    /**
+     * A regular guest: flagged VIP manually, or with enough counted visits.
+     */
+    public function isRegular(): bool
+    {
+        return (bool) $this->is_vip
+            || (int) $this->visit_count >= (int) config('swayy.regular_after_visits', 5);
+    }
+
     public function scopeSearch(Builder $query, string $term): Builder
     {
         $digits = preg_replace('/\D+/', '', $term);

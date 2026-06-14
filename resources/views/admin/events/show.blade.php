@@ -22,7 +22,7 @@
 </div>
 
 <div class="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-stone-100">
-    <table class="w-full text-sm">
+    <table class="w-full min-w-[42rem] text-sm">
         <thead class="border-b border-stone-100 text-left text-xs font-semibold uppercase tracking-wide text-stone-500">
             <tr>
                 <th class="px-4 py-3">Buchungsnr.</th>

@@ -52,6 +52,8 @@
         .chip { border-radius: 6px; padding: 1px 7px; font-size: 12px; font-weight: 600; background: var(--panel-2); border: 1px solid var(--border); }
         .chip.allergy { background: var(--red-bg); color: var(--red); border: none; }
         .chip.risk { background: var(--amber-bg); color: var(--amber); border: none; }
+        .chip.vip { background: #fef9c3; color: #854d0e; border: none; }
+        html.dark .chip.vip { background: #422006; color: #fde68a; }
         .badge { border-radius: 6px; padding: 1px 8px; font-size: 12px; font-weight: 700; }
         .s-confirmed { background: var(--blue-bg); color: var(--blue); }
         .s-seated, .s-partially_arrived { background: var(--green-bg); color: var(--green); }
@@ -286,6 +288,7 @@
         const services = (r.services || []).map(s => '<span class="chip">' + esc(s) + '</span>').join('');
         const staff = r.staff ? '<span class="chip">✂ ' + esc(r.staff) + '</span>' : '';
         const allergy = r.allergy ? '<span class="chip allergy">⚠ ' + esc(r.allergy) + '</span>' : '';
+        const regular = r.regular ? '<span class="chip vip">⭐ Stammgast</span>' : '';
         const risk = r.risk >= 50 ? '<span class="chip risk">No-Show-Risiko</span>' : '';
         const note = r.note ? '<div class="meta">📝 ' + esc(r.note) + '</div>' : '';
         const when = isNew
@@ -302,7 +305,7 @@
             + '<span class="party">' + r.party + ' P</span>'
             + '<span class="spacer" style="flex:1"></span>'
             + '<span class="badge s-' + r.status + '">' + esc(r.status_label) + '</span></div>'
-            + '<div class="meta">' + (when ? '<span>' + esc(when) + '</span>' : '') + tables + staff + services + allergy + risk + '</div>'
+            + '<div class="meta">' + (when ? '<span>' + esc(when) + '</span>' : '') + tables + staff + services + regular + allergy + risk + '</div>'
             + note
             + (actions ? '<div class="actions">' + actions + '</div>' : '')
             + '</div>';
@@ -551,6 +554,7 @@
             const seated = r.seated_since ? '<span>🪑 sitzt seit ' + esc(r.seated_since) + '</span>' : '';
             const phone = r.phone ? '<a href="tel:' + esc(r.phone) + '">📞 ' + esc(r.phone) + '</a>' : '';
             const src = r.source === 'walk_in' ? '<span>🚶 Walk-in</span>' : '';
+            const regular = r.regular ? '<span style="color:#a16207;font-weight:700">⭐ Stammgast</span>' : '';
             const risk = r.risk >= 50 ? '<span style="color:var(--red)">⚠ No-Show-Risiko</span>' : '';
             const note = r.note ? '<div class="rl">📝 ' + esc(r.note) + '</div>' : '';
             const allergy = r.allergy ? '<div class="rl" style="color:var(--red)">⚠ ' + esc(r.allergy) + '</div>' : '';
@@ -573,7 +577,7 @@
                 + '<span class="nm">' + esc(r.name) + '</span>'
                 + '<span class="party">' + r.party + ' P</span>'
                 + '<span style="flex:1"></span><span class="badge s-' + r.status + '">' + esc(r.status_label) + '</span></div>'
-                + '<div class="rl">' + seated + src + phone + risk + '</div>'
+                + '<div class="rl">' + seated + src + regular + phone + risk + '</div>'
                 + note + allergy + stepper
                 + (actions ? '<div class="dwr-actions">' + actions + '</div>' : '')
                 + '</div>';
@@ -618,22 +622,27 @@
                 html += '<div class="dwr-sec"><p style="color:var(--muted);font-size:14px;margin:0">Aktuell frei – keine Buchungen für heute.</p></div>';
             }
 
-            // Walk-in form (only when no one currently sitting and walk-ins enabled)
+            // Walk-in / table-sharing form. Free table → place a walk-in;
+            // occupied but seats left → seat an additional separate group.
             const occupied = resv.some(r => r.is_current);
-            if (!occupied && t.status !== 'blocked' && meta.can_walkin) {
-                const maxSeats = t.max_capacity || 8;
-                const def = Math.min(t.min_capacity || 2, maxSeats);
+            const remaining = (t.max_capacity || 0) - (t.occupied || 0);
+            if (t.status !== 'blocked' && meta.can_walkin && remaining > 0) {
+                const share = occupied;
+                const maxSeats = share ? remaining : (t.max_capacity || 8);
+                const def = Math.min(share ? 2 : (t.min_capacity || 2), maxSeats);
                 let seats = '';
                 for (let i = 1; i <= maxSeats; i++) {
                     seats += '<button type="button" class="seatbtn' + (i === def ? ' on' : '') + '" data-n="' + i + '">' + i + '</button>';
                 }
-                html += '<div class="dwr-sec"><h3>Walk-in platzieren</h3>'
+                html += '<div class="dwr-sec"><h3>' + (share ? 'Tisch teilen – weitere Gruppe' : 'Walk-in platzieren') + '</h3>'
+                    + (share ? '<p style="color:var(--muted);font-size:12px;margin:-4px 0 8px">Noch ' + remaining + ' Plätze frei.</p>' : '')
                     + '<form id="walkinForm">'
+                    + '<input type="hidden" name="shared" value="' + (share ? 1 : 0) + '">'
                     + '<div class="field"><label>Personen (mögliche Plätze)</label><div class="seatpick" id="walkinSeats">' + seats + '</div>'
                     + '<input type="hidden" name="party_size" value="' + def + '"></div>'
                     + '<div class="field"><label>Name (optional)</label><input type="text" name="name" maxlength="120" placeholder="Laufkundschaft"></div>'
                     + '<div class="field"><label>Telefon (optional)</label><input type="tel" name="phone" maxlength="40"></div>'
-                    + '<button type="submit" class="btn-block" id="walkinSubmit">🚶 Hier platzieren</button>'
+                    + '<button type="submit" class="btn-block" id="walkinSubmit">' + (share ? '➕ Gruppe setzen' : '🚶 Hier platzieren') + '</button>'
                     + '<div id="walkinErr" style="color:var(--red);font-size:13px;margin-top:8px;display:none"></div>'
                     + '</form></div>';
             }
@@ -679,6 +688,7 @@
                         party_size: +form.party_size.value,
                         name: form.name.value || null,
                         phone: form.phone.value || null,
+                        shared: form.shared ? +form.shared.value : 0,
                     }),
                 });
                 if (!res.ok) {

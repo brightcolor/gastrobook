@@ -100,7 +100,7 @@ class BoardController extends Controller
         $today = $nowLocal->toDateString();
         $isSalon = $this->context->tenant()->isSalon();
 
-        $with = ['tables:restaurant_tables.id,name', 'staffMember:id,name', 'services:id,name'];
+        $with = ['tables:restaurant_tables.id,name', 'staffMember:id,name', 'services:id,name', 'guest:id,is_vip,visit_count'];
 
         $base = Reservation::query()->where('location_id', $location->id);
 
@@ -184,6 +184,7 @@ class BoardController extends Controller
             'note' => $r->guest_note,
             'allergy' => $r->allergy_note,
             'risk' => (int) $r->no_show_risk,
+            'regular' => $r->guest?->isRegular() ?? false,
             'seated_since' => in_array($status, [
                 ReservationStatus::Seated->value,
                 ReservationStatus::PartiallyArrived->value,
@@ -219,7 +220,7 @@ class BoardController extends Controller
             ->where('location_id', $location->id)
             ->whereIn('status', ReservationStatus::activeStatuses())
             ->whereDate('reservation_date', $nowLocal->toDateString())
-            ->with('tables:restaurant_tables.id')
+            ->with(['tables:restaurant_tables.id', 'guest:id,is_vip,visit_count'])
             ->get();
 
         $tableIds = $rooms->pluck('tables')->flatten()->pluck('id')->all();
@@ -316,6 +317,7 @@ class BoardController extends Controller
             'note' => $r->guest_note,
             'allergy' => $r->allergy_note,
             'risk' => (int) $r->no_show_risk,
+            'regular' => $r->guest?->isRegular() ?? false,
             'created_ts' => $r->created_at?->getTimestamp(),
             'minutes_to_start' => $minutesToStart,
             'overdue' => $status === ReservationStatus::Confirmed->value && $minutesToStart < -5,

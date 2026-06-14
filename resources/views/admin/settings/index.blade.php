@@ -185,8 +185,8 @@
             @if($rooms->isEmpty())<span class="ml-2 text-xs text-stone-500">Bitte zuerst einen Raum anlegen.</span>@endif
         </div>
 
-        <div class="max-h-80 overflow-y-auto">
-            <table class="w-full text-sm">
+        <div class="max-h-80 overflow-auto">
+            <table class="w-full min-w-[28rem] text-sm">
                 <thead class="text-left text-xs font-semibold uppercase tracking-wide text-stone-500"><tr><th class="py-1.5">Tisch</th><th>Raum</th><th>Kapazität</th><th>Eigenschaften</th><th></th></tr></thead>
                 <tbody class="divide-y divide-stone-50 [&>tr:hover]:bg-stone-50/70">
                     @foreach($tables as $table)
@@ -218,7 +218,6 @@
             </div>
             <form method="POST" action="{{ route('admin.settings.tables.store') }}" id="tableModalForm" class="space-y-4 px-5 py-5">
                 @csrf
-                <input type="hidden" name="min_capacity" value="1">
                 <input type="hidden" name="max_capacity" id="tmMax" value="" required>
                 <div class="grid grid-cols-2 gap-3">
                     <label class="block">
@@ -233,7 +232,7 @@
                     </label>
                 </div>
                 <div>
-                    <span class="mb-1 block text-sm font-semibold text-stone-600">Plätze</span>
+                    <span class="mb-1 block text-sm font-semibold text-stone-600">Plätze (max.)</span>
                     <div class="grid grid-cols-4 gap-2" id="tmSeats">
                         @foreach([1,2,3,4,5,6,8,10] as $n)
                             <button type="button" data-seats="{{ $n }}"
@@ -243,6 +242,13 @@
                     <button type="button" id="tmCustom" class="mt-2 text-xs font-semibold text-teal-700">Andere Anzahl…</button>
                     <p id="tmErr" class="mt-2 hidden text-sm text-red-600">Bitte Plätze wählen.</p>
                 </div>
+                <label class="block">
+                    <span class="mb-1 block text-sm font-semibold text-stone-600">Mindestbelegung</span>
+                    <select name="min_capacity" id="tmMin" class="w-full rounded-lg border-2 border-stone-200">
+                        @foreach(range(1, 10) as $n)<option value="{{ $n }}">ab {{ $n }} {{ $n === 1 ? 'Person' : 'Personen' }}</option>@endforeach
+                    </select>
+                    <span class="mt-1 block text-xs text-stone-400">Kleinste Gruppe, die online an diesem Tisch buchen darf.</span>
+                </label>
                 <div class="flex justify-end gap-2 pt-1">
                     <button type="button" id="tableModalCancel" class="rounded-lg bg-stone-200 px-4 py-2.5 font-semibold">Abbrechen</button>
                     <button type="submit" class="rounded-lg bg-teal-700 px-5 py-2.5 font-semibold text-white">Anlegen</button>
@@ -258,10 +264,13 @@
         const form = document.getElementById('tableModalForm');
         const seatWrap = document.getElementById('tmSeats');
         const maxInput = document.getElementById('tmMax');
+        const minInput = document.getElementById('tmMin');
         const err = document.getElementById('tmErr');
         const show = () => { back.classList.remove('hidden'); back.classList.add('flex'); };
         const hide = () => { back.classList.add('hidden'); back.classList.remove('flex'); };
         const clearSel = () => seatWrap.querySelectorAll('.tm-seat').forEach(b => b.classList.remove('border-teal-600','bg-teal-50','text-teal-700'));
+        // keep min <= max
+        const clampMin = () => { const m = parseInt(maxInput.value, 10); if (m && +minInput.value > m) minInput.value = m; };
 
         open?.addEventListener('click', () => { form.reset(); clearSel(); maxInput.value=''; err.classList.add('hidden'); show(); });
         document.getElementById('tableModalCancel').addEventListener('click', hide);
@@ -272,10 +281,12 @@
             b.classList.add('border-teal-600','bg-teal-50','text-teal-700');
             maxInput.value = b.dataset.seats;
             err.classList.add('hidden');
+            clampMin();
         }));
+        minInput.addEventListener('change', clampMin);
         document.getElementById('tmCustom').addEventListener('click', () => {
             const v = parseInt(prompt('Anzahl Plätze?', '12') || '', 10);
-            if (v >= 1 && v <= 50) { clearSel(); maxInput.value = v; err.classList.add('hidden'); }
+            if (v >= 1 && v <= 50) { clearSel(); maxInput.value = v; err.classList.add('hidden'); clampMin(); }
         });
         form.addEventListener('submit', e => {
             if (!maxInput.value) { e.preventDefault(); err.classList.remove('hidden'); }

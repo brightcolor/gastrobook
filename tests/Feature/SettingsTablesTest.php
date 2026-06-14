@@ -44,4 +44,24 @@ class SettingsTablesTest extends TestCase
             'max_capacity' => 6,
         ]);
     }
+
+    public function test_table_keeps_chosen_minimum_party(): void
+    {
+        $setup = $this->createTenantSetup();
+        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
+        $this->clearTenantContext();
+
+        $this->actingAs($admin)->post('/admin/settings/tables', [
+            'room_id' => $setup['room']->id,
+            'name' => 'M6',
+            'min_capacity' => 3,
+            'max_capacity' => 6,
+        ])->assertRedirect()->assertSessionHas('success');
+
+        $this->assertDatabaseHas('restaurant_tables', [
+            'name' => 'M6',
+            'min_capacity' => 3,
+            'max_capacity' => 6,
+        ]);
+    }
 }

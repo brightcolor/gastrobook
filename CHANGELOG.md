@@ -4,6 +4,30 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.22.0] – 2026-06-15
+
+### Neu
+- **Stammgast-Erkennung:** Gäste gelten automatisch als Stammgast (manuelles
+  VIP-Flag **oder** ab X gezählten Besuchen, konfigurierbar via
+  `SWAYY_REGULAR_AFTER_VISITS`, Standard 5). Ein ⭐-Badge erscheint im
+  Live-Board (Karten + Tisch-Detail), in der Gästeliste und in der
+  Reservierungs-Detailansicht.
+- **Tisch teilen (zwei Gruppen an einem Tisch):** Ist ein Tisch belegt, aber es
+  sind noch Plätze frei, lässt sich im Board eine **weitere, separate Gruppe**
+  setzen („Tisch teilen"). Begrenzt auf die freien Plätze; darüber kommt ein
+  klarer Hinweis.
+- **Mindestbelegung pro Tisch:** Beim Anlegen eines Tisches lässt sich jetzt
+  zusätzlich zur Platzzahl (max.) eine **Mindestpersonenzahl** wählen.
+
+### Geändert
+- **Mobile-Feinschliff im Backend:** Datentabellen scrollen auf schmalen
+  Displays sauber horizontal (Mindestbreite + Scrollcontainer) statt zu
+  quetschen; Tische-Tabelle in den Einstellungen ebenfalls.
+
+### Behoben
+- Walk-in ohne Namen führte zu einem Fehler – jetzt wird sauber „Walk-in"
+  eingesetzt.
+
 ## [1.21.2] – 2026-06-14
 
 ### Geändert
@@ -478,6 +502,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.22.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.22.0
 [1.21.2]: https://github.com/brightcolor/gastrobook/releases/tag/v1.21.2
 [1.21.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.21.1
 [1.21.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.21.0

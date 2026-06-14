@@ -112,6 +112,7 @@
             <h2 class="mb-3 font-bold">Gastprofil</h2>
             @if($reservation->guest)
                 <a href="{{ route('admin.guests.show', $reservation->guest) }}" class="font-semibold text-brand hover:underline">{{ $reservation->guest->fullName() }} @if($reservation->guest->is_vip)⭐@endif</a>
+                @if($reservation->guest->isRegular())<span class="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Stammgast</span>@endif
                 <dl class="mt-2 space-y-1 text-sm">
                     <div class="flex justify-between"><dt class="text-stone-500">Besuche</dt><dd class="font-semibold">{{ $reservation->guest->visit_count }}</dd></div>
                     <div class="flex justify-between"><dt class="text-stone-500">No-Shows</dt><dd class="font-semibold">{{ $reservation->guest->no_show_count }}</dd></div>

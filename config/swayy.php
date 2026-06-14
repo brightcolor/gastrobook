@@ -33,6 +33,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Stammgast-Erkennung
+    |--------------------------------------------------------------------------
+    |
+    | Ab wie vielen gezählten Besuchen ein Gast automatisch als Stammgast gilt
+    | (zusätzlich zum manuellen VIP-Flag).
+    |
+    */
+    'regular_after_visits' => (int) env('SWAYY_REGULAR_AFTER_VISITS', 5),
+
+    /*
+    |--------------------------------------------------------------------------
     | Rechtstexte (Markdown)
     |--------------------------------------------------------------------------
     |

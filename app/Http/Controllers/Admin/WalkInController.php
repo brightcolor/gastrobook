@@ -70,20 +70,45 @@ class WalkInController extends Controller
             'table_id' => ['required', 'integer'],
             'name' => ['nullable', 'string', 'max:120'],
             'phone' => ['nullable', 'string', 'max:40'],
+            'shared' => ['nullable', 'boolean'],
         ]);
 
-        abort_unless($location->tables()->where('id', $validated['table_id'])->exists(), 422);
+        $table = $location->tables()->find((int) $validated['table_id']);
+        abort_if($table === null, 422);
 
         $nowLocal = CarbonImmutable::now($location->timezone);
+        $shared = (bool) ($validated['shared'] ?? false);
+
+        // Table sharing: seat a second, separate group at the same table as long
+        // as free seats remain. Bypasses the "table busy" check, but only within
+        // the remaining capacity.
+        if ($shared) {
+            $nowUtc = $nowLocal->utc();
+            $occupied = (int) $location->reservations()
+                ->whereIn('status', ReservationStatus::activeStatuses())
+                ->where('start_at', '<=', $nowUtc)
+                ->where('end_at', '>', $nowUtc)
+                ->whereHas('tables', fn ($q) => $q->where('restaurant_tables.id', $table->id))
+                ->sum('party_size');
+
+            $free = ($table->max_capacity + $table->extra_capacity) - $occupied;
+            if ((int) $validated['party_size'] > $free) {
+                $message = __('An diesem Tisch sind nur noch :n Plätze frei.', ['n' => max(0, $free)]);
+
+                return $request->wantsJson()
+                    ? response()->json(['message' => $message, 'free' => max(0, $free)], 422)
+                    : back()->withErrors(['party_size' => $message]);
+            }
+        }
 
         $reservation = $this->lifecycle->create($location, [
             'party_size' => (int) $validated['party_size'],
             'start_local' => $nowLocal,
             'source' => 'walk_in',
-            'guest_name' => $validated['name'] ?: __('Walk-in'),
+            'guest_name' => ($validated['name'] ?? null) ?: __('Walk-in'),
             'guest_phone' => $validated['phone'] ?? null,
-            'table_ids' => [(int) $validated['table_id']],
-            'skip_availability_check' => false,
+            'table_ids' => [$table->id],
+            'skip_availability_check' => $shared,
         ], $request->user());
 
         if ($request->wantsJson()) {
