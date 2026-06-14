@@ -1,8 +1,8 @@
-# 🍽️ GastroBook
+# 🍽️ Swayy
 
 **Multi-Tenant-SaaS-Plattform für Tischreservierungen und Gästemanagement in der Gastronomie.**
 
-GastroBook ist ein eigenständiges Reservierungssystem für Restaurants, Cafés, Bars, Hotels, Event-Locations und Restaurantgruppen – mit Online-Reservierungswidget, internem Reservierungsbuch, grafischem Tischplan, automatischer Tischzuweisung, Walk-ins, Warteliste, Gäste-CRM, No-Show-Schutz (vorbereitet), Feedback-Booster, Berichten, REST-API, Webhooks, Auditlog und DSGVO-Werkzeugen.
+Swayy ist ein eigenständiges Reservierungssystem für Restaurants, Cafés, Bars, Hotels, Event-Locations und Restaurantgruppen – mit Online-Reservierungswidget, internem Reservierungsbuch, grafischem Tischplan, automatischer Tischzuweisung, Walk-ins, Warteliste, Gäste-CRM, No-Show-Schutz (vorbereitet), Feedback-Booster, Berichten, REST-API, Webhooks, Auditlog und DSGVO-Werkzeugen.
 
 > Laravel 13 · PHP 8.3–8.5 (Image: 8.4) · PostgreSQL/SQLite · Redis · Tailwind CSS 4 · Sanctum · PHPUnit · Larastan · Pint
 
@@ -23,7 +23,7 @@ export GITHUB_TOKEN=<PAT mit repo + read:packages>
 curl -fsSL -H "Authorization: token $GITHUB_TOKEN" https://raw.githubusercontent.com/brightcolor/gastrobook/main/install.sh | bash
 ```
 
-Das Skript meldet am Ende die gewählten Ports (Standard 8080, bei Belegung automatisch der nächste freie). Zielordner per `GASTROBOOK_DIR=meinordner` änderbar.
+Das Skript meldet am Ende die gewählten Ports (Standard 8080, bei Belegung automatisch der nächste freie). Zielordner per `SWAYY_DIR=meinordner` änderbar.
 
 **Manuell mit Docker** — es wird nichts lokal gebaut, das Image kommt fertig von GitHub (GHCR):
 
@@ -40,11 +40,11 @@ docker compose up -d   # zieht ghcr.io/brightcolor/gastrobook:latest, Migratione
 **Oberadmin anlegen** (Produktiv – ohne Demodaten):
 
 ```bash
-docker compose exec app php artisan gastrobook:create-admin
+docker compose exec app php artisan swayy:create-admin
 ```
 
 Interaktiv (oder per `--email=` / `--password=`). Alternativ **automatisch beim ersten Start**:
-`GASTROBOOK_ADMIN_EMAIL` und `GASTROBOOK_ADMIN_PASSWORD` in der `.env` setzen – der Container legt den
+`SWAYY_ADMIN_EMAIL` und `SWAYY_ADMIN_PASSWORD` in der `.env` setzen – der Container legt den
 Oberadmin dann an, sofern noch keiner existiert. Mit `--force` wird ein bestehendes Konto zum Oberadmin gemacht.
 
 **Demodaten (optional, nur lokal):**
@@ -53,7 +53,7 @@ Oberadmin dann an, sofern noch keiner existiert. Mit `--force` wird ein bestehen
 docker compose exec app php artisan db:seed
 ```
 
-→ Login: `admin@gastrobook.test` / `password` (SaaS) bzw. `owner@demo.test` / `password` (Restaurant)
+→ Login: `admin@swayy.test` / `password` (SaaS) bzw. `owner@demo.test` / `password` (Restaurant)
 → Demo-Buchungsseite: http://localhost:8080/book/demo/sonne
 
 Alle Daten liegen als **Bind-Mounts** im Projektordner: `./storage` (App-Dateien), `./docker/data/postgres`, `./docker/data/redis` — einfach zu sichern, einfach zu migrieren.
@@ -223,7 +223,7 @@ php artisan serve             # http://localhost:8000
 
 | Rolle | E-Mail | Passwort |
 |---|---|---|
-| SaaS-Superadmin | `admin@gastrobook.test` | `password` |
+| SaaS-Superadmin | `admin@swayy.test` | `password` |
 | Tenant-Inhaberin | `owner@demo.test` | `password` |
 | Host | `host@demo.test` | `password` |
 
@@ -244,7 +244,7 @@ docker compose up -d
 docker compose exec app php artisan db:seed   # optional: Demodaten
 ```
 
-Der Host-Port ist über `.env` steuerbar (`GASTROBOOK_PORT`, Standard 8080) — das Quick-Install-Skript `install.sh` wählt automatisch einen freien Port.
+Der Host-Port ist über `.env` steuerbar (`SWAYY_PORT`, Standard 8080) — das Quick-Install-Skript `install.sh` wählt automatisch einen freien Port.
 
 Update auf die neueste Version:
 
@@ -267,7 +267,7 @@ Funktioniert problemlos – die App vertraut `X-Forwarded-*`-Headern (in `bootst
 1. **`APP_URL` in der `.env` auf die echte Domain setzen**, z. B. `APP_URL=https://buchung.example.com`. Daraus entstehen alle absoluten Links (Mails, Magic-Link, Zahlungs-Rücksprung).
 2. Der Proxy muss `X-Forwarded-Proto`/`-Host` setzen (Standard bei Traefik/Caddy; bei nginx `proxy_set_header X-Forwarded-Proto $scheme;` etc.). Für das **Live-Board (SSE)** Pufferung aus lassen (nginx: `proxy_buffering off;` für die App, oder den Header `X-Accel-Buffering: no` durchreichen – wird von der App bereits gesetzt).
 
-Den Host-Port am besten nur lokal binden und den Proxy davorsetzen, z. B. in der `.env`: `GASTROBOOK_PORT=127.0.0.1:8080` (dann lauscht nur der Proxy nach außen).
+Den Host-Port am besten nur lokal binden und den Proxy davorsetzen, z. B. in der `.env`: `SWAYY_PORT=127.0.0.1:8080` (dann lauscht nur der Proxy nach außen).
 
 **Bind-Mounts (alle Daten im Projektordner):**
 
@@ -316,7 +316,7 @@ Personenzahl → Datum → verfügbare Uhrzeiten (live via `/slots`-JSON) → Ko
 - Pflichtfelder pro Standort konfigurierbar – im Adminbereich unter **Einstellungen → Formularfelder im Buchungswidget**: jedes Feld (E-Mail, Telefon, Anlass, Allergien, Anmerkung) ist auf *Ausgeblendet / Optional / Pflichtfeld* stellbar; die Validierung greift serverseitig.
 - **Einbetten auf der eigenen Website:**
   ```html
-  <div id="gastrobook-widget"></div>
+  <div id="swayy-widget"></div>
   <script src="https://ihre-domain.de/embed/<tenant>/<standort>.js" defer></script>
   ```
   Das Snippet injiziert die Buchungsseite als iframe mit automatischer Höhenanpassung (postMessage).
@@ -416,7 +416,7 @@ Geplante Jobs: Reservierungs-Reminder (alle 15 min), Feedback-Follow-ups (stünd
 
 Liegen als **Markdown** unter `storage/app/legal/{impressum,datenschutz,agb}.md`
 (bind-gemountet → direkt auf dem Host editierbar). Der Container legt beim Start
-fehlende Dateien aus Vorlagen an (`php artisan gastrobook:install-legal`).
+fehlende Dateien aus Vorlagen an (`php artisan swayy:install-legal`).
 Der Inhalt wird **bei jedem Aufruf frisch** gelesen – Änderungen sind **sofort
 ohne Neustart** wirksam (`/impressum`, `/datenschutz`, `/agb`).
 
@@ -432,7 +432,7 @@ MAIL_PORT=587
 MAIL_USERNAME=...
 MAIL_PASSWORD=...
 MAIL_FROM_ADDRESS="no-reply@example.com"
-MAIL_FROM_NAME="GastroBook"
+MAIL_FROM_NAME="Swayy"
 ```
 
 Zum lokalen Testen ohne echten Versand: `MAIL_MAILER=log` → Mails landen in `storage/logs/laravel.log`. Vorlagen liegen als Defaults im `NotificationTemplateRenderer` und sind pro Tenant/Standort über die Tabelle `notification_templates` überschreibbar (Platzhalter: `{guest_name}`, `{reservation_date}`, `{cancel_link}`, …).

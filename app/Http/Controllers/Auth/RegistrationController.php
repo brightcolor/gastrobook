@@ -44,6 +44,6 @@ class RegistrationController extends Controller
         $request->session()->regenerate();
 
         return redirect()->route('admin.dashboard')
-            ->with('success', __('Willkommen bei GastroBook! Ihr Testzeitraum läuft 30 Tage – richten Sie als Erstes Öffnungszeiten und Tische ein.'));
+            ->with('success', __('Willkommen bei Swayy! Ihr Testzeitraum läuft 30 Tage – richten Sie als Erstes Öffnungszeiten und Tische ein.'));
     }
 }

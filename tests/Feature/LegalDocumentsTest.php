@@ -42,7 +42,7 @@ class LegalDocumentsTest extends TestCase
     {
         Storage::fake('local');
 
-        $this->artisan('gastrobook:install-legal')->assertSuccessful();
+        $this->artisan('swayy:install-legal')->assertSuccessful();
 
         Storage::disk('local')->assertExists('legal/impressum.md');
         Storage::disk('local')->assertExists('legal/datenschutz.md');
@@ -54,7 +54,7 @@ class LegalDocumentsTest extends TestCase
         Storage::fake('local');
         Storage::disk('local')->put('legal/impressum.md', 'EIGENER TEXT');
 
-        $this->artisan('gastrobook:install-legal')->assertSuccessful();
+        $this->artisan('swayy:install-legal')->assertSuccessful();
 
         $this->assertSame('EIGENER TEXT', Storage::disk('local')->get('legal/impressum.md'));
     }

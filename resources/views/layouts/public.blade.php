@@ -20,14 +20,14 @@
         @hasSection('hide_branding')
         @else
             @if(($tenant ?? null) && $tenant->plan?->key === 'trial')
-                <p class="mt-8 text-center text-xs text-stone-400">Bereitgestellt mit GastroBook</p>
+                <p class="mt-8 text-center text-xs text-stone-400">Bereitgestellt mit Swayy</p>
             @endif
         @endif
     </main>
     <script>
         // Auto-resize when embedded as iframe via /embed/{tenant}/{location}.js
         if (window.parent !== window) {
-            const send = () => parent.postMessage({gastrobookHeight: document.body.scrollHeight + 40}, '*');
+            const send = () => parent.postMessage({swayyHeight: document.body.scrollHeight + 40}, '*');
             new ResizeObserver(send).observe(document.body);
             window.addEventListener('load', send);
         }

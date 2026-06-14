@@ -6,15 +6,15 @@ return [
     | Erster Oberadmin (Bootstrap)
     |--------------------------------------------------------------------------
     |
-    | Wird beim ersten Start von `php artisan gastrobook:create-admin --if-missing`
+    | Wird beim ersten Start von `php artisan swayy:create-admin --if-missing`
     | genutzt, um einen Plattform-Oberadmin anzulegen, falls noch keiner existiert.
     | Leer lassen, um den Admin manuell anzulegen.
     |
     */
     'admin' => [
-        'email' => env('GASTROBOOK_ADMIN_EMAIL'),
-        'password' => env('GASTROBOOK_ADMIN_PASSWORD'),
-        'name' => env('GASTROBOOK_ADMIN_NAME', 'Administrator'),
+        'email' => env('SWAYY_ADMIN_EMAIL'),
+        'password' => env('SWAYY_ADMIN_PASSWORD'),
+        'name' => env('SWAYY_ADMIN_NAME', 'Administrator'),
     ],
 
     /*
@@ -28,7 +28,7 @@ return [
     |
     */
     'board' => [
-        'sse' => env('GASTROBOOK_BOARD_SSE', true),
+        'sse' => env('SWAYY_BOARD_SSE', true),
     ],
 
     /*
@@ -38,7 +38,7 @@ return [
     |
     | Impressum, Datenschutz und AGB liegen als Markdown unter
     | storage/app/legal/<key>.md (bind-gemountet → auf dem Host editierbar).
-    | Fehlende Dateien legt `php artisan gastrobook:install-legal` aus den
+    | Fehlende Dateien legt `php artisan swayy:install-legal` aus den
     | Vorlagen in resources/legal an. Der Controller liest sie pro Request
     | frisch – Änderungen wirken sofort, ohne Neustart.
     |

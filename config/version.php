@@ -5,7 +5,7 @@
 | Application version (Semantic Versioning – https://semver.org)
 |--------------------------------------------------------------------------
 |
-| Single source of truth for the GastroBook version. Bump on every shipped
+| Single source of truth for the Swayy version. Bump on every shipped
 | change and tag the release (git tag vX.Y.Z) – the CI builds a semver-tagged
 | image from v* tags. Shown discreetly in the admin UI.
 |
@@ -16,5 +16,5 @@
 */
 
 return [
-    'number' => '1.8.1',
+    'number' => '1.9.0',
 ];

@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@yield('title', 'GastroBook') – GastroBook</title>
+    <title>@yield('title', 'Swayy') – Swayy</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen bg-stone-100 text-stone-900 antialiased">
@@ -16,7 +16,7 @@
 <div class="flex min-h-screen">
     {{-- Sidebar --}}
     <aside class="hidden w-60 shrink-0 flex-col bg-stone-900 text-stone-100 md:flex">
-        <div class="px-5 py-5 text-lg font-bold tracking-tight">🍽️ GastroBook</div>
+        <div class="px-5 py-5 text-lg font-bold tracking-tight">Swayy</div>
         @if($tenant)
             <div class="px-5 pb-3 text-xs text-stone-400">{{ $tenant->name }}</div>
             @if($tenant->locations()->count() > 1 || true)
@@ -87,7 +87,7 @@
     <div class="flex min-w-0 flex-1 flex-col">
         {{-- Mobile top bar --}}
         <header class="flex items-center justify-between bg-stone-900 px-4 py-3 text-stone-100 md:hidden">
-            <span class="font-bold">🍽️ GastroBook</span>
+            <span class="font-bold">Swayy</span>
             <nav class="flex gap-3 text-xl">
                 <a href="{{ route('admin.dashboard') }}">📊</a>
                 <a href="{{ route('admin.reservations.index') }}">📖</a>
@@ -110,7 +110,7 @@
             @yield('content')
 
             <footer class="mt-10 text-center text-[11px] text-stone-400">
-                GastroBook v{{ config('version.number') }}
+                Swayy v{{ config('version.number') }}
             </footer>
         </main>
     </div>

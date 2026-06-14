@@ -1,8 +1,23 @@
 # Changelog
 
-Alle nennenswerten Änderungen an GastroBook. Das Projekt folgt
+Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
+
+## [1.9.0] – 2026-06-13
+
+### Geändert
+- **Rebrand: GastroBook → Swayy.** Marke überall umbenannt (UI, Mails, Titel,
+  Footer, Landingpage, Rechtstext-Vorlagen, Doku). Wordmark ohne Branchen-Emoji.
+- Interne Bezeichner umbenannt: Artisan-Kommandos `swayy:create-admin` /
+  `swayy:install-legal`, Config-Namespace `config/swayy.php` (`config('swayy.*')`),
+  Env-Variablen `SWAYY_*` (vormals `GASTROBOOK_*`), Embed-Widget `swayy-widget` /
+  `swayyHeight`.
+
+> **Migration bestehender Installationen:** In der `.env` `GASTROBOOK_*` →
+> `SWAYY_*` umbenennen (z. B. `SWAYY_ADMIN_EMAIL`, `SWAYY_BOARD_SSE`,
+> `SWAYY_PORT`). GitHub-Repo und GHCR-Image heißen vorerst weiter
+> `brightcolor/gastrobook` (separater Repo-Rename).
 
 ## [1.8.1] – 2026-06-13
 
@@ -34,7 +49,7 @@ Alle nennenswerten Änderungen an GastroBook. Das Projekt folgt
 ### Hinweis
 - Bestehende Installationen mit eigener `storage/app/legal/datenschutz.md` bleiben
   unverändert; zum Übernehmen der neuen Vorlage Datei löschen und
-  `php artisan gastrobook:install-legal` ausführen (oder `--force`).
+  `php artisan swayy:install-legal` ausführen (oder `--force`).
 
 ## [1.7.0] – 2026-06-13
 
@@ -43,7 +58,7 @@ Alle nennenswerten Änderungen an GastroBook. Das Projekt folgt
   `storage/app/legal/*.md` (bind-gemountet, auf dem Host editierbar) statt
   fester Blade-Platzhalter.
 - Der Container legt fehlende Dateien beim Start an
-  (`php artisan gastrobook:install-legal`, aus Vorlagen in `resources/legal`).
+  (`php artisan swayy:install-legal`, aus Vorlagen in `resources/legal`).
 - Inhalte werden pro Request frisch gelesen → **Änderungen sofort wirksam,
   ohne Stack-Neustart**.
 
@@ -108,7 +123,7 @@ Alle nennenswerten Änderungen an GastroBook. Das Projekt folgt
   Eingetroffen, Fertig, No-Show, Storno) über den bestehenden Status-Endpoint.
 - **Dark Mode** (umschaltbar, gemerkt) und **Vollbild** für den Wand-/Tresen-Einsatz.
 - **Echtzeit via Server-Sent Events** (`/admin/board/stream`) mit automatischem
-  Fallback auf Polling; abschaltbar via `GASTROBOOK_BOARD_SSE=false` (z. B. auf
+  Fallback auf Polling; abschaltbar via `SWAYY_BOARD_SSE=false` (z. B. auf
   dem Single-Worker-Dev-Server).
 - KPIs (heute, Gäste, anwesend, Ankünfte <1h, offen, Warteliste); No-Show-Risiko-
   und Allergie-Hinweise; funktioniert für Restaurant- und Salon-Modus.
@@ -144,8 +159,8 @@ Alle nennenswerten Änderungen an GastroBook. Das Projekt folgt
 ## [1.1.0] – 2026-06-13
 
 ### Hinzugefügt
-- Artisan-Kommando `php artisan gastrobook:create-admin` legt einen Plattform-
-  Oberadmin an (interaktiv, per Optionen oder per `GASTROBOOK_ADMIN_*`-Env beim
+- Artisan-Kommando `php artisan swayy:create-admin` legt einen Plattform-
+  Oberadmin an (interaktiv, per Optionen oder per `SWAYY_ADMIN_*`-Env beim
   ersten Start). `--if-missing` (Boot), `--force` (bestehendes Konto hochstufen).
 - Container-Start ruft das Kommando automatisch mit `--if-missing` auf – der
   erste Start kann so einen Oberadmin erzeugen, ohne den Demo-Seeder zu nutzen.
@@ -187,6 +202,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.9.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.9.0
 [1.8.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.8.1
 [1.8.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.8.0
 [1.7.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.7.1

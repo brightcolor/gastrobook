@@ -1,4 +1,4 @@
-# GastroBook – production-oriented PHP-FPM image
+# Swayy – production-oriented PHP-FPM image
 FROM php:8.4-fpm-alpine AS base
 
 RUN apk add --no-cache \

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# GastroBook Quick-Install
+# Swayy Quick-Install
 #
 #   curl -fsSL https://raw.githubusercontent.com/brightcolor/gastrobook/main/install.sh | bash
 #
@@ -15,7 +15,7 @@ set -euo pipefail
 REPO="brightcolor/gastrobook"
 BRANCH="main"
 RAW="https://raw.githubusercontent.com/${REPO}/${BRANCH}"
-DIR="${GASTROBOOK_DIR:-gastrobook}"
+DIR="${SWAYY_DIR:-gastrobook}"
 
 say()  { printf '\033[1;32m==>\033[0m %s\n' "$*"; }
 fail() { printf '\033[1;31mFehler:\033[0m %s\n' "$*" >&2; exit 1; }
@@ -64,14 +64,14 @@ else
     {
         echo ""
         echo "# Von install.sh automatisch gewählter freier Host-Port"
-        echo "GASTROBOOK_PORT=${APP_PORT}"
+        echo "SWAYY_PORT=${APP_PORT}"
     } >> .env
 
     say "APP_KEY generiert, freier Port gewählt: App ${APP_PORT}"
     say "Hinweis: Für E-Mail-Versand SMTP-Daten in .env eintragen (MAIL_HOST, MAIL_USERNAME, MAIL_PASSWORD …)."
 fi
 
-APP_PORT="$(grep -E '^GASTROBOOK_PORT=' .env | cut -d= -f2)"
+APP_PORT="$(grep -E '^SWAYY_PORT=' .env | cut -d= -f2)"
 APP_PORT="${APP_PORT:-8080}"
 
 say "Ziehe Image von ghcr.io …"
@@ -84,7 +84,7 @@ fi
 say "Starte Stack (Migrationen + Tarife laufen automatisch) …"
 docker compose up -d
 
-say "Fertig! GastroBook läuft auf http://localhost:${APP_PORT}"
+say "Fertig! Swayy läuft auf http://localhost:${APP_PORT}"
 echo "    Registrierung:  http://localhost:${APP_PORT}/register"
 echo "    E-Mail-Versand: SMTP-Daten in .env hinterlegen (MAIL_*)"
 echo "    Demodaten (optional): docker compose exec app php artisan db:seed"

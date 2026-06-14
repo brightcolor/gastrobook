@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Storage;
 
 class InstallLegalDocuments extends Command
 {
-    protected $signature = 'gastrobook:install-legal {--force : Vorhandene Dateien überschreiben}';
+    protected $signature = 'swayy:install-legal {--force : Vorhandene Dateien überschreiben}';
 
     protected $description = 'Legt Impressum/Datenschutz/AGB als Markdown unter storage/app/legal an, falls sie fehlen.';
 
@@ -17,7 +17,7 @@ class InstallLegalDocuments extends Command
     {
         $disk = Storage::disk('local');
 
-        foreach (array_keys(config('gastrobook.legal.documents')) as $key) {
+        foreach (array_keys(config('swayy.legal.documents')) as $key) {
             $target = "legal/{$key}.md";
 
             if ($disk->exists($target) && ! $this->option('force')) {

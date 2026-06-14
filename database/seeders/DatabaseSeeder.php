@@ -32,7 +32,7 @@ class DatabaseSeeder extends Seeder
         // SaaS super admin (local development only — see README)
         User::factory()->create([
             'name' => 'SaaS Admin',
-            'email' => 'admin@gastrobook.test',
+            'email' => 'admin@swayy.test',
             'password' => Hash::make('password'),
             'saas_role' => 'super_admin',
         ]);

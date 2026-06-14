@@ -606,7 +606,7 @@ class PublicBookingController extends Controller
     /**
      * Embeddable JS snippet: injects the booking page as an iframe.
      * Usage: <script src="https://app.example.com/embed/{tenant}/{location}.js" defer></script>
-     *        <div id="gastrobook-widget"></div>
+     *        <div id="swayy-widget"></div>
      */
     public function embedScript(string $tenantSlug, string $locationSlug)
     {
@@ -616,7 +616,7 @@ class PublicBookingController extends Controller
 
         $js = <<<JS
         (function () {
-            var container = document.getElementById('gastrobook-widget') || document.currentScript.parentNode;
+            var container = document.getElementById('swayy-widget') || document.currentScript.parentNode;
             var iframe = document.createElement('iframe');
             iframe.src = {$this->jsString($bookingUrl)};
             iframe.title = {$this->jsString('Tisch reservieren – '.$location->name)};
@@ -625,7 +625,7 @@ class PublicBookingController extends Controller
             iframe.allow = 'payment';
             container.appendChild(iframe);
             window.addEventListener('message', function (e) {
-                if (e.data && e.data.gastrobookHeight) iframe.style.height = e.data.gastrobookHeight + 'px';
+                if (e.data && e.data.swayyHeight) iframe.style.height = e.data.swayyHeight + 'px';
             });
         })();
         JS;

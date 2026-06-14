@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Validator;
 
 class CreateSuperAdmin extends Command
 {
-    protected $signature = 'gastrobook:create-admin
+    protected $signature = 'swayy:create-admin
         {--email= : E-Mail des Oberadmins}
         {--password= : Passwort (min. 10 Zeichen)}
         {--name= : Anzeigename}
@@ -27,13 +27,13 @@ class CreateSuperAdmin extends Command
         }
 
         // Werte aus Optionen, sonst Config/Env (für nicht-interaktiven ersten Start), sonst Prompt.
-        $email = $this->option('email') ?: config('gastrobook.admin.email');
-        $password = $this->option('password') ?: config('gastrobook.admin.password');
-        $name = $this->option('name') ?: config('gastrobook.admin.name') ?: 'Administrator';
+        $email = $this->option('email') ?: config('swayy.admin.email');
+        $password = $this->option('password') ?: config('swayy.admin.password');
+        $name = $this->option('name') ?: config('swayy.admin.name') ?: 'Administrator';
 
         // Im Boot-Modus ohne Daten: sauber überspringen, Start nicht abbrechen.
         if ($this->option('if-missing') && (! $email || ! $password)) {
-            $this->components->warn('Kein Oberadmin vorhanden. Setze GASTROBOOK_ADMIN_EMAIL und GASTROBOOK_ADMIN_PASSWORD oder lege ihn per "php artisan gastrobook:create-admin" an.');
+            $this->components->warn('Kein Oberadmin vorhanden. Setze SWAYY_ADMIN_EMAIL und SWAYY_ADMIN_PASSWORD oder lege ihn per "php artisan swayy:create-admin" an.');
 
             return self::SUCCESS;
         }

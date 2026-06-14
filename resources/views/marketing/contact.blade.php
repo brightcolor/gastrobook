@@ -1,6 +1,6 @@
 @extends('layouts.marketing')
 
-@section('title', 'Kontakt – GastroBook')
+@section('title', 'Kontakt – Swayy')
 
 @section('content')
 <section class="mx-auto max-w-xl px-4 py-16">

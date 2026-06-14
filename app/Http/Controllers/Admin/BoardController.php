@@ -29,7 +29,7 @@ class BoardController extends Controller
         return view('admin.board', [
             'location' => $location,
             'tenant' => $this->context->tenant(),
-            'sse' => (bool) config('gastrobook.board.sse', true),
+            'sse' => (bool) config('swayy.board.sse', true),
         ]);
     }
 

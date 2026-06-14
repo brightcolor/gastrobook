@@ -44,7 +44,7 @@ class MarketingController extends Controller
      */
     private function legalDocument(string $key)
     {
-        $titles = config('gastrobook.legal.documents');
+        $titles = config('swayy.legal.documents');
         abort_unless(isset($titles[$key]), 404);
 
         $disk = Storage::disk('local');

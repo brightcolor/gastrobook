@@ -242,7 +242,7 @@
                     <li>{{ ($plan->features['deposits_enabled'] ?? false) ? '✓' : '–' }} Zahlungen &amp; No-Show-Schutz</li>
                     <li>{{ ($plan->features['api_enabled'] ?? false) ? '✓' : '–' }} REST-API &amp; Webhooks</li>
                     @if($plan->features['remove_branding'] ?? false)
-                        <li>✓ Ohne GastroBook-Branding</li>
+                        <li>✓ Ohne Swayy-Branding</li>
                     @endif
                 </ul>
                 @if($plan->key === 'enterprise')
@@ -263,13 +263,13 @@
         <h2 class="text-center text-3xl font-extrabold tracking-tight">Häufige Fragen</h2>
         <div class="mt-10 space-y-4">
             @foreach([
-                ['Für wen ist GastroBook geeignet?', 'Für Restaurants, Cafés und Bars (tischbasiert) ebenso wie für Friseure und Dienstleister (terminbasiert pro Mitarbeiter und Leistung). Der Betriebstyp ist pro Konto umschaltbar.'],
+                ['Für wen ist Swayy geeignet?', 'Für Restaurants, Cafés und Bars (tischbasiert) ebenso wie für Friseure und Dienstleister (terminbasiert pro Mitarbeiter und Leistung). Der Betriebstyp ist pro Konto umschaltbar.'],
                 ['Brauche ich eine eigene Website?', 'Nein. Sie erhalten einen Buchungslink für Google, Instagram & Co. Wer eine Website hat, bettet das Widget mit zwei Zeilen Code ein.'],
                 ['Welche Zahlungsanbieter werden unterstützt?', 'Stripe und PayPal – auch beide gleichzeitig; der Gast wählt dann an der Kasse. Kreditkartendaten werden nie bei uns gespeichert.'],
                 ['Was passiert nach dem Testzeitraum?', 'Sie wählen einen Tarif – oder nicht. Es gibt keine automatische Abbuchung, da im Test keine Zahlungsdaten erhoben werden.'],
-                ['Ist GastroBook DSGVO-konform?', 'Ja. EU-Hosting, Einwilligungsverwaltung, Datenexport und Anonymisierung pro Gast sind eingebaut, IP-Adressen werden minimiert. Rechtstexte sind als Markdown direkt pflegbar.'],
+                ['Ist Swayy DSGVO-konform?', 'Ja. EU-Hosting, Einwilligungsverwaltung, Datenexport und Anonymisierung pro Gast sind eingebaut, IP-Adressen werden minimiert. Rechtstexte sind als Markdown direkt pflegbar.'],
                 ['Kann ich mehrere Standorte verwalten?', 'Ja, ab dem Multi-Location-Tarif beliebig viele Standorte unter einem Konto – mit getrennten Plänen und Berichten.'],
-                ['Lässt sich GastroBook selbst hosten?', 'Ja. Per Docker hinter eigener Domain/Reverse Proxy betreibbar – volle Datenhoheit, kein Lock-in.'],
+                ['Lässt sich Swayy selbst hosten?', 'Ja. Per Docker hinter eigener Domain/Reverse Proxy betreibbar – volle Datenhoheit, kein Lock-in.'],
             ] as [$q, $a])
                 <details class="group rounded-xl border border-stone-200 bg-white p-5">
                     <summary class="flex cursor-pointer items-center justify-between font-bold">

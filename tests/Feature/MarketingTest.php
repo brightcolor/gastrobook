@@ -19,7 +19,7 @@ class MarketingTest extends TestCase
         $response = $this->get('/');
 
         $response->assertOk()
-            ->assertSee('GastroBook')
+            ->assertSee('Swayy')
             ->assertSee('Professional')
             ->assertSee('Kostenlos testen');
     }
@@ -39,7 +39,7 @@ class MarketingTest extends TestCase
     public function test_contact_form_sends_mail_to_support_address(): void
     {
         Mail::fake();
-        config(['services.support_email' => 'support@gastrobook.test']);
+        config(['services.support_email' => 'support@swayy.test']);
 
         $response = $this->post('/kontakt', [
             'name' => 'Max Muster',
@@ -49,7 +49,7 @@ class MarketingTest extends TestCase
 
         $response->assertRedirect();
         Mail::assertSent(ContactRequestMail::class, function (ContactRequestMail $mail) {
-            return $mail->hasTo('support@gastrobook.test')
+            return $mail->hasTo('support@swayy.test')
                 && $mail->senderEmail === 'max@example.com';
         });
     }

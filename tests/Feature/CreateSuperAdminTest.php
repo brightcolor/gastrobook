@@ -15,7 +15,7 @@ class CreateSuperAdminTest extends TestCase
 
     public function test_creates_super_admin_from_options(): void
     {
-        $this->artisan('gastrobook:create-admin', [
+        $this->artisan('swayy:create-admin', [
             '--email' => 'chef@example.com',
             '--password' => 'sehr-geheim-123',
             '--name' => 'Chef',
@@ -31,7 +31,7 @@ class CreateSuperAdminTest extends TestCase
     {
         User::factory()->create(['saas_role' => 'super_admin']);
 
-        $this->artisan('gastrobook:create-admin', [
+        $this->artisan('swayy:create-admin', [
             '--email' => 'second@example.com',
             '--password' => 'sehr-geheim-123',
             '--if-missing' => true,
@@ -42,7 +42,7 @@ class CreateSuperAdminTest extends TestCase
 
     public function test_rejects_short_password(): void
     {
-        $this->artisan('gastrobook:create-admin', [
+        $this->artisan('swayy:create-admin', [
             '--email' => 'kurz@example.com',
             '--password' => 'kurz',
         ])->assertFailed();
@@ -54,7 +54,7 @@ class CreateSuperAdminTest extends TestCase
     {
         User::factory()->create(['email' => 'bestand@example.com', 'saas_role' => null]);
 
-        $this->artisan('gastrobook:create-admin', [
+        $this->artisan('swayy:create-admin', [
             '--email' => 'bestand@example.com',
             '--password' => 'sehr-geheim-123',
             '--force' => true,

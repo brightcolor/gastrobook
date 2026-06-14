@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>SaaS-Admin – GastroBook</title>
+    <title>SaaS-Admin – Swayy</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen bg-stone-100 p-6">
@@ -92,7 +92,7 @@
     </div>
 
     <footer class="mt-10 text-center text-[11px] text-stone-400">
-        GastroBook v{{ config('version.number') }}
+        Swayy v{{ config('version.number') }}
     </footer>
 </div>
 </body>

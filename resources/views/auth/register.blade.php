@@ -3,12 +3,12 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Kostenlos registrieren – GastroBook</title>
+    <title>Kostenlos registrieren – Swayy</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="flex min-h-screen items-center justify-center bg-stone-900 px-4 py-10">
     <div class="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl">
-        <h1 class="text-center text-2xl font-bold">🍽️ GastroBook</h1>
+        <h1 class="text-center text-2xl font-bold">Swayy</h1>
         <p class="mt-1 text-center text-sm text-stone-500">30 Tage kostenlos testen – keine Zahlungsdaten nötig</p>
 
         @if($errors->any())
