@@ -121,6 +121,8 @@ class PublicBookingController extends Controller
             } else {
                 $desired = $localDate->setTime(19, 0);
                 $response['alternatives'] = $this->availability->alternatives($location, $desired, $partySize);
+                $response['next_slots'] = $this->availability->nextSlots($location, $localDate, $partySize);
+                $response['party_size'] = $partySize;
                 $response['waitlist_available'] = $location->effectiveSettings()->waitlist_enabled;
             }
         }

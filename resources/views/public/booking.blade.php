@@ -439,6 +439,20 @@
                 fpRooms = [];
             }
 
+            function fmtDate(d) {
+                const dt = new Date(d + 'T00:00:00');
+                return isNaN(dt) ? d : dt.toLocaleDateString('de-DE', {weekday: 'short', day: '2-digit', month: '2-digit'});
+            }
+
+            // Jump to a suggested next free slot: switch date, reload that day and pick the time.
+            async function pickNextSlot(date, time) {
+                dateInput.value = date;
+                await loadSlots();
+                const btn = [...slotContainer.querySelectorAll('.slot-btn')].find(b => b.dataset.time === time);
+                if (btn) { btn.click(); } else { timeInput.value = time; loadFloorplan(); }
+                slotContainer.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+            }
+
             async function loadSlots() {
                 if (!partyInput.value || !dateInput.value) return;
                 slotContainer.innerHTML = '<p class="col-span-full text-sm text-stone-500">Lade verfügbare Zeiten…</p>';
@@ -458,12 +472,35 @@
                             altBox.classList.remove('hidden');
                             return;
                         }
-                        slotContainer.innerHTML = '<p class="col-span-full text-sm text-red-600">An diesem Tag sind leider keine Tische verfügbar.</p>';
-                        if (data.alternatives) {
-                            let html = '';
-                            if (data.alternatives.other_days?.length) html += 'Freie Tage: ' + data.alternatives.other_days.join(' · ');
-                            if (data.waitlist_available) html += '<br>Tipp: Sie können sich auf die Warteliste setzen lassen.';
-                            if (html) { altBox.innerHTML = html; altBox.classList.remove('hidden'); }
+                        const head = document.createElement('p');
+                        head.className = 'col-span-full text-sm text-red-600';
+                        head.textContent = 'Am ' + fmtDate(dateInput.value) + ' sind für ' + partyInput.value + ' Personen leider keine Tische frei.';
+                        slotContainer.appendChild(head);
+
+                        if (data.next_slots && data.next_slots.length) {
+                            const sub = document.createElement('p');
+                            sub.className = 'col-span-full mt-1 text-sm font-semibold text-stone-700';
+                            sub.textContent = 'Nächste freie Termine für ' + partyInput.value + ' Personen:';
+                            slotContainer.appendChild(sub);
+
+                            data.next_slots.forEach(s => {
+                                const btn = document.createElement('button');
+                                btn.type = 'button';
+                                btn.className = 'slot-btn rounded-xl border-2 border-stone-200 px-2 py-2 text-center hover:border-brand';
+                                btn.innerHTML = '<span class="block text-xs text-stone-500">' + fmtDate(s.date) + '</span>'
+                                    + '<span class="block text-base font-bold">' + s.time + '</span>';
+                                btn.addEventListener('click', () => pickNextSlot(s.date, s.time));
+                                slotContainer.appendChild(btn);
+                            });
+                        } else if (data.alternatives && data.alternatives.other_days?.length) {
+                            const sub = document.createElement('p');
+                            sub.className = 'col-span-full text-sm text-stone-600';
+                            sub.textContent = 'Freie Tage: ' + data.alternatives.other_days.join(' · ');
+                            slotContainer.appendChild(sub);
+                        }
+                        if (data.waitlist_available) {
+                            altBox.innerHTML = 'Kein passender Termin dabei? Sie können sich auf die <strong>Warteliste</strong> setzen lassen.';
+                            altBox.classList.remove('hidden');
                         }
                         return;
                     }
@@ -471,6 +508,7 @@
                         const btn = document.createElement('button');
                         btn.type = 'button';
                         btn.textContent = time;
+                        btn.dataset.time = time;
                         btn.className = 'slot-btn rounded-xl border-2 border-stone-200 py-2.5 font-semibold hover:border-brand';
                         btn.addEventListener('click', () => {
                             document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('border-brand', 'bg-stone-50'));

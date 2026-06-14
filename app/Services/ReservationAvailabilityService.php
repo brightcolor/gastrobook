@@ -118,6 +118,35 @@ class ReservationAvailabilityService
     }
 
     /**
+     * The soonest concrete free slots (date + time) that can seat the party,
+     * scanning forward from the given day. Each entry is directly bookable.
+     *
+     * @return array<int, array{date: string, time: string}>
+     */
+    public function nextSlots(Location $location, CarbonImmutable $fromLocalDate, int $partySize, int $limit = 6, int $perDay = 2): array
+    {
+        $out = [];
+        $start = $fromLocalDate->startOfDay();
+        $maxAdvance = (int) $location->effectiveSettings()->max_advance_days;
+
+        for ($i = 0; $i <= $maxAdvance && count($out) < $limit; $i++) {
+            $day = $start->addDays($i);
+            $daySlots = collect($this->slotsFor($location, $day, $partySize))
+                ->filter(fn ($s) => $s['available'])
+                ->take($perDay);
+
+            foreach ($daySlots as $s) {
+                $out[] = ['date' => $day->toDateString(), 'time' => $s['time']];
+                if (count($out) >= $limit) {
+                    break;
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * @return array{0: bool, 1: ?string}
      */
     private function checkSlot(

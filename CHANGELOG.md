@@ -4,6 +4,17 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.19.0] – 2026-06-14
+
+### Neu
+- **Nächste freie Termine bei ausgebuchtem Tag:** Ist am gewählten Tag für die
+  gewünschte Personenzahl kein Tisch frei, zeigt die Buchungsseite jetzt die
+  **nächsten freien Termine (Datum + Uhrzeit) für genau diese Personenzahl** –
+  direkt als Buttons. Ein Klick übernimmt Datum & Uhrzeit, lädt die Slots des
+  Tages und wählt die Zeit aus (inkl. Tischplan, falls aktiv). Die Warteliste
+  wird – falls aktiv – weiterhin als Alternative angeboten.
+  (slots-Endpoint liefert `next_slots`; `ReservationAvailabilityService::nextSlots`.)
+
 ## [1.18.0] – 2026-06-14
 
 ### Geändert
@@ -410,6 +421,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.19.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.19.0
 [1.18.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.18.0
 [1.17.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.17.0
 [1.16.3]: https://github.com/brightcolor/gastrobook/releases/tag/v1.16.3
