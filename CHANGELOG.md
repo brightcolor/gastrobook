@@ -4,6 +4,18 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.11.0] – 2026-06-13
+
+### Hinzugefügt
+- **Mobiles Menü im Betreiberbereich**: Hamburger öffnet einen Drawer mit der
+  vollständigen Navigation (inkl. Standortwechsel, SaaS-Admin, Abmelden) –
+  vorher gab es mobil nur vier Icon-Links.
+- **Verständliche Fehlermeldungen auf Deutsch**: vollständige
+  `lang/de/validation.php` mit Klartext-Meldungen, sprechenden Feldnamen
+  (z. B. „Personenzahl", „E-Mail-Adresse") und Hinweisen/Lösungen für die
+  wichtigsten Felder. App-Locale standardmäßig `de`. Schluss mit Meldungen wie
+  „maximum numeric violation".
+
 ## [1.10.0] – 2026-06-13
 
 ### Geändert
@@ -214,6 +226,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.11.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.11.0
 [1.10.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.10.0
 [1.9.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.9.0
 [1.8.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.8.1
