@@ -110,12 +110,52 @@ class PublicBookingController extends Controller
         ];
 
         if ($available === []) {
-            $desired = $localDate->setTime(19, 0);
-            $response['alternatives'] = $this->availability->alternatives($location, $desired, (int) $validated['party_size']);
-            $response['waitlist_available'] = $location->effectiveSettings()->waitlist_enabled;
+            $partySize = (int) $validated['party_size'];
+            $maxParty = $this->largestBookableParty($location);
+
+            if ($maxParty !== null && $partySize > $maxParty) {
+                // Gruppe ist generell zu groß – Warteliste/Alternativen helfen nicht
+                $response['oversized'] = true;
+                $response['max_party'] = $maxParty;
+                $response['phone'] = $location->phone;
+            } else {
+                $desired = $localDate->setTime(19, 0);
+                $response['alternatives'] = $this->availability->alternatives($location, $desired, $partySize);
+                $response['waitlist_available'] = $location->effectiveSettings()->waitlist_enabled;
+            }
         }
 
         return response()->json($response);
+    }
+
+    /**
+     * Largest party that is bookable online at this location (smallest of the
+     * online cap and the actual seating capacity). Null = effectively unlimited.
+     */
+    private function largestBookableParty(Location $location): ?int
+    {
+        $settings = $location->effectiveSettings();
+        $capByCapacity = null;
+
+        if (in_array($settings->capacity_mode, ['table', 'hybrid'], true)) {
+            $maxTable = (int) $location->tables()
+                ->where('is_active', true)->where('online_bookable', true)->max('max_capacity');
+            $maxCombo = (int) $location->tableCombinations()
+                ->where('is_active', true)->where('online_bookable', true)->max('max_capacity');
+            $capByCapacity = max($maxTable, $maxCombo);
+        }
+
+        if (in_array($settings->capacity_mode, ['person', 'hybrid'], true) && $settings->max_covers_per_slot) {
+            $byCovers = (int) $settings->max_covers_per_slot;
+            $capByCapacity = $capByCapacity === null ? $byCovers : max($capByCapacity, $byCovers);
+        }
+
+        $values = array_filter([
+            $settings->max_party_online ? (int) $settings->max_party_online : null,
+            $capByCapacity ?: null,
+        ], fn ($v) => $v !== null);
+
+        return $values === [] ? null : min($values);
     }
 
     private function salonSlots(Request $request, Location $location): JsonResponse

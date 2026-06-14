@@ -4,6 +4,16 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.12.2] – 2026-06-13
+
+### Behoben
+- **Sinnvolle Meldung bei zu großer Gruppe:** Wenn keine Tisch-/Platzkapazität
+  die gewünschte Personenzahl je aufnehmen kann, wird kein Warteliste-Tipp mehr
+  angezeigt, sondern ein klarer Hinweis „Für N Personen ist online keine
+  Reservierung möglich – bitte direkt kontaktieren" inkl. Telefon-Link.
+  Die Warteliste wird weiterhin angeboten, wenn nur der gewählte Zeitpunkt
+  ausgebucht ist.
+
 ## [1.12.1] – 2026-06-13
 
 ### Geändert
@@ -247,6 +257,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.12.2]: https://github.com/brightcolor/gastrobook/releases/tag/v1.12.2
 [1.12.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.12.1
 [1.12.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.12.0
 [1.11.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.11.0

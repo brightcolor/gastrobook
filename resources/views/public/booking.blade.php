@@ -449,6 +449,15 @@
                     const data = await res.json();
                     slotContainer.innerHTML = '';
                     if (!data.slots || data.slots.length === 0) {
+                        if (data.oversized) {
+                            // Gruppe zu groß für eine Online-Reservierung – keine Warteliste anbieten
+                            slotContainer.innerHTML = '<p class="col-span-full text-sm text-stone-600">Für ' + (partyInput.value) + ' Personen ist online keine Reservierung möglich (max. ' + data.max_party + ').</p>';
+                            let html = 'Für größere Gruppen kontaktieren Sie uns bitte direkt';
+                            html += data.phone ? ': <a class="font-semibold underline" href="tel:' + data.phone.replace(/\s/g, '') + '">' + data.phone + '</a>' : '.';
+                            altBox.innerHTML = html;
+                            altBox.classList.remove('hidden');
+                            return;
+                        }
                         slotContainer.innerHTML = '<p class="col-span-full text-sm text-red-600">An diesem Tag sind leider keine Tische verfügbar.</p>';
                         if (data.alternatives) {
                             let html = '';
