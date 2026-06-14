@@ -4,6 +4,16 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.14.1] – 2026-06-14
+
+### Behoben
+- **Login-Fehlermeldung verständlich:** Bei falschen Zugangsdaten wurde der rohe
+  Schlüssel `auth.failed` angezeigt, weil die Sprachdatei fehlte. Jetzt
+  erscheint „E-Mail oder Passwort ist nicht korrekt – oder das Konto ist
+  deaktiviert." (neue `lang/de/auth.php` + `lang/en/auth.php`, deckt auch
+  `password`/`throttle` ab). Der Hinweis auf deaktivierte Konten hilft, weil der
+  Login zusätzlich ein aktives Konto (`is_active`) voraussetzt.
+
 ## [1.14.0] – 2026-06-14
 
 ### Neu
@@ -291,6 +301,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.14.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.14.1
 [1.14.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.14.0
 [1.13.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.13.0
 [1.12.2]: https://github.com/brightcolor/gastrobook/releases/tag/v1.12.2
