@@ -277,7 +277,9 @@
                     </div>
                 </div>
                 ${full ? '<p class="pp-note">Tisch voll – für mehr Gäste einen größeren oder zusätzlichen Tisch nutzen.</p>' : ''}
-                <a href="/admin/reservations/${t.current.id}" class="pp-btn pp-dark">Reservierung öffnen</a>`;
+                ${['seated', 'partially_arrived'].includes(t.current.status)
+                    ? `<button class="pp-btn pp-green" data-checkout="${t.current.id}">✓ Auschecken (Gäste gegangen)</button>` : ''}
+                <a href="/admin/reservations/${t.current.id}" class="pp-btn pp-soft">Reservierung öffnen</a>`;
         } else if (t.upcoming) {
             body = `<p class="pp-line">Nächste: <strong>${esc(t.upcoming.name)}</strong></p>
                 <p class="pp-sub">um ${t.upcoming.at} Uhr · ${t.upcoming.party} P.</p>
@@ -302,6 +304,20 @@
             const next = (t.current.party || 0) + (+b.dataset.d);
             if (next >= 1) setParty(t.id, t.current.id, next);
         }));
+        const co = popup.querySelector('[data-checkout]');
+        if (co) co.addEventListener('click', () => checkout(co.dataset.checkout));
+    }
+
+    async function checkout(reservationId) {
+        if (!confirm('Tisch auschecken – die Gäste sind gegangen?')) return;
+        const res = await fetch('/admin/reservations/' + reservationId + '/transition', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, Accept: 'application/json'},
+            body: JSON.stringify({status: 'completed'}),
+        });
+        if (!res.ok) { alert('Auschecken fehlgeschlagen. Bitte erneut versuchen.'); return; }
+        popup.classList.add('hidden');
+        load();
     }
 
     async function setParty(tableId, reservationId, size) {

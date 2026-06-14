@@ -143,16 +143,11 @@
             <button class="rounded-lg bg-stone-900 px-4 py-2 font-semibold text-white">Anlegen</button>
         </form>
 
-        <form method="POST" action="{{ route('admin.settings.tables.store') }}" class="mb-4 grid grid-cols-2 gap-2 rounded-xl bg-stone-50 p-3 text-sm sm:grid-cols-6">
-            @csrf
-            <select name="room_id" required class="rounded-lg border-stone-200 sm:col-span-2">
-                @foreach($rooms as $room)<option value="{{ $room->id }}">{{ $room->name }}</option>@endforeach
-            </select>
-            <input type="text" name="name" required placeholder="Tisch-Nr." class="rounded-lg border-stone-200">
-            <input type="number" name="min_capacity" required min="1" placeholder="Min" class="rounded-lg border-stone-200">
-            <input type="number" name="max_capacity" required min="1" placeholder="Max" class="rounded-lg border-stone-200">
-            <button class="rounded-lg bg-stone-900 px-3 py-2 font-semibold text-white">+ Tisch</button>
-        </form>
+        <div class="mb-4">
+            <button type="button" id="openTableModal" @disabled($rooms->isEmpty())
+                class="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">＋ Tisch anlegen</button>
+            @if($rooms->isEmpty())<span class="ml-2 text-xs text-stone-500">Bitte zuerst einen Raum anlegen.</span>@endif
+        </div>
 
         <div class="max-h-80 overflow-y-auto">
             <table class="w-full text-sm">
@@ -178,6 +173,79 @@
             </table>
         </div>
     </div>
+
+    {{-- New table modal --}}
+    <div id="tableModalBack" class="fixed inset-0 z-50 hidden items-center justify-center bg-stone-900/45 p-4 backdrop-blur-sm">
+        <div class="w-full max-w-md rounded-2xl bg-white shadow-2xl">
+            <div class="flex items-center gap-2 border-b border-stone-100 px-5 py-4">
+                <span class="text-xl">🪑</span><h3 class="text-lg font-bold">Neuer Tisch</h3>
+            </div>
+            <form method="POST" action="{{ route('admin.settings.tables.store') }}" id="tableModalForm" class="space-y-4 px-5 py-5">
+                @csrf
+                <input type="hidden" name="min_capacity" value="1">
+                <input type="hidden" name="max_capacity" id="tmMax" value="" required>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="block">
+                        <span class="mb-1 block text-sm font-semibold text-stone-600">Raum</span>
+                        <select name="room_id" required class="w-full rounded-lg border-2 border-stone-200">
+                            @foreach($rooms as $room)<option value="{{ $room->id }}">{{ $room->name }}</option>@endforeach
+                        </select>
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block text-sm font-semibold text-stone-600">Tisch-Nr.</span>
+                        <input type="text" name="name" required placeholder="z. B. 12" class="w-full rounded-lg border-2 border-stone-200">
+                    </label>
+                </div>
+                <div>
+                    <span class="mb-1 block text-sm font-semibold text-stone-600">Plätze</span>
+                    <div class="grid grid-cols-4 gap-2" id="tmSeats">
+                        @foreach([1,2,3,4,5,6,8,10] as $n)
+                            <button type="button" data-seats="{{ $n }}"
+                                class="tm-seat rounded-lg border-2 border-stone-200 py-2.5 text-base font-bold hover:border-teal-600">{{ $n }}</button>
+                        @endforeach
+                    </div>
+                    <button type="button" id="tmCustom" class="mt-2 text-xs font-semibold text-teal-700">Andere Anzahl…</button>
+                    <p id="tmErr" class="mt-2 hidden text-sm text-red-600">Bitte Plätze wählen.</p>
+                </div>
+                <div class="flex justify-end gap-2 pt-1">
+                    <button type="button" id="tableModalCancel" class="rounded-lg bg-stone-200 px-4 py-2.5 font-semibold">Abbrechen</button>
+                    <button type="submit" class="rounded-lg bg-teal-700 px-5 py-2.5 font-semibold text-white">Anlegen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script>
+    (function () {
+        const back = document.getElementById('tableModalBack');
+        if (!back) return;
+        const open = document.getElementById('openTableModal');
+        const form = document.getElementById('tableModalForm');
+        const seatWrap = document.getElementById('tmSeats');
+        const maxInput = document.getElementById('tmMax');
+        const err = document.getElementById('tmErr');
+        const show = () => { back.classList.remove('hidden'); back.classList.add('flex'); };
+        const hide = () => { back.classList.add('hidden'); back.classList.remove('flex'); };
+        const clearSel = () => seatWrap.querySelectorAll('.tm-seat').forEach(b => b.classList.remove('border-teal-600','bg-teal-50','text-teal-700'));
+
+        open?.addEventListener('click', () => { form.reset(); clearSel(); maxInput.value=''; err.classList.add('hidden'); show(); });
+        document.getElementById('tableModalCancel').addEventListener('click', hide);
+        back.addEventListener('click', e => { if (e.target === back) hide(); });
+
+        seatWrap.querySelectorAll('.tm-seat').forEach(b => b.addEventListener('click', () => {
+            clearSel();
+            b.classList.add('border-teal-600','bg-teal-50','text-teal-700');
+            maxInput.value = b.dataset.seats;
+            err.classList.add('hidden');
+        }));
+        document.getElementById('tmCustom').addEventListener('click', () => {
+            const v = parseInt(prompt('Anzahl Plätze?', '12') || '', 10);
+            if (v >= 1 && v <= 50) { clearSel(); maxInput.value = v; err.classList.add('hidden'); }
+        });
+        form.addEventListener('submit', e => {
+            if (!maxInput.value) { e.preventDefault(); err.classList.remove('hidden'); }
+        });
+    })();
+    </script>
 
     {{-- Booking form fields --}}
     @if(auth()->user()->canInTenant('tenant.settings.manage', app(\App\Support\TenantContext::class)->tenant(), $location))
