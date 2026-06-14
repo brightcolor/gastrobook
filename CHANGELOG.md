@@ -4,6 +4,16 @@ Alle nennenswerten Änderungen an GastroBook. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.8.0] – 2026-06-13
+
+### Geändert
+- **Landingpage komplett überarbeitet** (SaaS-tauglich, professionell):
+  Dual-Vertical-Hero (Restaurant **und** Salon) mit Produkt-Vorschau,
+  Trust-Strip, Branchen-Sektion, **Hauptfunktionen** prominent (Online-Buchung,
+  Live-Board, Zahlungen/No-Show), Sekundär-Feature-Grid, kompakte Liste „Und
+  vieles mehr", aktualisierte Schritte/Preise/FAQ und stärkerer CTA.
+- Marketing-Layout: Titel/Meta/Nav/Footer auf „Restaurants & Salons" angepasst.
+
 ## [1.7.1] – 2026-06-13
 
 ### Geändert
@@ -170,6 +180,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.8.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.8.0
 [1.7.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.7.1
 [1.7.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.7.0
 [1.6.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.6.1
