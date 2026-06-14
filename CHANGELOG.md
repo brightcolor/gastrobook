@@ -4,6 +4,24 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.23.0] – 2026-06-15
+
+### Sicherheit
+- **Kein Debug-Modus mehr in Produktion:** `.env.example` und `install.sh`
+  setzen jetzt `APP_ENV=production` und `APP_DEBUG=false` als Standard.
+  Zuvor konnte ein frischer Install im Debug-Modus laufen und im Fehlerfall
+  Stacktraces inkl. Datenbank-Bindings (potenziell Gästedaten) anzeigen.
+- **Regressionstest gegen Datenlecks:** Der öffentliche Tischplan und der
+  Slots-Endpoint geben nachweislich **keine Gästedaten** (Name/E-Mail/Telefon)
+  aus – per Test abgesichert.
+- Audit der öffentlichen Token-Flows (Reservierung, Event, Warteliste, Zahlung,
+  Gästekonto): alle nutzen konstantzeitige Token-Prüfung (`hash_equals`) und
+  sind mandanten-/sitzungsgebunden.
+
+### Geändert
+- **Mehr Polish:** Hochwertigere Brand-Buttons (sanfter Verlauf, weicher
+  Schatten, dezentes Anheben/Drücken) – wirkt auf Buchungs-CTA und im Backend.
+
 ## [1.22.0] – 2026-06-15
 
 ### Neu
@@ -502,6 +520,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.23.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.23.0
 [1.22.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.22.0
 [1.21.2]: https://github.com/brightcolor/gastrobook/releases/tag/v1.21.2
 [1.21.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.21.1

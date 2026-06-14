@@ -60,6 +60,8 @@ else
     sed -i.bak \
         -e "s|^APP_KEY=.*|APP_KEY=${APP_KEY}|" \
         -e "s|^APP_URL=.*|APP_URL=http://localhost:${APP_PORT}|" \
+        -e "s|^APP_ENV=.*|APP_ENV=production|" \
+        -e "s|^APP_DEBUG=.*|APP_DEBUG=false|" \
         .env && rm -f .env.bak
     {
         echo ""

@@ -108,9 +108,17 @@
 }
 
 @layer components {
-    /* Brand button (also used on public booking pages) */
-    .btn-brand { background-color: var(--brand); }
-    .btn-brand:hover { background-color: var(--brand-strong); }
+    /* Brand button (also used on public booking pages) – soft gradient + lift */
+    .btn-brand {
+        background-color: var(--brand);
+        background-image: linear-gradient(180deg, color-mix(in oklab, var(--brand) 90%, white), var(--brand));
+        box-shadow: 0 1px 2px rgb(0 0 0 / 0.12), 0 6px 16px -8px color-mix(in oklab, var(--brand) 55%, transparent);
+    }
+    .btn-brand:hover {
+        background-image: linear-gradient(180deg, var(--brand), var(--brand-strong));
+        box-shadow: 0 2px 5px rgb(0 0 0 / 0.14), 0 12px 24px -10px color-mix(in oklab, var(--brand) 60%, transparent);
+    }
+    .btn-brand:active { box-shadow: 0 1px 2px rgb(0 0 0 / 0.2); }
     .text-brand { color: var(--brand); }
     .ring-brand { --tw-ring-color: var(--brand); }
     .border-brand { border-color: var(--brand); }
