@@ -8,6 +8,7 @@ use App\Enums\ReservationStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Location;
 use App\Models\Reservation;
+use App\Models\TableBlock;
 use App\Models\WaitlistEntry;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
@@ -149,7 +150,92 @@ class BoardController extends Controller
             'kpis' => $kpis,
             'new' => $new->values()->all(),
             'timeline' => $timeline->values()->all(),
+            'floorplan' => $isSalon ? null : $this->floorplan($location, $nowLocal),
         ];
+    }
+
+    /**
+     * Live floor plan: rooms with their tables and current status, mirroring the
+     * geometry configured in the admin floor-plan editor. Returns null when no
+     * rooms/tables exist (then the board hides the plan view).
+     *
+     * @return array<int, array<string, mixed>>|null
+     */
+    private function floorplan(Location $location, CarbonImmutable $nowLocal): ?array
+    {
+        $rooms = $location->rooms()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->with(['tables' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order')])
+            ->get();
+
+        if ($rooms->isEmpty() || $rooms->every(fn ($room) => $room->tables->isEmpty())) {
+            return null;
+        }
+
+        $atUtc = $nowLocal->utc();
+        $soonUtc = $atUtc->addMinutes(45);
+
+        $reservations = Reservation::query()
+            ->where('location_id', $location->id)
+            ->whereIn('status', ReservationStatus::activeStatuses())
+            ->whereDate('reservation_date', $nowLocal->toDateString())
+            ->with('tables:restaurant_tables.id')
+            ->get();
+
+        $tableIds = $rooms->pluck('tables')->flatten()->pluck('id')->all();
+        $blockedIds = TableBlock::query()
+            ->whereIn('restaurant_table_id', $tableIds)
+            ->where('starts_at', '<=', $atUtc)
+            ->where('ends_at', '>', $atUtc)
+            ->pluck('restaurant_table_id')
+            ->all();
+
+        return $rooms->map(fn ($room) => [
+            'id' => $room->id,
+            'name' => $room->name,
+            'is_outdoor' => (bool) $room->is_outdoor,
+            'plan_width' => (int) ($room->plan_width ?: 1000),
+            'plan_height' => (int) ($room->plan_height ?: 700),
+            'tables' => $room->tables->map(function ($t) use ($reservations, $atUtc, $soonUtc, $blockedIds) {
+                $current = $reservations->first(fn ($r) => $r->tables->contains('id', $t->id)
+                    && $r->start_at->lte($atUtc) && $r->end_at->gt($atUtc));
+                $upcoming = $reservations->first(fn ($r) => $r->tables->contains('id', $t->id)
+                    && $r->start_at->gt($atUtc) && $r->start_at->lte($soonUtc));
+
+                $status = 'free';
+                if (in_array($t->id, $blockedIds, true)) {
+                    $status = 'blocked';
+                } elseif ($current !== null) {
+                    $status = $current->status === ReservationStatus::Seated ? 'occupied' : 'awaiting';
+                    if ($current->status === ReservationStatus::Confirmed && $current->no_show_risk >= 50) {
+                        $status = 'no_show_risk';
+                    }
+                } elseif ($upcoming !== null) {
+                    $status = 'soon';
+                }
+
+                $info = $current ?? $upcoming;
+
+                return [
+                    'id' => $t->id,
+                    'name' => $t->name,
+                    'status' => $status,
+                    'pos_x' => (int) $t->pos_x,
+                    'pos_y' => (int) $t->pos_y,
+                    'width' => (int) ($t->width ?: 64),
+                    'height' => (int) ($t->height ?: 64),
+                    'shape' => $t->shape ?: 'rect',
+                    'rotation' => (int) $t->rotation,
+                    'capacity' => $t->min_capacity.'–'.$t->max_capacity,
+                    'guest' => $info?->guest_name_snapshot,
+                    'party' => $info?->party_size,
+                    'time' => $current
+                        ? 'bis '.$current->localEnd()->format('H:i')
+                        : ($upcoming ? 'ab '.$upcoming->localStart()->format('H:i') : null),
+                ];
+            })->values()->all(),
+        ])->values()->all();
     }
 
     /**

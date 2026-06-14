@@ -82,6 +82,47 @@ class BoardTest extends TestCase
         $this->assertSame('confirmed', $new['actions'][0]['status']);
     }
 
+    public function test_board_data_includes_floorplan_with_table_status(): void
+    {
+        $setup = $this->createTenantSetup();
+        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
+
+        // Seat a guest at the first table → that table must read "occupied".
+        $reservation = $this->todayReservation($setup['location']->id, $setup['tenant']->id, ReservationStatus::Seated);
+        $start = CarbonImmutable::now('Europe/Berlin')->subHour();
+        $reservation->update(['start_at' => $start->utc(), 'end_at' => $start->addHours(2)->utc()]);
+        $reservation->tables()->attach($setup['tables'][0]->id);
+        $this->clearTenantContext();
+
+        $response = $this->actingAs($admin)->getJson('/admin/board/data')->assertOk();
+
+        $rooms = $response->json('floorplan');
+        $this->assertIsArray($rooms);
+        $this->assertNotEmpty($rooms);
+
+        $tables = collect($rooms[0]['tables']);
+        $this->assertArrayHasKey('plan_width', $rooms[0]);
+        $occupied = $tables->firstWhere('id', $setup['tables'][0]->id);
+        $this->assertSame('occupied', $occupied['status']);
+        $this->assertSame('Board Gast', $occupied['guest']);
+
+        // A table without a reservation stays free.
+        $free = $tables->firstWhere('id', $setup['tables'][1]->id);
+        $this->assertSame('free', $free['status']);
+    }
+
+    public function test_salon_board_has_no_floorplan(): void
+    {
+        $setup = $this->createTenantSetup();
+        $setup['tenant']->update(['type' => 'salon']);
+        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
+        $this->clearTenantContext();
+
+        $this->actingAs($admin)->getJson('/admin/board/data')
+            ->assertOk()
+            ->assertJson(['floorplan' => null]);
+    }
+
     public function test_transition_via_json_seats_guest(): void
     {
         $setup = $this->createTenantSetup();

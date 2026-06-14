@@ -66,6 +66,47 @@
         .live { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
         .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
         .dot.stale { background: var(--amber); }
+
+        /* ---- View switcher ---- */
+        .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+        .seg button { cursor: pointer; border: none; background: var(--panel-2); color: var(--text); padding: 8px 14px; font-size: 14px; font-weight: 600; }
+        .seg button.on { background: var(--brand); color: #fff; }
+
+        /* ---- Floor plan ---- */
+        #planView { display: none; padding: 0 18px 18px; }
+        .plan-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
+        .rooms { display: flex; flex-wrap: wrap; gap: 6px; }
+        .room-tab { cursor: pointer; border: 1px solid var(--border); background: var(--panel); color: var(--text); border-radius: 999px; padding: 7px 14px; font-size: 14px; font-weight: 700; box-shadow: var(--shadow); }
+        .room-tab.on { background: var(--brand); color: #fff; border-color: var(--brand); }
+        .room-tab .cnt { font-weight: 600; opacity: .75; font-size: 12px; margin-left: 6px; }
+        .zoom { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; }
+        .zoom button { cursor: pointer; border: 1px solid var(--border); background: var(--panel-2); color: var(--text); border-radius: 8px; width: 36px; height: 36px; font-size: 18px; font-weight: 800; line-height: 1; }
+        .zoom .zlabel { font-size: 13px; color: var(--muted); min-width: 44px; text-align: center; font-variant-numeric: tabular-nums; }
+        .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; color: var(--muted); font-size: 12px; }
+        .legend span { display: inline-flex; align-items: center; gap: 5px; }
+        .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+        .l-free { background: var(--green); } .l-soon { background: var(--amber); }
+        .l-awaiting { background: var(--blue); } .l-occupied { background: var(--red); }
+        .l-blocked { background: var(--muted); }
+        .stage { position: relative; overflow: auto; border: 1px solid var(--border); border-radius: 14px; background: var(--panel-2);
+            background-image: radial-gradient(var(--border) 1px, transparent 1px); background-size: 26px 26px;
+            box-shadow: var(--shadow); max-height: calc(100vh - 230px); touch-action: pan-x pan-y; }
+        .canvas { position: relative; transform-origin: 0 0; }
+        .roomname { position: absolute; top: 14px; left: 18px; font-size: 38px; font-weight: 800; letter-spacing: .01em;
+            color: var(--text); opacity: .12; pointer-events: none; user-select: none; white-space: nowrap; }
+        .tbl { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            border: 2px solid; box-sizing: border-box; padding: 2px; overflow: hidden; box-shadow: var(--shadow); }
+        .tbl .tn { font-weight: 800; font-size: 14px; line-height: 1.05; }
+        .tbl .tg { font-size: 11px; font-weight: 600; line-height: 1.1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tbl .tt { font-size: 10px; opacity: .85; }
+        .tbl.free { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+        .tbl.soon { background: var(--amber-bg); border-color: var(--amber); color: var(--amber); }
+        .tbl.awaiting { background: var(--blue-bg); border-color: var(--blue); color: var(--blue); }
+        .tbl.no_show_risk { background: var(--amber-bg); border-color: var(--red); color: var(--red); }
+        .tbl.occupied { background: var(--red-bg); border-color: var(--red); color: var(--red); }
+        .tbl.blocked { background: var(--panel); border-color: var(--muted); color: var(--muted); border-style: dashed; }
+        .tbl.round { border-radius: 50%; }
+        .plan-empty { color: var(--muted); font-size: 14px; padding: 40px; text-align: center; }
     </style>
 </head>
 <body>
@@ -73,6 +114,10 @@
     <span class="brand">🟢 Live-Board</span>
     <span class="loc">{{ $location->name }}</span>
     <span class="clock" id="clock">–:–</span>
+    <span class="seg" id="viewSeg" hidden>
+        <button data-view="list" class="on">📋 Liste</button>
+        <button data-view="plan">🍽 Tischplan</button>
+    </span>
     <span class="spacer"></span>
     <span class="live"><span class="dot" id="liveDot"></span><span id="liveText">aktualisiere…</span></span>
     <a class="btn btn-brand" href="{{ route('admin.reservations.create') }}">+ Neue Buchung</a>
@@ -83,7 +128,29 @@
 
 <div class="kpis" id="kpis"></div>
 
-<main>
+<section id="planView">
+    <div class="plan-bar">
+        <div class="rooms" id="roomTabs"></div>
+        <div class="zoom">
+            <button id="zoomOut" title="Verkleinern">−</button>
+            <span class="zlabel" id="zoomLabel">100 %</span>
+            <button id="zoomIn" title="Vergrößern">+</button>
+            <button id="zoomFit" title="Einpassen" style="width:auto;padding:0 12px;font-size:14px;">Einpassen</button>
+        </div>
+    </div>
+    <div class="legend">
+        <span><i class="l-free"></i> frei</span>
+        <span><i class="l-soon"></i> Ankunft bald</span>
+        <span><i class="l-awaiting"></i> erwartet</span>
+        <span><i class="l-occupied"></i> belegt</span>
+        <span><i class="l-blocked"></i> gesperrt</span>
+    </div>
+    <div class="stage" id="stage">
+        <div class="canvas" id="canvas"></div>
+    </div>
+</section>
+
+<main id="listView">
     <section class="col col-new">
         <h2>Neu &amp; offen</h2>
         <div class="cards" id="newCards"></div>
@@ -228,7 +295,139 @@
         d.timeline.forEach(r => seenIds.add(r.id));
         firstLoad = false;
         setLive(true);
+
+        plan.update(d.floorplan);
     }
+
+    // ---- Floor plan view ----
+    const plan = (function () {
+        const seg = document.getElementById('viewSeg');
+        const listView = document.getElementById('listView');
+        const planView = document.getElementById('planView');
+        const roomTabs = document.getElementById('roomTabs');
+        const stage = document.getElementById('stage');
+        const canvas = document.getElementById('canvas');
+        const zoomLabel = document.getElementById('zoomLabel');
+
+        let rooms = [];
+        let activeRoom = 0;
+        let zoom = 1;
+        let autoFit = true;       // until the user zooms manually
+        let view = localStorage.getItem('gb_board_view') === 'plan' ? 'plan' : 'list';
+
+        function setView(v) {
+            view = v;
+            localStorage.setItem('gb_board_view', v);
+            const showPlan = v === 'plan' && rooms.length > 0;
+            planView.style.display = showPlan ? 'block' : 'none';
+            listView.style.display = showPlan ? 'none' : 'grid';
+            seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.view === v));
+            if (showPlan) { fit(); }
+        }
+        seg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+
+        function room() { return rooms[activeRoom]; }
+
+        function renderTabs() {
+            roomTabs.innerHTML = rooms.map((r, i) => {
+                const free = r.tables.filter(t => t.status === 'free').length;
+                return '<button class="room-tab ' + (i === activeRoom ? 'on' : '') + '" data-room="' + i + '">'
+                    + (r.is_outdoor ? '🌤 ' : '') + esc(r.name)
+                    + '<span class="cnt">' + free + '/' + r.tables.length + ' frei</span></button>';
+            }).join('');
+            roomTabs.querySelectorAll('.room-tab').forEach(b =>
+                b.addEventListener('click', () => selectRoom(+b.dataset.room)));
+            // single room → tabs not needed, but keep name for context
+            roomTabs.style.display = rooms.length > 1 ? 'flex' : 'none';
+        }
+
+        function selectRoom(i) {
+            if (i < 0 || i >= rooms.length) return;
+            activeRoom = i;
+            renderTabs();
+            renderCanvas();
+            if (autoFit) fit(); else applyZoom();
+        }
+
+        function renderCanvas() {
+            const r = room();
+            if (!r) { canvas.innerHTML = '<div class="plan-empty">Kein Tischplan hinterlegt.</div>'; return; }
+            canvas.style.width = r.plan_width + 'px';
+            canvas.style.height = r.plan_height + 'px';
+            const tables = r.tables.map(t => {
+                const guest = t.guest ? '<span class="tg">' + esc(t.guest) + (t.party ? ' · ' + t.party + 'P' : '') + '</span>' : '';
+                const time = t.time ? '<span class="tt">' + esc(t.time) + '</span>' : '';
+                const rot = t.rotation ? 'transform:rotate(' + t.rotation + 'deg);' : '';
+                return '<div class="tbl ' + t.status + (t.shape === 'round' ? ' round' : '') + '" title="' + esc(t.name) + ' (' + esc(t.capacity) + ')'
+                    + (t.guest ? ' — ' + esc(t.guest) : '') + '" style="left:' + t.pos_x + 'px;top:' + t.pos_y
+                    + 'px;width:' + t.width + 'px;height:' + t.height + 'px;' + rot + '">'
+                    + '<span class="tn">' + esc(t.name) + '</span>' + guest + time + '</div>';
+            }).join('');
+            canvas.innerHTML = '<div class="roomname">' + esc(r.name) + '</div>' + tables;
+        }
+
+        function applyZoom() {
+            const r = room();
+            if (!r) return;
+            // Box takes the scaled size so the scroll container measures correctly;
+            // children stay in logical coords and are scaled via the transform.
+            canvas.style.width = (r.plan_width * zoom) + 'px';
+            canvas.style.height = (r.plan_height * zoom) + 'px';
+            canvas.style.transform = 'scale(' + zoom + ')';
+            zoomLabel.textContent = Math.round(zoom * 100) + ' %';
+        }
+
+        function fit() {
+            const r = room();
+            if (!r) return;
+            const pad = 24;
+            const sw = stage.clientWidth - pad;
+            const sh = stage.clientHeight - pad;
+            zoom = Math.min(sw / r.plan_width, sh / r.plan_height, 1.6);
+            if (!isFinite(zoom) || zoom <= 0) zoom = 1;
+            autoFit = true;
+            applyZoom();
+        }
+
+        function setZoom(z) { zoom = Math.max(0.3, Math.min(2.5, z)); autoFit = false; applyZoom(); }
+        document.getElementById('zoomIn').addEventListener('click', () => setZoom(zoom + 0.15));
+        document.getElementById('zoomOut').addEventListener('click', () => setZoom(zoom - 0.15));
+        document.getElementById('zoomFit').addEventListener('click', fit);
+        window.addEventListener('resize', () => { if (autoFit && view === 'plan') fit(); });
+
+        // Touch swipe between rooms (horizontal, ignores mostly-vertical scrolls)
+        let tx = 0, ty = 0, tracking = false;
+        stage.addEventListener('touchstart', e => {
+            if (e.touches.length !== 1) { tracking = false; return; }
+            tx = e.touches[0].clientX; ty = e.touches[0].clientY; tracking = true;
+        }, { passive: true });
+        stage.addEventListener('touchend', e => {
+            if (!tracking || rooms.length < 2) return;
+            const dx = e.changedTouches[0].clientX - tx;
+            const dy = e.changedTouches[0].clientY - ty;
+            if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+                selectRoom((activeRoom + (dx < 0 ? 1 : -1) + rooms.length) % rooms.length);
+            }
+            tracking = false;
+        }, { passive: true });
+
+        function update(fp) {
+            const has = Array.isArray(fp) && fp.length > 0;
+            seg.hidden = !has;
+            if (!has) { rooms = []; if (view === 'plan') setView('list'); return; }
+            rooms = fp;
+            if (activeRoom >= rooms.length) activeRoom = 0;
+            renderTabs();
+            renderCanvas();
+            if (view === 'plan') { planView.style.display = 'block'; listView.style.display = 'none';
+                seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.view === 'plan'));
+                if (autoFit) fit(); else applyZoom();
+            }
+        }
+
+        // restore persisted view once data lands (handled in update)
+        return { update };
+    })();
 
     async function load() {
         try {

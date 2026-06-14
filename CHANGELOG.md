@@ -4,6 +4,24 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.13.0] – 2026-06-14
+
+### Neu
+- **Tischplan auf dem Live-Board:** Das Live-Board hat eine neue Ansicht
+  „Tischplan" (umschaltbar neben „Liste"), die die Tische **genau so anzeigt,
+  wie sie im Betreiber-Admin angelegt wurden** (Position, Größe, Form, Drehung)
+  – farblich nach Live-Status: frei, Ankunft bald, erwartet, belegt, gesperrt.
+  Belegte Tische zeigen Gast, Personenzahl und Zeit.
+- **Mehrere Räume:** Räume werden als Tabs dargestellt; der Plan lässt sich in
+  der Größe anpassen (Zoom −/+ sowie „Einpassen", passt den Plan automatisch in
+  den verfügbaren Platz ein).
+- **Touch-Bedienung:** Auf Touchdisplays kann per Wisch nach links/rechts
+  zwischen den Räumen gewechselt werden.
+- **Raumname** wird deutlich, aber dezent als Wasserzeichen auf dem Plan
+  eingeblendet.
+- Die Ansicht ist nur für tischbasierte Betriebe sichtbar; Salons sehen sie
+  nicht.
+
 ## [1.12.2] – 2026-06-13
 
 ### Behoben
@@ -257,6 +275,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.13.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.13.0
 [1.12.2]: https://github.com/brightcolor/gastrobook/releases/tag/v1.12.2
 [1.12.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.12.1
 [1.12.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.12.0
