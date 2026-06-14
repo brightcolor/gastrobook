@@ -135,7 +135,9 @@
 
     function esc(s) { return (s ?? '').toString().replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
-    // Chairs around a table (chair-shaped, backrest facing outward), occupied filled.
+    // Chairs placed the way guests really sit: round = around the circle,
+    // long rectangles = along the two long sides with a head at each end when
+    // needed, near-square = one block per side. Occupied seats are filled.
     function chairsHtml(t, w, h) {
         const n = Math.max(0, t.seats || 0);
         if (!n) return '';
@@ -143,28 +145,56 @@
         const cs = Math.max(11, Math.min(18, Math.round(Math.min(w, h) / 3)));
         const off = cs / 2 + 4;
         const cw = Math.round(cs * 1.1);
-        const seat = (x, y, ang, i) => {
-            const cls = i < occ ? 'chair occ' : 'chair';
+        let idx = 0, out = '';
+        const seat = (x, y, ang) => {
+            const cls = idx < occ ? 'chair occ' : 'chair';
+            idx++;
             return `<span class="${cls}" style="left:${x - cw / 2}px;top:${y - cs / 2}px;width:${cw}px;height:${cs}px;transform:rotate(${ang}deg)"></span>`;
         };
-        let out = '';
+        // edge placers: distribute `c` seats evenly along one side, backrest out
+        const top = (c) => { for (let i = 0; i < c; i++) out += seat(w * (i + 1) / (c + 1), -off, 0); };
+        const bottom = (c) => { for (let i = 0; i < c; i++) out += seat(w * (i + 1) / (c + 1), h + off, 180); };
+        const left = (c) => { for (let i = 0; i < c; i++) out += seat(-off, h * (i + 1) / (c + 1), 270); };
+        const right = (c) => { for (let i = 0; i < c; i++) out += seat(w + off, h * (i + 1) / (c + 1), 90); };
+
         if (t.shape === 'round') {
             const r = Math.max(w, h) / 2 + off;
             for (let i = 0; i < n; i++) {
                 const a = (Math.PI * 2 * i) / n - Math.PI / 2;
-                out += seat(w / 2 + r * Math.cos(a), h / 2 + r * Math.sin(a), (a * 180 / Math.PI) + 90, i);
+                out += seat(w / 2 + r * Math.cos(a), h / 2 + r * Math.sin(a), a * 180 / Math.PI + 90);
             }
+            return out;
+        }
+
+        const horizontal = w >= h;          // long sides run left-right?
+        const ratio = Math.max(w, h) / Math.min(w, h);
+
+        if (n <= 2) {
+            // a couple faces each other across the table
+            horizontal ? (top(1), bottom(n - 1)) : (left(1), right(n - 1));
+            return out;
+        }
+
+        if (ratio < 1.35) {
+            // near-square: a block of chairs on each side
+            const base = Math.floor(n / 4), rem = n % 4;
+            const cnt = [0, 1, 2, 3].map(k => base + (k < rem ? 1 : 0)); // top,bottom,left,right
+            top(cnt[0]); bottom(cnt[1]); left(cnt[2]); right(cnt[3]);
+            return out;
+        }
+
+        // elongated table: long sides carry the guests, ends used as heads
+        const heads = n >= 8 ? 2 : (n % 2 === 1 ? 1 : 0);
+        const rest = n - heads;
+        const sideA = Math.ceil(rest / 2), sideB = rest - sideA;
+        if (horizontal) {
+            top(sideA); bottom(sideB);
+            if (heads >= 1) left(1);
+            if (heads >= 2) right(1);
         } else {
-            const per = 2 * (w + h);
-            for (let i = 0; i < n; i++) {
-                let d = ((i + 0.5) / n) * per, x, y, nx, ny;
-                if (d < w) { x = d; y = 0; nx = 0; ny = -1; }
-                else if ((d -= w) < h) { x = w; y = d; nx = 1; ny = 0; }
-                else if ((d -= h) < w) { x = w - d; y = h; nx = 0; ny = 1; }
-                else { d -= w; x = 0; y = h - d; nx = -1; ny = 0; }
-                const ang = Math.atan2(ny, nx) * 180 / Math.PI + 90;
-                out += seat(x + nx * off, y + ny * off, ang, i);
-            }
+            left(sideA); right(sideB);
+            if (heads >= 1) top(1);
+            if (heads >= 2) bottom(1);
         }
         return out;
     }

@@ -458,6 +458,8 @@ class SettingsController extends Controller
 
         abort_unless($location->rooms()->where('id', $validated['room_id'])->exists(), 422);
 
+        [$width, $height] = RestaurantTable::sizeForCapacity('rect', (int) $validated['max_capacity']);
+
         $table = $location->tables()->create([
             'tenant_id' => $location->tenant_id,
             'room_id' => (int) $validated['room_id'],
@@ -468,6 +470,7 @@ class SettingsController extends Controller
             'accessible' => $request->boolean('accessible'),
             'joinable' => $request->boolean('joinable', true),
             'online_bookable' => $request->boolean('online_bookable', true),
+            'width' => $width, 'height' => $height,
             'pos_x' => 50, 'pos_y' => 50,
         ]);
 

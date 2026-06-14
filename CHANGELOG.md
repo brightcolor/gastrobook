@@ -4,6 +4,22 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.16.3] – 2026-06-14
+
+### Geändert
+- **Realistische Sitzverteilung:** Stühle werden jetzt so platziert, wie Gäste
+  tatsächlich sitzen – runde Tische rundherum, lange Tische an den beiden
+  Längsseiten (mit je einem Kopfplatz an den Enden bei größeren Tischen),
+  nahezu quadratische Tische gleichmäßig auf allen Seiten, Paartische
+  gegenüber. Keine Stühle mehr an den kurzen Enden langer Tafeln.
+- **Tischgröße passt zur Platzzahl:** Tische werden anhand ihrer Sitzanzahl
+  dimensioniert (runde wachsen als Kreis, lange Tische werden länger). Neue
+  Tische (Editor & Einstellungen) bekommen die passende Größe automatisch.
+
+### Migration
+- **Bestehende Tische** werden einmalig auf die zur Platzzahl passende Größe
+  gebracht (`resize_tables_to_capacity`).
+
 ## [1.16.2] – 2026-06-14
 
 ### Geändert
@@ -369,6 +385,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.16.3]: https://github.com/brightcolor/gastrobook/releases/tag/v1.16.3
 [1.16.2]: https://github.com/brightcolor/gastrobook/releases/tag/v1.16.2
 [1.16.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.16.1
 [1.16.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.16.0

@@ -34,6 +34,29 @@ class RestaurantTable extends Model
         ];
     }
 
+    /**
+     * Sensible floor-plan dimensions (logical units) for a table, derived from
+     * its seat count and shape. Round tables grow as a circle; rectangular
+     * tables grow lengthwise so the long sides can seat the guests realistically.
+     *
+     * @return array{0:int,1:int} [width, height]
+     */
+    public static function sizeForCapacity(string $shape, int $maxCapacity): array
+    {
+        $max = max(1, $maxCapacity);
+
+        if ($shape === 'round') {
+            $d = (int) min(190, 84 + $max * 9);
+
+            return [$d, $d];
+        }
+
+        // Two long sides seat ~half each; the table gets longer with capacity.
+        $width = (int) min(260, 96 + (int) ceil($max / 2) * 28);
+
+        return [$width, 88];
+    }
+
     public function location(): BelongsTo
     {
         return $this->belongsTo(Location::class);

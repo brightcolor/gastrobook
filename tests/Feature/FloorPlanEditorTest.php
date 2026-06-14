@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Enums\ReservationStatus;
 use App\Models\Reservation;
+use App\Models\RestaurantTable;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -61,6 +62,20 @@ class FloorPlanEditorTest extends TestCase
             'max_capacity' => 6,
             'pos_x' => 120,
         ]);
+
+        // Capacity-based footprint: a round table is a circle (square box) and
+        // larger than a 2-seater.
+        $table = RestaurantTable::where('name', '99')->withoutGlobalScopes()->first();
+        $this->assertSame($table->width, $table->height);
+        [$smallW] = RestaurantTable::sizeForCapacity('round', 2);
+        $this->assertGreaterThan($smallW, $table->width);
+    }
+
+    public function test_rectangular_size_grows_with_seats(): void
+    {
+        [$w4] = RestaurantTable::sizeForCapacity('rect', 4);
+        [$w10] = RestaurantTable::sizeForCapacity('rect', 10);
+        $this->assertGreaterThan($w4, $w10);
     }
 
     public function test_state_reports_seats_and_occupancy(): void

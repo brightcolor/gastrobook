@@ -166,12 +166,7 @@ class FloorPlanController extends Controller
         // would render a zero-sized, invisible table.
         $shape = $validated['shape'] ?? 'rect';
         $max = (int) $validated['max_capacity'];
-        if ($shape === 'round') {
-            $width = $height = min(180, 80 + $max * 9);
-        } else {
-            $width = min(240, 90 + (int) ceil($max / 2) * 26);
-            $height = 88;
-        }
+        [$width, $height] = RestaurantTable::sizeForCapacity($shape, $max);
 
         $table = $location->tables()->create([
             'tenant_id' => $location->tenant_id,
