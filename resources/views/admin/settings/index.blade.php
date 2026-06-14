@@ -449,17 +449,19 @@
     document.getElementById('addHour')?.addEventListener('click', () => {
         const container = document.getElementById('hoursContainer');
         const i = Date.now();
+        // Nächster Wochentag in der Reihenfolge: 1. Zeile = Mo, 2. = Di … (max. So)
+        const nextDay = Math.min(container.querySelectorAll('.hour-row').length, 6);
         const div = document.createElement('div');
         div.className = 'hour-row flex items-center gap-2';
         div.innerHTML = `
             <select name="hours[${i}][weekday]" class="rounded-lg border-stone-200">
-                ${['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'].map((d, idx) => `<option value="${idx}">${d}</option>`).join('')}
+                ${['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'].map((d, idx) => `<option value="${idx}" ${idx === nextDay ? 'selected' : ''}>${d}</option>`).join('')}
             </select>
             <input type="time" name="hours[${i}][opens_at]" value="12:00" class="rounded-lg border-stone-200">
             <span>–</span>
             <input type="time" name="hours[${i}][closes_at]" value="22:00" class="rounded-lg border-stone-200">
-            <input type="text" name="hours[${i}][service_name]" placeholder="Service" class="w-24 rounded-lg border-stone-200">
-            <button type="button" onclick="this.closest('.hour-row').remove()" class="text-red-500">✕</button>`;
+            <input type="text" name="hours[${i}][service_name]" placeholder="Service (optional)" class="w-28 rounded-lg border-stone-200">
+            <button type="button" onclick="this.closest('.hour-row').remove()" class="shrink-0 text-red-500 hover:text-red-700">✕</button>`;
         container.appendChild(div);
     });
 </script>
