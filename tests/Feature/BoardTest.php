@@ -139,7 +139,7 @@ class BoardTest extends TestCase
         $this->assertSame('+49 30 999', $res['phone']);
         $this->assertTrue($res['is_current']);
         $this->assertNotNull($res['seated_since']);
-        // Seated reservation offers a "Fertig" (completed) action.
+        // Seated reservation offers an "Auschecken" (completed) action.
         $this->assertSame('completed', $res['actions'][0]['status']);
     }
 

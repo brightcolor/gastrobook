@@ -4,6 +4,18 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.19.1] – 2026-06-14
+
+### Geändert
+- **Tisch-Detail im Live-Board jetzt als Modal:** Das seitlich einfahrende Panel
+  (Sidebar) ist jetzt ein zentriertes Dialogfenster – gleiches Layout/Design,
+  inkl. Dark-Mode. Klick auf den Hintergrund schließt es.
+- **Walk-in: Personenzahl per Button:** Im Tisch-Modal wird die Personenzahl
+  über Buttons (1 bis zur Tischkapazität = „mögliche Plätze") gewählt statt über
+  ein Zahlenfeld.
+- **„Auschecken" statt „Fertig":** Die Abschluss-Aktion eines belegten Tisches
+  heißt im Board jetzt einheitlich „Auschecken" (wie im Tischplan).
+
 ## [1.19.0] – 2026-06-14
 
 ### Neu
@@ -421,6 +433,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.19.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.19.1
 [1.19.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.19.0
 [1.18.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.18.0
 [1.17.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.17.0

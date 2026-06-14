@@ -111,13 +111,14 @@
         .tbl.sel { box-shadow: 0 0 0 3px var(--brand), var(--shadow); }
         .plan-empty { color: var(--muted); font-size: 14px; padding: 40px; text-align: center; }
 
-        /* ---- Table detail drawer ---- */
-        .drawer-back { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 40; opacity: 0; pointer-events: none; transition: opacity .18s; }
+        /* ---- Table detail modal ---- */
+        .drawer-back { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 40; opacity: 0; pointer-events: none; transition: opacity .18s; backdrop-filter: blur(2px); }
         .drawer-back.open { opacity: 1; pointer-events: auto; }
-        .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 400px; max-width: 92vw; z-index: 41; background: var(--panel);
-            border-left: 1px solid var(--border); box-shadow: -8px 0 24px rgba(0,0,0,.18); transform: translateX(100%);
-            transition: transform .2s ease; display: flex; flex-direction: column; }
-        .drawer.open { transform: translateX(0); }
+        .drawer { position: fixed; top: 50%; left: 50%; width: 460px; max-width: 94vw; max-height: 88vh; z-index: 41; background: var(--panel);
+            border: 1px solid var(--border); border-radius: 18px; overflow: hidden;
+            box-shadow: 0 24px 60px -12px rgba(0,0,0,.55); transform: translate(-50%, -48%) scale(.96); opacity: 0; pointer-events: none;
+            transition: transform .18s ease, opacity .18s ease; display: flex; flex-direction: column; }
+        .drawer.open { transform: translate(-50%, -50%) scale(1); opacity: 1; pointer-events: auto; }
         .dwr-head { padding: 16px 18px; border-bottom: 1px solid var(--border); }
         .dwr-head.st-free { background: var(--green-bg); } .dwr-head.st-soon { background: var(--amber-bg); }
         .dwr-head.st-awaiting { background: var(--blue-bg); } .dwr-head.st-occupied { background: var(--red-bg); }
@@ -152,10 +153,14 @@
         .field label { font-size: 13px; font-weight: 600; color: var(--muted); }
         .field input { border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; font-size: 15px; background: var(--panel-2); color: var(--text); }
         .field input:focus { outline: none; border-color: var(--brand); }
+        .seatpick { display: flex; flex-wrap: wrap; gap: 6px; }
+        .seatpick .seatbtn { min-width: 42px; height: 42px; padding: 0 8px; border: 1px solid var(--border); background: var(--panel-2); color: var(--text); border-radius: 9px; font-size: 15px; font-weight: 800; cursor: pointer; }
+        .seatpick .seatbtn:hover { border-color: var(--brand); }
+        .seatpick .seatbtn.on { background: var(--brand); color: #fff; border-color: var(--brand); }
         .btn-block { width: 100%; padding: 11px; border: none; border-radius: 10px; background: var(--brand); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
         .btn-block:disabled { opacity: .5; cursor: default; }
         .btn-ghost { display: block; text-align: center; width: 100%; padding: 11px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-2); color: var(--text); font-size: 15px; font-weight: 700; cursor: pointer; text-decoration: none; }
-        @media (max-width: 520px) { .drawer { width: 100vw; } }
+        @media (max-width: 520px) { .drawer { max-width: 96vw; } }
     </style>
 </head>
 <body>
@@ -616,9 +621,16 @@
             // Walk-in form (only when no one currently sitting and walk-ins enabled)
             const occupied = resv.some(r => r.is_current);
             if (!occupied && t.status !== 'blocked' && meta.can_walkin) {
+                const maxSeats = t.max_capacity || 8;
+                const def = Math.min(t.min_capacity || 2, maxSeats);
+                let seats = '';
+                for (let i = 1; i <= maxSeats; i++) {
+                    seats += '<button type="button" class="seatbtn' + (i === def ? ' on' : '') + '" data-n="' + i + '">' + i + '</button>';
+                }
                 html += '<div class="dwr-sec"><h3>Walk-in platzieren</h3>'
                     + '<form id="walkinForm">'
-                    + '<div class="field"><label>Personen</label><input type="number" name="party_size" min="1" max="' + (t.max_capacity || 20) + '" value="' + (t.min_capacity || 2) + '" required></div>'
+                    + '<div class="field"><label>Personen (mögliche Plätze)</label><div class="seatpick" id="walkinSeats">' + seats + '</div>'
+                    + '<input type="hidden" name="party_size" value="' + def + '"></div>'
                     + '<div class="field"><label>Name (optional)</label><input type="text" name="name" maxlength="120" placeholder="Laufkundschaft"></div>'
                     + '<div class="field"><label>Telefon (optional)</label><input type="tel" name="phone" maxlength="40"></div>'
                     + '<button type="submit" class="btn-block" id="walkinSubmit">🚶 Hier platzieren</button>'
@@ -640,7 +652,15 @@
             }));
 
             const form = document.getElementById('walkinForm');
-            if (form) form.addEventListener('submit', e => submitWalkin(e, t.id));
+            if (form) {
+                form.addEventListener('submit', e => submitWalkin(e, t.id));
+                const seatWrap = document.getElementById('walkinSeats');
+                seatWrap?.querySelectorAll('.seatbtn').forEach(b => b.addEventListener('click', () => {
+                    seatWrap.querySelectorAll('.seatbtn').forEach(x => x.classList.remove('on'));
+                    b.classList.add('on');
+                    form.party_size.value = b.dataset.n;
+                }));
+            }
         }
 
         async function submitWalkin(e, tableId) {

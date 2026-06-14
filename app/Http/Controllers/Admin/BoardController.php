@@ -350,7 +350,7 @@ class BoardController extends Controller
             ],
             ReservationStatus::Seated,
             ReservationStatus::PartiallyArrived => [
-                ['label' => 'Fertig', 'status' => ReservationStatus::Completed->value, 'style' => 'primary'],
+                ['label' => 'Auschecken', 'status' => ReservationStatus::Completed->value, 'style' => 'primary'],
             ],
             default => [],
         };
