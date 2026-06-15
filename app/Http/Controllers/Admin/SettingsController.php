@@ -485,8 +485,10 @@ class SettingsController extends Controller
         $location = $this->context->location();
         abort_if($location === null, 404);
 
+        // No SVG: an SVG served from our own origin can carry executable
+        // JavaScript (stored XSS). Raster formats only.
         $request->validate([
-            'logo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:3072'],
+            'logo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
         ]);
 
         if ($location->brand_logo_path) {

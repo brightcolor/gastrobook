@@ -43,7 +43,7 @@
 @if(auth()->user()->canInTenant('tenant.settings.manage', app(\App\Support\TenantContext::class)->tenant(), $location))
 <div class="mb-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
     <h2 class="mb-1 font-bold">Logo dieses Standorts</h2>
-    <p class="mb-3 text-xs text-stone-500">Erscheint oben auf der Buchungsseite. PNG, JPG, WebP oder SVG, max. 3 MB.</p>
+    <p class="mb-3 text-xs text-stone-500">Erscheint oben auf der Buchungsseite. PNG, JPG oder WebP, max. 3 MB.</p>
     <div class="flex flex-wrap items-center gap-4">
         <div class="flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl border border-stone-200 bg-stone-50">
             @if($location->brand_logo_path)
@@ -54,7 +54,7 @@
         </div>
         <form method="POST" action="{{ route('admin.settings.logo.upload') }}" enctype="multipart/form-data" class="flex flex-wrap items-center gap-2">
             @csrf
-            <input type="file" name="logo" accept="image/png,image/jpeg,image/webp,image/svg+xml" required
+            <input type="file" name="logo" accept="image/png,image/jpeg,image/webp" required
                    class="text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-stone-900 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white">
             <button class="rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white">Hochladen</button>
         </form>

@@ -114,7 +114,10 @@ class PublicBookingController extends Controller
     {
         abort_if($path === null || $path === '' || ! Storage::disk('public')->exists($path), 404);
 
-        return Storage::disk('public')->response($path);
+        return Storage::disk('public')->response($path, null, [
+            'X-Content-Type-Options' => 'nosniff',
+            'Content-Security-Policy' => "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+        ]);
     }
 
     private function renderBooking(Tenant $tenant, Location $location)

@@ -251,7 +251,9 @@ class FloorPlanController extends Controller
         $this->authorizeRoom($room);
         abort_if(! $room->background_path || ! Storage::disk('public')->exists($room->background_path), 404);
 
-        return Storage::disk('public')->response($room->background_path);
+        return Storage::disk('public')->response($room->background_path, null, [
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     private function authorizeRoom(Room $room): void

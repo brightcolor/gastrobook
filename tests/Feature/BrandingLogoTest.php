@@ -33,6 +33,24 @@ class BrandingLogoTest extends TestCase
         $this->get('/brand/'.$setup['tenant']->slug.'/'.$setup['location']->slug.'/logo')->assertOk();
     }
 
+    public function test_svg_logo_is_rejected(): void
+    {
+        Storage::fake('public');
+        $setup = $this->createTenantSetup();
+        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
+        $this->clearTenantContext();
+
+        $svg = UploadedFile::fake()->createWithContent(
+            'x.svg',
+            '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'
+        );
+
+        $this->actingAs($admin)->post('/admin/settings/logo', ['logo' => $svg])
+            ->assertSessionHasErrors('logo');
+
+        $this->assertNull($setup['location']->fresh()->brand_logo_path);
+    }
+
     public function test_booking_page_shows_contact_details(): void
     {
         $setup = $this->createTenantSetup();

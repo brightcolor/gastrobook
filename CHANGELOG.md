@@ -4,6 +4,20 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.23.2] – 2026-06-15
+
+### Sicherheit (Audit)
+- **SVG-Logos nicht mehr erlaubt:** Ein SVG von der eigenen Domain könnte
+  eingebettetes JavaScript ausführen (Stored-XSS). Logo-Upload akzeptiert jetzt
+  nur noch PNG/JPG/WebP; abgesichert per Test.
+- **Härtere Auslieferung von Medien:** Logo- und Hintergrund-Endpoints senden
+  `X-Content-Type-Options: nosniff` (Logo zusätzlich eine restriktive CSP/Sandbox).
+- Vollständiges Audit dokumentiert: Mandanten-Isolation (Global Scope +
+  explizite Ownership-Checks), SaaS-Bereich (`isSaasAdmin`-Pflicht je Aktion),
+  Token-Flows (`hash_equals`), Stripe-Webhook (Signaturprüfung), keine
+  unsicheren Roh-SQL/Mass-Assignment-Stellen, kein ungeschütztes Ausgeben von
+  Gästedaten. Keine weiteren offenen Befunde im Code.
+
 ## [1.23.1] – 2026-06-15
 
 ### Geändert
@@ -529,6 +543,7 @@ Funktionsumfang.
 - SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials)
 - MailWizz-Newsletter-Sync
 
+[1.23.2]: https://github.com/brightcolor/gastrobook/releases/tag/v1.23.2
 [1.23.1]: https://github.com/brightcolor/gastrobook/releases/tag/v1.23.1
 [1.23.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.23.0
 [1.22.0]: https://github.com/brightcolor/gastrobook/releases/tag/v1.22.0
