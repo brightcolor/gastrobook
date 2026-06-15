@@ -599,6 +599,13 @@ class PublicBookingController extends Controller
             return back()->withErrors(['status' => __('Diese Reservierung kann nicht mehr storniert werden.')]);
         }
 
+        // Payment in flight: the Stripe webhook has not arrived yet.
+        // Block cancellation until payment is confirmed or the deadline expires,
+        // so we never end up with money received on a cancelled reservation.
+        if ($reservation->payment_status === 'pending') {
+            return back()->withErrors(['status' => __('Deine Zahlung wird gerade verarbeitet. Bitte warte kurz und versuche es erneut.')]);
+        }
+
         if (now()->gte($reservation->start_at->copy()->subMinutes($settings->cancellation_deadline_minutes))) {
             return back()->withErrors(['status' => __('Die Stornierungsfrist ist abgelaufen. Bitte kontaktieren Sie uns telefonisch.')]);
         }

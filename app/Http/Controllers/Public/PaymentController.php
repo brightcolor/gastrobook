@@ -12,6 +12,7 @@ use App\Services\AuditLogger;
 use App\Services\Payments\PaymentProvider;
 use App\Services\Payments\PaymentProviderManager;
 use App\Services\Payments\PayPalProvider;
+use App\Services\RefundService;
 use App\Services\ReservationLifecycleService;
 use App\Services\WebhookDispatchService;
 use Illuminate\Http\Request;
@@ -21,6 +22,7 @@ class PaymentController extends Controller
     public function __construct(
         private readonly PaymentProviderManager $payments,
         private readonly ReservationLifecycleService $lifecycle,
+        private readonly RefundService $refunds,
         private readonly WebhookDispatchService $webhooks,
         private readonly AuditLogger $audit,
     ) {}
@@ -273,9 +275,12 @@ class PaymentController extends Controller
                 if ($reservation->status === ReservationStatus::PaymentPending) {
                     $this->lifecycle->transition($reservation, ReservationStatus::Confirmed, null, 'system', 'payment_received');
                 } elseif (! $reservation->status->isActive()) {
-                    // Late webhook: guest cancelled or reservation was rejected/expired while
-                    // payment was in flight. Payment is recorded (money arrived) but we must
-                    // not resurrect a terminal reservation. Flag for manual refund review.
+                    // Late webhook: payment arrived after the reservation was cancelled,
+                    // rejected, or expired. We must not resurrect a terminal reservation.
+                    // Automatically queue a refund so the guest gets their money back
+                    // without manual intervention. The soft-deleted / terminal reservation
+                    // still exists in the DB and carries the PaymentIntent reference.
+                    $this->refunds->requestForReservation($reservation, 'late_payment_auto_refund');
                     $this->audit->log('payment.late_on_inactive_reservation', $reservation, null, [
                         'reservation_status' => $reservation->status->value,
                         'payment_intent_id' => $intent->id,
