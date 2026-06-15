@@ -13,15 +13,13 @@ class BookingLandingTest extends TestCase
 {
     use CreatesTenants, RefreshDatabase;
 
-    public function test_single_location_shows_booking_page_directly(): void
+    public function test_single_location_redirects_to_canonical_url(): void
     {
         $setup = $this->createTenantSetup();
         $this->clearTenantContext();
 
         $this->get('/book/'.$setup['tenant']->slug)
-            ->assertOk()
-            ->assertSee($setup['location']->name)
-            ->assertDontSee('Standort wählen');
+            ->assertRedirect('/book/'.$setup['tenant']->slug.'/'.$setup['location']->slug);
     }
 
     public function test_multiple_locations_show_a_chooser(): void
