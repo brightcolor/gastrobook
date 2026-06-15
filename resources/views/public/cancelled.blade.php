@@ -5,11 +5,11 @@
 <div class="overflow-hidden rounded-3xl bg-white text-center shadow-xl shadow-stone-400/15 ring-1 ring-black/5">
     <div class="h-1.5 bg-brand"></div>
     <div class="p-6 sm:p-8">
-        <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-stone-50 text-4xl">👋</div>
-        <h1 class="mt-4 text-2xl font-extrabold tracking-tight">Schade, dass es nicht klappt!</h1>
+        <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-stone-50 text-4xl">✓</div>
+        <h1 class="mt-4 text-2xl font-extrabold tracking-tight">{{ $isSalon ? 'Termin' : 'Reservierung' }} storniert</h1>
         <p class="mt-2 text-sm leading-relaxed text-stone-600">
-            {{ $isSalon ? 'Ihr Termin' : 'Ihre Reservierung' }} wurde storniert.
-            Wir würden uns freuen, Sie beim nächsten Mal bei uns begrüßen zu dürfen.
+            {{ $isSalon ? 'Ihr Termin' : 'Ihre Reservierung' }} wurde erfolgreich storniert.
+            Bis zum nächsten Mal – wir freuen uns, wenn Sie wiederkommen.
         </p>
 
         @if(($refund ?? null) !== null)
