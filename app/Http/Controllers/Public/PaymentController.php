@@ -269,8 +269,18 @@ class PaymentController extends Controller
             $reservation = Reservation::withoutGlobalScope('tenant')->find($intent->reservation_id);
             if ($reservation !== null) {
                 $reservation->update(['payment_status' => 'paid']);
+
                 if ($reservation->status === ReservationStatus::PaymentPending) {
                     $this->lifecycle->transition($reservation, ReservationStatus::Confirmed, null, 'system', 'payment_received');
+                } elseif (! $reservation->status->isActive()) {
+                    // Late webhook: guest cancelled or reservation was rejected/expired while
+                    // payment was in flight. Payment is recorded (money arrived) but we must
+                    // not resurrect a terminal reservation. Flag for manual refund review.
+                    $this->audit->log('payment.late_on_inactive_reservation', $reservation, null, [
+                        'reservation_status' => $reservation->status->value,
+                        'payment_intent_id' => $intent->id,
+                        'amount_minor' => $intent->amount_minor,
+                    ], null, null, $intent->tenant_id);
                 }
             }
         }
