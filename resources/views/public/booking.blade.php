@@ -66,7 +66,7 @@ details > summary::-webkit-details-marker { display: none; }
                 Es sind noch keine Leistungen konfiguriert. Bitte kontaktieren Sie uns direkt.
             </div>
         @else
-        <form method="POST" action="{{ route('booking.store', [$tenant->slug, $location->slug]) }}"
+        <form method="POST" action="{{ $storeUrl }}"
               id="salonBookingForm">
             @csrf
             <input type="text" name="website" class="hidden" tabindex="-1" autocomplete="off" aria-hidden="true">
@@ -385,7 +385,7 @@ details > summary::-webkit-details-marker { display: none; }
 
     @else
     {{-- ══ RESTAURANT: AKKORDEON ═══════════════════════════════════════════════ --}}
-    <form method="POST" action="{{ route('booking.store', [$tenant->slug, $location->slug]) }}"
+    <form method="POST" action="{{ $storeUrl }}"
           id="bookingForm">
         @csrf
         <input type="text" name="website" class="hidden" tabindex="-1" autocomplete="off" aria-hidden="true">

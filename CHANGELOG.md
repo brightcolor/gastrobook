@@ -4,14 +4,14 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
-## [1.28.4] – 2026-06-15
+## [1.28.5] – 2026-06-15
 
 ### Behoben
-- **Buchungs-URL verdoppelter Slug:** Die Kurzform `/book/{tenant}` leitete bei einem
-  einzigen aktiven Standort die Seite direkt inline statt auf `/book/{tenant}/{location}`.
-  Das Formular hatte die kanonische Store-URL als `action`, was beim Absenden einen
-  sichtbaren Sprung auf die Doppel-Slug-URL verursachte. Fix: permanenter 301-Redirect
-  auf die kanonische Booking-URL.
+- **Buchungs-URL bleibt kurz bei Einzelstandort:** `/book/{tenant}` zeigt die Buchungsseite
+  direkt (kein Redirect, kein doppelter Slug in der URL). Ein eigener POST-Endpunkt
+  `POST /book/{tenant}` leitet den Formular-Submit korrekt weiter; die Standort-Auflösung
+  erfolgt automatisch. Mehrere Standorte zeigen weiterhin die Auswahlliste, danach
+  `/book/{tenant}/{location}`.
 
 ## [1.28.0] – 2026-06-15
 

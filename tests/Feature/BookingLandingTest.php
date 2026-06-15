@@ -13,13 +13,25 @@ class BookingLandingTest extends TestCase
 {
     use CreatesTenants, RefreshDatabase;
 
-    public function test_single_location_redirects_to_canonical_url(): void
+    public function test_single_location_shows_booking_page_at_short_url(): void
     {
         $setup = $this->createTenantSetup();
         $this->clearTenantContext();
 
         $this->get('/book/'.$setup['tenant']->slug)
-            ->assertRedirect('/book/'.$setup['tenant']->slug.'/'.$setup['location']->slug);
+            ->assertOk()
+            ->assertSee($setup['location']->name)
+            ->assertDontSee('Standort wählen');
+    }
+
+    public function test_single_location_store_works_from_short_url(): void
+    {
+        $setup = $this->createTenantSetup();
+        $this->clearTenantContext();
+
+        // Validation should fail (empty form), but NOT 404 – route exists
+        $this->post('/book/'.$setup['tenant']->slug, ['_token' => csrf_token()])
+            ->assertSessionHasErrors();
     }
 
     public function test_multiple_locations_show_a_chooser(): void

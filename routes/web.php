@@ -62,6 +62,7 @@ Route::middleware('throttle:booking-slots')->group(function () {
 });
 
 Route::middleware('throttle:booking')->group(function () {
+    Route::post('/book/{tenantSlug}', [PublicBookingController::class, 'storeLanding'])->name('booking.store.landing');
     Route::post('/book/{tenantSlug}/{locationSlug}', [PublicBookingController::class, 'store'])->name('booking.store');
     Route::post('/book/{tenantSlug}/{locationSlug}/waitlist', [PublicBookingController::class, 'joinWaitlist'])->name('booking.waitlist');
     Route::post('/book/{tenantSlug}/{locationSlug}/events/{eventSlug}', [PublicEventController::class, 'store'])->name('events.store');

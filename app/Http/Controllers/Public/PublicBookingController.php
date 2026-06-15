@@ -77,7 +77,11 @@ class PublicBookingController extends Controller
         abort_if($locations->isEmpty(), 404);
 
         if ($locations->count() === 1) {
-            return redirect()->route('booking.show', [$tenant->slug, $locations->first()->slug], 301);
+            return $this->renderBooking(
+                $tenant,
+                $locations->first(),
+                route('booking.store.landing', $tenant->slug),
+            );
         }
 
         return view('public.locations', [
@@ -90,7 +94,25 @@ class PublicBookingController extends Controller
     {
         [$tenant, $location] = $this->resolve($tenantSlug, $locationSlug);
 
-        return $this->renderBooking($tenant, $location);
+        return $this->renderBooking(
+            $tenant,
+            $location,
+            route('booking.store', [$tenant->slug, $location->slug]),
+        );
+    }
+
+    /** POST /book/{tenantSlug} — single-location shortcut (no location slug in URL). */
+    public function storeLanding(Request $request, string $tenantSlug)
+    {
+        $tenant = Tenant::where('slug', $tenantSlug)->where('status', 'active')->firstOrFail();
+
+        $location = Location::withoutGlobalScope('tenant')
+            ->where('tenant_id', $tenant->id)
+            ->where('is_active', true)
+            ->where('online_booking_enabled', true)
+            ->sole();
+
+        return $this->store($request, $tenantSlug, $location->slug);
     }
 
     /** Public branding logo for a location (falls back to the tenant logo). */
@@ -120,7 +142,7 @@ class PublicBookingController extends Controller
         ]);
     }
 
-    private function renderBooking(Tenant $tenant, Location $location)
+    private function renderBooking(Tenant $tenant, Location $location, string $storeUrl = '')
     {
         $upcomingEvents = Event::withoutGlobalScope('tenant')
             ->where('location_id', $location->id)
@@ -134,6 +156,7 @@ class PublicBookingController extends Controller
             'location' => $location,
             'settings' => $location->effectiveSettings(),
             'upcomingEvents' => $upcomingEvents,
+            'storeUrl' => $storeUrl ?: route('booking.store', [$tenant->slug, $location->slug]),
         ];
 
         if ($tenant->isSalon()) {
