@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.31.3] – 2026-06-16
+
+### Verbessert
+- **Stornierungsseite:** Sachlicherer Text ohne übertriebenes Bedauern – Überschrift zeigt
+  direkt „Reservierung storniert" (bzw. „Termin storniert"), Bestätigungs-Emoji ✓ statt 👋,
+  und ein ehrlicher Abschiedssatz anstelle der formelhaften Floskel.
+
 ## [1.31.2] – 2026-06-16
 
 ### Verbessert
