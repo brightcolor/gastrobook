@@ -4,6 +4,21 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.25.0] – 2026-06-15
+
+### Verbessert
+- **Buchungsseite (großes UI-Polish):** Komplette visuelle Überarbeitung des öffentlichen Buchungsflows.
+  - Nummerierte Schritt-Badges (①②③④) neben jeder Sektion – Nutzer sehen auf einen Blick, wo sie sind.
+  - Personenzahl-Buttons (Restaurant) jetzt größer mit `Pers.`-Label und Press-Animation.
+  - Alle Formularfelder mit Brand-farbenen Fokus-Ringen (`.public-input`-Klasse, definiert im Layout).
+  - Datenschutz-Checkboxen mit `accent-[var(--brand)]` – Brand-Farbe statt Standard-Blau.
+  - Lade-Zustände der Zeitslots animiert (Pulse-Animation statt statischem Text).
+  - Fehlermeldungen server-seitig: roter Banner oben + inline `@error`-Nachrichten pro Feld.
+  - Kontaktkarte unten mit Icon-Boxes statt reinen Text-Emojis.
+  - Salon-Service-Pills: korrekte Textfarbe beim de-selektieren.
+- **Manage-Seite (komplettes Redesign):** Selbes Card-Design wie Buchung/Bestätigung (rounded-3xl, shadow-xl, Marken-Streifen). Status-Badge mit kontextabhängiger Farbe (grün/amber/blau/rot). Details-Liste mit Trennlinien. Stornierungsbereich mit poliertem Input-Field.
+- **Bestätigungsseite (Polish):** Details-Tabelle mit `divide-y`-Trennlinien. Dynamisches Status-Icon passend zum Reservierungsstatus. `font-mono tracking-wide` für Reservierungsnummer. Salon-spezifische Texte.
+
 ## [1.24.0] – 2026-06-15
 
 ### Neu

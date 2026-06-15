@@ -17,6 +17,27 @@
                 linear-gradient(180deg, #fbfbfa 0%, #f4f4f2 100%);
             background-attachment: fixed;
         }
+        .public-input {
+            transition: border-color .15s ease, box-shadow .15s ease;
+        }
+        .public-input:focus {
+            outline: none;
+            border-color: var(--brand);
+            box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 18%, transparent);
+        }
+        .step-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: 9999px;
+            background: var(--brand);
+            color: #fff;
+            font-size: 0.6875rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
     </style>
 </head>
 <body class="min-h-screen text-stone-900 antialiased">

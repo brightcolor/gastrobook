@@ -4,6 +4,7 @@
 <div class="overflow-hidden rounded-3xl bg-white shadow-xl shadow-stone-400/15 ring-1 ring-black/5">
     <div class="h-1.5 bg-brand"></div>
     <div class="p-6 sm:p-8">
+
     @if($location->brand_logo_path || $tenant->brand_logo_path)
         <img src="{{ route('brand.location.logo', [$tenant->slug, $location->slug]) }}" alt="{{ $location->name }}" class="mx-auto mb-5 h-20 object-contain">
     @endif
@@ -21,6 +22,17 @@
         </p>
     @endif
 
+    @if($errors->any())
+        <div class="mt-5 rounded-xl bg-red-50 p-4 text-sm text-red-800">
+            <p class="mb-1 font-semibold">Bitte korrigieren Sie folgende Angaben:</p>
+            <ul class="list-inside list-disc space-y-0.5">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     @if($tenant->isSalon())
         {{-- ===== SALON BUCHUNGSFORMULAR ===== --}}
         @if(($services ?? collect())->isEmpty())
@@ -29,53 +41,64 @@
             </div>
         @else
         <form method="POST" action="{{ route('booking.store', [$tenant->slug, $location->slug]) }}"
-              class="mt-6 space-y-5" id="salonBookingForm">
+              class="mt-6 space-y-6" id="salonBookingForm">
             @csrf
             <input type="text" name="website" class="hidden" tabindex="-1" autocomplete="off" aria-hidden="true">
 
-            {{-- Step 1: Leistungen wählen (Mehrfachauswahl per Pills) --}}
+            {{-- Step 1: Leistungen --}}
             <div>
-                <label class="mb-2 block text-sm font-semibold">Leistungen wählen * <span class="font-normal text-stone-400">(mehrere kombinierbar)</span></label>
+                <div class="mb-3 flex items-center gap-2.5">
+                    <span class="step-badge">1</span>
+                    <label class="text-sm font-semibold">Leistungen wählen <span class="font-normal text-stone-400">(mehrere kombinierbar)</span></label>
+                </div>
                 <div class="flex flex-wrap gap-2" id="serviceButtons">
                     @foreach($services as $svc)
                         <button type="button" data-service-id="{{ $svc->id }}"
                                 data-duration="{{ $svc->duration_minutes }}"
                                 data-price="{{ $svc->price_minor }}"
-                                class="service-pill rounded-full border-2 border-stone-200 px-4 py-2 text-sm font-semibold hover:border-brand">
+                                class="service-pill rounded-full border-2 border-stone-200 px-4 py-2 text-sm font-semibold transition-all hover:border-brand hover:bg-brand/5 active:scale-[0.97]">
                             {{ $svc->name }}
                             <span class="ml-1 font-normal text-stone-500">· {{ $svc->durationFormatted() }}@if($svc->price_minor > 0) · {{ $svc->priceFormatted() }}@endif</span>
                         </button>
                     @endforeach
                 </div>
-                {{-- Hidden inputs service_ids[] werden per JS befüllt --}}
                 <div id="serviceInputs"></div>
-                <div id="serviceSummary" class="mt-3 hidden rounded-xl bg-stone-50 px-4 py-2 text-sm">
+                <div id="serviceSummary" class="mt-3 hidden rounded-xl bg-stone-50 px-4 py-3 text-sm">
                     <span class="font-semibold">Gesamt:</span>
                     <span id="summaryDuration"></span><span id="summaryPrice"></span>
                 </div>
             </div>
 
-            {{-- Step 2: Mitarbeiter wählen (optional) --}}
+            {{-- Step 2: Mitarbeiter --}}
             <div id="staffSection" class="hidden">
-                <label class="mb-2 block text-sm font-semibold">Mitarbeiter:in (optional)</label>
+                <div class="mb-3 flex items-center gap-2.5">
+                    <span class="step-badge">2</span>
+                    <label class="text-sm font-semibold">Mitarbeiter:in <span class="font-normal text-stone-400">(optional)</span></label>
+                </div>
                 <div id="staffButtons" class="flex flex-wrap gap-2"></div>
                 <input type="hidden" name="staff_member_id" id="staffMemberId" value="0">
-                <p id="noStaffHint" class="mt-1 hidden text-xs text-amber-700">Keine:r Ihrer gewählten Leistungen kann von einer einzelnen Person zusammen ausgeführt werden – bitte Auswahl anpassen.</p>
+                <p id="noStaffHint" class="mt-2 hidden rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">Keine:r Ihrer gewählten Leistungen kann von einer einzelnen Person zusammen ausgeführt werden – bitte Auswahl anpassen.</p>
             </div>
 
             {{-- Step 3: Datum --}}
             <div id="dateSection" class="hidden">
-                <label for="date" class="mb-2 block text-sm font-semibold">Datum *</label>
+                <div class="mb-3 flex items-center gap-2.5">
+                    <span class="step-badge">3</span>
+                    <label for="date" class="text-sm font-semibold">Datum wählen</label>
+                </div>
                 <input type="date" name="date" id="date"
                        min="{{ now($location->timezone)->toDateString() }}"
                        max="{{ now($location->timezone)->addDays($settings->max_advance_days)->toDateString() }}"
                        value="{{ old('date', now($location->timezone)->toDateString()) }}"
-                       class="w-full rounded-xl border-2 border-stone-200 px-4 py-3 text-lg">
+                       class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3 text-base">
             </div>
 
-            {{-- Step 4: Uhrzeit / Slots --}}
+            {{-- Step 4: Uhrzeit --}}
             <div id="slotSection" class="hidden">
-                <label class="mb-2 block text-sm font-semibold">Uhrzeit *</label>
+                <div class="mb-3 flex items-center gap-2.5">
+                    <span class="step-badge">4</span>
+                    <label class="text-sm font-semibold">Uhrzeit wählen</label>
+                </div>
                 <div id="slotContainer" class="grid grid-cols-3 gap-2 sm:grid-cols-4">
                     <p class="col-span-full text-sm text-stone-500">Bitte Leistung und Datum wählen.</p>
                 </div>
@@ -83,44 +106,56 @@
             </div>
 
             {{-- Step 5: Kontaktdaten --}}
-            <div class="space-y-3 border-t border-stone-100 pt-4" id="contactSection">
+            <div class="space-y-4 border-t border-stone-100 pt-5" id="contactSection">
+                <div class="flex items-center gap-2.5">
+                    <span class="step-badge">5</span>
+                    <span class="text-sm font-semibold">Ihre Daten</span>
+                </div>
                 <div>
-                    <label for="name" class="mb-1 block text-sm font-semibold">Name *</label>
+                    <label for="name" class="mb-1.5 block text-sm font-semibold">Name *</label>
                     <input type="text" name="name" id="name" required value="{{ old('name') }}"
-                           class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                           autocomplete="name"
+                           class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                    @error('name')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="email" class="mb-1 block text-sm font-semibold">E-Mail *</label>
+                    <label for="email" class="mb-1.5 block text-sm font-semibold">E-Mail *</label>
                     <input type="email" name="email" id="email" required value="{{ old('email') }}"
-                           class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                           autocomplete="email"
+                           class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                    @error('email')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="phone" class="mb-1 block text-sm font-semibold">Telefon (optional)</label>
+                    <label for="phone" class="mb-1.5 block text-sm font-semibold">Telefon <span class="font-normal text-stone-400">(optional)</span></label>
                     <input type="tel" name="phone" id="phone" value="{{ old('phone') }}"
-                           class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                           autocomplete="tel"
+                           class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                    @error('phone')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                 </div>
                 @if($settings->fieldRule('note') !== 'hidden')
                     <div>
-                        <label for="note" class="mb-1 block text-sm font-semibold">Anmerkung (optional)</label>
+                        <label for="note" class="mb-1.5 block text-sm font-semibold">Anmerkung <span class="font-normal text-stone-400">(optional)</span></label>
                         <textarea name="note" id="note" rows="2"
-                                  class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">{{ old('note') }}</textarea>
+                                  class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">{{ old('note') }}</textarea>
                     </div>
                 @endif
             </div>
 
             {{-- Datenschutz --}}
-            <div class="space-y-2 border-t border-stone-100 pt-4 text-sm">
-                <label class="flex items-start gap-2">
-                    <input type="checkbox" name="privacy_accepted" value="1" required class="mt-1">
-                    <span>Ich habe die @if($tenant->privacy_url)<a href="{{ $tenant->privacy_url }}" target="_blank" rel="noopener" class="underline">Datenschutzhinweise</a>@else Datenschutzhinweise @endif gelesen und akzeptiere die Verarbeitung meiner Daten zur Terminabwicklung. *</span>
+            <div class="space-y-3 border-t border-stone-100 pt-4 text-sm">
+                <label class="flex cursor-pointer items-start gap-3">
+                    <input type="checkbox" name="privacy_accepted" value="1" required
+                           class="mt-0.5 h-4 w-4 flex-shrink-0 rounded accent-[var(--brand)]">
+                    <span class="text-stone-700">Ich habe die @if($tenant->privacy_url)<a href="{{ $tenant->privacy_url }}" target="_blank" rel="noopener" class="text-brand underline">Datenschutzhinweise</a>@else Datenschutzhinweise @endif gelesen und akzeptiere die Verarbeitung meiner Daten zur Terminabwicklung. *</span>
                 </label>
-                <label class="flex items-start gap-2">
-                    <input type="checkbox" name="newsletter" value="1" class="mt-1">
-                    <span>Ich möchte Angebote und Neuigkeiten per E-Mail erhalten (jederzeit widerrufbar).</span>
+                <label class="flex cursor-pointer items-start gap-3">
+                    <input type="checkbox" name="newsletter" value="1"
+                           class="mt-0.5 h-4 w-4 flex-shrink-0 rounded accent-[var(--brand)]">
+                    <span class="text-stone-600">Ich möchte Angebote und Neuigkeiten per E-Mail erhalten (jederzeit widerrufbar).</span>
                 </label>
             </div>
 
-            <button type="submit" class="btn-brand w-full rounded-xl py-4 text-lg font-bold text-white shadow hover:opacity-90">
+            <button type="submit" class="btn-brand w-full rounded-xl py-4 text-lg font-bold text-white transition-all active:scale-[0.99]">
                 Termin buchen
             </button>
         </form>
@@ -134,7 +169,6 @@
         <script>
         (function () {
             const slotsUrl = @json(route('booking.slots', [$tenant->slug, $location->slug]));
-            // serviceId -> { staff: [{id,name}], staffIds: Set }
             const serviceData = @json($services->mapWithKeys(fn($s) => [$s->id => ['staff' => $s->staff->where('is_active', true)->map(fn($m) => ['id' => $m->id, 'name' => $m->name])->values()]])->all());
 
             const staffInput = document.getElementById('staffMemberId');
@@ -151,7 +185,7 @@
             const summaryPrice = document.getElementById('summaryPrice');
             const noStaffHint = document.getElementById('noStaffHint');
 
-            const selected = []; // ordered list of service ids
+            const selected = [];
 
             function show(el) { el.classList.remove('hidden'); }
             function hide(el) { el.classList.add('hidden'); }
@@ -168,15 +202,16 @@
                 if (idx === -1) {
                     selected.push(id);
                     pill.classList.add('border-brand', 'bg-brand', 'text-white');
+                    pill.querySelectorAll('span').forEach(s => { s.classList.remove('text-stone-500'); s.classList.add('text-white/80'); });
                 } else {
                     selected.splice(idx, 1);
                     pill.classList.remove('border-brand', 'bg-brand', 'text-white');
+                    pill.querySelectorAll('span').forEach(s => { s.classList.add('text-stone-500'); s.classList.remove('text-white/80'); });
                 }
                 refresh();
             }
 
             function eligibleStaff() {
-                // Intersection of staff across all selected services
                 if (selected.length === 0) return [];
                 let inter = null;
                 selected.forEach(id => {
@@ -189,7 +224,6 @@
             }
 
             function refresh() {
-                // Hidden inputs
                 serviceInputs.innerHTML = '';
                 let dur = 0, price = 0;
                 selected.forEach(id => {
@@ -210,13 +244,12 @@
                 summaryPrice.textContent = price > 0 ? ' · ' + (price / 100).toFixed(2).replace('.', ',') + ' €' : '';
                 show(summary);
 
-                // Rebuild eligible staff buttons
                 const staff = eligibleStaff();
-                staffButtons.innerHTML = '<button type="button" data-staff-id="0" class="staff-btn rounded-xl border-2 border-brand bg-stone-50 px-4 py-2 text-sm font-semibold">Beliebig</button>';
+                staffButtons.innerHTML = '<button type="button" data-staff-id="0" class="staff-btn rounded-xl border-2 border-brand bg-stone-50 px-4 py-2 text-sm font-semibold transition-all hover:bg-brand/5">Beliebig</button>';
                 staff.forEach(m => {
                     const b = document.createElement('button');
                     b.type = 'button'; b.dataset.staffId = m.id;
-                    b.className = 'staff-btn rounded-xl border-2 border-stone-200 px-4 py-2 text-sm font-semibold hover:border-brand';
+                    b.className = 'staff-btn rounded-xl border-2 border-stone-200 px-4 py-2 text-sm font-semibold transition-all hover:border-brand hover:bg-brand/5';
                     b.textContent = m.name;
                     staffButtons.appendChild(b);
                 });
@@ -237,7 +270,7 @@
 
             async function loadSlots() {
                 if (selected.length === 0 || !dateInput.value) return;
-                slotContainer.innerHTML = '<p class="col-span-full text-sm text-stone-500">Lade verfügbare Termine…</p>';
+                slotContainer.innerHTML = '<p class="col-span-full animate-pulse text-sm text-stone-400">Verfügbare Termine werden geladen…</p>';
                 timeInput.value = '';
                 try {
                     const params = new URLSearchParams();
@@ -248,14 +281,14 @@
                     const data = await res.json();
                     slotContainer.innerHTML = '';
                     if (!data.slots || data.slots.length === 0) {
-                        slotContainer.innerHTML = '<p class="col-span-full text-sm text-red-600">An diesem Tag sind keine Termine verfügbar.</p>';
+                        slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-red-50 px-3 py-2.5 text-sm font-medium text-red-700">An diesem Tag sind leider keine Termine verfügbar.</p>';
                         return;
                     }
                     data.slots.forEach(time => {
                         const btn = document.createElement('button');
                         btn.type = 'button';
                         btn.textContent = time;
-                        btn.className = 'slot-btn rounded-xl border-2 border-stone-200 py-2.5 font-semibold hover:border-brand';
+                        btn.className = 'slot-btn rounded-xl border-2 border-stone-200 py-3 text-sm font-bold transition-all hover:border-brand hover:bg-brand/5 active:scale-[0.97]';
                         btn.addEventListener('click', () => {
                             document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('border-brand', 'bg-brand', 'text-white'));
                             btn.classList.add('border-brand', 'bg-brand', 'text-white');
@@ -264,7 +297,7 @@
                         slotContainer.appendChild(btn);
                     });
                 } catch (e) {
-                    slotContainer.innerHTML = '<p class="col-span-full text-sm text-red-600">Fehler beim Laden. Bitte erneut versuchen.</p>';
+                    slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-red-50 px-3 py-2.5 text-sm text-red-700">Fehler beim Laden. Bitte erneut versuchen.</p>';
                 }
             }
 
@@ -276,50 +309,68 @@
 
     @else
         {{-- ===== RESTAURANT BUCHUNGSFORMULAR ===== --}}
-        <form method="POST" action="{{ route('booking.store', [$tenant->slug, $location->slug]) }}" class="mt-6 space-y-5" id="bookingForm">
+        <form method="POST" action="{{ route('booking.store', [$tenant->slug, $location->slug]) }}" class="mt-6 space-y-6" id="bookingForm">
             @csrf
             <input type="text" name="website" class="hidden" tabindex="-1" autocomplete="off" aria-hidden="true">
 
-            {{-- Step 1: party size --}}
+            {{-- Step 1: Personenzahl --}}
             <div>
-                <label class="mb-2 block text-sm font-semibold">Personen</label>
-                <div class="grid grid-cols-4 gap-2" id="partyButtons">
-                    @for($i = $settings->min_party_online; $i <= min($settings->max_party_online, $settings->min_party_online + 7); $i++)
+                <div class="mb-3 flex items-center gap-2.5">
+                    <span class="step-badge">1</span>
+                    <label class="text-sm font-semibold">Wie viele Personen?</label>
+                </div>
+                <div class="grid grid-cols-4 gap-2 sm:grid-cols-5" id="partyButtons">
+                    @for($i = $settings->min_party_online; $i <= min($settings->max_party_online, $settings->min_party_online + 8); $i++)
                         <button type="button" data-party="{{ $i }}"
-                                class="party-btn rounded-xl border-2 border-stone-200 py-3 text-lg font-semibold hover:border-brand">{{ $i }}</button>
+                                class="party-btn flex flex-col items-center rounded-2xl border-2 border-stone-200 py-3.5 transition-all hover:border-brand hover:bg-brand/5 active:scale-[0.96]">
+                            <span class="text-xl font-black leading-none">{{ $i }}</span>
+                            <span class="mt-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400">{{ $i === 1 ? 'Person' : 'Pers.' }}</span>
+                        </button>
                     @endfor
                 </div>
                 <input type="hidden" name="party_size" id="partySize" value="{{ old('party_size', 2) }}" required>
+                @error('party_size')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
             </div>
 
-            {{-- Step 2: date --}}
+            {{-- Step 2: Datum --}}
             <div>
-                <label for="date" class="mb-2 block text-sm font-semibold">Datum</label>
+                <div class="mb-3 flex items-center gap-2.5">
+                    <span class="step-badge">2</span>
+                    <label for="date" class="text-sm font-semibold">Datum wählen</label>
+                </div>
                 <input type="date" name="date" id="date" required
                        min="{{ now($location->timezone)->toDateString() }}"
                        max="{{ now($location->timezone)->addDays($settings->max_advance_days)->toDateString() }}"
                        value="{{ old('date', now($location->timezone)->toDateString()) }}"
-                       class="w-full rounded-xl border-2 border-stone-200 px-4 py-3 text-lg">
+                       class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3 text-base">
+                @error('date')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
             </div>
 
-            {{-- Step 3: time slots --}}
+            {{-- Step 3: Uhrzeit --}}
             <div>
-                <label class="mb-2 block text-sm font-semibold">Uhrzeit</label>
+                <div class="mb-3 flex items-center gap-2.5">
+                    <span class="step-badge">3</span>
+                    <label class="text-sm font-semibold">Uhrzeit wählen</label>
+                </div>
                 <div id="slotContainer" class="grid grid-cols-3 gap-2 sm:grid-cols-4">
                     <p class="col-span-full text-sm text-stone-500">Bitte Personenzahl und Datum wählen.</p>
                 </div>
                 <input type="hidden" name="time" id="timeInput" value="{{ old('time') }}" required>
                 <div id="alternatives" class="mt-3 hidden rounded-xl bg-amber-50 p-3 text-sm text-amber-900"></div>
+                @error('time')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
             </div>
 
             @if($settings->public_floorplan_enabled)
-            {{-- Step 3b: Tischplan (optional Tischwahl) --}}
+            {{-- Tischplan (optional) --}}
             <div id="floorplanSection" class="hidden">
-                <div class="mb-2 flex items-center justify-between">
-                    <label class="block text-sm font-semibold">Tischplan <span class="font-normal text-stone-400">(optional)</span></label>
-                    <span class="text-xs text-stone-400">
-                        <span class="inline-block h-2.5 w-2.5 rounded-sm align-middle" style="background:#34d399"></span> frei
-                        <span class="ml-2 inline-block h-2.5 w-2.5 rounded-sm align-middle" style="background:#d6d3d1"></span> belegt
+                <div class="mb-3 flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <span class="step-badge">✦</span>
+                        <label class="text-sm font-semibold">Tischplan <span class="font-normal text-stone-400">(optional)</span></label>
+                    </div>
+                    <span class="flex items-center gap-3 text-xs text-stone-400">
+                        <span class="flex items-center gap-1"><span class="inline-block h-2.5 w-2.5 rounded-sm" style="background:#34d399"></span> frei</span>
+                        <span class="flex items-center gap-1"><span class="inline-block h-2.5 w-2.5 rounded-sm" style="background:#d6d3d1"></span> belegt</span>
                     </span>
                 </div>
                 <div id="roomTabs" class="mb-2 flex flex-wrap gap-2"></div>
@@ -329,33 +380,43 @@
             </div>
             @endif
 
-            {{-- Step 4: contact --}}
-            <div class="space-y-3 border-t border-stone-100 pt-4">
+            {{-- Step 4: Kontaktdaten --}}
+            <div class="space-y-4 border-t border-stone-100 pt-5">
+                <div class="flex items-center gap-2.5">
+                    <span class="step-badge">4</span>
+                    <span class="text-sm font-semibold">Ihre Daten</span>
+                </div>
                 <div>
-                    <label for="name" class="mb-1 block text-sm font-semibold">Name *</label>
+                    <label for="name" class="mb-1.5 block text-sm font-semibold">Name *</label>
                     <input type="text" name="name" id="name" required value="{{ old('name') }}"
-                           class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                           autocomplete="name"
+                           class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                    @error('name')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                 </div>
                 @if($settings->fieldRule('email') !== 'hidden')
                     <div>
-                        <label for="email" class="mb-1 block text-sm font-semibold">E-Mail {{ $settings->fieldRule('email') === 'required' ? '*' : '' }}</label>
+                        <label for="email" class="mb-1.5 block text-sm font-semibold">E-Mail {{ $settings->fieldRule('email') === 'required' ? '*' : '' }}</label>
                         <input type="email" name="email" id="email" value="{{ old('email') }}"
+                               autocomplete="email"
                                @if($settings->fieldRule('email') === 'required') required @endif
-                               class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                               class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                        @error('email')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                     </div>
                 @endif
                 @if($settings->fieldRule('phone') !== 'hidden')
                     <div>
-                        <label for="phone" class="mb-1 block text-sm font-semibold">Telefon {{ $settings->fieldRule('phone') === 'required' ? '*' : '' }}</label>
+                        <label for="phone" class="mb-1.5 block text-sm font-semibold">Telefon {{ $settings->fieldRule('phone') === 'required' ? '*' : '' }}</label>
                         <input type="tel" name="phone" id="phone" value="{{ old('phone') }}"
+                               autocomplete="tel"
                                @if($settings->fieldRule('phone') === 'required') required @endif
-                               class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                               class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                        @error('phone')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                     </div>
                 @endif
                 @if($settings->fieldRule('occasion') !== 'hidden')
                     <div>
-                        <label for="occasion" class="mb-1 block text-sm font-semibold">Anlass (optional)</label>
-                        <select name="occasion" id="occasion" class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                        <label for="occasion" class="mb-1.5 block text-sm font-semibold">Anlass <span class="font-normal text-stone-400">(optional)</span></label>
+                        <select name="occasion" id="occasion" class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
                             <option value="">–</option>
                             @foreach(['Geburtstag', 'Jahrestag', 'Geschäftsessen', 'Familienfeier', 'Date', 'Sonstiges'] as $occ)
                                 <option @selected(old('occasion') === $occ)>{{ $occ }}</option>
@@ -365,33 +426,35 @@
                 @endif
                 @if($settings->fieldRule('allergies') !== 'hidden')
                     <div>
-                        <label for="allergies" class="mb-1 block text-sm font-semibold">Allergien / Unverträglichkeiten (optional)</label>
+                        <label for="allergies" class="mb-1.5 block text-sm font-semibold">Allergien / Unverträglichkeiten <span class="font-normal text-stone-400">(optional)</span></label>
                         <input type="text" name="allergies" id="allergies" value="{{ old('allergies') }}"
-                               class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                               class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
                     </div>
                 @endif
                 @if($settings->fieldRule('note') !== 'hidden')
                     <div>
-                        <label for="note" class="mb-1 block text-sm font-semibold">Anmerkung (optional)</label>
+                        <label for="note" class="mb-1.5 block text-sm font-semibold">Anmerkung <span class="font-normal text-stone-400">(optional)</span></label>
                         <textarea name="note" id="note" rows="2"
-                                  class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">{{ old('note') }}</textarea>
+                                  class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">{{ old('note') }}</textarea>
                     </div>
                 @endif
             </div>
 
-            {{-- Consents --}}
-            <div class="space-y-2 border-t border-stone-100 pt-4 text-sm">
-                <label class="flex items-start gap-2">
-                    <input type="checkbox" name="privacy_accepted" value="1" required class="mt-1">
-                    <span>Ich habe die @if($tenant->privacy_url)<a href="{{ $tenant->privacy_url }}" target="_blank" rel="noopener" class="underline">Datenschutzhinweise</a>@else Datenschutzhinweise @endif gelesen und akzeptiere die Verarbeitung meiner Daten zur Reservierungsabwicklung. *</span>
+            {{-- Datenschutz --}}
+            <div class="space-y-3 border-t border-stone-100 pt-4 text-sm">
+                <label class="flex cursor-pointer items-start gap-3">
+                    <input type="checkbox" name="privacy_accepted" value="1" required
+                           class="mt-0.5 h-4 w-4 flex-shrink-0 rounded accent-[var(--brand)]">
+                    <span class="text-stone-700">Ich habe die @if($tenant->privacy_url)<a href="{{ $tenant->privacy_url }}" target="_blank" rel="noopener" class="text-brand underline">Datenschutzhinweise</a>@else Datenschutzhinweise @endif gelesen und akzeptiere die Verarbeitung meiner Daten zur Reservierungsabwicklung. *</span>
                 </label>
-                <label class="flex items-start gap-2">
-                    <input type="checkbox" name="newsletter" value="1" class="mt-1">
-                    <span>Ich möchte den Newsletter mit Angeboten und Veranstaltungen erhalten (jederzeit widerrufbar).</span>
+                <label class="flex cursor-pointer items-start gap-3">
+                    <input type="checkbox" name="newsletter" value="1"
+                           class="mt-0.5 h-4 w-4 flex-shrink-0 rounded accent-[var(--brand)]">
+                    <span class="text-stone-600">Ich möchte den Newsletter mit Angeboten und Veranstaltungen erhalten (jederzeit widerrufbar).</span>
                 </label>
             </div>
 
-            <button type="submit" class="btn-brand w-full rounded-xl py-4 text-lg font-bold text-white shadow hover:opacity-90">
+            <button type="submit" class="btn-brand w-full rounded-xl py-4 text-lg font-bold text-white transition-all active:scale-[0.99]">
                 Jetzt reservieren
             </button>
         </form>
@@ -418,7 +481,6 @@
             const slotContainer = document.getElementById('slotContainer');
             const altBox = document.getElementById('alternatives');
 
-            // Floor plan (optional, only present when enabled)
             const floorplanUrl = @json(route('booking.floorplan', [$tenant->slug, $location->slug]));
             const fpSection = document.getElementById('floorplanSection');
             const fpCanvas = document.getElementById('floorplanCanvas');
@@ -427,8 +489,15 @@
             let fpRooms = [];
 
             function selectParty(btn) {
-                document.querySelectorAll('.party-btn').forEach(b => b.classList.remove('border-brand', 'bg-brand', 'text-white'));
+                document.querySelectorAll('.party-btn').forEach(b => {
+                    b.classList.remove('border-brand', 'bg-brand', 'text-white');
+                    b.querySelectorAll('span').forEach(s => {
+                        s.classList.remove('text-white');
+                        if (!s.classList.contains('text-stone-400')) s.classList.add('text-stone-400');
+                    });
+                });
                 btn.classList.add('border-brand', 'bg-brand', 'text-white');
+                btn.querySelectorAll('span').forEach(s => { s.classList.remove('text-stone-400'); s.classList.add('text-white'); });
                 partyInput.value = btn.dataset.party;
                 loadSlots();
             }
@@ -447,7 +516,6 @@
                 return isNaN(dt) ? d : dt.toLocaleDateString('de-DE', {weekday: 'short', day: '2-digit', month: '2-digit'});
             }
 
-            // Jump to a suggested next free slot: switch date, reload that day and pick the time.
             async function pickNextSlot(date, time) {
                 dateInput.value = date;
                 await loadSlots();
@@ -458,7 +526,7 @@
 
             async function loadSlots() {
                 if (!partyInput.value || !dateInput.value) return;
-                slotContainer.innerHTML = '<p class="col-span-full text-sm text-stone-500">Lade verfügbare Zeiten…</p>';
+                slotContainer.innerHTML = '<p class="col-span-full animate-pulse text-sm text-stone-400">Verfügbare Zeiten werden geladen…</p>';
                 altBox.classList.add('hidden');
                 resetFloorplan();
                 try {
@@ -467,8 +535,7 @@
                     slotContainer.innerHTML = '';
                     if (!data.slots || data.slots.length === 0) {
                         if (data.oversized) {
-                            // Gruppe zu groß für eine Online-Reservierung – keine Warteliste anbieten
-                            slotContainer.innerHTML = '<p class="col-span-full text-sm text-stone-600">Für ' + (partyInput.value) + ' Personen ist online keine Reservierung möglich (max. ' + data.max_party + ').</p>';
+                            slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm text-stone-600">Für ' + (partyInput.value) + ' Personen ist online keine Reservierung möglich (max. ' + data.max_party + ').</p>';
                             let html = 'Für größere Gruppen kontaktieren Sie uns bitte direkt';
                             html += data.phone ? ': <a class="font-semibold underline" href="tel:' + data.phone.replace(/\s/g, '') + '">' + data.phone + '</a>' : '.';
                             altBox.innerHTML = html;
@@ -476,28 +543,28 @@
                             return;
                         }
                         const head = document.createElement('p');
-                        head.className = 'col-span-full text-sm text-red-600';
+                        head.className = 'col-span-full rounded-xl bg-red-50 px-3 py-2.5 text-sm font-medium text-red-700';
                         head.textContent = 'Am ' + fmtDate(dateInput.value) + ' sind für ' + partyInput.value + ' Personen leider keine Tische frei.';
                         slotContainer.appendChild(head);
 
                         if (data.next_slots && data.next_slots.length) {
                             const sub = document.createElement('p');
-                            sub.className = 'col-span-full mt-1 text-sm font-semibold text-stone-700';
-                            sub.textContent = 'Nächste freie Termine für ' + partyInput.value + ' Personen:';
+                            sub.className = 'col-span-full mt-2 text-xs font-semibold uppercase tracking-wide text-stone-500';
+                            sub.textContent = 'Nächste freie Termine:';
                             slotContainer.appendChild(sub);
 
                             data.next_slots.forEach(s => {
                                 const btn = document.createElement('button');
                                 btn.type = 'button';
-                                btn.className = 'slot-btn rounded-xl border-2 border-stone-200 px-2 py-2 text-center hover:border-brand';
-                                btn.innerHTML = '<span class="block text-xs text-stone-500">' + fmtDate(s.date) + '</span>'
+                                btn.className = 'slot-btn rounded-xl border-2 border-stone-200 px-2 py-2.5 text-center transition-all hover:border-brand hover:bg-brand/5 active:scale-[0.97]';
+                                btn.innerHTML = '<span class="block text-[10px] font-semibold uppercase tracking-wide text-stone-400">' + fmtDate(s.date) + '</span>'
                                     + '<span class="block text-base font-bold">' + s.time + '</span>';
                                 btn.addEventListener('click', () => pickNextSlot(s.date, s.time));
                                 slotContainer.appendChild(btn);
                             });
                         } else if (data.alternatives && data.alternatives.other_days?.length) {
                             const sub = document.createElement('p');
-                            sub.className = 'col-span-full text-sm text-stone-600';
+                            sub.className = 'col-span-full mt-1 text-sm text-stone-500';
                             sub.textContent = 'Freie Tage: ' + data.alternatives.other_days.join(' · ');
                             slotContainer.appendChild(sub);
                         }
@@ -512,7 +579,7 @@
                         btn.type = 'button';
                         btn.textContent = time;
                         btn.dataset.time = time;
-                        btn.className = 'slot-btn rounded-xl border-2 border-stone-200 py-2.5 font-semibold hover:border-brand';
+                        btn.className = 'slot-btn rounded-xl border-2 border-stone-200 py-3 text-sm font-bold transition-all hover:border-brand hover:bg-brand/5 active:scale-[0.97]';
                         btn.addEventListener('click', () => {
                             document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('border-brand', 'bg-brand', 'text-white'));
                             btn.classList.add('border-brand', 'bg-brand', 'text-white');
@@ -522,7 +589,7 @@
                         slotContainer.appendChild(btn);
                     });
                 } catch (e) {
-                    slotContainer.innerHTML = '<p class="col-span-full text-sm text-red-600">Fehler beim Laden. Bitte erneut versuchen.</p>';
+                    slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-red-50 px-3 py-2.5 text-sm text-red-700">Fehler beim Laden. Bitte erneut versuchen.</p>';
                 }
             }
 
@@ -548,9 +615,9 @@
                 fpRooms.forEach((room, i) => {
                     const b = document.createElement('button');
                     b.type = 'button';
-                    b.textContent = (room.is_outdoor ? '☀️ ' : '') + room.name;
-                    b.className = 'room-tab rounded-full border-2 px-3 py-1.5 text-sm font-semibold ' +
-                        (i === 0 ? 'border-brand bg-stone-50' : 'border-stone-200');
+                    b.textContent = (room.is_outdoor ? '☀ ' : '') + room.name;
+                    b.className = 'room-tab rounded-full border-2 px-3 py-1.5 text-sm font-semibold transition-all ' +
+                        (i === 0 ? 'border-brand bg-stone-50' : 'border-stone-200 hover:border-brand hover:bg-brand/5');
                     b.addEventListener('click', () => {
                         document.querySelectorAll('.room-tab').forEach(t => t.classList.remove('border-brand', 'bg-brand', 'text-white'));
                         b.classList.add('border-brand', 'bg-brand', 'text-white');
@@ -566,7 +633,6 @@
                 if (!room) return;
                 fpCanvas.innerHTML = '';
 
-                // Bounding box of the room's tables → scale to fit the canvas
                 const pad = 20;
                 let maxX = 0, maxY = 0;
                 room.tables.forEach(t => {
@@ -619,7 +685,7 @@
                 } else {
                     tableIdInput.value = id;
                     el.style.outline = '3px solid var(--brand)';
-                    el.style.outlineOffset = '1px';
+                    el.style.outlineOffset = '2px';
                 }
             }
 
@@ -632,29 +698,32 @@
 </div>
 
 @if($location->address_line1 || $location->city || $location->phone || $location->email)
-<div class="mt-5 rounded-3xl bg-white p-6 shadow-xl shadow-stone-400/15 ring-1 ring-black/5">
-    <h2 class="mb-3 text-sm font-bold uppercase tracking-wide text-stone-500">Kontakt &amp; Anfahrt</h2>
-    <div class="grid gap-4 text-sm sm:grid-cols-3">
-        @if($location->address_line1 || $location->city)
-            <div class="flex items-start gap-2">
-                <span class="text-lg leading-none">📍</span>
-                <span class="text-stone-700">
-                    {{ $location->address_line1 }}@if($location->address_line1 && ($location->postal_code || $location->city))<br>@endif{{ trim(($location->postal_code ? $location->postal_code.' ' : '').$location->city) }}
-                </span>
-            </div>
-        @endif
-        @if($location->phone)
-            <div class="flex items-start gap-2">
-                <span class="text-lg leading-none">📞</span>
-                <a href="tel:{{ preg_replace('/\s+/', '', $location->phone) }}" class="font-semibold text-brand hover:underline">{{ $location->phone }}</a>
-            </div>
-        @endif
-        @if($location->email)
-            <div class="flex items-start gap-2">
-                <span class="text-lg leading-none">✉️</span>
-                <a href="mailto:{{ $location->email }}" class="break-all font-semibold text-brand hover:underline">{{ $location->email }}</a>
-            </div>
-        @endif
+<div class="mt-5 overflow-hidden rounded-3xl bg-white shadow-xl shadow-stone-400/15 ring-1 ring-black/5">
+    <div class="h-1 bg-stone-100"></div>
+    <div class="p-5 sm:p-6">
+        <h2 class="mb-4 text-xs font-bold uppercase tracking-widest text-stone-400">Kontakt &amp; Anfahrt</h2>
+        <div class="grid gap-3 text-sm sm:grid-cols-3">
+            @if($location->address_line1 || $location->city)
+                <div class="flex items-start gap-3">
+                    <span class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-stone-100 text-sm">📍</span>
+                    <span class="pt-1 text-stone-700">
+                        {{ $location->address_line1 }}@if($location->address_line1 && ($location->postal_code || $location->city))<br>@endif{{ trim(($location->postal_code ? $location->postal_code.' ' : '').$location->city) }}
+                    </span>
+                </div>
+            @endif
+            @if($location->phone)
+                <div class="flex items-start gap-3">
+                    <span class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-stone-100 text-sm">📞</span>
+                    <a href="tel:{{ preg_replace('/\s+/', '', $location->phone) }}" class="pt-1 font-semibold text-brand hover:underline">{{ $location->phone }}</a>
+                </div>
+            @endif
+            @if($location->email)
+                <div class="flex items-start gap-3">
+                    <span class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-stone-100 text-sm">✉️</span>
+                    <a href="mailto:{{ $location->email }}" class="break-all pt-1 font-semibold text-brand hover:underline">{{ $location->email }}</a>
+                </div>
+            @endif
+        </div>
     </div>
 </div>
 @endif
