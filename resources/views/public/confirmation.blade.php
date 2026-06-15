@@ -6,6 +6,37 @@
 @php
 $isRequested = $reservation->status->value === 'requested';
 $isPending   = $reservation->status->value === 'payment_pending';
+$isConfirmed = ! $isRequested && ! $isPending;
+
+$settings    = $location->effectiveSettings();
+$confetti    = $isConfirmed && $settings->confetti_on_booking;
+$du          = $settings->guest_address === 'du';
+
+// Warm welcome – build the companion clause
+$party   = $reservation->party_size;
+if ($party >= 3) {
+    $companions = ($du ? 'deine ' : 'Ihre ') . ($party - 1) . ' Begleitungen';
+} elseif ($party === 2) {
+    $companions = $du ? 'deine Begleitung' : 'Ihre Begleitung';
+} else {
+    $companions = null;
+}
+
+// German date + time
+$start    = $reservation->localStart();
+$weekdays = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+$months   = ['', 'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+             'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+$dateStr  = $weekdays[$start->dayOfWeek] . ', ' . $start->day . '. ' . $months[$start->month];
+$timeStr  = $start->format('H:i');
+
+// Build the full welcome sentence
+$subject = $du ? 'dich' : 'Sie';
+if ($companions) {
+    $welcomeMsg = 'Wir freuen uns, ' . $subject . ' und ' . $companions . ' am ' . $dateStr . ' um ' . $timeStr . ' Uhr bei uns begrüßen zu dürfen.';
+} else {
+    $welcomeMsg = 'Wir freuen uns, ' . $subject . ' am ' . $dateStr . ' um ' . $timeStr . ' Uhr bei uns begrüßen zu dürfen.';
+}
 @endphp
 
 <div class="overflow-hidden rounded-3xl bg-white text-center shadow-xl shadow-stone-400/15 ring-1 ring-black/5">
@@ -23,15 +54,20 @@ $isPending   = $reservation->status->value === 'payment_pending';
         @else {{ $isSalon ? 'Termin bestätigt!' : 'Reservierung bestätigt!' }}
         @endif
     </h1>
-    <p class="mt-2 text-sm text-stone-500">
-        @if($isRequested)
-            Wir prüfen Ihre Anfrage und melden uns schnellstmöglich.
-        @elseif($isPending)
-            Ihre {{ $isSalon ? 'Buchung' : 'Reservierung' }} wird nach Zahlungseingang bestätigt.
-        @else
-            {{ $isSalon ? 'Wir freuen uns auf Ihren Termin!' : 'Wir freuen uns auf Ihren Besuch!' }}
-        @endif
-    </p>
+
+    @if($isConfirmed)
+        <p class="mt-2 text-sm leading-relaxed text-stone-600">
+            {{ $welcomeMsg }}
+        </p>
+    @else
+        <p class="mt-2 text-sm text-stone-500">
+            @if($isRequested)
+                Wir prüfen Ihre Anfrage und melden uns schnellstmöglich.
+            @elseif($isPending)
+                Ihre {{ $isSalon ? 'Buchung' : 'Reservierung' }} wird nach Zahlungseingang bestätigt.
+            @endif
+        </p>
+    @endif
 
     @if(session('email_confirmation_sent'))
         <div class="mt-4 rounded-xl bg-amber-50 p-3.5 text-sm text-amber-900">
@@ -104,4 +140,33 @@ $isPending   = $reservation->status->value === 'payment_pending';
 
     </div>
 </div>
+
+@if($confetti)
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+<script>
+(function () {
+    var brand = getComputedStyle(document.documentElement).getPropertyValue('--brand').trim() || '#0f766e';
+    var colors = [brand, '#ffffff', '#fcd34d', '#f9a8d4'];
+
+    function burst(origin) {
+        confetti({
+            particleCount: 80,
+            spread: 70,
+            origin: origin,
+            colors: colors,
+            scalar: 1.1,
+            gravity: 0.9,
+            ticks: 220,
+        });
+    }
+
+    // Main burst from center-top, then two side bursts
+    setTimeout(function () { burst({ x: 0.5, y: 0.3 }); }, 120);
+    setTimeout(function () {
+        burst({ x: 0.25, y: 0.45 });
+        burst({ x: 0.75, y: 0.45 });
+    }, 320);
+})();
+</script>
+@endif
 @endsection

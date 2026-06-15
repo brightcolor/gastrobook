@@ -114,6 +114,19 @@
             @endif
         </div>
         <div class="mt-4 border-t border-stone-100 pt-3">
+            <h3 class="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">Buchungsbestätigung</h3>
+            <div class="space-y-2 text-sm">
+                <label class="flex items-center gap-2"><input type="checkbox" name="confetti_on_booking" value="1" @checked($settings->confetti_on_booking)> Konfetti-Animation nach erfolgter Buchung</label>
+                <div class="flex items-center gap-3">
+                    <span class="shrink-0 text-stone-600">Gäste ansprechen mit</span>
+                    <select name="guest_address" class="rounded-lg border-stone-200 text-sm">
+                        <option value="Sie" @selected($settings->guest_address === 'Sie')>Sie (formell)</option>
+                        <option value="du" @selected($settings->guest_address === 'du')>du (informell)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="mt-4 border-t border-stone-100 pt-3">
             <h3 class="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">Erinnerungen</h3>
             <div class="flex flex-wrap items-end gap-4 text-sm">
                 <label class="flex items-center gap-2"><input type="checkbox" name="reminder_enabled" value="1" @checked($settings->reminder_enabled)> E-Mail-Erinnerung aktiv</label>

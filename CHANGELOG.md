@@ -4,6 +4,19 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.27.0] – 2026-06-15
+
+### Neu
+- **Konfetti-Animation nach Buchung:** Auf der Bestätigungsseite feuert eine dreistufige
+  Konfetti-Explosion (canvas-confetti) in der Brand-Farbe – abschaltbar pro Standort
+  unter Einstellungen → Buchungsbestätigung.
+- **Warme Willkommensnachricht:** Statt generischem Einleitungstext sieht der Gast nach
+  einer erfolgreichen Buchung eine persönliche Begrüßung mit Datum, Uhrzeit und
+  Begleitungsanzahl – party-size-aware (1 Person: keine Begleitung, 2 Personen: „deine/Ihre
+  Begleitung", 3+: „deine/Ihre N-1 Begleitungen"). Du/Sie-Anrede wählbar pro Standort.
+- **Setting `guest_address`** (`du` / `Sie`, Standard: `Sie`) und **`confetti_on_booking`**
+  (boolean, Standard: `true`) in der Standort-Einstellungs-UI unter „Buchungsbestätigung".
+
 ## [1.26.0] – 2026-06-15
 
 ### Verbessert

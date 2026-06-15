@@ -22,6 +22,7 @@ class LocationSettings extends Model
         'field_rules', 'reminder_enabled', 'reminder_hours_before', 'sms_reminder_enabled',
         'gap_optimization_enabled', 'public_floorplan_enabled',
         'refund_mode', 'refund_percent', 'refund_processing', 'require_email_confirmation',
+        'confetti_on_booking', 'guest_address',
         'feedback_enabled', 'feedback_hours_after', 'feedback_external_url',
         'feedback_redirect_min_score', 'settings',
     ];
@@ -50,6 +51,8 @@ class LocationSettings extends Model
         'refund_percent' => 100,
         'refund_processing' => 'immediate',
         'require_email_confirmation' => false,
+        'confetti_on_booking' => true,
+        'guest_address' => 'Sie',
         'feedback_enabled' => true,
         'feedback_hours_after' => 18,
         'feedback_redirect_min_score' => 4,
@@ -70,6 +73,7 @@ class LocationSettings extends Model
             'gap_optimization_enabled' => 'boolean',
             'public_floorplan_enabled' => 'boolean',
             'require_email_confirmation' => 'boolean',
+            'confetti_on_booking' => 'boolean',
             'feedback_enabled' => 'boolean',
         ];
     }

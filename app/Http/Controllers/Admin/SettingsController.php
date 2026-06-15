@@ -107,6 +107,8 @@ class SettingsController extends Controller
             'refund_percent' => ['required', 'integer', 'min:0', 'max:100'],
             'refund_processing' => ['required', 'in:immediate,scheduled'],
             'require_email_confirmation' => ['nullable', 'boolean'],
+            'confetti_on_booking' => ['nullable', 'boolean'],
+            'guest_address' => ['required', 'in:du,Sie'],
         ]);
 
         $settings = $location->settings()->firstOrCreate(['tenant_id' => $location->tenant_id]);
@@ -122,6 +124,7 @@ class SettingsController extends Controller
             'gap_optimization_enabled' => $request->boolean('gap_optimization_enabled'),
             'public_floorplan_enabled' => $request->boolean('public_floorplan_enabled'),
             'require_email_confirmation' => $request->boolean('require_email_confirmation'),
+            'confetti_on_booking' => $request->boolean('confetti_on_booking'),
         ]);
 
         $this->audit->log('location.settings_updated', $settings, $old, $validated);
