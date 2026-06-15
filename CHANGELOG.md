@@ -4,6 +4,14 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.28.6] – 2026-06-15
+
+### Behoben
+- **Bestätigungsseite 500-Error:** `@php($isSalon = $location->tenant?->isSalon())` –
+  der nullsafe-Operator `?->` im einzeiligen `@php()`-Direktiv brachte Blades
+  Regex-Parser durcheinander; `@section` wurde als PHP-Token gewertet → ParseError.
+  Fix: auf `@php … @endphp`-Block umgestellt.
+
 ## [1.28.5] – 2026-06-15
 
 ### Behoben

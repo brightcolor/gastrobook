@@ -1,5 +1,7 @@
 @extends('layouts.public', ['tenant' => $location->tenant])
-@php($isSalon = $location->tenant?->isSalon())
+@php
+$isSalon = $location->tenant?->isSalon();
+@endphp
 @section('title', $isSalon ? 'Termin bestätigt' : 'Reservierung bestätigt')
 @section('content')
 
