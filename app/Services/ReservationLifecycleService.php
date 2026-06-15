@@ -457,12 +457,12 @@ class ReservationLifecycleService
     private function availabilityMessage(string $reason): string
     {
         return match ($reason) {
-            'lead_time'     => __('Für diesen Zeitpunkt ist es leider etwas zu kurzfristig – bitte wählen Sie einen Termin etwas weiter in der Zukunft.'),
+            'lead_time' => __('Für diesen Zeitpunkt ist es leider etwas zu kurzfristig – bitte wählen Sie einen Termin etwas weiter in der Zukunft.'),
             'too_far_ahead' => __('Dieser Termin liegt noch zu weit in der Zukunft. Bitte schauen Sie später noch einmal vorbei.'),
-            'blackout'      => __('Zu diesem Zeitpunkt sind wir leider geschlossen. Bitte wählen Sie einen anderen Tag.'),
-            'covers_full'   => __('Zu diesem Zeitpunkt sind leider alle Plätze vergeben – wie wäre es mit einem anderen Termin?'),
-            'no_table'      => __('Zu diesem Zeitpunkt ist kein passender Tisch mehr frei – bitte probieren Sie eine andere Zeit oder Personenzahl.'),
-            default         => __('Dieser Zeitpunkt ist leider nicht mehr verfügbar – bitte wählen Sie einen anderen Termin.'),
+            'blackout' => __('Zu diesem Zeitpunkt sind wir leider geschlossen. Bitte wählen Sie einen anderen Tag.'),
+            'covers_full' => __('Zu diesem Zeitpunkt sind leider alle Plätze vergeben – wie wäre es mit einem anderen Termin?'),
+            'no_table' => __('Zu diesem Zeitpunkt ist kein passender Tisch mehr frei – bitte probieren Sie eine andere Zeit oder Personenzahl.'),
+            default => __('Dieser Zeitpunkt ist leider nicht mehr verfügbar – bitte wählen Sie einen anderen Termin.'),
         };
     }
 }
