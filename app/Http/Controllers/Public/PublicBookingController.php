@@ -373,7 +373,7 @@ class PublicBookingController extends Controller
         }
 
         $rules = [
-            'date' => ['required', 'date_format:Y-m-d'],
+            'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'time' => ['required', 'date_format:H:i'],
             'party_size' => ['required', 'integer', 'min:'.$settings->min_party_online, 'max:'.$settings->max_party_online],
             'name' => ['required', 'string', 'max:120'],
