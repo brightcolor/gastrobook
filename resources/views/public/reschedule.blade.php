@@ -11,11 +11,19 @@
 
     @if($tooLate)
         <div class="mt-6 rounded-xl bg-amber-50 p-4 text-center text-sm text-amber-800">
-            Die Umbuchungsfrist ist abgelaufen. Bitte kontaktieren Sie uns direkt.
+            Die Online-Umbuchungsfrist ist leider abgelaufen – rufen Sie uns kurz an, wir helfen Ihnen gerne!
+            @if($location->phone)
+                <a href="tel:{{ preg_replace('/\s+/', '', $location->phone) }}" class="ml-1 font-bold underline">{{ $location->phone }}</a>
+            @endif
         </div>
     @else
         @if($errors->any())
-            <div class="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{{ $errors->first() }}</div>
+            <div class="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">
+                <p class="font-semibold">Bitte beachten:</p>
+                <ul class="mt-1 list-inside list-disc space-y-0.5">
+                    @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
+                </ul>
+            </div>
         @endif
 
         <form method="POST" action="{{ route('booking.reschedule.post', ['code' => $reservation->code, 'token' => $reservation->manage_token]) }}"

@@ -674,18 +674,18 @@ details > summary::-webkit-details-marker { display: none; }
                 slotContainer.innerHTML = '';
                 if (!data.slots || !data.slots.length) {
                     if (data.oversized) {
-                        slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm text-stone-600">Für ' + partyInput.value + ' Personen ist online keine Reservierung möglich (max. ' + data.max_party + ').</p>';
-                        altBox.innerHTML = 'Für größere Gruppen kontaktieren Sie uns direkt' + (data.phone ? ': <a class="font-semibold underline" href="tel:' + data.phone.replace(/\s/g, '') + '">' + data.phone + '</a>' : '.');
+                        slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm text-stone-600">Für Gruppen ab ' + (parseInt(data.max_party) + 1) + ' Personen nehmen wir Reservierungen gerne direkt entgegen.</p>';
+                        altBox.innerHTML = 'Kontaktieren Sie uns, wir finden eine Lösung für Sie' + (data.phone ? ': <a class="font-semibold underline" href="tel:' + data.phone.replace(/\s/g, '') + '">' + data.phone + '</a>' : '.');
                         altBox.classList.remove('hidden'); return;
                     }
                     const head = document.createElement('p');
-                    head.className = 'col-span-full rounded-xl bg-red-50 px-3 py-2.5 text-sm font-medium text-red-700';
-                    head.textContent = 'Am ' + fmtDate(dateInput.value) + ' sind für ' + partyInput.value + ' Personen leider keine Tische frei.';
+                    head.className = 'col-span-full rounded-xl bg-amber-50 px-3 py-2.5 text-sm font-medium text-amber-800';
+                    head.textContent = 'An diesem Tag ist für ' + partyInput.value + ' Personen leider kein Tisch mehr frei – aber kein Problem:';
                     slotContainer.appendChild(head);
                     if (data.next_slots && data.next_slots.length) {
                         const sub = document.createElement('p');
                         sub.className = 'col-span-full mt-2 text-xs font-semibold uppercase tracking-wide text-stone-500';
-                        sub.textContent = 'Nächste freie Termine:';
+                        sub.textContent = 'So klappt es – nächste freie Termine:';
                         slotContainer.appendChild(sub);
                         data.next_slots.forEach(s => {
                             const b = document.createElement('button');
@@ -696,12 +696,12 @@ details > summary::-webkit-details-marker { display: none; }
                             slotContainer.appendChild(b);
                         });
                     }
-                    if (data.waitlist_available) { altBox.innerHTML = 'Kein Termin dabei? <strong>Warteliste</strong> nutzen.'; altBox.classList.remove('hidden'); }
+                    if (data.waitlist_available) { altBox.innerHTML = 'Kein Termin passend? Tragen Sie sich auf die <strong>Warteliste</strong> ein – wir melden uns, sobald etwas frei wird.'; altBox.classList.remove('hidden'); }
                     return;
                 }
                 renderSlots(data.slots);
             } catch (e) {
-                slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-red-50 px-3 py-2.5 text-sm text-red-700">Fehler beim Laden – bitte erneut versuchen.</p>';
+                slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-stone-50 px-3 py-2.5 text-sm text-stone-500">Kurze Unterbrechung – bitte Seite neu laden.</p>';
             }
         }
 

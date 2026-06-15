@@ -4,6 +4,21 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.29.1] – 2026-06-15
+
+### Verbessert
+- **Freundlichere Fehlermeldungen für Gäste:** Availability-Reason-Codes (`lead_time`,
+  `too_far_ahead`, `blackout`, `covers_full`, `no_table`) werden jetzt in verständliche,
+  warme Hinweistexte übersetzt statt als technisches Kürzel angezeigt.
+- **Umbuchungsseite:** Fehler- und Fristablauf-Nachrichten mit Telefonnummer-Link;
+  mehrere Fehler werden als Liste statt Einzelzeile angezeigt.
+- **Buchungsseite:** Slot-Nicht-verfügbar-Nachrichten weicher formuliert; Wartelisten-
+  Hinweis, Großgruppen-Nachricht und Netzwerkfehler-Text überarbeitet.
+- **Stornierungsseite:** Wärmerer Ton, optionale Telefonnummer-Anzeige für Rückfragen.
+- **Warteliste-Bestätigung:** Erklärung des Bestätigungslinks hinzugefügt.
+- **Reservierung verwalten:** Stornierungsfrist lesbarer formatiert; abgelaufene Frist
+  mit Telefonnummer-Link statt technischem Hinweis.
+
 ## [1.29.0] – 2026-06-15
 
 ### Neu

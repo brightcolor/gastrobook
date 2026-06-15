@@ -69,7 +69,7 @@ class ReservationLifecycleService
                     ]);
                     if (! $check['available']) {
                         throw ValidationException::withMessages([
-                            'start_at' => __('Der gewünschte Zeitpunkt ist nicht mehr verfügbar.').' ('.$check['reason'].')',
+                            'start_at' => $this->availabilityMessage($check['reason']),
                         ]);
                     }
                     $tableIds = $check['table_ids'];
@@ -358,7 +358,7 @@ class ReservationLifecycleService
                     ->where('end_at', '>', $startUtc)
                     ->exists();
                 if ($conflict) {
-                    throw ValidationException::withMessages(['time' => __('Der neue Zeitpunkt ist nicht mehr verfügbar.')]);
+                    throw ValidationException::withMessages(['time' => __('Dieser Zeitpunkt ist leider gerade vergeben – bitte wählen Sie eine andere Zeit.')]);
                 }
             } else {
                 // Restaurant: reassign a fitting free table/combination
@@ -367,7 +367,7 @@ class ReservationLifecycleService
                     'exclude_reservation_id' => $reservation->id,
                 ]);
                 if ($assignment === null) {
-                    throw ValidationException::withMessages(['time' => __('Der neue Zeitpunkt ist nicht mehr verfügbar.')]);
+                    throw ValidationException::withMessages(['time' => __('Zu diesem Zeitpunkt ist leider kein passender Tisch mehr frei – bitte wählen Sie eine andere Zeit oder Personenzahl.')]);
                 }
                 $tableIds = $assignment['table_ids'];
             }
@@ -452,5 +452,17 @@ class ReservationLifecycleService
             'location_id' => $reservation->location_id,
             'guest_name' => $reservation->guest_name_snapshot,
         ];
+    }
+
+    private function availabilityMessage(string $reason): string
+    {
+        return match ($reason) {
+            'lead_time'     => __('Für diesen Zeitpunkt ist es leider etwas zu kurzfristig – bitte wählen Sie einen Termin etwas weiter in der Zukunft.'),
+            'too_far_ahead' => __('Dieser Termin liegt noch zu weit in der Zukunft. Bitte schauen Sie später noch einmal vorbei.'),
+            'blackout'      => __('Zu diesem Zeitpunkt sind wir leider geschlossen. Bitte wählen Sie einen anderen Tag.'),
+            'covers_full'   => __('Zu diesem Zeitpunkt sind leider alle Plätze vergeben – wie wäre es mit einem anderen Termin?'),
+            'no_table'      => __('Zu diesem Zeitpunkt ist kein passender Tisch mehr frei – bitte probieren Sie eine andere Zeit oder Personenzahl.'),
+            default         => __('Dieser Zeitpunkt ist leider nicht mehr verfügbar – bitte wählen Sie einen anderen Termin.'),
+        };
     }
 }
