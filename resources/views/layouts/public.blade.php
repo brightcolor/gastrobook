@@ -38,6 +38,26 @@
             font-weight: 700;
             flex-shrink: 0;
         }
+        @keyframes revealUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .reveal-up { animation: revealUp 0.22s ease both; }
+        .booking-hero {
+            background: linear-gradient(155deg,
+                var(--brand) 0%,
+                color-mix(in oklab, var(--brand) 78%, black) 100%);
+        }
+        .slot-group-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--color-stone-400, #a8a29e);
+            grid-column: 1 / -1;
+            padding-top: 0.25rem;
+        }
+        .slot-group-label:first-child { padding-top: 0; }
     </style>
 </head>
 <body class="min-h-screen text-stone-900 antialiased">

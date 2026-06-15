@@ -4,6 +4,20 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.26.0] – 2026-06-15
+
+### Verbessert
+- **Buchungsseite – visuelles Redesign (v2):**
+  - Gradient-Hero-Header mit Brand-Farbe ersetzt die flache 6px-Linie; Logo in
+    Glasmorphismus-Rahmen, Standortname in weißer Bold-Schrift
+  - Zeitslots gruppiert nach Tageszeit (Vormittag / Mittag / Nachmittag / Abend)
+    mit beschrifteten Kategorien – sofort erkennbar statt endlose identische Liste
+  - Booking-Summary-Strip erscheint sobald Personenzahl + Datum + Uhrzeit gewählt:
+    zeigt kompakte Auswahl vor dem Kontaktformular ("2 Personen · Mi 18.06 · 19:30 Uhr")
+  - Reveal-Animation (fade + slide-up) wenn Schritte sichtbar werden
+  - Pfeil-Icon im Submit-Button
+  - Party-Buttons mit `hover:shadow-md hover:shadow-brand/10` und `active:scale-95`
+
 ## [1.25.0] – 2026-06-15
 
 ### Verbessert
