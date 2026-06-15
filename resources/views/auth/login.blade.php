@@ -11,6 +11,10 @@
         <h1 class="text-center text-2xl font-bold">Swayy</h1>
         <p class="mt-1 text-center text-sm text-stone-500">Reservierungsmanagement</p>
 
+        @if(session('status'))
+            <div class="mt-4 rounded-lg bg-emerald-100 px-4 py-3 text-sm text-emerald-900">{{ session('status') }}</div>
+        @endif
+
         @if($errors->any())
             <div class="mt-4 rounded-lg bg-red-100 px-4 py-3 text-sm text-red-900">{{ $errors->first() }}</div>
         @endif
@@ -23,7 +27,10 @@
                        class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
             </div>
             <div>
-                <label for="password" class="mb-1 block text-sm font-semibold">Passwort</label>
+                <div class="flex items-center justify-between">
+                    <label for="password" class="mb-1 block text-sm font-semibold">Passwort</label>
+                    <a href="{{ route('password.request') }}" class="text-xs text-teal-700 hover:underline">Passwort vergessen?</a>
+                </div>
                 <input type="password" name="password" id="password" required
                        class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
             </div>

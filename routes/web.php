@@ -19,6 +19,7 @@ use App\Http\Controllers\Admin\WaitlistAdminController;
 use App\Http\Controllers\Admin\WalkInController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\InvitationController;
+use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\RegistrationController;
 use App\Http\Controllers\Public\FeedbackController;
 use App\Http\Controllers\Public\GuestPortalController;
@@ -115,6 +116,10 @@ Route::middleware('guest')->group(function () {
     Route::post('/register', [RegistrationController::class, 'store'])->middleware('throttle:5,10');
     Route::get('/invitation/{token}', [InvitationController::class, 'show'])->name('invitation.accept');
     Route::post('/invitation/{token}', [InvitationController::class, 'accept'])->name('invitation.accept.post');
+    Route::get('/passwort-vergessen', [PasswordResetController::class, 'showForgot'])->name('password.request');
+    Route::post('/passwort-vergessen', [PasswordResetController::class, 'sendLink'])->name('password.email');
+    Route::get('/passwort-reset/{token}', [PasswordResetController::class, 'showReset'])->name('password.reset');
+    Route::post('/passwort-reset', [PasswordResetController::class, 'reset'])->name('password.update');
 });
 
 // Abmelde-Seite per URL erreichbar (auch wenn man durch eine alte Session auf

@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.31.1] – 2026-06-16
+
+### Neu
+- **Passwort zurücksetzen:** „Passwort vergessen?"-Link auf der Login-Seite führt zu
+  `/passwort-vergessen`. Nach Eingabe der E-Mail wird ein Token-gesicherter Reset-Link
+  versendet (60 min gültig). Auf der Reset-Seite wird ein neues Passwort mit
+  Stärkevalidierung vergeben. User-Enumeration wird verhindert (immer gleiche Meldung).
+
 ## [1.31.0] – 2026-06-15
 
 ### Neu
