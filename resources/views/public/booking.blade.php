@@ -19,6 +19,9 @@
 .step-panel[data-state="done"]    .sp-num { background: color-mix(in oklab, var(--brand) 13%, white); color: var(--brand); }
 .step-panel[data-state="locked"]  .sp-num { background: #e7e5e4; color: #a8a29e; }
 .step-panel[data-state="done"]    .sp-header { cursor: pointer; }
+/* Hide native details marker; custom chevron is used instead */
+details > summary { list-style: none; }
+details > summary::-webkit-details-marker { display: none; }
 </style>
 
 <div class="overflow-hidden rounded-3xl bg-white shadow-2xl shadow-stone-500/20 ring-1 ring-black/5">
@@ -162,11 +165,17 @@
                                    class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
                         </div>
                         @if($settings->fieldRule('note') !== 'hidden')
-                        <div>
-                            <label for="salonNote" class="mb-1.5 block text-sm font-semibold">Anmerkung <span class="font-normal text-stone-400">(optional)</span></label>
-                            <textarea name="note" id="salonNote" rows="2"
-                                      class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">{{ old('note') }}</textarea>
-                        </div>
+                        <details {{ old('note') ? 'open' : '' }} class="group">
+                            <summary class="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold text-stone-500 hover:text-stone-700">
+                                <svg class="h-4 w-4 shrink-0 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                                Besondere Wünsche?
+                            </summary>
+                            <div class="mt-3">
+                                <label for="salonNote" class="mb-1.5 block text-sm font-semibold">Anmerkung</label>
+                                <textarea name="note" id="salonNote" rows="2" placeholder="Was sollen wir wissen?"
+                                          class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">{{ old('note') }}</textarea>
+                            </div>
+                        </details>
                         @endif
                         <div class="space-y-3 border-t border-stone-100 pt-4 text-sm">
                             <label class="flex cursor-pointer items-start gap-3">
@@ -477,30 +486,42 @@
                         @error('phone')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                     </div>
                     @endif
-                    @if($settings->fieldRule('occasion') !== 'hidden')
-                    <div>
-                        <label for="occasion" class="mb-1.5 block text-sm font-semibold">Anlass <span class="font-normal text-stone-400">(optional)</span></label>
-                        <select name="occasion" id="occasion" class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
-                            <option value="">–</option>
-                            @foreach(['Geburtstag','Jahrestag','Geschäftsessen','Familienfeier','Date','Sonstiges'] as $occ)
-                                <option @selected(old('occasion') === $occ)>{{ $occ }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    @endif
-                    @if($settings->fieldRule('allergies') !== 'hidden')
-                    <div>
-                        <label for="allergies" class="mb-1.5 block text-sm font-semibold">Allergien / Unverträglichkeiten <span class="font-normal text-stone-400">(optional)</span></label>
-                        <input type="text" name="allergies" id="allergies" value="{{ old('allergies') }}"
-                               class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
-                    </div>
-                    @endif
-                    @if($settings->fieldRule('note') !== 'hidden')
-                    <div>
-                        <label for="note" class="mb-1.5 block text-sm font-semibold">Anmerkung <span class="font-normal text-stone-400">(optional)</span></label>
-                        <textarea name="note" id="note" rows="2"
-                                  class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">{{ old('note') }}</textarea>
-                    </div>
+                    @php $hasExtras = $settings->fieldRule('occasion') !== 'hidden' || $settings->fieldRule('allergies') !== 'hidden' || $settings->fieldRule('note') !== 'hidden'; @endphp
+                    @if($hasExtras)
+                    <details {{ old('occasion') || old('allergies') || old('note') ? 'open' : '' }} class="group">
+                        <summary class="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold text-stone-500 hover:text-stone-700">
+                            <svg class="h-4 w-4 shrink-0 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                            Besondere Wünsche?
+                        </summary>
+                        <div class="mt-3 space-y-4">
+                            @if($settings->fieldRule('occasion') !== 'hidden')
+                            <div>
+                                <label for="occasion" class="mb-1.5 block text-sm font-semibold">Anlass</label>
+                                <select name="occasion" id="occasion" class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                                    <option value="">–</option>
+                                    @foreach(['Geburtstag','Jahrestag','Geschäftsessen','Familienfeier','Date','Sonstiges'] as $occ)
+                                        <option @selected(old('occasion') === $occ)>{{ $occ }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            @endif
+                            @if($settings->fieldRule('allergies') !== 'hidden')
+                            <div>
+                                <label for="allergies" class="mb-1.5 block text-sm font-semibold">Allergien / Unverträglichkeiten</label>
+                                <input type="text" name="allergies" id="allergies" value="{{ old('allergies') }}"
+                                       placeholder="z. B. Laktose, Nüsse…"
+                                       class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                            </div>
+                            @endif
+                            @if($settings->fieldRule('note') !== 'hidden')
+                            <div>
+                                <label for="note" class="mb-1.5 block text-sm font-semibold">Anmerkung</label>
+                                <textarea name="note" id="note" rows="2" placeholder="Was sollen wir wissen?"
+                                          class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">{{ old('note') }}</textarea>
+                            </div>
+                            @endif
+                        </div>
+                    </details>
                     @endif
 
                     <div class="space-y-3 border-t border-stone-100 pt-4 text-sm">
