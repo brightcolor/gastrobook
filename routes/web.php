@@ -125,7 +125,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->n
 | Admin (tenant context)
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'tenant'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'tenant', 'license'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', DashboardController::class)->name('dashboard');
 
     // Live operations board (staff)

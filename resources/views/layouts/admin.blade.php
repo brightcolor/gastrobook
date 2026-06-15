@@ -92,6 +92,7 @@
         </header>
 
         <main class="flex-1 p-4 md:p-6">
+            @include('admin.partials.license_banner')
             @if(session('success'))
                 <div class="mb-4 flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
                     <span class="mt-px font-bold">✓</span><span>{{ session('success') }}</span>

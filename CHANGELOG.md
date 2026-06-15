@@ -4,6 +4,29 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.24.0] – 2026-06-15
+
+### Neu
+- **Self-hosted Lizenzmodell:** Swayy kann selbst gehostet werden, erfordert aber
+  eine gültige Lizenz. Aktivierung per `SWAYY_SELF_HOSTED=true` in der `.env`.
+  - Lizenzdatei `storage/license.json` — JSON mit Ed25519-Signatur (canonical,
+    sorted-key encoding).
+  - Signaturverifizierung via `sodium_crypto_sign_verify_detached` mit im Source
+    eingebettetem Public Key (kein runtime-swapping möglich).
+  - **14-Tage Kulanzfrist** nach Ablauf: Admin weiterhin erreichbar, aber roter
+    Banner mit Erneuerungshinweis.
+  - **Widerruf (Revocation):** optionaler HTTP-Check gegen `license.swayy.de/v1/revoked/{id}`,
+    gecacht 7 Tage; Netzwerkfehler ungüldet die Lizenz *nicht*.
+  - Bei hartem Lock (abgelaufen + Grace überschritten oder widerrufen): Admin
+    gibt HTTP 402 zurück, öffentliche Buchungsseite bleibt erreichbar.
+  - Admin-Banner 30 Tage vor Ablauf (gelb), während Grace-Period (rot).
+  - Artisan-Commands: `license:validate [--fresh]`, `license:keygen`,
+    `license:sign` (für internen Lizenzserver).
+  - Hosted-SaaS-Betrieb (swayy.de selbst) ist komplett unberührt — ohne
+    `SWAYY_SELF_HOSTED` bleibt alles so wie bisher.
+- **8 neue Tests** für Lizenzvalidierung, Middleware-Verhalten, Grace Period,
+  Booking-Seite bleibt bei Lock erreichbar.
+
 ## [1.23.2] – 2026-06-15
 
 ### Sicherheit (Audit)

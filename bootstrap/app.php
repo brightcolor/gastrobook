@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'tenant' => ResolveTenantContext::class,
             'permission' => RequirePermission::class,
+            'license' => \App\Http\Middleware\RequireValidLicense::class,
         ]);
 
         // Already-logged-in visitors hitting a "guest" page (e.g. /login) should
