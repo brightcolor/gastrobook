@@ -9,6 +9,7 @@
     <style>
         :root { --brand: {{ $primary }}; --brand-strong: color-mix(in oklab, {{ $primary }} 82%, black); }
         .text-brand { color: var(--brand); }
+        .bg-brand { background-color: var(--brand); }
         .ring-brand { --tw-ring-color: var(--brand); }
         .border-brand { border-color: var(--brand); }
         body {

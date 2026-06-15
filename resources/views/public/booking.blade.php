@@ -395,9 +395,8 @@
                     <div class="grid grid-cols-4 gap-2 sm:grid-cols-5" id="partyButtons">
                         @for($i = $settings->min_party_online; $i <= min($settings->max_party_online, $settings->min_party_online + 8); $i++)
                             <button type="button" data-party="{{ $i }}"
-                                    class="party-btn flex flex-col items-center justify-center rounded-2xl border-2 border-stone-200 py-3.5 transition-all duration-150 hover:border-brand hover:bg-brand/5 active:scale-95">
-                                <span class="text-xl font-black leading-none">{{ $i }}</span>
-                                <span class="mt-0.5 text-[9px] font-bold uppercase tracking-widest text-stone-400">{{ $i === 1 ? 'Person' : 'Pers.' }}</span>
+                                    class="party-btn rounded-2xl border-2 border-stone-200 py-3.5 text-xl font-black transition-all duration-150 hover:border-brand hover:bg-brand/5 active:scale-95">
+                                {{ $i }}
                             </button>
                         @endfor
                     </div>
