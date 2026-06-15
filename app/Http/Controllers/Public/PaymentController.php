@@ -82,6 +82,7 @@ class PaymentController extends Controller
         abort_unless(hash_equals($reservation->manage_token, $token), 404);
         abort_unless(in_array($reservation->payment_status, ['required', 'pending'], true), 410);
         abort_unless($reservation->payment_amount_minor > 0, 410);
+        abort_unless($reservation->guest_email_snapshot !== null, 422);
 
         $tenant = Tenant::findOrFail($reservation->tenant_id);
         $currency = $reservation->currency ?? 'EUR';

@@ -10,6 +10,7 @@ use App\Models\Reservation;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\Payments\PaymentProviderManager;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Flexible deposit refunds: off / manual (staff approval) / auto, each either
@@ -47,40 +48,52 @@ class RefundService
             ->latest()
             ->first();
         if ($intent === null || empty($intent->metadata['refund_ref'])) {
-            return null; // nothing captured / no refundable reference
-        }
-
-        // Don't create duplicates
-        $existing = Refund::withoutGlobalScopes()
-            ->where('reservation_id', $reservation->id)
-            ->whereNotIn('status', ['rejected', 'failed'])
-            ->first();
-        if ($existing !== null) {
-            return $existing;
-        }
-
-        $percent = max(0, min(100, (int) $settings->refund_percent));
-        $amount = (int) round($intent->amount_minor * $percent / 100);
-        if ($amount <= 0) {
             return null;
         }
 
-        $refund = Refund::create([
-            'tenant_id' => $reservation->tenant_id,
-            'reservation_id' => $reservation->id,
-            'payment_intent_id' => $intent->id,
-            'provider' => $intent->provider,
-            'amount_minor' => $amount,
-            'currency' => $intent->currency,
-            'status' => $mode === 'auto' ? 'approved' : 'pending',
-            'source' => $source,
-            'reason' => 'cancellation',
-            'requested_by' => $actor?->id,
-        ]);
+        // Wrap duplicate-check + insert in a transaction with a pessimistic
+        // lock so that two concurrent calls (e.g. guest double-clicks cancel,
+        // or a webhook fires at the same time) cannot both pass the check and
+        // each create a separate Refund row (= double refund to the guest).
+        $refund = DB::transaction(function () use ($reservation, $intent, $settings, $mode, $source, $actor) {
+            $existing = Refund::withoutGlobalScopes()
+                ->where('reservation_id', $reservation->id)
+                ->whereNotIn('status', ['rejected', 'failed'])
+                ->lockForUpdate()
+                ->first();
+            if ($existing !== null) {
+                return $existing;
+            }
 
-        $this->audit->log('refund.requested', $refund, null, [
-            'amount_minor' => $amount, 'mode' => $mode,
-        ], null, $actor, $reservation->tenant_id);
+            $percent = max(0, min(100, (int) $settings->refund_percent));
+            $amount = (int) round($intent->amount_minor * $percent / 100);
+            if ($amount <= 0) {
+                return null;
+            }
+
+            $refund = Refund::create([
+                'tenant_id' => $reservation->tenant_id,
+                'reservation_id' => $reservation->id,
+                'payment_intent_id' => $intent->id,
+                'provider' => $intent->provider,
+                'amount_minor' => $amount,
+                'currency' => $intent->currency,
+                'status' => $mode === 'auto' ? 'approved' : 'pending',
+                'source' => $source,
+                'reason' => 'cancellation',
+                'requested_by' => $actor?->id,
+            ]);
+
+            $this->audit->log('refund.requested', $refund, null, [
+                'amount_minor' => $amount, 'mode' => $mode,
+            ], null, $actor, $reservation->tenant_id);
+
+            return $refund;
+        });
+
+        if ($refund === null) {
+            return null;
+        }
 
         if ($refund->status === 'approved' && $settings->refund_processing === 'immediate') {
             $this->process($refund);

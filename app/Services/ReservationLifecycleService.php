@@ -229,6 +229,14 @@ class ReservationLifecycleService
                 default => null,
             };
 
+            // When an admin manually confirms a reservation that previously
+            // failed payment (e.g. waived fee, collected offline), clear the
+            // failed payment status so the record isn't perpetually misleading.
+            if ($to === ReservationStatus::Confirmed
+                && $reservation->payment_status === 'failed') {
+                $updates['payment_status'] = 'not_required';
+            }
+
             $reservation->update($updates);
 
             ReservationStatusHistory::create([
