@@ -4,6 +4,20 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.28.0] – 2026-06-15
+
+### Verbessert
+- **Buchungsseite – progressiver Akkordeon-Checkout (Amazon/Shopify-Stil):**
+  - Nur der aktive Schritt ist aufgeklappt; abgeschlossene Schritte klappen zu
+    einer kompakten Zusammenfassung mit „Ändern"-Button zusammen
+  - Restaurant: 3 Schritte – „Wie viele Personen?" → „Wann?" → „Ihre Angaben"
+  - Salon: 3 Schritte – „Leistungen wählen" → „Wann & bei wem?" → „Ihre Angaben"
+  - Automatisches Vorblättern: Party-Button-Klick öffnet Schritt 2, Slot-Klick
+    öffnet Schritt 3 – kein manueller „Weiter"-Button nötig
+  - Gesperrte Schritte (opacity 0.38) signalisieren den verbleibenden Weg
+  - Bei Formularfehler werden alte Werte (party_size, time) automatisch
+    wiederhergestellt und der korrekte Schritt geöffnet
+
 ## [1.27.0] – 2026-06-15
 
 ### Neu

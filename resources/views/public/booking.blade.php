@@ -1,9 +1,29 @@
 @extends('layouts.public')
 @section('title', ($tenant->isSalon() ? 'Termin buchen' : 'Tisch reservieren') . ' – ' . $location->name)
 @section('content')
+
+<style>
+/* Akkordeon-Step-Panels */
+.step-panel[data-state="locked"] { opacity: 0.38; pointer-events: none; user-select: none; }
+.step-panel[data-state="locked"]  .sp-body,
+.step-panel[data-state="done"]    .sp-body { display: none; }
+.step-panel:not([data-state="done"]) .sp-summary { display: none; }
+.step-panel:not([data-state="done"]) .sp-edit    { display: none; }
+.sp-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 1.75rem; height: 1.75rem; border-radius: 9999px;
+    font-size: 0.6875rem; font-weight: 700; flex-shrink: 0;
+    transition: background .18s ease, color .18s ease;
+}
+.step-panel[data-state="active"]  .sp-num { background: var(--brand); color: #fff; }
+.step-panel[data-state="done"]    .sp-num { background: color-mix(in oklab, var(--brand) 13%, white); color: var(--brand); }
+.step-panel[data-state="locked"]  .sp-num { background: #e7e5e4; color: #a8a29e; }
+.step-panel[data-state="done"]    .sp-header { cursor: pointer; }
+</style>
+
 <div class="overflow-hidden rounded-3xl bg-white shadow-2xl shadow-stone-500/20 ring-1 ring-black/5">
 
-    {{-- ══ HERO HEADER ══════════════════════════════════════════════════════ --}}
+    {{-- ══ HERO ═══════════════════════════════════════════════════════════════ --}}
     <div class="booking-hero px-8 pb-8 pt-10 text-center">
         @if($location->brand_logo_path || $tenant->brand_logo_path)
             <div class="mx-auto mb-5 inline-flex h-24 w-24 items-center justify-center rounded-2xl bg-white/15 p-2.5 ring-2 ring-white/25 backdrop-blur-sm">
@@ -15,13 +35,10 @@
                 {{ $tenant->isSalon() ? '✂️' : '🍽️' }}
             </div>
         @endif
-
         <h1 class="text-3xl font-black tracking-tight text-white drop-shadow-sm">{{ $location->name }}</h1>
-
         @if($location->public_intro)
             <p class="mt-2 text-sm leading-relaxed text-white/70">{{ $location->public_intro }}</p>
         @endif
-
         @if(($upcomingEvents ?? 0) > 0)
             <a href="{{ route('events.index', [$tenant->slug, $location->slug]) }}"
                class="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white/20 px-4 py-1.5 text-sm font-semibold text-white ring-1 ring-white/30 transition hover:bg-white/30">
@@ -30,12 +47,9 @@
         @endif
     </div>
 
-    {{-- ══ FORMULAR ════════════════════════════════════════════════════════ --}}
-    <div class="p-6 sm:p-8">
-
     @if($errors->any())
-        <div class="mb-6 rounded-xl bg-red-50 p-4 text-sm text-red-800">
-            <p class="mb-1 font-semibold">Bitte korrigieren Sie folgende Angaben:</p>
+        <div class="mx-5 mt-5 rounded-xl bg-red-50 p-4 text-sm text-red-800 sm:mx-6">
+            <p class="mb-1 font-semibold">Bitte korrigieren:</p>
             <ul class="list-inside list-disc space-y-0.5">
                 @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
             </ul>
@@ -43,211 +57,189 @@
     @endif
 
     @if($tenant->isSalon())
-    {{-- ══════════════════════════════════════════════════════════════════════
-         SALON-FORMULAR
-    ══════════════════════════════════════════════════════════════════════ --}}
+    {{-- ══ SALON ═══════════════════════════════════════════════════════════════ --}}
         @if(($services ?? collect())->isEmpty())
-            <div class="rounded-xl bg-amber-50 p-4 text-center text-sm text-amber-800">
+            <div class="m-6 rounded-xl bg-amber-50 p-4 text-center text-sm text-amber-800">
                 Es sind noch keine Leistungen konfiguriert. Bitte kontaktieren Sie uns direkt.
             </div>
         @else
         <form method="POST" action="{{ route('booking.store', [$tenant->slug, $location->slug]) }}"
-              class="space-y-7" id="salonBookingForm">
+              id="salonBookingForm">
             @csrf
             <input type="text" name="website" class="hidden" tabindex="-1" autocomplete="off" aria-hidden="true">
 
-            {{-- Step 1: Leistungen --}}
-            <div>
-                <div class="mb-3 flex items-center gap-2.5">
-                    <span class="step-badge">1</span>
-                    <span class="text-sm font-semibold">Leistungen wählen <span class="font-normal text-stone-400">(mehrere kombinierbar)</span></span>
-                </div>
-                <div class="flex flex-wrap gap-2" id="serviceButtons">
-                    @foreach($services as $svc)
-                        <button type="button" data-service-id="{{ $svc->id }}"
-                                data-duration="{{ $svc->duration_minutes }}"
-                                data-price="{{ $svc->price_minor }}"
-                                class="service-pill rounded-full border-2 border-stone-200 px-4 py-2 text-sm font-semibold transition-all hover:border-brand hover:bg-brand/5 active:scale-[0.97]">
-                            {{ $svc->name }}
-                            <span class="ml-1 font-normal text-stone-400">· {{ $svc->durationFormatted() }}@if($svc->price_minor > 0) · {{ $svc->priceFormatted() }}@endif</span>
+            <div class="divide-y divide-stone-100">
+
+                {{-- Step 1: Leistungen --}}
+                <div id="ss1" class="step-panel" data-state="active">
+                    <div class="sp-header flex items-center gap-3 px-5 py-4 sm:px-6" onclick="salonEdit(1)">
+                        <span class="sp-num">1</span>
+                        <span class="flex-1 text-sm font-semibold">Leistungen wählen</span>
+                        <span class="sp-summary truncate text-sm text-stone-400" id="ss1Summary"></span>
+                        <button type="button" class="sp-edit ml-3 shrink-0 text-xs font-semibold text-brand">Ändern</button>
+                    </div>
+                    <div class="sp-body px-5 pb-5 sm:px-6">
+                        <p class="mb-3 text-xs text-stone-400">Mehrere Leistungen kombinierbar.</p>
+                        <div class="flex flex-wrap gap-2" id="serviceButtons">
+                            @foreach($services as $svc)
+                                <button type="button" data-service-id="{{ $svc->id }}"
+                                        data-duration="{{ $svc->duration_minutes }}"
+                                        data-price="{{ $svc->price_minor }}"
+                                        class="service-pill rounded-full border-2 border-stone-200 px-4 py-2 text-sm font-semibold transition-all hover:border-brand hover:bg-brand/5 active:scale-[0.97]">
+                                    {{ $svc->name }}
+                                    <span class="ml-1 font-normal text-stone-400">· {{ $svc->durationFormatted() }}@if($svc->price_minor > 0) · {{ $svc->priceFormatted() }}@endif</span>
+                                </button>
+                            @endforeach
+                        </div>
+                        <div id="serviceInputs"></div>
+                        <div id="serviceSummary" class="mt-3 hidden rounded-xl bg-stone-50 px-4 py-3 text-sm">
+                            <span class="font-semibold">Gesamt:</span>
+                            <span id="summaryDuration"></span><span id="summaryPrice"></span>
+                        </div>
+                        <button type="button" id="salonNextStep1"
+                                class="mt-4 hidden rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-all active:scale-[0.98]"
+                                style="background:var(--brand)">
+                            Weiter →
                         </button>
-                    @endforeach
+                    </div>
                 </div>
-                <div id="serviceInputs"></div>
-                <div id="serviceSummary" class="mt-3 hidden rounded-xl bg-stone-50 px-4 py-3 text-sm">
-                    <span class="font-semibold">Gesamt:</span>
-                    <span id="summaryDuration"></span><span id="summaryPrice"></span>
-                </div>
-            </div>
 
-            {{-- Step 2: Mitarbeiter --}}
-            <div id="staffSection" class="hidden">
-                <div class="mb-3 flex items-center gap-2.5">
-                    <span class="step-badge">2</span>
-                    <span class="text-sm font-semibold">Mitarbeiter:in <span class="font-normal text-stone-400">(optional)</span></span>
+                {{-- Step 2: Mitarbeiter + Datum + Uhrzeit --}}
+                <div id="ss2" class="step-panel" data-state="locked">
+                    <div class="sp-header flex items-center gap-3 px-5 py-4 sm:px-6" onclick="salonEdit(2)">
+                        <span class="sp-num">2</span>
+                        <span class="flex-1 text-sm font-semibold">Wann &amp; bei wem?</span>
+                        <span class="sp-summary truncate text-sm text-stone-400" id="ss2Summary"></span>
+                        <button type="button" class="sp-edit ml-3 shrink-0 text-xs font-semibold text-brand">Ändern</button>
+                    </div>
+                    <div class="sp-body space-y-4 px-5 pb-5 sm:px-6">
+                        <div>
+                            <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-400">Mitarbeiter:in</p>
+                            <div id="staffButtons" class="flex flex-wrap gap-2"></div>
+                            <input type="hidden" name="staff_member_id" id="staffMemberId" value="0">
+                            <p id="noStaffHint" class="mt-2 hidden rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">Keine Person kann alle Ihre Leistungen alleine ausführen.</p>
+                        </div>
+                        <div>
+                            <label for="salonDate" class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-stone-400">Datum</label>
+                            <input type="date" name="date" id="salonDate"
+                                   min="{{ now($location->timezone)->toDateString() }}"
+                                   max="{{ now($location->timezone)->addDays($settings->max_advance_days)->toDateString() }}"
+                                   value="{{ old('date', now($location->timezone)->toDateString()) }}"
+                                   class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3 text-base">
+                        </div>
+                        <div>
+                            <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-400">Uhrzeit</p>
+                            <div id="salonSlotContainer" class="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                                <p class="col-span-full text-sm text-stone-400">Wählen Sie zuerst eine Leistung.</p>
+                            </div>
+                            <input type="hidden" name="time" id="salonTimeInput" value="{{ old('time') }}" required>
+                        </div>
+                    </div>
                 </div>
-                <div id="staffButtons" class="flex flex-wrap gap-2"></div>
-                <input type="hidden" name="staff_member_id" id="staffMemberId" value="0">
-                <p id="noStaffHint" class="mt-2 hidden rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">Keine:r Ihrer gewählten Leistungen kann von einer einzelnen Person zusammen ausgeführt werden.</p>
-            </div>
 
-            {{-- Step 3: Datum --}}
-            <div id="dateSection" class="hidden">
-                <div class="mb-3 flex items-center gap-2.5">
-                    <span class="step-badge">3</span>
-                    <label for="date" class="text-sm font-semibold">Datum wählen</label>
+                {{-- Step 3: Kontaktdaten --}}
+                <div id="ss3" class="step-panel" data-state="locked">
+                    <div class="sp-header flex items-center gap-3 px-5 py-4 sm:px-6">
+                        <span class="sp-num">3</span>
+                        <span class="text-sm font-semibold">Ihre Angaben</span>
+                    </div>
+                    <div class="sp-body space-y-4 px-5 pb-6 sm:px-6">
+                        <div>
+                            <label for="salonName" class="mb-1.5 block text-sm font-semibold">Name *</label>
+                            <input type="text" name="name" id="salonName" required value="{{ old('name') }}" autocomplete="name"
+                                   class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                            @error('name')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+                        </div>
+                        <div>
+                            <label for="salonEmail" class="mb-1.5 block text-sm font-semibold">E-Mail *</label>
+                            <input type="email" name="email" id="salonEmail" required value="{{ old('email') }}" autocomplete="email"
+                                   class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                            @error('email')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+                        </div>
+                        <div>
+                            <label for="salonPhone" class="mb-1.5 block text-sm font-semibold">Telefon <span class="font-normal text-stone-400">(optional)</span></label>
+                            <input type="tel" name="phone" id="salonPhone" value="{{ old('phone') }}" autocomplete="tel"
+                                   class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                        </div>
+                        @if($settings->fieldRule('note') !== 'hidden')
+                        <div>
+                            <label for="salonNote" class="mb-1.5 block text-sm font-semibold">Anmerkung <span class="font-normal text-stone-400">(optional)</span></label>
+                            <textarea name="note" id="salonNote" rows="2"
+                                      class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">{{ old('note') }}</textarea>
+                        </div>
+                        @endif
+                        <div class="space-y-3 border-t border-stone-100 pt-4 text-sm">
+                            <label class="flex cursor-pointer items-start gap-3">
+                                <input type="checkbox" name="privacy_accepted" value="1" required
+                                       class="mt-0.5 h-4 w-4 flex-shrink-0 rounded accent-[var(--brand)]">
+                                <span class="text-stone-600">Ich habe die @if($tenant->privacy_url)<a href="{{ $tenant->privacy_url }}" target="_blank" rel="noopener" class="text-brand underline">Datenschutzhinweise</a>@else Datenschutzhinweise @endif gelesen und akzeptiere die Verarbeitung meiner Daten. *</span>
+                            </label>
+                            <label class="flex cursor-pointer items-start gap-3">
+                                <input type="checkbox" name="newsletter" value="1"
+                                       class="mt-0.5 h-4 w-4 flex-shrink-0 rounded accent-[var(--brand)]">
+                                <span class="text-stone-400">Newsletter erhalten (jederzeit widerrufbar).</span>
+                            </label>
+                        </div>
+                        <button type="submit"
+                                class="btn-brand flex w-full items-center justify-center gap-2 rounded-xl py-4 text-base font-bold text-white transition-all active:scale-[0.99]">
+                            Termin buchen
+                            <svg class="h-5 w-5 opacity-80" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                        </button>
+                    </div>
                 </div>
-                <input type="date" name="date" id="date"
-                       min="{{ now($location->timezone)->toDateString() }}"
-                       max="{{ now($location->timezone)->addDays($settings->max_advance_days)->toDateString() }}"
-                       value="{{ old('date', now($location->timezone)->toDateString()) }}"
-                       class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3 text-base">
-            </div>
 
-            {{-- Step 4: Uhrzeit --}}
-            <div id="slotSection" class="hidden">
-                <div class="mb-3 flex items-center gap-2.5">
-                    <span class="step-badge">4</span>
-                    <span class="text-sm font-semibold">Uhrzeit wählen</span>
-                </div>
-                <div id="slotContainer" class="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                    <p class="col-span-full text-sm text-stone-400">Bitte Leistung und Datum wählen.</p>
-                </div>
-                <input type="hidden" name="time" id="timeInput" value="{{ old('time') }}" required>
             </div>
-
-            {{-- Booking-Summary-Strip --}}
-            <div id="bookingSummary" class="hidden reveal-up rounded-2xl bg-stone-50 p-4 ring-1 ring-stone-200">
-                <p class="mb-1 text-xs font-bold uppercase tracking-wider text-stone-400">Ihre Buchung</p>
-                <p class="font-semibold text-stone-800" id="summaryText"></p>
-            </div>
-
-            {{-- Step 5: Kontaktdaten --}}
-            <div class="space-y-4 border-t border-stone-100 pt-6">
-                <div class="flex items-center gap-2.5">
-                    <span class="step-badge">5</span>
-                    <span class="text-sm font-semibold">Ihre Daten</span>
-                </div>
-                <div>
-                    <label for="name" class="mb-1.5 block text-sm font-semibold">Name *</label>
-                    <input type="text" name="name" id="name" required value="{{ old('name') }}" autocomplete="name"
-                           class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
-                    @error('name')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
-                </div>
-                <div>
-                    <label for="email" class="mb-1.5 block text-sm font-semibold">E-Mail *</label>
-                    <input type="email" name="email" id="email" required value="{{ old('email') }}" autocomplete="email"
-                           class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
-                    @error('email')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
-                </div>
-                <div>
-                    <label for="phone" class="mb-1.5 block text-sm font-semibold">Telefon <span class="font-normal text-stone-400">(optional)</span></label>
-                    <input type="tel" name="phone" id="phone" value="{{ old('phone') }}" autocomplete="tel"
-                           class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
-                    @error('phone')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
-                </div>
-                @if($settings->fieldRule('note') !== 'hidden')
-                <div>
-                    <label for="note" class="mb-1.5 block text-sm font-semibold">Anmerkung <span class="font-normal text-stone-400">(optional)</span></label>
-                    <textarea name="note" id="note" rows="2"
-                              class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">{{ old('note') }}</textarea>
-                </div>
-                @endif
-            </div>
-
-            {{-- Datenschutz --}}
-            <div class="space-y-3 border-t border-stone-100 pt-5 text-sm">
-                <label class="flex cursor-pointer items-start gap-3">
-                    <input type="checkbox" name="privacy_accepted" value="1" required
-                           class="mt-0.5 h-4 w-4 flex-shrink-0 rounded accent-[var(--brand)]">
-                    <span class="text-stone-700">Ich habe die @if($tenant->privacy_url)<a href="{{ $tenant->privacy_url }}" target="_blank" rel="noopener" class="text-brand underline">Datenschutzhinweise</a>@else Datenschutzhinweise @endif gelesen und akzeptiere die Verarbeitung meiner Daten. *</span>
-                </label>
-                <label class="flex cursor-pointer items-start gap-3">
-                    <input type="checkbox" name="newsletter" value="1"
-                           class="mt-0.5 h-4 w-4 flex-shrink-0 rounded accent-[var(--brand)]">
-                    <span class="text-stone-500">Newsletter mit Angeboten erhalten (jederzeit widerrufbar).</span>
-                </label>
-            </div>
-
-            <button type="submit"
-                    class="btn-brand flex w-full items-center justify-center gap-2 rounded-xl py-4 text-lg font-bold text-white transition-all active:scale-[0.99]">
-                Termin buchen
-                <svg class="h-5 w-5 opacity-80" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
-            </button>
         </form>
-
-        @if(session('alternatives'))
-        <div class="mt-4 rounded-2xl bg-amber-50 p-4 text-sm text-amber-900">
-            <p class="font-semibold">Dieser Zeitpunkt ist leider nicht verfügbar.</p>
-        </div>
-        @endif
 
         <script>
         (function () {
-            const slotsUrl = @json(route('booking.slots', [$tenant->slug, $location->slug]));
+            const slotsUrl    = @json(route('booking.slots', [$tenant->slug, $location->slug]));
             const serviceData = @json($services->mapWithKeys(fn($s) => [$s->id => ['staff' => $s->staff->where('is_active', true)->map(fn($m) => ['id' => $m->id, 'name' => $m->name])->values()]])->all());
 
-            const staffInput    = document.getElementById('staffMemberId');
-            const dateInput     = document.getElementById('date');
-            const timeInput     = document.getElementById('timeInput');
-            const slotContainer = document.getElementById('slotContainer');
-            const staffSection  = document.getElementById('staffSection');
-            const dateSection   = document.getElementById('dateSection');
-            const slotSection   = document.getElementById('slotSection');
-            const staffButtons  = document.getElementById('staffButtons');
-            const serviceInputs = document.getElementById('serviceInputs');
-            const summary       = document.getElementById('serviceSummary');
-            const summaryDur    = document.getElementById('summaryDuration');
-            const summaryPrc    = document.getElementById('summaryPrice');
-            const noStaffHint   = document.getElementById('noStaffHint');
-            const bookingSummary = document.getElementById('bookingSummary');
-            const summaryText   = document.getElementById('summaryText');
+            const staffInput     = document.getElementById('staffMemberId');
+            const dateInput      = document.getElementById('salonDate');
+            const timeInput      = document.getElementById('salonTimeInput');
+            const slotContainer  = document.getElementById('salonSlotContainer');
+            const staffButtons   = document.getElementById('staffButtons');
+            const serviceInputs  = document.getElementById('serviceInputs');
+            const summaryBox     = document.getElementById('serviceSummary');
+            const summaryDur     = document.getElementById('summaryDuration');
+            const summaryPrc     = document.getElementById('summaryPrice');
+            const noStaffHint    = document.getElementById('noStaffHint');
+            const nextBtn        = document.getElementById('salonNextStep1');
+            const ss1Summary     = document.getElementById('ss1Summary');
+            const ss2Summary     = document.getElementById('ss2Summary');
 
             const selected = [];
 
-            function reveal(el) {
-                el.classList.remove('hidden');
-                el.classList.remove('reveal-up');
-                void el.offsetHeight;
-                el.classList.add('reveal-up');
+            function sStep(id, state) {
+                const el = document.getElementById(id);
+                el.dataset.state = state;
+                if (state === 'active') {
+                    const body = el.querySelector('.sp-body');
+                    if (body) { body.classList.remove('reveal-up'); void body.offsetHeight; body.classList.add('reveal-up'); }
+                    setTimeout(() => el.scrollIntoView({behavior: 'smooth', block: 'nearest'}), 60);
+                }
             }
-            function hide(el) { el.classList.add('hidden'); }
+
+            function salonEdit(n) {
+                sStep('ss' + n, 'active');
+                for (let i = n + 1; i <= 3; i++) sStep('ss' + i, 'locked');
+                if (n <= 2) timeInput.value = '';
+            }
+            window.salonEdit = salonEdit;
 
             function fmtDuration(min) {
                 const h = Math.floor(min / 60), m = min % 60;
                 return h === 0 ? m + ' Min.' : (m === 0 ? h + ' Std.' : h + ' Std. ' + m + ' Min.');
             }
-
-            function updateBookingSummary() {
-                if (!timeInput.value || !dateInput.value || selected.length === 0) {
-                    hide(bookingSummary); return;
-                }
-                const d = new Date(dateInput.value + 'T00:00:00');
-                const dateStr = isNaN(d) ? dateInput.value : d.toLocaleDateString('de-DE', {weekday: 'short', day: '2-digit', month: '2-digit'});
-                summaryText.textContent = selected.map(id => {
-                    const p = document.querySelector('.service-pill[data-service-id="' + id + '"]');
-                    return p ? p.textContent.trim().split('·')[0].trim() : id;
-                }).join(', ') + ' · ' + dateStr + ' · ' + timeInput.value + ' Uhr';
-                reveal(bookingSummary);
-            }
-
-            function toggleService(pill) {
-                const id = parseInt(pill.dataset.serviceId, 10);
-                const idx = selected.indexOf(id);
-                if (idx === -1) {
-                    selected.push(id);
-                    pill.classList.add('border-brand', 'bg-brand', 'text-white');
-                    pill.querySelectorAll('span').forEach(s => { s.classList.remove('text-stone-400'); s.classList.add('text-white/70'); });
-                } else {
-                    selected.splice(idx, 1);
-                    pill.classList.remove('border-brand', 'bg-brand', 'text-white');
-                    pill.querySelectorAll('span').forEach(s => { s.classList.add('text-stone-400'); s.classList.remove('text-white/70'); });
-                }
-                refresh();
+            function fmtDate(d) {
+                const dt = new Date(d + 'T00:00:00');
+                return isNaN(dt) ? d : dt.toLocaleDateString('de-DE', {weekday: 'short', day: '2-digit', month: '2-digit'});
             }
 
             function eligibleStaff() {
-                if (selected.length === 0) return [];
+                if (!selected.length) return [];
                 let inter = null;
                 selected.forEach(id => {
                     const staff = (serviceData[id] || {}).staff || [];
@@ -268,355 +260,76 @@
                     dur += parseInt(pill.dataset.duration, 10);
                     price += parseInt(pill.dataset.price, 10);
                 });
-                if (selected.length === 0) {
-                    hide(summary); hide(staffSection); hide(dateSection); hide(slotSection); hide(bookingSummary); return;
-                }
+                if (!selected.length) { summaryBox.classList.add('hidden'); nextBtn.classList.add('hidden'); return; }
                 summaryDur.textContent = fmtDuration(dur);
                 summaryPrc.textContent = price > 0 ? ' · ' + (price / 100).toFixed(2).replace('.', ',') + ' €' : '';
-                reveal(summary);
+                summaryBox.classList.remove('hidden');
+                nextBtn.classList.remove('hidden');
+
                 const staff = eligibleStaff();
                 staffButtons.innerHTML = '<button type="button" data-staff-id="0" class="staff-btn rounded-xl border-2 border-brand bg-stone-50 px-4 py-2 text-sm font-semibold transition-all">Beliebig</button>';
                 staff.forEach(m => {
                     const b = document.createElement('button');
                     b.type = 'button'; b.dataset.staffId = m.id;
                     b.className = 'staff-btn rounded-xl border-2 border-stone-200 px-4 py-2 text-sm font-semibold transition-all hover:border-brand hover:bg-brand/5';
-                    b.textContent = m.name;
-                    staffButtons.appendChild(b);
+                    b.textContent = m.name; staffButtons.appendChild(b);
                 });
                 staffButtons.querySelectorAll('.staff-btn').forEach(b => b.addEventListener('click', () => selectStaff(b)));
                 staffInput.value = 0;
                 noStaffHint.classList.toggle('hidden', staff.length > 0);
-                reveal(staffSection); reveal(dateSection); reveal(slotSection);
-                loadSlots();
             }
 
             function selectStaff(btn) {
                 document.querySelectorAll('.staff-btn').forEach(b => b.classList.remove('border-brand', 'bg-brand', 'text-white'));
                 btn.classList.add('border-brand', 'bg-brand', 'text-white');
                 staffInput.value = btn.dataset.staffId;
-                loadSlots();
+                loadSalonSlots();
             }
 
-            function renderSlots(slots) {
-                slotContainer.innerHTML = '';
-                const groups = [
-                    { label: 'Vormittag', test: h => h < 12 },
-                    { label: 'Mittag',    test: h => h >= 12 && h < 14 },
-                    { label: 'Nachmittag',test: h => h >= 14 && h < 18 },
-                    { label: 'Abend',     test: h => h >= 18 },
-                ];
-                groups.forEach(g => {
-                    const times = slots.filter(t => g.test(parseInt(t.split(':')[0], 10)));
-                    if (times.length === 0) return;
-                    const lbl = document.createElement('p');
-                    lbl.className = 'slot-group-label';
-                    lbl.textContent = g.label;
-                    slotContainer.appendChild(lbl);
-                    times.forEach(time => slotContainer.appendChild(makeSlotBtn(time)));
-                });
+            function toggleService(pill) {
+                const id = parseInt(pill.dataset.serviceId, 10);
+                const idx = selected.indexOf(id);
+                if (idx === -1) {
+                    selected.push(id);
+                    pill.classList.add('border-brand', 'bg-brand', 'text-white');
+                    pill.querySelectorAll('span').forEach(s => { s.classList.remove('text-stone-400'); s.classList.add('text-white/70'); });
+                } else {
+                    selected.splice(idx, 1);
+                    pill.classList.remove('border-brand', 'bg-brand', 'text-white');
+                    pill.querySelectorAll('span').forEach(s => { s.classList.add('text-stone-400'); s.classList.remove('text-white/70'); });
+                }
+                refresh();
             }
 
-            function makeSlotBtn(time) {
+            nextBtn.addEventListener('click', () => {
+                const names = selected.map(id => {
+                    const p = document.querySelector('.service-pill[data-service-id="' + id + '"]');
+                    return p ? p.textContent.trim().split('·')[0].trim() : '';
+                }).filter(Boolean).join(', ');
+                ss1Summary.textContent = names;
+                sStep('ss1', 'done');
+                sStep('ss2', 'active');
+                loadSalonSlots();
+            });
+
+            dateInput.addEventListener('change', loadSalonSlots);
+
+            function makeSalonSlot(time) {
                 const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.textContent = time;
+                btn.type = 'button'; btn.textContent = time; btn.dataset.time = time;
                 btn.className = 'slot-btn rounded-xl border-2 border-stone-200 py-3 text-sm font-bold tracking-wide transition-all hover:border-brand hover:bg-brand/5 hover:shadow-sm active:scale-[0.97]';
                 btn.addEventListener('click', () => {
                     document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('border-brand', 'bg-brand', 'text-white'));
                     btn.classList.add('border-brand', 'bg-brand', 'text-white');
                     timeInput.value = time;
-                    updateBookingSummary();
+                    ss2Summary.textContent = fmtDate(dateInput.value) + ' · ' + time + ' Uhr';
+                    sStep('ss2', 'done');
+                    sStep('ss3', 'active');
                 });
                 return btn;
             }
 
-            async function loadSlots() {
-                if (selected.length === 0 || !dateInput.value) return;
-                slotContainer.innerHTML = '<p class="col-span-full animate-pulse text-sm text-stone-400">Lade Termine…</p>';
-                timeInput.value = ''; hide(bookingSummary);
-                try {
-                    const params = new URLSearchParams();
-                    params.set('date', dateInput.value);
-                    params.set('staff_member_id', staffInput.value || 0);
-                    selected.forEach(id => params.append('service_ids[]', id));
-                    const res = await fetch(slotsUrl + '?' + params.toString(), {headers: {Accept: 'application/json'}});
-                    const data = await res.json();
-                    slotContainer.innerHTML = '';
-                    if (!data.slots || data.slots.length === 0) {
-                        slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-red-50 px-3 py-2.5 text-sm font-medium text-red-700">An diesem Tag sind leider keine Termine verfügbar.</p>';
-                        return;
-                    }
-                    renderSlots(data.slots);
-                } catch (e) {
-                    slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-red-50 px-3 py-2.5 text-sm text-red-700">Fehler beim Laden. Bitte erneut versuchen.</p>';
-                }
-            }
-
-            document.querySelectorAll('.service-pill').forEach(pill => pill.addEventListener('click', () => toggleService(pill)));
-            dateInput.addEventListener('change', () => { loadSlots(); updateBookingSummary(); });
-        })();
-        </script>
-        @endif
-
-    @else
-    {{-- ══════════════════════════════════════════════════════════════════════
-         RESTAURANT-FORMULAR
-    ══════════════════════════════════════════════════════════════════════ --}}
-        <form method="POST" action="{{ route('booking.store', [$tenant->slug, $location->slug]) }}"
-              class="space-y-7" id="bookingForm">
-            @csrf
-            <input type="text" name="website" class="hidden" tabindex="-1" autocomplete="off" aria-hidden="true">
-
-            {{-- Step 1: Personenzahl --}}
-            <div>
-                <div class="mb-3 flex items-center gap-2.5">
-                    <span class="step-badge">1</span>
-                    <label class="text-sm font-semibold">Wie viele Personen?</label>
-                </div>
-                <div class="grid grid-cols-4 gap-2 sm:grid-cols-5" id="partyButtons">
-                    @for($i = $settings->min_party_online; $i <= min($settings->max_party_online, $settings->min_party_online + 8); $i++)
-                        <button type="button" data-party="{{ $i }}"
-                                class="party-btn flex flex-col items-center justify-center rounded-2xl border-2 border-stone-200 py-4 transition-all duration-150 hover:border-brand hover:bg-brand/5 hover:shadow-md hover:shadow-brand/10 active:scale-95">
-                            <span class="text-2xl font-black leading-none">{{ $i }}</span>
-                            <span class="mt-0.5 text-[9px] font-bold uppercase tracking-widest text-stone-400">{{ $i === 1 ? 'Person' : 'Pers.' }}</span>
-                        </button>
-                    @endfor
-                </div>
-                <input type="hidden" name="party_size" id="partySize" value="{{ old('party_size', 2) }}" required>
-                @error('party_size')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
-            </div>
-
-            {{-- Step 2: Datum --}}
-            <div>
-                <div class="mb-3 flex items-center gap-2.5">
-                    <span class="step-badge">2</span>
-                    <label for="date" class="text-sm font-semibold">Datum wählen</label>
-                </div>
-                <input type="date" name="date" id="date" required
-                       min="{{ now($location->timezone)->toDateString() }}"
-                       max="{{ now($location->timezone)->addDays($settings->max_advance_days)->toDateString() }}"
-                       value="{{ old('date', now($location->timezone)->toDateString()) }}"
-                       class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3 text-base">
-                @error('date')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
-            </div>
-
-            {{-- Step 3: Uhrzeit --}}
-            <div>
-                <div class="mb-3 flex items-center gap-2.5">
-                    <span class="step-badge">3</span>
-                    <label class="text-sm font-semibold">Uhrzeit wählen</label>
-                </div>
-                <div id="slotContainer" class="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                    <p class="col-span-full text-sm text-stone-400">Bitte Personenzahl und Datum wählen.</p>
-                </div>
-                <input type="hidden" name="time" id="timeInput" value="{{ old('time') }}" required>
-                <div id="alternatives" class="mt-3 hidden rounded-xl bg-amber-50 p-3 text-sm text-amber-900"></div>
-                @error('time')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
-            </div>
-
-            @if($settings->public_floorplan_enabled)
-            {{-- Tischplan --}}
-            <div id="floorplanSection" class="hidden">
-                <div class="mb-3 flex items-center justify-between">
-                    <div class="flex items-center gap-2.5">
-                        <span class="step-badge">✦</span>
-                        <label class="text-sm font-semibold">Tisch wählen <span class="font-normal text-stone-400">(optional)</span></label>
-                    </div>
-                    <span class="flex items-center gap-3 text-xs text-stone-400">
-                        <span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-sm" style="background:#34d399"></span> frei</span>
-                        <span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-sm" style="background:#d6d3d1"></span> belegt</span>
-                    </span>
-                </div>
-                <div id="roomTabs" class="mb-2 flex flex-wrap gap-2"></div>
-                <div id="floorplanCanvas" class="relative w-full overflow-hidden rounded-xl border-2 border-stone-100 bg-stone-50" style="height:340px"></div>
-                <p id="floorplanHint" class="mt-2 text-xs text-stone-500">Tippen Sie auf einen freien Tisch – oder lassen Sie die Auswahl frei für automatische Zuteilung.</p>
-                <input type="hidden" name="table_id" id="tableId" value="">
-            </div>
-            @endif
-
-            {{-- Booking-Summary-Strip --}}
-            <div id="bookingSummary" class="hidden rounded-2xl ring-1" style="background:color-mix(in oklab,var(--brand) 6%,white);ring-color:color-mix(in oklab,var(--brand) 20%,transparent)">
-                <div class="px-4 py-3.5">
-                    <p class="mb-0.5 text-[10px] font-bold uppercase tracking-widest" style="color:var(--brand)">Ihre Auswahl</p>
-                    <p class="font-semibold text-stone-800" id="summaryText"></p>
-                </div>
-            </div>
-
-            {{-- Step 4: Kontaktdaten --}}
-            <div class="space-y-4 border-t border-stone-100 pt-6">
-                <div class="flex items-center gap-2.5">
-                    <span class="step-badge">4</span>
-                    <span class="text-sm font-semibold">Ihre Daten</span>
-                </div>
-                <div>
-                    <label for="name" class="mb-1.5 block text-sm font-semibold">Name *</label>
-                    <input type="text" name="name" id="name" required value="{{ old('name') }}" autocomplete="name"
-                           class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
-                    @error('name')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
-                </div>
-                @if($settings->fieldRule('email') !== 'hidden')
-                <div>
-                    <label for="email" class="mb-1.5 block text-sm font-semibold">E-Mail {{ $settings->fieldRule('email') === 'required' ? '*' : '' }}</label>
-                    <input type="email" name="email" id="email" value="{{ old('email') }}" autocomplete="email"
-                           @if($settings->fieldRule('email') === 'required') required @endif
-                           class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
-                    @error('email')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
-                </div>
-                @endif
-                @if($settings->fieldRule('phone') !== 'hidden')
-                <div>
-                    <label for="phone" class="mb-1.5 block text-sm font-semibold">Telefon {{ $settings->fieldRule('phone') === 'required' ? '*' : '' }}</label>
-                    <input type="tel" name="phone" id="phone" value="{{ old('phone') }}" autocomplete="tel"
-                           @if($settings->fieldRule('phone') === 'required') required @endif
-                           class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
-                    @error('phone')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
-                </div>
-                @endif
-                @if($settings->fieldRule('occasion') !== 'hidden')
-                <div>
-                    <label for="occasion" class="mb-1.5 block text-sm font-semibold">Anlass <span class="font-normal text-stone-400">(optional)</span></label>
-                    <select name="occasion" id="occasion" class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
-                        <option value="">–</option>
-                        @foreach(['Geburtstag', 'Jahrestag', 'Geschäftsessen', 'Familienfeier', 'Date', 'Sonstiges'] as $occ)
-                            <option @selected(old('occasion') === $occ)>{{ $occ }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                @endif
-                @if($settings->fieldRule('allergies') !== 'hidden')
-                <div>
-                    <label for="allergies" class="mb-1.5 block text-sm font-semibold">Allergien / Unverträglichkeiten <span class="font-normal text-stone-400">(optional)</span></label>
-                    <input type="text" name="allergies" id="allergies" value="{{ old('allergies') }}"
-                           class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
-                </div>
-                @endif
-                @if($settings->fieldRule('note') !== 'hidden')
-                <div>
-                    <label for="note" class="mb-1.5 block text-sm font-semibold">Anmerkung <span class="font-normal text-stone-400">(optional)</span></label>
-                    <textarea name="note" id="note" rows="2"
-                              class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">{{ old('note') }}</textarea>
-                </div>
-                @endif
-            </div>
-
-            {{-- Datenschutz --}}
-            <div class="space-y-3 border-t border-stone-100 pt-5 text-sm">
-                <label class="flex cursor-pointer items-start gap-3">
-                    <input type="checkbox" name="privacy_accepted" value="1" required
-                           class="mt-0.5 h-4 w-4 flex-shrink-0 rounded accent-[var(--brand)]">
-                    <span class="text-stone-700">Ich habe die @if($tenant->privacy_url)<a href="{{ $tenant->privacy_url }}" target="_blank" rel="noopener" class="text-brand underline">Datenschutzhinweise</a>@else Datenschutzhinweise @endif gelesen und akzeptiere die Verarbeitung meiner Daten. *</span>
-                </label>
-                <label class="flex cursor-pointer items-start gap-3">
-                    <input type="checkbox" name="newsletter" value="1"
-                           class="mt-0.5 h-4 w-4 flex-shrink-0 rounded accent-[var(--brand)]">
-                    <span class="text-stone-500">Newsletter mit Angeboten erhalten (jederzeit widerrufbar).</span>
-                </label>
-            </div>
-
-            <button type="submit"
-                    class="btn-brand flex w-full items-center justify-center gap-2 rounded-xl py-4 text-lg font-bold text-white transition-all active:scale-[0.99]">
-                Jetzt reservieren
-                <svg class="h-5 w-5 opacity-80" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
-            </button>
-        </form>
-
-        @if(session('alternatives'))
-        <div class="mt-4 rounded-2xl bg-amber-50 p-4 text-sm text-amber-900">
-            <p class="font-semibold">Dieser Zeitpunkt ist leider nicht mehr verfügbar.</p>
-            @if(!empty(session('alternatives')['same_day']))
-                <p class="mt-1">Alternative Zeiten: {{ implode(' · ', session('alternatives')['same_day']) }}</p>
-            @endif
-        </div>
-        @endif
-
-        @push('scripts')@endpush
-        <script>
-        (function () {
-            const slotsUrl    = @json(route('booking.slots', [$tenant->slug, $location->slug]));
-            const partyInput  = document.getElementById('partySize');
-            const dateInput   = document.getElementById('date');
-            const timeInput   = document.getElementById('timeInput');
-            const slotContainer = document.getElementById('slotContainer');
-            const altBox      = document.getElementById('alternatives');
-            const bookingSummary = document.getElementById('bookingSummary');
-            const summaryText = document.getElementById('summaryText');
-
-            const floorplanUrl   = @json(route('booking.floorplan', [$tenant->slug, $location->slug]));
-            const fpSection      = document.getElementById('floorplanSection');
-            const fpCanvas       = document.getElementById('floorplanCanvas');
-            const roomTabs       = document.getElementById('roomTabs');
-            const tableIdInput   = document.getElementById('tableId');
-            let fpRooms = [];
-
-            function reveal(el) {
-                el.classList.remove('hidden');
-                el.classList.remove('reveal-up');
-                void el.offsetHeight;
-                el.classList.add('reveal-up');
-            }
-
-            function fmtDate(d) {
-                const dt = new Date(d + 'T00:00:00');
-                return isNaN(dt) ? d : dt.toLocaleDateString('de-DE', {weekday: 'short', day: '2-digit', month: '2-digit'});
-            }
-
-            function updateSummary() {
-                if (!partyInput.value || !dateInput.value || !timeInput.value) {
-                    bookingSummary.classList.add('hidden'); return;
-                }
-                summaryText.textContent =
-                    partyInput.value + ' ' + (partyInput.value === '1' ? 'Person' : 'Personen') +
-                    ' · ' + fmtDate(dateInput.value) +
-                    ' · ' + timeInput.value + ' Uhr';
-                reveal(bookingSummary);
-            }
-
-            function selectParty(btn) {
-                document.querySelectorAll('.party-btn').forEach(b => {
-                    b.classList.remove('border-brand', 'bg-brand', 'text-white');
-                    b.querySelectorAll('span').forEach(s => { s.classList.remove('text-white'); s.classList.add('text-stone-400'); });
-                });
-                btn.classList.add('border-brand', 'bg-brand', 'text-white');
-                btn.querySelectorAll('span').forEach(s => { s.classList.remove('text-stone-400'); s.classList.add('text-white'); });
-                partyInput.value = btn.dataset.party;
-                loadSlots();
-                updateSummary();
-            }
-            document.querySelectorAll('.party-btn').forEach(btn => btn.addEventListener('click', () => selectParty(btn)));
-            dateInput.addEventListener('change', () => { loadSlots(); updateSummary(); });
-
-            function resetFloorplan() {
-                if (!fpSection) return;
-                fpSection.classList.add('hidden');
-                if (tableIdInput) tableIdInput.value = '';
-                fpRooms = [];
-            }
-
-            async function pickNextSlot(date, time) {
-                dateInput.value = date;
-                await loadSlots();
-                const btn = [...slotContainer.querySelectorAll('.slot-btn')].find(b => b.dataset.time === time);
-                if (btn) { btn.click(); } else { timeInput.value = time; loadFloorplan(); updateSummary(); }
-                slotContainer.scrollIntoView({behavior: 'smooth', block: 'nearest'});
-            }
-
-            function makeSlotBtn(time) {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.textContent = time;
-                btn.dataset.time = time;
-                btn.className = 'slot-btn rounded-xl border-2 border-stone-200 py-3 text-sm font-bold tracking-wide transition-all hover:border-brand hover:bg-brand/5 hover:shadow-sm active:scale-[0.97]';
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('border-brand', 'bg-brand', 'text-white'));
-                    btn.classList.add('border-brand', 'bg-brand', 'text-white');
-                    timeInput.value = time;
-                    loadFloorplan();
-                    updateSummary();
-                });
-                return btn;
-            }
-
-            function renderSlots(slots) {
+            function renderSalonSlots(slots) {
                 slotContainer.innerHTML = '';
                 const groups = [
                     { label: 'Vormittag',  test: h => h < 12 },
@@ -627,139 +340,428 @@
                 let any = false;
                 groups.forEach(g => {
                     const times = slots.filter(t => g.test(parseInt(t.split(':')[0], 10)));
-                    if (times.length === 0) return;
-                    const lbl = document.createElement('p');
-                    lbl.className = 'slot-group-label';
-                    lbl.textContent = g.label;
+                    if (!times.length) return;
+                    const lbl = document.createElement('p'); lbl.className = 'slot-group-label'; lbl.textContent = g.label;
                     slotContainer.appendChild(lbl);
-                    times.forEach(t => slotContainer.appendChild(makeSlotBtn(t)));
-                    any = true;
+                    times.forEach(t => slotContainer.appendChild(makeSalonSlot(t))); any = true;
                 });
-                if (!any) {
-                    slots.forEach(t => slotContainer.appendChild(makeSlotBtn(t)));
-                }
+                if (!any) slots.forEach(t => slotContainer.appendChild(makeSalonSlot(t)));
             }
 
-            async function loadSlots() {
-                if (!partyInput.value || !dateInput.value) return;
-                slotContainer.innerHTML = '<p class="col-span-full animate-pulse text-sm text-stone-400">Verfügbare Zeiten werden geladen…</p>';
-                altBox.classList.add('hidden');
-                resetFloorplan();
-                bookingSummary.classList.add('hidden');
+            async function loadSalonSlots() {
+                if (!selected.length || !dateInput.value) return;
+                slotContainer.innerHTML = '<p class="col-span-full animate-pulse text-sm text-stone-400">Lade Termine…</p>';
+                timeInput.value = '';
                 try {
-                    const res = await fetch(slotsUrl + '?date=' + dateInput.value + '&party_size=' + partyInput.value, {headers: {Accept: 'application/json'}});
+                    const params = new URLSearchParams();
+                    params.set('date', dateInput.value);
+                    params.set('staff_member_id', staffInput.value || 0);
+                    selected.forEach(id => params.append('service_ids[]', id));
+                    const res = await fetch(slotsUrl + '?' + params.toString(), {headers: {Accept: 'application/json'}});
                     const data = await res.json();
-                    slotContainer.innerHTML = '';
-                    if (!data.slots || data.slots.length === 0) {
-                        if (data.oversized) {
-                            slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm text-stone-600">Für ' + partyInput.value + ' Personen ist online keine Reservierung möglich (max. ' + data.max_party + ').</p>';
-                            let html = 'Für größere Gruppen kontaktieren Sie uns direkt';
-                            html += data.phone ? ': <a class="font-semibold underline" href="tel:' + data.phone.replace(/\s/g, '') + '">' + data.phone + '</a>' : '.';
-                            altBox.innerHTML = html; altBox.classList.remove('hidden');
-                            return;
-                        }
-                        const head = document.createElement('p');
-                        head.className = 'col-span-full rounded-xl bg-red-50 px-3 py-2.5 text-sm font-medium text-red-700';
-                        head.textContent = 'Am ' + fmtDate(dateInput.value) + ' sind für ' + partyInput.value + ' Personen leider keine Tische frei.';
-                        slotContainer.appendChild(head);
-                        if (data.next_slots && data.next_slots.length) {
-                            const sub = document.createElement('p');
-                            sub.className = 'col-span-full mt-2 text-xs font-semibold uppercase tracking-wide text-stone-500';
-                            sub.textContent = 'Nächste freie Termine:';
-                            slotContainer.appendChild(sub);
-                            data.next_slots.forEach(s => {
-                                const btn = document.createElement('button');
-                                btn.type = 'button';
-                                btn.className = 'rounded-xl border-2 border-stone-200 px-2 py-2.5 text-center transition-all hover:border-brand hover:bg-brand/5 active:scale-[0.97]';
-                                btn.innerHTML = '<span class="block text-[10px] font-semibold uppercase tracking-wide text-stone-400">' + fmtDate(s.date) + '</span><span class="block text-base font-bold">' + s.time + '</span>';
-                                btn.addEventListener('click', () => pickNextSlot(s.date, s.time));
-                                slotContainer.appendChild(btn);
-                            });
-                        }
-                        if (data.waitlist_available) {
-                            altBox.innerHTML = 'Kein Termin dabei? <strong>Warteliste</strong> nutzen.';
-                            altBox.classList.remove('hidden');
-                        }
+                    if (!data.slots || !data.slots.length) {
+                        slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-red-50 px-3 py-2.5 text-sm font-medium text-red-700">An diesem Tag sind leider keine Termine verfügbar.</p>';
                         return;
                     }
-                    renderSlots(data.slots);
+                    renderSalonSlots(data.slots);
                 } catch (e) {
-                    slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-red-50 px-3 py-2.5 text-sm text-red-700">Fehler beim Laden – bitte erneut versuchen.</p>';
+                    slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-red-50 px-3 py-2.5 text-sm text-red-700">Fehler – bitte erneut versuchen.</p>';
                 }
             }
 
-            async function loadFloorplan() {
-                if (!fpSection || !timeInput.value) return;
-                tableIdInput.value = '';
-                try {
-                    const url = floorplanUrl + '?date=' + dateInput.value + '&time=' + timeInput.value + '&party_size=' + partyInput.value;
-                    const res = await fetch(url, {headers: {Accept: 'application/json'}});
-                    const data = await res.json();
-                    fpRooms = data.rooms || [];
-                    if (!fpRooms.length) { fpSection.classList.add('hidden'); return; }
-                    reveal(fpSection); buildRoomTabs(); renderRoom(0);
-                } catch (e) { fpSection.classList.add('hidden'); }
-            }
-
-            function buildRoomTabs() {
-                roomTabs.innerHTML = '';
-                fpRooms.forEach((room, i) => {
-                    const b = document.createElement('button');
-                    b.type = 'button';
-                    b.textContent = (room.is_outdoor ? '☀ ' : '') + room.name;
-                    b.className = 'room-tab rounded-full border-2 px-3 py-1.5 text-sm font-semibold transition-all ' + (i === 0 ? 'border-brand bg-stone-50' : 'border-stone-200 hover:border-brand hover:bg-brand/5');
-                    b.addEventListener('click', () => {
-                        document.querySelectorAll('.room-tab').forEach(t => t.classList.remove('border-brand', 'bg-brand', 'text-white'));
-                        b.classList.add('border-brand', 'bg-brand', 'text-white');
-                        renderRoom(i);
-                    });
-                    roomTabs.appendChild(b);
-                });
-                roomTabs.classList.toggle('hidden', fpRooms.length < 2);
-            }
-
-            function renderRoom(index) {
-                const room = fpRooms[index]; if (!room) return;
-                fpCanvas.innerHTML = '';
-                const pad = 20; let maxX = 0, maxY = 0;
-                room.tables.forEach(t => { maxX = Math.max(maxX, t.pos_x + t.width); maxY = Math.max(maxY, t.pos_y + t.height); });
-                const cw = fpCanvas.clientWidth || 600, ch = fpCanvas.clientHeight || 340;
-                const scale = Math.min((cw - pad * 2) / Math.max(maxX, 1), (ch - pad * 2) / Math.max(maxY, 1), 1);
-                const colors = { available: '#34d399', occupied: '#d6d3d1', unsuitable: '#fde68a', unavailable: '#e7e5e4' };
-                room.tables.forEach(t => {
-                    const el = document.createElement('button');
-                    el.type = 'button'; el.title = 'Tisch ' + t.name + ' · ' + t.capacity + ' Pers.';
-                    el.dataset.tableId = t.id;
-                    Object.assign(el.style, {
-                        position: 'absolute', left: (pad + t.pos_x * scale) + 'px', top: (pad + t.pos_y * scale) + 'px',
-                        width: Math.max(28, t.width * scale) + 'px', height: Math.max(28, t.height * scale) + 'px',
-                        background: colors[t.status] || '#d6d3d1',
-                        borderRadius: t.shape === 'round' ? '50%' : '8px',
-                        border: '2px solid rgba(0,0,0,.12)', fontSize: '11px', fontWeight: '600', color: '#1c1917',
-                        transform: t.rotation ? 'rotate(' + t.rotation + 'deg)' : '',
-                    });
-                    el.textContent = t.name;
-                    if (t.selectable) { el.style.cursor = 'pointer'; el.addEventListener('click', () => selectTable(t.id, el)); }
-                    else { el.disabled = true; el.style.opacity = t.status === 'available' ? '1' : '.7'; el.style.cursor = 'not-allowed'; }
-                    fpCanvas.appendChild(el);
-                });
-            }
-
-            function selectTable(id, el) {
-                const was = tableIdInput.value === String(id);
-                fpCanvas.querySelectorAll('button').forEach(b => b.style.outline = '');
-                tableIdInput.value = was ? '' : id;
-                if (!was) { el.style.outline = '3px solid var(--brand)'; el.style.outlineOffset = '2px'; }
-            }
-
-            const def = document.querySelector('.party-btn[data-party="{{ old('party_size', 2) }}"]');
-            if (def) selectParty(def);
+            document.querySelectorAll('.service-pill').forEach(pill => pill.addEventListener('click', () => toggleService(pill)));
         })();
         </script>
-    @endif
+        @endif
+
+    @else
+    {{-- ══ RESTAURANT: AKKORDEON ═══════════════════════════════════════════════ --}}
+    <form method="POST" action="{{ route('booking.store', [$tenant->slug, $location->slug]) }}"
+          id="bookingForm">
+        @csrf
+        <input type="text" name="website" class="hidden" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+        <div class="divide-y divide-stone-100">
+
+            {{-- ── Step 1: Personenzahl ─────────────────────────────────────── --}}
+            <div id="sp1" class="step-panel" data-state="active">
+                <div class="sp-header flex items-center gap-3 px-5 py-4 sm:px-6" onclick="if(this.closest('.step-panel').dataset.state==='done')editStep(1)">
+                    <span class="sp-num">1</span>
+                    <span class="flex-1 text-sm font-semibold">Wie viele Personen?</span>
+                    <span class="sp-summary text-sm text-stone-400" id="sp1Summary"></span>
+                    <button type="button" class="sp-edit ml-3 text-xs font-semibold text-brand hover:underline" onclick="event.stopPropagation();editStep(1)">Ändern</button>
+                </div>
+                <div class="sp-body px-5 pb-5 sm:px-6">
+                    <div class="grid grid-cols-4 gap-2 sm:grid-cols-5" id="partyButtons">
+                        @for($i = $settings->min_party_online; $i <= min($settings->max_party_online, $settings->min_party_online + 8); $i++)
+                            <button type="button" data-party="{{ $i }}"
+                                    class="party-btn flex flex-col items-center justify-center rounded-2xl border-2 border-stone-200 py-3.5 transition-all duration-150 hover:border-brand hover:bg-brand/5 active:scale-95">
+                                <span class="text-xl font-black leading-none">{{ $i }}</span>
+                                <span class="mt-0.5 text-[9px] font-bold uppercase tracking-widest text-stone-400">{{ $i === 1 ? 'Person' : 'Pers.' }}</span>
+                            </button>
+                        @endfor
+                    </div>
+                    <input type="hidden" name="party_size" id="partySize" value="{{ old('party_size') }}" required>
+                    @error('party_size')<p class="mt-2 text-xs text-red-600">{{ $message }}</p>@enderror
+                </div>
+            </div>
+
+            {{-- ── Step 2: Datum & Uhrzeit ──────────────────────────────────── --}}
+            <div id="sp2" class="step-panel" data-state="locked">
+                <div class="sp-header flex items-center gap-3 px-5 py-4 sm:px-6" onclick="if(this.closest('.step-panel').dataset.state==='done')editStep(2)">
+                    <span class="sp-num">2</span>
+                    <span class="flex-1 text-sm font-semibold">Wann?</span>
+                    <span class="sp-summary text-sm text-stone-400" id="sp2Summary"></span>
+                    <button type="button" class="sp-edit ml-3 text-xs font-semibold text-brand hover:underline" onclick="event.stopPropagation();editStep(2)">Ändern</button>
+                </div>
+                <div class="sp-body space-y-4 px-5 pb-5 sm:px-6">
+                    <input type="date" name="date" id="date" required
+                           min="{{ now($location->timezone)->toDateString() }}"
+                           max="{{ now($location->timezone)->addDays($settings->max_advance_days)->toDateString() }}"
+                           value="{{ old('date', now($location->timezone)->toDateString()) }}"
+                           class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3 text-base">
+                    @error('date')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+
+                    <div id="slotContainer" class="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                        <p class="col-span-full text-sm text-stone-400">Wählen Sie zuerst Ihre Personenzahl.</p>
+                    </div>
+                    <input type="hidden" name="time" id="timeInput" value="{{ old('time') }}" required>
+                    <div id="alternatives" class="hidden rounded-xl bg-amber-50 p-3 text-sm text-amber-900"></div>
+                    @error('time')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+
+                    @if($settings->public_floorplan_enabled)
+                    <div id="floorplanSection" class="hidden">
+                        <div class="mb-3 flex items-center justify-between">
+                            <span class="text-sm font-semibold">Tisch wählen <span class="font-normal text-stone-400">(optional)</span></span>
+                            <span class="flex gap-3 text-xs text-stone-400">
+                                <span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-sm bg-[#34d399]"></span>frei</span>
+                                <span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-sm bg-[#d6d3d1]"></span>belegt</span>
+                            </span>
+                        </div>
+                        <div id="roomTabs" class="mb-2 flex flex-wrap gap-2"></div>
+                        <div id="floorplanCanvas" class="relative w-full overflow-hidden rounded-xl border-2 border-stone-100 bg-stone-50" style="height:280px"></div>
+                        <p class="mt-2 text-xs text-stone-500">Tippen Sie auf einen freien Tisch – oder leer lassen für automatische Zuteilung.</p>
+                        <input type="hidden" name="table_id" id="tableId" value="">
+                    </div>
+                    @endif
+                </div>
+            </div>
+
+            {{-- ── Step 3: Kontaktdaten ──────────────────────────────────────── --}}
+            <div id="sp3" class="step-panel" data-state="locked">
+                <div class="sp-header flex items-center gap-3 px-5 py-4 sm:px-6">
+                    <span class="sp-num">3</span>
+                    <span class="text-sm font-semibold">Ihre Angaben</span>
+                </div>
+                <div class="sp-body space-y-4 px-5 pb-6 sm:px-6">
+                    <div>
+                        <label for="name" class="mb-1.5 block text-sm font-semibold">Name *</label>
+                        <input type="text" name="name" id="name" required value="{{ old('name') }}" autocomplete="name"
+                               class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                        @error('name')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+                    </div>
+                    @if($settings->fieldRule('email') !== 'hidden')
+                    <div>
+                        <label for="email" class="mb-1.5 block text-sm font-semibold">E-Mail {{ $settings->fieldRule('email') === 'required' ? '*' : '' }}</label>
+                        <input type="email" name="email" id="email" value="{{ old('email') }}" autocomplete="email"
+                               @if($settings->fieldRule('email') === 'required') required @endif
+                               class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                        @error('email')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+                    </div>
+                    @endif
+                    @if($settings->fieldRule('phone') !== 'hidden')
+                    <div>
+                        <label for="phone" class="mb-1.5 block text-sm font-semibold">Telefon {{ $settings->fieldRule('phone') === 'required' ? '*' : '' }}</label>
+                        <input type="tel" name="phone" id="phone" value="{{ old('phone') }}" autocomplete="tel"
+                               @if($settings->fieldRule('phone') === 'required') required @endif
+                               class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                        @error('phone')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+                    </div>
+                    @endif
+                    @if($settings->fieldRule('occasion') !== 'hidden')
+                    <div>
+                        <label for="occasion" class="mb-1.5 block text-sm font-semibold">Anlass <span class="font-normal text-stone-400">(optional)</span></label>
+                        <select name="occasion" id="occasion" class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                            <option value="">–</option>
+                            @foreach(['Geburtstag','Jahrestag','Geschäftsessen','Familienfeier','Date','Sonstiges'] as $occ)
+                                <option @selected(old('occasion') === $occ)>{{ $occ }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @endif
+                    @if($settings->fieldRule('allergies') !== 'hidden')
+                    <div>
+                        <label for="allergies" class="mb-1.5 block text-sm font-semibold">Allergien / Unverträglichkeiten <span class="font-normal text-stone-400">(optional)</span></label>
+                        <input type="text" name="allergies" id="allergies" value="{{ old('allergies') }}"
+                               class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                    </div>
+                    @endif
+                    @if($settings->fieldRule('note') !== 'hidden')
+                    <div>
+                        <label for="note" class="mb-1.5 block text-sm font-semibold">Anmerkung <span class="font-normal text-stone-400">(optional)</span></label>
+                        <textarea name="note" id="note" rows="2"
+                                  class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">{{ old('note') }}</textarea>
+                    </div>
+                    @endif
+
+                    <div class="space-y-3 border-t border-stone-100 pt-4 text-sm">
+                        <label class="flex cursor-pointer items-start gap-3">
+                            <input type="checkbox" name="privacy_accepted" value="1" required
+                                   class="mt-0.5 h-4 w-4 flex-shrink-0 rounded accent-[var(--brand)]">
+                            <span class="text-stone-600">Ich habe die @if($tenant->privacy_url)<a href="{{ $tenant->privacy_url }}" target="_blank" rel="noopener" class="text-brand underline">Datenschutzhinweise</a>@else Datenschutzhinweise @endif gelesen und akzeptiere die Verarbeitung meiner Daten. *</span>
+                        </label>
+                        <label class="flex cursor-pointer items-start gap-3">
+                            <input type="checkbox" name="newsletter" value="1"
+                                   class="mt-0.5 h-4 w-4 flex-shrink-0 rounded accent-[var(--brand)]">
+                            <span class="text-stone-400">Newsletter mit Angeboten erhalten (jederzeit widerrufbar).</span>
+                        </label>
+                    </div>
+
+                    <button type="submit"
+                            class="btn-brand flex w-full items-center justify-center gap-2 rounded-xl py-4 text-base font-bold text-white transition-all active:scale-[0.99]">
+                        Jetzt reservieren
+                        <svg class="h-5 w-5 opacity-80" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                    </button>
+                </div>
+            </div>
+
+        </div>{{-- /divide-y --}}
+    </form>
+
+    @if(session('alternatives'))
+    <div class="mx-5 mb-5 rounded-2xl bg-amber-50 p-4 text-sm text-amber-900 sm:mx-6">
+        <p class="font-semibold">Dieser Zeitpunkt ist leider nicht mehr verfügbar.</p>
+        @if(!empty(session('alternatives')['same_day']))
+            <p class="mt-1">Alternative Zeiten: {{ implode(' · ', session('alternatives')['same_day']) }}</p>
+        @endif
     </div>
+    @endif
+
+    <script>
+    (function () {
+        const slotsUrl      = @json(route('booking.slots', [$tenant->slug, $location->slug]));
+        const floorplanUrl  = @json(route('booking.floorplan', [$tenant->slug, $location->slug]));
+        const partyInput    = document.getElementById('partySize');
+        const dateInput     = document.getElementById('date');
+        const timeInput     = document.getElementById('timeInput');
+        const slotContainer = document.getElementById('slotContainer');
+        const altBox        = document.getElementById('alternatives');
+        const sp1Summary    = document.getElementById('sp1Summary');
+        const sp2Summary    = document.getElementById('sp2Summary');
+        const fpSection     = document.getElementById('floorplanSection');
+        const fpCanvas      = document.getElementById('floorplanCanvas');
+        const roomTabsEl    = document.getElementById('roomTabs');
+        const tableIdInput  = document.getElementById('tableId');
+        let fpRooms = [];
+
+        function stepState(id, state) {
+            const el = document.getElementById(id);
+            el.dataset.state = state;
+            if (state === 'active') {
+                const body = el.querySelector('.sp-body');
+                if (body) { body.classList.remove('reveal-up'); void body.offsetHeight; body.classList.add('reveal-up'); }
+                setTimeout(() => el.scrollIntoView({behavior: 'smooth', block: 'nearest'}), 60);
+            }
+        }
+
+        function editStep(n) {
+            stepState('sp' + n, 'active');
+            for (let i = n + 1; i <= 3; i++) stepState('sp' + i, 'locked');
+            if (n <= 2) { timeInput.value = ''; resetFp(); }
+        }
+        window.editStep = editStep;
+
+        function fmtDate(d) {
+            const dt = new Date(d + 'T00:00:00');
+            return isNaN(dt) ? d : dt.toLocaleDateString('de-DE', {weekday: 'short', day: '2-digit', month: '2-digit'});
+        }
+
+        function selectParty(btn) {
+            document.querySelectorAll('.party-btn').forEach(b => {
+                b.classList.remove('border-brand', 'bg-brand', 'text-white');
+                b.querySelectorAll('span').forEach(s => { s.classList.remove('text-white'); s.classList.add('text-stone-400'); });
+            });
+            btn.classList.add('border-brand', 'bg-brand', 'text-white');
+            btn.querySelectorAll('span').forEach(s => { s.classList.remove('text-stone-400'); s.classList.add('text-white'); });
+            partyInput.value = btn.dataset.party;
+            sp1Summary.textContent = btn.dataset.party + (btn.dataset.party === '1' ? ' Person' : ' Personen');
+            stepState('sp1', 'done');
+            stepState('sp2', 'active');
+            stepState('sp3', 'locked');
+            loadSlots();
+        }
+        document.querySelectorAll('.party-btn').forEach(btn => btn.addEventListener('click', () => selectParty(btn)));
+        dateInput.addEventListener('change', loadSlots);
+
+        function resetFp() {
+            if (!fpSection) return;
+            fpSection.classList.add('hidden');
+            if (tableIdInput) tableIdInput.value = '';
+            fpRooms = [];
+        }
+
+        function makeSlotBtn(time) {
+            const btn = document.createElement('button');
+            btn.type = 'button'; btn.textContent = time; btn.dataset.time = time;
+            btn.className = 'slot-btn rounded-xl border-2 border-stone-200 py-3 text-sm font-bold tracking-wide transition-all hover:border-brand hover:bg-brand/5 hover:shadow-sm active:scale-[0.97]';
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('border-brand', 'bg-brand', 'text-white'));
+                btn.classList.add('border-brand', 'bg-brand', 'text-white');
+                timeInput.value = time;
+                sp2Summary.textContent = fmtDate(dateInput.value) + ' · ' + time + ' Uhr';
+                stepState('sp2', 'done');
+                stepState('sp3', 'active');
+                loadFp();
+            });
+            return btn;
+        }
+
+        function renderSlots(slots) {
+            slotContainer.innerHTML = '';
+            const groups = [
+                { label: 'Vormittag',  test: h => h < 12 },
+                { label: 'Mittag',     test: h => h >= 12 && h < 14 },
+                { label: 'Nachmittag', test: h => h >= 14 && h < 18 },
+                { label: 'Abend',      test: h => h >= 18 },
+            ];
+            let any = false;
+            groups.forEach(g => {
+                const times = slots.filter(t => g.test(parseInt(t.split(':')[0], 10)));
+                if (!times.length) return;
+                const lbl = document.createElement('p');
+                lbl.className = 'slot-group-label'; lbl.textContent = g.label;
+                slotContainer.appendChild(lbl);
+                times.forEach(t => slotContainer.appendChild(makeSlotBtn(t)));
+                any = true;
+            });
+            if (!any) slots.forEach(t => slotContainer.appendChild(makeSlotBtn(t)));
+        }
+
+        async function pickNextSlot(date, time) {
+            dateInput.value = date;
+            await loadSlots();
+            const btn = slotContainer.querySelector('.slot-btn[data-time="' + time + '"]');
+            if (btn) btn.click(); else { timeInput.value = time; loadFp(); }
+        }
+
+        async function loadSlots() {
+            if (!partyInput.value || !dateInput.value) return;
+            slotContainer.innerHTML = '<p class="col-span-full animate-pulse text-sm text-stone-400">Verfügbare Zeiten werden geladen…</p>';
+            altBox.classList.add('hidden'); resetFp();
+            try {
+                const res = await fetch(slotsUrl + '?date=' + dateInput.value + '&party_size=' + partyInput.value, {headers: {Accept: 'application/json'}});
+                const data = await res.json();
+                slotContainer.innerHTML = '';
+                if (!data.slots || !data.slots.length) {
+                    if (data.oversized) {
+                        slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm text-stone-600">Für ' + partyInput.value + ' Personen ist online keine Reservierung möglich (max. ' + data.max_party + ').</p>';
+                        altBox.innerHTML = 'Für größere Gruppen kontaktieren Sie uns direkt' + (data.phone ? ': <a class="font-semibold underline" href="tel:' + data.phone.replace(/\s/g, '') + '">' + data.phone + '</a>' : '.');
+                        altBox.classList.remove('hidden'); return;
+                    }
+                    const head = document.createElement('p');
+                    head.className = 'col-span-full rounded-xl bg-red-50 px-3 py-2.5 text-sm font-medium text-red-700';
+                    head.textContent = 'Am ' + fmtDate(dateInput.value) + ' sind für ' + partyInput.value + ' Personen leider keine Tische frei.';
+                    slotContainer.appendChild(head);
+                    if (data.next_slots && data.next_slots.length) {
+                        const sub = document.createElement('p');
+                        sub.className = 'col-span-full mt-2 text-xs font-semibold uppercase tracking-wide text-stone-500';
+                        sub.textContent = 'Nächste freie Termine:';
+                        slotContainer.appendChild(sub);
+                        data.next_slots.forEach(s => {
+                            const b = document.createElement('button');
+                            b.type = 'button';
+                            b.className = 'rounded-xl border-2 border-stone-200 px-2 py-2.5 text-center transition-all hover:border-brand hover:bg-brand/5 active:scale-[0.97]';
+                            b.innerHTML = '<span class="block text-[10px] font-semibold uppercase tracking-wide text-stone-400">' + fmtDate(s.date) + '</span><span class="block text-base font-bold">' + s.time + '</span>';
+                            b.addEventListener('click', () => pickNextSlot(s.date, s.time));
+                            slotContainer.appendChild(b);
+                        });
+                    }
+                    if (data.waitlist_available) { altBox.innerHTML = 'Kein Termin dabei? <strong>Warteliste</strong> nutzen.'; altBox.classList.remove('hidden'); }
+                    return;
+                }
+                renderSlots(data.slots);
+            } catch (e) {
+                slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-red-50 px-3 py-2.5 text-sm text-red-700">Fehler beim Laden – bitte erneut versuchen.</p>';
+            }
+        }
+
+        async function loadFp() {
+            if (!fpSection || !timeInput.value) return;
+            tableIdInput.value = '';
+            try {
+                const res = await fetch(floorplanUrl + '?date=' + dateInput.value + '&time=' + timeInput.value + '&party_size=' + partyInput.value, {headers: {Accept: 'application/json'}});
+                const data = await res.json();
+                fpRooms = data.rooms || [];
+                if (!fpRooms.length) { fpSection.classList.add('hidden'); return; }
+                fpSection.classList.remove('hidden'); fpSection.classList.remove('reveal-up'); void fpSection.offsetHeight; fpSection.classList.add('reveal-up');
+                buildRoomTabs(); renderRoom(0);
+            } catch (e) { fpSection.classList.add('hidden'); }
+        }
+
+        function buildRoomTabs() {
+            roomTabsEl.innerHTML = '';
+            fpRooms.forEach((room, i) => {
+                const b = document.createElement('button'); b.type = 'button';
+                b.textContent = (room.is_outdoor ? '☀ ' : '') + room.name;
+                b.className = 'room-tab rounded-full border-2 px-3 py-1.5 text-sm font-semibold transition-all ' + (i === 0 ? 'border-brand bg-stone-50' : 'border-stone-200 hover:border-brand hover:bg-brand/5');
+                b.addEventListener('click', () => { document.querySelectorAll('.room-tab').forEach(t => t.classList.remove('border-brand','bg-brand','text-white')); b.classList.add('border-brand','bg-brand','text-white'); renderRoom(i); });
+                roomTabsEl.appendChild(b);
+            });
+            roomTabsEl.classList.toggle('hidden', fpRooms.length < 2);
+        }
+
+        function renderRoom(idx) {
+            const room = fpRooms[idx]; if (!room) return;
+            fpCanvas.innerHTML = '';
+            const pad = 20; let maxX = 0, maxY = 0;
+            room.tables.forEach(t => { maxX = Math.max(maxX, t.pos_x + t.width); maxY = Math.max(maxY, t.pos_y + t.height); });
+            const cw = fpCanvas.clientWidth || 600, ch = fpCanvas.clientHeight || 280;
+            const scale = Math.min((cw - pad * 2) / Math.max(maxX, 1), (ch - pad * 2) / Math.max(maxY, 1), 1);
+            const colors = { available: '#34d399', occupied: '#d6d3d1', unsuitable: '#fde68a', unavailable: '#e7e5e4' };
+            room.tables.forEach(t => {
+                const el = document.createElement('button'); el.type = 'button';
+                el.title = 'Tisch ' + t.name + ' · ' + t.capacity + ' Pers.'; el.dataset.tableId = t.id;
+                Object.assign(el.style, { position: 'absolute', left: (pad + t.pos_x * scale) + 'px', top: (pad + t.pos_y * scale) + 'px', width: Math.max(28, t.width * scale) + 'px', height: Math.max(28, t.height * scale) + 'px', background: colors[t.status] || '#d6d3d1', borderRadius: t.shape === 'round' ? '50%' : '8px', border: '2px solid rgba(0,0,0,.12)', fontSize: '11px', fontWeight: '600', color: '#1c1917', transform: t.rotation ? 'rotate(' + t.rotation + 'deg)' : '' });
+                el.textContent = t.name;
+                if (t.selectable) { el.style.cursor = 'pointer'; el.addEventListener('click', () => { const was = tableIdInput.value === String(t.id); fpCanvas.querySelectorAll('button').forEach(b => b.style.outline = ''); tableIdInput.value = was ? '' : t.id; if (!was) { el.style.outline = '3px solid var(--brand)'; el.style.outlineOffset = '2px'; } }); }
+                else { el.disabled = true; el.style.opacity = '.7'; el.style.cursor = 'not-allowed'; }
+                fpCanvas.appendChild(el);
+            });
+        }
+
+        // Restore state from old() values (form resubmission with errors)
+        const oldParty = @json(old('party_size'));
+        const oldTime  = @json(old('time'));
+        if (oldParty) {
+            const def = document.querySelector('.party-btn[data-party="' + oldParty + '"]');
+            if (def) {
+                def.classList.add('border-brand', 'bg-brand', 'text-white');
+                def.querySelectorAll('span').forEach(s => { s.classList.remove('text-stone-400'); s.classList.add('text-white'); });
+                partyInput.value = oldParty;
+                sp1Summary.textContent = oldParty + (oldParty === '1' ? ' Person' : ' Personen');
+                document.getElementById('sp1').dataset.state = 'done';
+                document.getElementById('sp2').dataset.state = 'active';
+                loadSlots().then(() => {
+                    if (oldTime) {
+                        const btn = slotContainer.querySelector('.slot-btn[data-time="' + oldTime + '"]');
+                        if (btn) {
+                            btn.classList.add('border-brand', 'bg-brand', 'text-white');
+                            timeInput.value = oldTime;
+                            sp2Summary.textContent = fmtDate(dateInput.value) + ' · ' + oldTime + ' Uhr';
+                            document.getElementById('sp2').dataset.state = 'done';
+                            document.getElementById('sp3').dataset.state = 'active';
+                        }
+                    }
+                });
+            }
+        }
+    })();
+    </script>
+    @endif
+
 </div>
 
+{{-- Kontakt & Anfahrt --}}
 @if($location->address_line1 || $location->city || $location->phone || $location->email)
 <div class="mt-4 overflow-hidden rounded-3xl bg-white shadow-xl shadow-stone-400/15 ring-1 ring-black/5">
     <div class="p-5 sm:p-6">
