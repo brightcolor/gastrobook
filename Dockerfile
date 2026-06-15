@@ -3,7 +3,7 @@ FROM php:8.4-fpm-alpine AS base
 
 RUN apk add --no-cache \
         icu-dev libzip-dev libpng-dev postgresql-dev oniguruma-dev \
-        zip unzip git \
+        zip unzip git netcat-openbsd \
     && docker-php-ext-install \
         intl zip gd pdo pdo_pgsql bcmath opcache pcntl \
     && apk add --no-cache --virtual .redis-deps autoconf g++ make \
@@ -32,10 +32,13 @@ RUN composer install --no-dev --no-autoloader --no-scripts --no-interaction
 COPY . .
 COPY --from=assets /app/public/build public/build
 
+COPY docker/entrypoint.sh /entrypoint.sh
+
 RUN composer dump-autoload --optimize \
-    && chown -R www-data:www-data storage bootstrap/cache
+    && chown -R www-data:www-data storage bootstrap/cache \
+    && chmod +x /entrypoint.sh
 
 USER www-data
 
 EXPOSE 9000
-CMD ["php-fpm"]
+CMD ["/entrypoint.sh"]

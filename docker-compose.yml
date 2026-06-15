@@ -1,8 +1,8 @@
 services:
   app:
     image: ghcr.io/brightcolor/gastrobook:latest
-    # Exports the baked public/ assets for nginx, migrates, then serves PHP
-    command: sh -c "cp -a /var/www/html/public/. /public-export/ && php artisan migrate --force && php artisan db:seed --class=PlanSeeder --force && php artisan swayy:create-admin --if-missing && php artisan swayy:install-legal && exec php-fpm"
+    restart: unless-stopped
+    # entrypoint.sh handles: asset copy, migrate, seeders, config cache, php-fpm
     env_file: .env
     environment:
       DB_CONNECTION: pgsql
@@ -15,8 +15,6 @@ services:
       CACHE_STORE: redis
       SESSION_DRIVER: redis
       QUEUE_CONNECTION: redis
-      # Mail (SMTP) is configured via .env: MAIL_MAILER, MAIL_HOST, MAIL_PORT,
-      # MAIL_USERNAME, MAIL_PASSWORD, MAIL_SCHEME, MAIL_FROM_ADDRESS/NAME.
     volumes:
       - ./storage:/var/www/html/storage
       - ./docker/data/public:/public-export
@@ -25,19 +23,29 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+    healthcheck:
+      # PHP-FPM is ready once it accepts connections on port 9000
+      test: ["CMD-SHELL", "nc -z localhost 9000 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 120s   # give migrations & caching time before first check counts
 
   web:
     image: nginx:1.27-alpine
+    restart: unless-stopped
     ports:
       - "${SWAYY_PORT:-8080}:80"
     volumes:
       - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - ./docker/data/public:/var/www/html/public:ro
     depends_on:
-      - app
+      app:
+        condition: service_healthy  # nginx only starts once PHP-FPM is actually ready
 
   queue:
     image: ghcr.io/brightcolor/gastrobook:latest
+    restart: unless-stopped
     command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
     env_file: .env
     environment:
@@ -48,15 +56,15 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-secret}
       REDIS_HOST: redis
       QUEUE_CONNECTION: redis
-      # Mail (SMTP) for queued notifications is configured via .env
     volumes:
       - ./storage:/var/www/html/storage
     depends_on:
-      - db
-      - redis
+      app:
+        condition: service_healthy
 
   scheduler:
     image: ghcr.io/brightcolor/gastrobook:latest
+    restart: unless-stopped
     command: sh -c "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"
     env_file: .env
     environment:
@@ -70,11 +78,12 @@ services:
     volumes:
       - ./storage:/var/www/html/storage
     depends_on:
-      - db
-      - redis
+      app:
+        condition: service_healthy
 
   db:
     image: postgres:17-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_DATABASE:-gastrobook}
       POSTGRES_USER: ${DB_USERNAME:-gastrobook}
@@ -89,5 +98,6 @@ services:
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     volumes:
       - ./docker/data/redis:/data
