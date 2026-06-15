@@ -54,6 +54,14 @@ class ReservationLifecycleService
             $tableIds = $data['table_ids'] ?? [];
 
             if (! ($data['skip_availability_check'] ?? false)) {
+                // Serialize concurrent availability checks for the same location+slot.
+                // Without this, two transactions under READ COMMITTED can both see a free
+                // table, both pass the check, and both commit → double-booking.
+                // pg_advisory_xact_lock is automatically released when the transaction ends.
+                if (DB::getDriverName() === 'pgsql') {
+                    $lockKey = crc32("swayy_booking_{$location->id}_{$startUtc->timestamp}");
+                    DB::statement('SELECT pg_advisory_xact_lock(?)', [$lockKey]);
+                }
                 if ($tableIds === []) {
                     $check = $this->availability->checkExact($location, $startLocal, $data['party_size'], [
                         'online' => $online,
