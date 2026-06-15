@@ -1,6 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Http\Middleware\RequirePermission;
+use App\Http\Middleware\RequireValidLicense;
 use App\Http\Middleware\ResolveTenantContext;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -18,7 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'tenant' => ResolveTenantContext::class,
             'permission' => RequirePermission::class,
-            'license' => \App\Http\Middleware\RequireValidLicense::class,
+            'license' => RequireValidLicense::class,
         ]);
 
         // Already-logged-in visitors hitting a "guest" page (e.g. /login) should
