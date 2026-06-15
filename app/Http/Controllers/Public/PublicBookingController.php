@@ -77,7 +77,7 @@ class PublicBookingController extends Controller
         abort_if($locations->isEmpty(), 404);
 
         if ($locations->count() === 1) {
-            return $this->renderBooking($tenant, $locations->first());
+            return redirect()->route('booking.show', [$tenant->slug, $locations->first()->slug], 301);
         }
 
         return view('public.locations', [
