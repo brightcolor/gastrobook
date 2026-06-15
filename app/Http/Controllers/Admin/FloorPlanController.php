@@ -32,6 +32,15 @@ class FloorPlanController extends Controller
             'location' => $location,
             'rooms' => $rooms,
             'date' => $request->input('date', CarbonImmutable::now($location->timezone)->toDateString()),
+            'combinations' => ($combinations = $location->tableCombinations()->with('tables:id,name')->get()),
+            'joinableTables' => $location->tables()->where('joinable', true)->where('is_active', true)->with('room:id,name')->get(),
+            'combosJson' => $combinations->map(fn ($c) => [
+                'id' => $c->id,
+                'name' => $c->name,
+                'min_capacity' => $c->min_capacity,
+                'max_capacity' => $c->max_capacity,
+                'tables' => $c->tables->map(fn ($t) => ['id' => $t->id, 'name' => $t->name])->values(),
+            ]),
         ]);
     }
 

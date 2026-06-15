@@ -239,6 +239,7 @@ Route::middleware(['auth', 'tenant', 'license'])->prefix('admin')->name('admin.'
         Route::post('/settings/tables', [SettingsController::class, 'storeTable'])->name('settings.tables.store');
         Route::delete('/settings/tables/{table}', [SettingsController::class, 'deleteTable'])->name('settings.tables.delete');
         Route::post('/settings/combinations', [SettingsController::class, 'storeCombination'])->name('settings.combinations.store');
+        Route::delete('/settings/combinations/{combination}', [SettingsController::class, 'deleteCombination'])->name('settings.combinations.delete');
         Route::put('/settings/field-rules', [SettingsController::class, 'updateFieldRules'])
             ->middleware('permission:tenant.settings.manage')->name('settings.field-rules');
         Route::post('/settings/logo', [SettingsController::class, 'uploadLogo'])

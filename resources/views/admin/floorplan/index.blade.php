@@ -14,6 +14,7 @@
                 <span class="fp-when-sep">·</span>
                 <input type="time" id="planTime" value="{{ now($location->timezone)->format('H:i') }}">
             </div>
+            <button id="comboToggle" class="fp-btn" title="Tischkombinationen verwalten">🔗 <span>Kombinationen</span></button>
             @if($canEdit)
                 <button id="editToggle" class="fp-btn">✏️ <span>Bearbeiten</span></button>
                 <button id="saveLayout" class="fp-btn fp-btn-save hidden">💾 <span>Speichern</span></button>
@@ -72,6 +73,74 @@
 
 {{-- Reservation popup --}}
 <div id="tablePopup" class="fp-popup hidden"></div>
+
+{{-- Combinations slide-over panel --}}
+<div id="comboPanel" class="fp-combo-panel">
+    <div class="fp-combo-head">
+        <div class="flex items-center gap-2">
+            <span class="text-xl">🔗</span>
+            <h3 class="text-base font-bold">Tischkombinationen</h3>
+        </div>
+        <button id="comboPanelClose" class="fp-combo-close">✕</button>
+    </div>
+    <div class="fp-combo-body">
+        <p class="mb-3 text-xs text-stone-500">Verbinden Sie mehrere Tische zu einer Kombination für größere Gruppen. Die Kapazität wird automatisch vorgeschlagen.</p>
+        <div id="comboList" class="space-y-2 text-sm"></div>
+
+        @if($canEdit)
+        <div class="mt-4 border-t border-stone-100 pt-4">
+            <button id="openComboForm" class="fp-btn fp-btn-save w-full justify-center">＋ Neue Kombination</button>
+
+            <div id="comboForm" class="mt-4 hidden space-y-3">
+                <div>
+                    <p class="mb-2 text-xs font-semibold text-stone-500">Tische wählen (min. 2)</p>
+                    <div id="comboTableChecks" class="max-h-48 space-y-1 overflow-y-auto rounded-xl border border-stone-200 p-2 text-sm">
+                        @forelse($joinableTables as $jt)
+                            <label class="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-stone-50">
+                                <input type="checkbox" class="combo-check rounded" value="{{ $jt->id }}"
+                                       data-name="{{ $jt->name }}"
+                                       data-cap="{{ $jt->max_capacity }}"
+                                       data-shape="{{ $jt->shape }}">
+                                <span class="font-semibold">{{ $jt->name }}</span>
+                                <span class="text-stone-400">{{ $jt->room?->name }}</span>
+                                <span class="ml-auto text-stone-500">{{ $jt->max_capacity }} Pl.</span>
+                                @if($jt->shape === 'round')<span class="text-xs text-stone-400">⬭</span>@else<span class="text-xs text-stone-400">▭</span>@endif
+                            </label>
+                        @empty
+                            <p class="py-3 text-center text-xs text-stone-400">Keine kombinierbaren Tische vorhanden. Tische mit der Eigenschaft „kombinierbar" im Tischplan anlegen.</p>
+                        @endforelse
+                    </div>
+                </div>
+                <div>
+                    <label class="mb-1 block text-xs font-semibold text-stone-500">Name der Kombination</label>
+                    <input id="comboNameInput" type="text" maxlength="80" placeholder="z. B. T1 + T2"
+                           class="w-full rounded-lg border-2 border-stone-200 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
+                </div>
+                <div>
+                    <div class="flex gap-2">
+                        <div class="flex-1">
+                            <label class="mb-1 block text-xs font-semibold text-stone-500">Min. Personen</label>
+                            <input id="comboMinInput" type="number" min="1" placeholder="2"
+                                   class="w-full rounded-lg border-2 border-stone-200 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
+                        </div>
+                        <div class="flex-1">
+                            <label class="mb-1 block text-xs font-semibold text-stone-500">Max. Personen</label>
+                            <input id="comboMaxInput" type="number" min="1" placeholder="8"
+                                   class="w-full rounded-lg border-2 border-stone-200 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
+                        </div>
+                    </div>
+                    <p id="comboHint" class="mt-1.5 hidden rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800"></p>
+                </div>
+                <p id="comboErr" class="hidden text-xs font-semibold text-red-600"></p>
+                <div class="flex gap-2">
+                    <button id="cancelComboForm" class="fp-btn flex-1 justify-center">Abbrechen</button>
+                    <button id="saveComboBtn" class="fp-btn fp-btn-save flex-1 justify-center">Anlegen</button>
+                </div>
+            </div>
+        </div>
+        @endif
+    </div>
+</div>
 
 {{-- New table modal --}}
 @if($canEdit)
@@ -483,6 +552,208 @@
 })();
 </script>
 
+<script>
+// ── Tischkombinationen ────────────────────────────────────────────────────
+(function () {
+    const csrf      = @json(csrf_token());
+    const canEdit   = @json($canEdit);
+    const storeUrl  = @json($canEdit ? route('admin.settings.combinations.store') : '');
+    const deleteBase = @json($canEdit ? url('/admin/settings/combinations') : '');
+
+    let combosData = @json($combosJson);
+
+    // ── Capacity suggestion ───────────────────────────────────────────────
+    function headCount(shape, n) {
+        if (shape !== 'rect') return 0;
+        return n >= 8 ? 2 : (n % 2 === 1 && n >= 3 ? 1 : 0);
+    }
+
+    function suggestCapacity(tables) {
+        if (tables.length < 2) return 0;
+        const total = tables.reduce((s, t) => s + t.max_capacity, 0);
+        // Arrange tables so those with most heads sit in middle (they serve two junctions)
+        const sorted = [...tables].sort((a, b) => headCount(b.shape, b.max_capacity) - headCount(a.shape, a.max_capacity));
+        const heads = sorted.map(t => headCount(t.shape, t.max_capacity));
+        let sub = 0;
+        for (let i = 0; i < sorted.length - 1; i++) {
+            if (heads[i] > 0)     { heads[i]--;     sub++; }
+            if (heads[i + 1] > 0) { heads[i + 1]--; sub++; }
+        }
+        return Math.max(total - sub, 1);
+    }
+
+    // ── Panel open/close ─────────────────────────────────────────────────
+    const panel    = document.getElementById('comboPanel');
+    const comboBtn = document.getElementById('comboToggle');
+    const closeBtn = document.getElementById('comboPanelClose');
+
+    comboBtn?.addEventListener('click', () => panel.classList.toggle('open'));
+    closeBtn?.addEventListener('click', () => panel.classList.remove('open'));
+
+    // ── Render combo list ─────────────────────────────────────────────────
+    function renderList() {
+        const list = document.getElementById('comboList');
+        if (!list) return;
+        if (combosData.length === 0) {
+            list.innerHTML = '<p class="py-4 text-center text-xs text-stone-400">Noch keine Kombinationen angelegt.</p>';
+            return;
+        }
+        list.innerHTML = combosData.map(c => `
+            <div class="combo-row flex items-start justify-between gap-2 rounded-xl border border-stone-100 bg-stone-50 px-3 py-2.5">
+                <div class="min-w-0">
+                    <p class="font-semibold text-stone-800">${c.name}</p>
+                    <p class="mt-0.5 text-xs text-stone-500">${c.tables.map(t => t.name).join(' + ')} · ${c.min_capacity}–${c.max_capacity} Personen</p>
+                </div>
+                ${canEdit ? `<button class="combo-del fp-mini fp-mini-ghost shrink-0 !py-1 !px-2 text-red-500 hover:!border-red-300 hover:bg-red-50 hover:text-red-700" data-id="${c.id}" title="Kombination löschen">✕</button>` : ''}
+            </div>
+        `).join('');
+
+        if (canEdit) {
+            list.querySelectorAll('.combo-del').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    if (!confirm('Tischkombination löschen?')) return;
+                    btn.disabled = true;
+                    const res = await fetch(`${deleteBase}/${btn.dataset.id}`, {
+                        method: 'DELETE',
+                        headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                    });
+                    if (res.ok) {
+                        combosData = combosData.filter(c => c.id != btn.dataset.id);
+                        renderList();
+                    } else {
+                        btn.disabled = false;
+                        alert('Löschen fehlgeschlagen.');
+                    }
+                });
+            });
+        }
+    }
+    renderList();
+
+    // ── Create form ───────────────────────────────────────────────────────
+    const openBtn    = document.getElementById('openComboForm');
+    const cancelBtn  = document.getElementById('cancelComboForm');
+    const saveBtn    = document.getElementById('saveComboBtn');
+    const form       = document.getElementById('comboForm');
+    const nameInput  = document.getElementById('comboNameInput');
+    const minInput   = document.getElementById('comboMinInput');
+    const maxInput   = document.getElementById('comboMaxInput');
+    const hintEl     = document.getElementById('comboHint');
+    const errEl      = document.getElementById('comboErr');
+    const checksWrap = document.getElementById('comboTableChecks');
+
+    if (!canEdit || !openBtn) return;
+
+    let nameManual = false;
+    nameInput?.addEventListener('input', () => { nameManual = !!nameInput.value; });
+
+    function resetForm() {
+        checksWrap?.querySelectorAll('.combo-check').forEach(cb => cb.checked = false);
+        if (nameInput)  { nameInput.value = ''; nameManual = false; }
+        if (minInput)   minInput.value = '';
+        if (maxInput)   maxInput.value = '';
+        if (hintEl)     hintEl.classList.add('hidden');
+        if (errEl)      errEl.classList.add('hidden');
+    }
+
+    openBtn.addEventListener('click', () => {
+        resetForm();
+        form.classList.remove('hidden');
+        openBtn.classList.add('hidden');
+    });
+    cancelBtn?.addEventListener('click', () => {
+        form.classList.add('hidden');
+        openBtn.classList.remove('hidden');
+    });
+
+    function getSelectedTables() {
+        return [...(checksWrap?.querySelectorAll('.combo-check:checked') || [])].map(cb => ({
+            id:           parseInt(cb.value, 10),
+            name:         cb.dataset.name,
+            max_capacity: parseInt(cb.dataset.cap, 10),
+            shape:        cb.dataset.shape,
+        }));
+    }
+
+    function updateSuggestion() {
+        const selected = getSelectedTables();
+        if (selected.length < 2) {
+            if (hintEl) hintEl.classList.add('hidden');
+            if (!nameManual && nameInput) nameInput.value = selected.map(t => t.name).join(' + ');
+            return;
+        }
+
+        if (!nameManual && nameInput) nameInput.value = selected.map(t => t.name).join(' + ');
+
+        const suggested = suggestCapacity(selected);
+        const rawTotal  = selected.reduce((s, t) => s + t.max_capacity, 0);
+        if (maxInput) maxInput.value = suggested;
+        if (minInput && !minInput.value) minInput.value = Math.max(Math.ceil(suggested / 2), 1);
+
+        if (hintEl) {
+            const parts = selected.map(t => `${t.name} (${t.max_capacity})`).join(' + ');
+            const sub   = rawTotal - suggested;
+            hintEl.textContent = sub > 0
+                ? `${parts} = ${rawTotal} Pl., Stirnseiten-Abzug: −${sub} → ${suggested} Pl.`
+                : `${parts} = ${suggested} Pl., keine Stirnseiten-Sitze abgezogen`;
+            hintEl.classList.remove('hidden');
+        }
+    }
+
+    checksWrap?.querySelectorAll('.combo-check').forEach(cb => cb.addEventListener('change', updateSuggestion));
+
+    saveBtn?.addEventListener('click', async () => {
+        const selected = getSelectedTables();
+        if (selected.length < 2) {
+            if (errEl) { errEl.textContent = 'Bitte mindestens zwei Tische auswählen.'; errEl.classList.remove('hidden'); }
+            return;
+        }
+        if (!nameInput?.value.trim()) {
+            if (errEl) { errEl.textContent = 'Bitte einen Namen eingeben.'; errEl.classList.remove('hidden'); }
+            return;
+        }
+        if (!minInput?.value || !maxInput?.value) {
+            if (errEl) { errEl.textContent = 'Bitte Min. und Max. Personen angeben.'; errEl.classList.remove('hidden'); }
+            return;
+        }
+        if (errEl) errEl.classList.add('hidden');
+        saveBtn.disabled = true;
+        saveBtn.textContent = '…';
+
+        const payload = {
+            name:         nameInput.value.trim(),
+            table_ids:    selected.map(t => t.id),
+            min_capacity: parseInt(minInput.value, 10),
+            max_capacity: parseInt(maxInput.value, 10),
+        };
+
+        try {
+            const res = await fetch(storeUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                const msg = json.errors ? Object.values(json.errors).flat().join(' · ') : (json.message || 'Fehler');
+                if (errEl) { errEl.textContent = msg; errEl.classList.remove('hidden'); }
+                return;
+            }
+            if (json.combination) combosData.push(json.combination);
+            renderList();
+            form.classList.add('hidden');
+            openBtn.classList.remove('hidden');
+            resetForm();
+        } catch {
+            if (errEl) { errEl.textContent = 'Netzwerkfehler.'; errEl.classList.remove('hidden'); }
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Anlegen';
+        }
+    });
+})();
+</script>
+
 <style>
     .fp { --r-free:#34d399; --d-free:#059669;
           --r-soon:#fbbf24; --d-soon:#d97706;
@@ -629,5 +900,30 @@
     .fp-seg button.on { border-color:#0f766e; background:#f0fdfa; color:#0f766e; }
     .fp-err { font-size:13px; color:#dc2626; }
     .fp-modal-foot { display:flex; gap:10px; justify-content:flex-end; }
+
+    /* Combinations slide-over panel */
+    .fp-combo-panel {
+        position:fixed; top:0; right:0; bottom:0; z-index:45;
+        width: min(380px, 100vw);
+        background:#fff;
+        box-shadow:-6px 0 32px rgba(0,0,0,.12);
+        display:flex; flex-direction:column;
+        transform:translateX(100%);
+        transition:transform .25s cubic-bezier(.4,0,.2,1);
+        border-left:1px solid #f0efed;
+    }
+    .fp-combo-panel.open { transform:translateX(0); }
+    .fp-combo-head {
+        display:flex; align-items:center; justify-content:space-between;
+        padding:16px 18px; border-bottom:1px solid #f0efed;
+        background:#fafaf9; flex:none;
+    }
+    .fp-combo-close {
+        width:30px; height:30px; border-radius:8px;
+        border:1px solid #e7e5e4; background:#fff; cursor:pointer;
+        font-size:13px; color:#78716c; display:flex; align-items:center; justify-content:center;
+    }
+    .fp-combo-close:hover { background:#f5f5f4; }
+    .fp-combo-body { flex:1; overflow-y:auto; padding:16px 18px; }
 </style>
 @endsection

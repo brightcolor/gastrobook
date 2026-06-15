@@ -3,6 +3,11 @@
 @section('content')
 <h1 class="mb-5 text-2xl font-bold">Einstellungen – {{ $location->name }}</h1>
 
+{{-- Toast notification --}}
+<div id="settingsToast"
+     class="pointer-events-none fixed bottom-6 right-6 z-50 hidden max-w-sm translate-y-2 rounded-xl px-5 py-3 text-sm font-semibold shadow-xl transition-all duration-300 opacity-0"
+     role="alert" aria-live="polite"></div>
+
 {{-- Betriebstyp --}}
 @php $tenant = app(\App\Support\TenantContext::class)->tenant(); @endphp
 <div class="mb-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
@@ -45,11 +50,11 @@
     <h2 class="mb-1 font-bold">Logo dieses Standorts</h2>
     <p class="mb-3 text-xs text-stone-500">Erscheint oben auf der Buchungsseite. PNG, JPG oder WebP, max. 3 MB.</p>
     <div class="flex flex-wrap items-center gap-4">
-        <div class="flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl border border-stone-200 bg-stone-50">
+        <div id="logoPreviewWrap" class="flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl border border-stone-200 bg-stone-50">
             @if($location->brand_logo_path)
-                <img src="{{ route('brand.location.logo', [$location->tenant->slug, $location->slug]) }}?t={{ now()->timestamp }}" alt="Logo" class="h-full w-full object-contain">
+                <img id="logoPreviewImg" src="{{ route('brand.location.logo', [$location->tenant->slug, $location->slug]) }}?t={{ now()->timestamp }}" alt="Logo" class="h-full w-full object-contain">
             @else
-                <span class="text-2xl text-stone-300">🍽</span>
+                <span id="logoPlaceholder" class="text-2xl text-stone-300">🍽</span>
             @endif
         </div>
         <form method="POST" action="{{ route('admin.settings.logo.upload') }}" enctype="multipart/form-data" class="flex flex-wrap items-center gap-2">
@@ -181,131 +186,18 @@
         <div><button class="mt-4 rounded-xl bg-stone-900 px-5 py-2.5 text-sm font-bold text-white">Öffnungszeiten speichern</button></div>
     </form>
 
-    {{-- Rooms & tables --}}
+    {{-- Räume --}}
     <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
-        <h2 class="mb-3 font-bold">Räume & Tische</h2>
-        <form method="POST" action="{{ route('admin.settings.rooms.store') }}" class="mb-4 flex items-end gap-2 text-sm">
+        <h2 class="mb-3 font-bold">Räume</h2>
+        <p class="mb-3 text-xs text-stone-500">Räume anlegen, Tische und Kombinationen dann im <a href="{{ route('admin.floorplan.index') }}" class="font-semibold text-teal-700 underline">Tischplan</a> verwalten.</p>
+        <form method="POST" action="{{ route('admin.settings.rooms.store') }}" class="flex items-end gap-2 text-sm">
             @csrf
             <div class="grow"><label class="mb-1 block text-xs font-semibold text-stone-500">Neuer Raum</label>
                 <input type="text" name="name" required placeholder="z. B. Wintergarten" class="w-full rounded-lg border-stone-200"></div>
             <label class="flex items-center gap-1 pb-2 text-xs"><input type="checkbox" name="is_outdoor" value="1"> Außen</label>
             <button class="rounded-lg bg-stone-900 px-4 py-2 font-semibold text-white">Anlegen</button>
         </form>
-
-        <div class="mb-4">
-            <button type="button" id="openTableModal" @disabled($rooms->isEmpty())
-                class="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">＋ Tisch anlegen</button>
-            @if($rooms->isEmpty())<span class="ml-2 text-xs text-stone-500">Bitte zuerst einen Raum anlegen.</span>@endif
-        </div>
-
-        <div class="max-h-80 overflow-auto">
-            <table class="w-full min-w-[28rem] text-sm">
-                <thead class="text-left text-xs font-semibold uppercase tracking-wide text-stone-500"><tr><th class="py-1.5">Tisch</th><th>Raum</th><th>Kapazität</th><th>Eigenschaften</th><th></th></tr></thead>
-                <tbody class="divide-y divide-stone-50 [&>tr:hover]:bg-stone-50/70">
-                    @foreach($tables as $table)
-                        <tr>
-                            <td class="py-1.5 font-semibold">{{ $table->name }}</td>
-                            <td>{{ $table->room?->name }}</td>
-                            <td>{{ $table->min_capacity }}–{{ $table->max_capacity }}</td>
-                            <td class="text-xs text-stone-500">
-                                @if($table->outdoor)🌳 @endif @if($table->accessible)♿ @endif @if($table->joinable)🔗 @endif @if(!$table->online_bookable)🚫 online @endif
-                            </td>
-                            <td class="text-right">
-                                <form method="POST" action="{{ route('admin.settings.tables.delete', $table) }}" onsubmit="return confirm('Tisch löschen?')">
-                                    @csrf @method('DELETE')
-                                    <button class="text-red-500">✕</button>
-                                </form>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
     </div>
-
-    {{-- New table modal --}}
-    <div id="tableModalBack" class="fixed inset-0 z-50 hidden items-center justify-center bg-stone-900/45 p-4 backdrop-blur-sm">
-        <div class="w-full max-w-md rounded-2xl bg-white shadow-2xl">
-            <div class="flex items-center gap-2 border-b border-stone-100 px-5 py-4">
-                <span class="text-xl">🪑</span><h3 class="text-lg font-bold">Neuer Tisch</h3>
-            </div>
-            <form method="POST" action="{{ route('admin.settings.tables.store') }}" id="tableModalForm" class="space-y-4 px-5 py-5">
-                @csrf
-                <input type="hidden" name="max_capacity" id="tmMax" value="" required>
-                <div class="grid grid-cols-2 gap-3">
-                    <label class="block">
-                        <span class="mb-1 block text-sm font-semibold text-stone-600">Raum</span>
-                        <select name="room_id" required class="w-full rounded-lg border-2 border-stone-200">
-                            @foreach($rooms as $room)<option value="{{ $room->id }}">{{ $room->name }}</option>@endforeach
-                        </select>
-                    </label>
-                    <label class="block">
-                        <span class="mb-1 block text-sm font-semibold text-stone-600">Tisch-Nr.</span>
-                        <input type="text" name="name" required placeholder="z. B. 12" class="w-full rounded-lg border-2 border-stone-200">
-                    </label>
-                </div>
-                <div>
-                    <span class="mb-1 block text-sm font-semibold text-stone-600">Plätze (max.)</span>
-                    <div class="grid grid-cols-4 gap-2" id="tmSeats">
-                        @foreach([1,2,3,4,5,6,8,10] as $n)
-                            <button type="button" data-seats="{{ $n }}"
-                                class="tm-seat rounded-lg border-2 border-stone-200 py-2.5 text-base font-bold hover:border-teal-600">{{ $n }}</button>
-                        @endforeach
-                    </div>
-                    <button type="button" id="tmCustom" class="mt-2 text-xs font-semibold text-teal-700">Andere Anzahl…</button>
-                    <p id="tmErr" class="mt-2 hidden text-sm text-red-600">Bitte Plätze wählen.</p>
-                </div>
-                <label class="block">
-                    <span class="mb-1 block text-sm font-semibold text-stone-600">Mindestbelegung</span>
-                    <select name="min_capacity" id="tmMin" class="w-full rounded-lg border-2 border-stone-200">
-                        @foreach(range(1, 10) as $n)<option value="{{ $n }}">ab {{ $n }} {{ $n === 1 ? 'Person' : 'Personen' }}</option>@endforeach
-                    </select>
-                    <span class="mt-1 block text-xs text-stone-400">Kleinste Gruppe, die online an diesem Tisch buchen darf.</span>
-                </label>
-                <div class="flex justify-end gap-2 pt-1">
-                    <button type="button" id="tableModalCancel" class="rounded-lg bg-stone-200 px-4 py-2.5 font-semibold">Abbrechen</button>
-                    <button type="submit" class="rounded-lg bg-teal-700 px-5 py-2.5 font-semibold text-white">Anlegen</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    <script>
-    (function () {
-        const back = document.getElementById('tableModalBack');
-        if (!back) return;
-        const open = document.getElementById('openTableModal');
-        const form = document.getElementById('tableModalForm');
-        const seatWrap = document.getElementById('tmSeats');
-        const maxInput = document.getElementById('tmMax');
-        const minInput = document.getElementById('tmMin');
-        const err = document.getElementById('tmErr');
-        const show = () => { back.classList.remove('hidden'); back.classList.add('flex'); };
-        const hide = () => { back.classList.add('hidden'); back.classList.remove('flex'); };
-        const clearSel = () => seatWrap.querySelectorAll('.tm-seat').forEach(b => b.classList.remove('border-teal-600','bg-teal-50','text-teal-700'));
-        // keep min <= max
-        const clampMin = () => { const m = parseInt(maxInput.value, 10); if (m && +minInput.value > m) minInput.value = m; };
-
-        open?.addEventListener('click', () => { form.reset(); clearSel(); maxInput.value=''; err.classList.add('hidden'); show(); });
-        document.getElementById('tableModalCancel').addEventListener('click', hide);
-        back.addEventListener('click', e => { if (e.target === back) hide(); });
-
-        seatWrap.querySelectorAll('.tm-seat').forEach(b => b.addEventListener('click', () => {
-            clearSel();
-            b.classList.add('border-teal-600','bg-teal-50','text-teal-700');
-            maxInput.value = b.dataset.seats;
-            err.classList.add('hidden');
-            clampMin();
-        }));
-        minInput.addEventListener('change', clampMin);
-        document.getElementById('tmCustom').addEventListener('click', () => {
-            const v = parseInt(prompt('Anzahl Plätze?', '12') || '', 10);
-            if (v >= 1 && v <= 50) { clearSel(); maxInput.value = v; err.classList.add('hidden'); clampMin(); }
-        });
-        form.addEventListener('submit', e => {
-            if (!maxInput.value) { e.preventDefault(); err.classList.remove('hidden'); }
-        });
-    })();
-    </script>
 
     {{-- Booking form fields --}}
     @if(auth()->user()->canInTenant('tenant.settings.manage', app(\App\Support\TenantContext::class)->tenant(), $location))
@@ -478,7 +370,7 @@
                 <label class="flex items-center gap-2"><input type="checkbox" name="enabled" value="1" @checked(($sms->status ?? '') === 'connected')> SMS-Versand aktiv</label>
             </div>
             <p class="mt-2 rounded-lg bg-stone-50 p-2 text-xs text-stone-600">
-                Aktivierung der SMS-Erinnerung erfolgt zusätzlich pro Standort unter „Buchungsregeln → Erinnerungen“.
+                Aktivierung der SMS-Erinnerung erfolgt zusätzlich pro Standort unter „Buchungsregeln → Erinnerungen".
             </p>
             <button class="mt-3 rounded-xl bg-stone-900 px-5 py-2.5 text-sm font-bold text-white">Speichern</button>
         </form>
@@ -525,50 +417,25 @@
     </div>
     @endif
 
-    {{-- Combinations + special hours --}}
-    <div class="space-y-6">
-        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
-            <h2 class="mb-3 font-bold">Tischkombinationen</h2>
-            <form method="POST" action="{{ route('admin.settings.combinations.store') }}" class="space-y-2 text-sm">
-                @csrf
-                <input type="text" name="name" required placeholder="Name (z. B. T1+T2)" class="w-full rounded-lg border-stone-200">
-                <select name="table_ids[]" multiple size="4" required class="w-full rounded-lg border-stone-200">
-                    @foreach($tables->where('joinable', true) as $table)
-                        <option value="{{ $table->id }}">{{ $table->name }} ({{ $table->room?->name }})</option>
-                    @endforeach
-                </select>
-                <div class="grid grid-cols-2 gap-2">
-                    <input type="number" name="min_capacity" required min="1" placeholder="Min. Personen" class="rounded-lg border-stone-200">
-                    <input type="number" name="max_capacity" required min="1" placeholder="Max. Personen" class="rounded-lg border-stone-200">
+    {{-- Special hours --}}
+    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
+        <h2 class="mb-3 font-bold">Sonderöffnungszeiten / Schließtage</h2>
+        <form method="POST" action="{{ route('admin.settings.special-hours') }}" class="grid grid-cols-2 gap-2 text-sm">
+            @csrf
+            <input type="date" name="date" required class="rounded-lg border-stone-200">
+            <input type="text" name="label" placeholder="z. B. Feiertag" class="rounded-lg border-stone-200">
+            <input type="time" name="opens_at" class="rounded-lg border-stone-200">
+            <input type="time" name="closes_at" class="rounded-lg border-stone-200">
+            <label class="col-span-2 flex items-center gap-1.5"><input type="checkbox" name="closed" value="1"> Geschlossen</label>
+            <button class="col-span-2 rounded-lg bg-stone-900 px-4 py-2 font-semibold text-white">Speichern</button>
+        </form>
+        <div class="mt-3 space-y-1 text-sm" id="specialHoursList">
+            @foreach($specialHours as $sh)
+                <div class="rounded-lg bg-stone-50 px-3 py-2">
+                    {{ $sh->date->format('d.m.Y') }}: {{ $sh->closed ? '🔒 geschlossen' : substr($sh->opens_at, 0, 5) . '–' . substr($sh->closes_at, 0, 5) }}
+                    @if($sh->label)({{ $sh->label }})@endif
                 </div>
-                <button class="rounded-lg bg-stone-900 px-4 py-2 font-semibold text-white">Anlegen</button>
-            </form>
-            <div class="mt-3 space-y-1 text-sm">
-                @foreach($combinations as $combo)
-                    <div class="rounded-lg bg-stone-50 px-3 py-2">{{ $combo->name }}: {{ $combo->tables->pluck('name')->implode(' + ') }} ({{ $combo->min_capacity }}–{{ $combo->max_capacity }} P.)</div>
-                @endforeach
-            </div>
-        </div>
-
-        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
-            <h2 class="mb-3 font-bold">Sonderöffnungszeiten / Schließtage</h2>
-            <form method="POST" action="{{ route('admin.settings.special-hours') }}" class="grid grid-cols-2 gap-2 text-sm">
-                @csrf
-                <input type="date" name="date" required class="rounded-lg border-stone-200">
-                <input type="text" name="label" placeholder="z. B. Feiertag" class="rounded-lg border-stone-200">
-                <input type="time" name="opens_at" class="rounded-lg border-stone-200">
-                <input type="time" name="closes_at" class="rounded-lg border-stone-200">
-                <label class="col-span-2 flex items-center gap-1.5"><input type="checkbox" name="closed" value="1"> Geschlossen</label>
-                <button class="col-span-2 rounded-lg bg-stone-900 px-4 py-2 font-semibold text-white">Speichern</button>
-            </form>
-            <div class="mt-3 space-y-1 text-sm">
-                @foreach($specialHours as $sh)
-                    <div class="rounded-lg bg-stone-50 px-3 py-2">
-                        {{ $sh->date->format('d.m.Y') }}: {{ $sh->closed ? '🔒 geschlossen' : substr($sh->opens_at, 0, 5) . '–' . substr($sh->closes_at, 0, 5) }}
-                        @if($sh->label)({{ $sh->label }})@endif
-                    </div>
-                @endforeach
-            </div>
+            @endforeach
         </div>
     </div>
 </div>
@@ -577,7 +444,6 @@
     document.getElementById('addHour')?.addEventListener('click', () => {
         const container = document.getElementById('hoursContainer');
         const i = Date.now();
-        // Nächster Wochentag in der Reihenfolge: 1. Zeile = Mo, 2. = Di … (max. So)
         const nextDay = Math.min(container.querySelectorAll('.hour-row').length, 6);
         const div = document.createElement('div');
         div.className = 'hour-row flex items-center gap-2';
@@ -592,5 +458,102 @@
             <button type="button" onclick="this.closest('.hour-row').remove()" class="shrink-0 text-red-500 hover:text-red-700">✕</button>`;
         container.appendChild(div);
     });
+
+    // ── AJAX form interceptor ───────────────────────────────────────────────
+    (function () {
+        const csrf = @json(csrf_token());
+        const toast = document.getElementById('settingsToast');
+
+        function showToast(msg, isErr) {
+            toast.textContent = msg;
+            toast.className = [
+                'pointer-events-none fixed bottom-6 right-6 z-50 max-w-sm rounded-xl px-5 py-3 text-sm font-semibold shadow-xl transition-all duration-300',
+                isErr ? 'bg-red-600 text-white' : 'bg-stone-900 text-white',
+            ].join(' ');
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateY(0)';
+            clearTimeout(toast._t);
+            toast._t = setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(8px)';
+            }, 3200);
+        }
+
+        // Scroll-position restore after reload
+        const scrollKey = 'sw_settings_scroll';
+        const saved = sessionStorage.getItem(scrollKey);
+        if (saved !== null) {
+            window.scrollTo(0, parseInt(saved, 10));
+            sessionStorage.removeItem(scrollKey);
+        }
+
+        document.querySelectorAll('form').forEach(form => {
+            // Skip DELETE forms (confirmation dialogs – table delete, rule delete, etc.)
+            if (form.querySelector('input[name="_method"][value="DELETE"]')) return;
+
+            form.addEventListener('submit', async e => {
+                e.preventDefault();
+
+                const btn = form.querySelector('[type=submit]');
+                const orig = btn?.textContent;
+                if (btn) { btn.disabled = true; btn.textContent = '…'; }
+
+                try {
+                    const isMultipart = form.enctype === 'multipart/form-data';
+                    const body = isMultipart
+                        ? new FormData(form)
+                        : new URLSearchParams(new FormData(form));
+
+                    const headers = { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf };
+                    if (!isMultipart) headers['Content-Type'] = 'application/x-www-form-urlencoded';
+
+                    const res = await fetch(form.action || location.href, {
+                        method: form.method?.toUpperCase() || 'POST',
+                        headers,
+                        body,
+                    });
+
+                    let json = {};
+                    try { json = await res.json(); } catch {}
+
+                    if (res.ok) {
+                        showToast(json.message || 'Gespeichert ✓');
+
+                        // Logo-specific: update preview without reload
+                        if (json.logo_url) {
+                            const img = document.getElementById('logoPreviewImg');
+                            const wrap = document.getElementById('logoPreviewWrap');
+                            const placeholder = document.getElementById('logoPlaceholder');
+                            if (img) {
+                                img.src = json.logo_url + '?t=' + Date.now();
+                            } else if (wrap) {
+                                wrap.innerHTML = `<img id="logoPreviewImg" src="${json.logo_url}?t=${Date.now()}" alt="Logo" class="h-full w-full object-contain">`;
+                            }
+                            if (placeholder) placeholder.remove();
+                            // Reset file input
+                            const fileInput = form.querySelector('input[type=file]');
+                            if (fileInput) fileInput.value = '';
+                            return;
+                        }
+
+                        // Reload if response requests it (list items were created)
+                        if (json.reload) {
+                            sessionStorage.setItem(scrollKey, String(window.scrollY));
+                            setTimeout(() => location.reload(), 700);
+                        }
+                    } else {
+                        const msg = json.errors
+                            ? Object.values(json.errors).flat().join(' · ')
+                            : (json.message || 'Fehler beim Speichern.');
+                        showToast(msg, true);
+                    }
+                } catch {
+                    showToast('Netzwerkfehler – bitte Seite neu laden.', true);
+                } finally {
+                    if (btn) { btn.disabled = false; if (orig) btn.textContent = orig; }
+                }
+            });
+        });
+    })();
 </script>
 @endsection

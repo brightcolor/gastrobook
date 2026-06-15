@@ -12,7 +12,19 @@ class SettingsTablesTest extends TestCase
 {
     use CreatesTenants, RefreshDatabase;
 
-    public function test_settings_page_shows_table_modal_trigger(): void
+    public function test_floorplan_page_shows_table_modal(): void
+    {
+        $setup = $this->createTenantSetup();
+        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
+        $this->clearTenantContext();
+
+        $this->actingAs($admin)->get('/admin/floorplan')
+            ->assertOk()
+            ->assertSee('Neuer Tisch')
+            ->assertSee('id="newTableBack"', false);
+    }
+
+    public function test_settings_page_no_longer_shows_table_creation(): void
     {
         $setup = $this->createTenantSetup();
         $admin = $this->createMember($setup['tenant'], 'tenant_admin');
@@ -20,8 +32,8 @@ class SettingsTablesTest extends TestCase
 
         $this->actingAs($admin)->get('/admin/settings')
             ->assertOk()
-            ->assertSee('Tisch anlegen')
-            ->assertSee('id="tableModalBack"', false);
+            ->assertDontSee('tableModalBack')
+            ->assertSee('Tischplan');
     }
 
     public function test_table_is_created_from_modal_payload(): void

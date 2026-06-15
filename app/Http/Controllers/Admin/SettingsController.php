@@ -9,6 +9,7 @@ use App\Models\IntegrationConnection;
 use App\Models\OpeningHour;
 use App\Models\RestaurantTable;
 use App\Models\SpecialOpeningHour;
+use App\Models\TableCombination;
 use App\Services\AuditLogger;
 use App\Services\Newsletter\MailwizzProvider;
 use App\Services\PlanLimitService;
@@ -129,7 +130,7 @@ class SettingsController extends Controller
 
         $this->audit->log('location.settings_updated', $settings, $old, $validated);
 
-        return back()->with('success', __('Buchungsregeln gespeichert.'));
+        return $this->saved($request, __('Buchungsregeln gespeichert.'));
     }
 
     /**
@@ -151,7 +152,7 @@ class SettingsController extends Controller
 
         $this->audit->log('location.field_rules_updated', $settings, ['field_rules' => $old], $validated['fields']);
 
-        return back()->with('success', __('Formularfelder gespeichert.'));
+        return $this->saved($request, __('Formularfelder gespeichert.'));
     }
 
     /**
@@ -186,7 +187,7 @@ class SettingsController extends Controller
         }
 
         if (empty($credentials['api_key'])) {
-            return back()->withErrors(['api_key' => __('API-Key erforderlich.')]);
+            return $this->failed($request, 'api_key', __('API-Key erforderlich.'));
         }
 
         $connection->credentials_encrypted = Crypt::encryptString(json_encode($credentials));
@@ -208,16 +209,16 @@ class SettingsController extends Controller
                 if (! $provider->testConnection()) {
                     $connection->update(['status' => 'error']);
 
-                    return back()->withErrors(['api_url' => __('Verbindungstest fehlgeschlagen – bitte URL, API-Key und Listen-UID prüfen.')]);
+                    return $this->failed($request, 'api_url', __('Verbindungstest fehlgeschlagen – bitte URL, API-Key und Listen-UID prüfen.'));
                 }
             } catch (\Throwable) {
                 $connection->update(['status' => 'error']);
 
-                return back()->withErrors(['api_url' => __('MailWizz nicht erreichbar.')]);
+                return $this->failed($request, 'api_url', __('MailWizz nicht erreichbar.'));
             }
         }
 
-        return back()->with('success', __('MailWizz-Integration gespeichert und Verbindung getestet.'));
+        return $this->saved($request, __('MailWizz-Integration gespeichert und Verbindung getestet.'));
     }
 
     /**
@@ -261,7 +262,7 @@ class SettingsController extends Controller
 
         $this->audit->log('integration.stripe_updated', $connection, null, ['status' => $connection->status]);
 
-        return back()->with('success', __('Stripe-Integration gespeichert. Webhook-URL: :url', [
+        return $this->saved($request, __('Stripe-Integration gespeichert. Webhook-URL: :url', [
             'url' => route('webhooks.stripe'),
         ]));
     }
@@ -312,7 +313,7 @@ class SettingsController extends Controller
             'status' => $connection->status,
         ]);
 
-        return back()->with('success', __('PayPal-Integration gespeichert.'));
+        return $this->saved($request, __('PayPal-Integration gespeichert.'));
     }
 
     /**
@@ -345,7 +346,7 @@ class SettingsController extends Controller
         $credentials['sender_id'] = $validated['sender_id'] ?? ($credentials['sender_id'] ?? '');
 
         if (empty($credentials['api_key'])) {
-            return back()->withErrors(['api_key' => __('API-Key erforderlich.')]);
+            return $this->failed($request, 'api_key', __('API-Key erforderlich.'));
         }
 
         $connection->credentials_encrypted = Crypt::encryptString(json_encode($credentials));
@@ -363,16 +364,16 @@ class SettingsController extends Controller
                 if (! $provider->testConnection()) {
                     $connection->update(['status' => 'error']);
 
-                    return back()->withErrors(['api_key' => __('Verbindungstest fehlgeschlagen – API-Key prüfen.')]);
+                    return $this->failed($request, 'api_key', __('Verbindungstest fehlgeschlagen – API-Key prüfen.'));
                 }
             } catch (\Throwable) {
                 $connection->update(['status' => 'error']);
 
-                return back()->withErrors(['api_key' => __('seven.io nicht erreichbar.')]);
+                return $this->failed($request, 'api_key', __('seven.io nicht erreichbar.'));
             }
         }
 
-        return back()->with('success', __('SMS-Integration (seven.io) gespeichert und Verbindung getestet.'));
+        return $this->saved($request, __('SMS-Integration (seven.io) gespeichert und Verbindung getestet.'));
     }
 
     /**
@@ -407,7 +408,7 @@ class SettingsController extends Controller
 
         $this->audit->log('deposit_rule.created', $rule, null, $validated);
 
-        return back()->with('success', __('Anzahlungsregel angelegt.'));
+        return $this->saved($request, __('Anzahlungsregel angelegt.'), true);
     }
 
     public function deleteDepositRule(DepositRule $rule)
@@ -437,7 +438,7 @@ class SettingsController extends Controller
 
         $this->audit->log('room.created', $room, null, $validated);
 
-        return back()->with('success', __('Raum angelegt.'));
+        return $this->saved($request, __('Raum angelegt.'));
     }
 
     public function storeTable(Request $request)
@@ -502,6 +503,13 @@ class SettingsController extends Controller
         $location->update(['brand_logo_path' => $path]);
         $this->audit->log('location.logo.updated', $location);
 
+        if ($request->wantsJson()) {
+            return response()->json([
+                'message' => __('Logo aktualisiert.'),
+                'logo_url' => route('brand.location.logo', [$location->tenant->slug, $location->slug]),
+            ]);
+        }
+
         return back()->with('success', __('Logo aktualisiert.'));
     }
 
@@ -556,6 +564,21 @@ class SettingsController extends Controller
 
         $this->audit->log('table_combination.created', $combo, null, $validated);
 
+        if ($request->wantsJson()) {
+            $combo->load('tables:id,name');
+
+            return response()->json([
+                'message' => __('Tischkombination angelegt.'),
+                'combination' => [
+                    'id' => $combo->id,
+                    'name' => $combo->name,
+                    'min_capacity' => $combo->min_capacity,
+                    'max_capacity' => $combo->max_capacity,
+                    'tables' => $combo->tables->map(fn ($t) => ['id' => $t->id, 'name' => $t->name])->values(),
+                ],
+            ]);
+        }
+
         return back()->with('success', __('Tischkombination angelegt.'));
     }
 
@@ -586,7 +609,7 @@ class SettingsController extends Controller
 
         $this->audit->log('opening_hours.updated', null, null, ['count' => count($validated['hours'])]);
 
-        return back()->with('success', __('Öffnungszeiten gespeichert.'));
+        return $this->saved($request, __('Öffnungszeiten gespeichert.'));
     }
 
     public function updateTenantType(Request $request)
@@ -602,7 +625,7 @@ class SettingsController extends Controller
 
         $this->audit->log('tenant.type_changed', $tenant, ['type' => $old], ['type' => $validated['type']]);
 
-        return back()->with('success', __('Betriebstyp geändert auf: :type', [
+        return $this->saved($request, __('Betriebstyp geändert auf: :type', [
             'type' => TenantType::from($validated['type'])->label(),
         ]));
     }
@@ -634,6 +657,38 @@ class SettingsController extends Controller
 
         $this->audit->log('special_hours.created', $special, null, $validated);
 
-        return back()->with('success', __('Sonderöffnungszeit gespeichert.'));
+        return $this->saved($request, __('Sonderöffnungszeit gespeichert.'), true);
+    }
+
+    public function deleteCombination(TableCombination $combination, Request $request)
+    {
+        abort_if($combination->location_id !== $this->context->locationId(), 404);
+        $this->audit->log('table_combination.deleted', $combination, ['name' => $combination->name]);
+        $combination->delete();
+
+        return $this->saved($request, __('Tischkombination gelöscht.'));
+    }
+
+    private function saved(Request $request, string $message, bool $reload = false): mixed
+    {
+        if ($request->wantsJson()) {
+            $data = ['message' => $message];
+            if ($reload) {
+                $data['reload'] = true;
+            }
+
+            return response()->json($data);
+        }
+
+        return back()->with('success', $message);
+    }
+
+    private function failed(Request $request, string $field, string $message): mixed
+    {
+        if ($request->wantsJson()) {
+            return response()->json(['errors' => [$field => [$message]]], 422);
+        }
+
+        return back()->withErrors([$field => $message]);
     }
 }

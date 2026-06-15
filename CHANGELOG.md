@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.30.0] – 2026-06-15
+
+### Neu
+- **Tischkombinationen im Tischplan:** Kombinationen werden jetzt direkt im Tischplan
+  verwaltet (Schiebepanel über „🔗 Kombinationen"). Neue Kombinationen können per
+  Checkbox-Auswahl angelegt werden; bestehende werden einzeln gelöscht.
+- **Intelligente Kapazitätsberechnung:** Beim Erstellen einer Kombination wird die
+  Gesamtkapazität automatisch vorgeschlagen. Bei eckigen Tischen mit Stirnsitzplätzen
+  (ungerade oder ≥ 8 Plätze) werden je nach Anordnung 1–2 Plätze pro Verbindungsstelle
+  abgezogen; runde Tische verlieren keinen Platz.
+- **AJAX-Einstellungsseite:** Alle Speichern-Formulare übermitteln jetzt per fetch –
+  kein Seiten-Reload mehr, kein Scrollen nach oben. Erfolgs- und Fehlermeldungen
+  erscheinen als dezenter Toast unten rechts. Formulare, die Listen-Einträge anlegen
+  (Anzahlungsregeln, Sonderöffnungszeiten), laden die Seite nach dem Speichern neu
+  und kehren zur gleichen Scroll-Position zurück.
+
+### Verbessert
+- **Einstellungsseite:** Tisch-Anlegen-Bereich entfernt (Tische werden im Tischplan
+  angelegt). Abschnitt „Räume & Tische" heißt jetzt schlicht „Räume" mit direktem
+  Link zum Tischplan.
+- **Tischkombinationen:** Aus den Einstellungen entfernt; ausschließlich über den
+  Tischplan verwaltbar.
+
 Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
