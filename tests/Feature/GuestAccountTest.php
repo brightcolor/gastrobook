@@ -114,7 +114,7 @@ class GuestAccountTest extends TestCase
 
         $newDate = $start->addDay()->toDateString();
         $this->post('/reservation/'.$reservation->code.'/reschedule/'.$reservation->manage_token, [
-            'date' => $newDate, 'time' => '18:00',
+            'date' => $newDate, 'time' => '18:00', 'party_size' => 2,
         ])->assertRedirect();
 
         $this->assertSame($newDate, $reservation->fresh()->reservation_date->toDateString());
