@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\ReservationBookController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\StaffMemberController;
+use App\Http\Controllers\Admin\TagController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Admin\WaitlistAdminController;
 use App\Http\Controllers\Admin\WalkInController;
@@ -128,6 +129,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->n
 */
 Route::middleware(['auth', 'tenant', 'license'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', DashboardController::class)->name('dashboard');
+    Route::get('/dashboard/stats', [DashboardController::class, 'stats'])->name('dashboard.stats');
 
     // Live operations board (staff)
     Route::middleware('permission:reservations.view')->group(function () {
@@ -154,6 +156,15 @@ Route::middleware(['auth', 'tenant', 'license'])->prefix('admin')->name('admin.'
             ->middleware('permission:reservations.update')->name('reservations.party');
         Route::post('/reservations/{reservation}/tables', [ReservationBookController::class, 'moveTable'])
             ->middleware('permission:tables.assign')->name('reservations.tables');
+        Route::post('/reservations/{reservation}/tags', [TagController::class, 'syncReservation'])
+            ->middleware('permission:reservations.update')->name('reservations.tags');
+    });
+
+    // Tags (tenant-scoped)
+    Route::middleware('permission:reservations.update')->group(function () {
+        Route::get('/tags', [TagController::class, 'index'])->name('tags.index');
+        Route::post('/tags', [TagController::class, 'store'])->name('tags.store');
+        Route::delete('/tags/{tag}', [TagController::class, 'destroy'])->name('tags.destroy');
     });
 
     // Floor plan

@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.31.0] – 2026-06-15
+
+### Neu
+- **Dashboard live KPIs:** Kacheln aktualisieren sich alle 30 Sekunden ohne Seiten-Reload.
+  Bei neuen Buchungen oder Anfragen erscheint ein Toast und die betroffenen Kacheln blinken kurz auf.
+  Alle Kacheln sind jetzt anklickbar und führen direkt zum jeweiligen Bereich.
+- **Reservierungs-Tags:** Farbige Tags (VIP, Allergiker, Geburtstag, …) können in den
+  Einstellungen angelegt und auf der Reservierungs-Detailseite zugewiesen werden.
+  Tags erscheinen als farbige Punkte auf den Tischen im Tischplan und als Badges im Popup.
+- **Tisch wechseln im Tischplan:** Klick auf einen belegten Tisch → „🔄 Tisch wechseln"
+  im Popup aktiviert einen Reassign-Modus. Ein Banner erscheint oben; ein Klick auf den
+  Zieltisch setzt die Reservierung um.
+- **Export mit Datumsbereich:** Der CSV-Export im Reservierungsbuch hat jetzt ein
+  Datumsbereich-Dropdown (Von / Bis), anstatt nur den aktuellen Tag zu exportieren.
+
 ## [1.30.0] – 2026-06-15
 
 ### Neu

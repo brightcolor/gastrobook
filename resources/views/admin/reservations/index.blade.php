@@ -4,8 +4,50 @@
 <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
     <h1 class="text-2xl font-bold">Reservierungsbuch</h1>
     <div class="flex gap-2">
-        <a href="{{ route('admin.reservations.export', ['from' => $date, 'until' => $date]) }}"
-           class="rounded-xl bg-stone-200 px-4 py-2.5 text-sm font-semibold hover:bg-stone-300">CSV-Export</a>
+        <div class="relative">
+            <button id="exportBtn"
+                    class="rounded-xl bg-stone-200 px-4 py-2.5 text-sm font-semibold hover:bg-stone-300">↓ Export</button>
+            <div id="exportDrop"
+                 class="absolute right-0 top-full z-20 mt-1 hidden w-72 rounded-2xl bg-white p-4 shadow-xl ring-1 ring-stone-100">
+                <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-stone-500">Zeitraum wählen</p>
+                <div class="mb-3 grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="mb-1 block text-xs text-stone-500">Von</label>
+                        <input type="date" id="exportFrom" value="{{ $date }}"
+                               class="w-full rounded-lg border-stone-200 text-sm">
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-xs text-stone-500">Bis</label>
+                        <input type="date" id="exportUntil" value="{{ $date }}"
+                               class="w-full rounded-lg border-stone-200 text-sm">
+                    </div>
+                </div>
+                <a id="exportLink"
+                   href="{{ route('admin.reservations.export', ['from' => $date, 'until' => $date]) }}"
+                   class="block w-full rounded-xl bg-stone-900 px-4 py-2 text-center text-sm font-semibold text-white hover:bg-stone-700">
+                    CSV herunterladen
+                </a>
+            </div>
+        </div>
+        <script>
+            (function () {
+                const btn = document.getElementById('exportBtn');
+                const drop = document.getElementById('exportDrop');
+                const link = document.getElementById('exportLink');
+                const base = @json(route('admin.reservations.export'));
+                function updateLink() {
+                    const f = document.getElementById('exportFrom').value;
+                    const u = document.getElementById('exportUntil').value;
+                    link.href = base + '?from=' + f + '&until=' + u;
+                }
+                btn.addEventListener('click', e => { e.stopPropagation(); drop.classList.toggle('hidden'); });
+                document.addEventListener('click', () => drop.classList.add('hidden'));
+                drop.addEventListener('click', e => e.stopPropagation());
+                document.getElementById('exportFrom').addEventListener('change', updateLink);
+                document.getElementById('exportUntil').addEventListener('change', updateLink);
+                link.addEventListener('click', () => drop.classList.add('hidden'));
+            })();
+        </script>
         <a href="{{ route('admin.reservations.create', ['date' => $date]) }}"
            class="rounded-xl bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-stone-700">+ Neu</a>
     </div>

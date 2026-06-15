@@ -69,7 +69,7 @@ class FloorPlanController extends Controller
             ->where('location_id', $location->id)
             ->whereIn('status', ReservationStatus::activeStatuses())
             ->whereDate('reservation_date', $validated['date'])
-            ->with('tables:restaurant_tables.id,name')
+            ->with(['tables:restaurant_tables.id,name', 'tags:id,name,color'])
             ->orderBy('start_at')
             ->get();
 
@@ -119,12 +119,14 @@ class FloorPlanController extends Controller
                     'party' => $current->party_size,
                     'until' => $current->localEnd()->format('H:i'),
                     'status' => $current->status->value,
+                    'tags' => $current->tags->map(fn ($t) => ['name' => $t->name, 'color' => $t->color])->values(),
                 ] : null,
                 'upcoming' => $upcoming ? [
                     'id' => $upcoming->id,
                     'name' => $upcoming->guest_name_snapshot,
                     'party' => $upcoming->party_size,
                     'at' => $upcoming->localStart()->format('H:i'),
+                    'tags' => $upcoming->tags->map(fn ($t) => ['name' => $t->name, 'color' => $t->color])->values(),
                 ] : null,
             ];
         }

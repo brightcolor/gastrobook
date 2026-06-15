@@ -264,6 +264,10 @@ class ReservationBookController extends Controller
 
         $this->lifecycle->reassignTables($reservation, $tableIds, $request->user(), $force);
 
+        if ($request->wantsJson()) {
+            return response()->json(['ok' => true]);
+        }
+
         return back()->with('success', __('Tisch geändert.'));
     }
 

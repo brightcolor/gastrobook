@@ -134,6 +134,36 @@
             @endif
         </div>
 
+        {{-- Tags --}}
+        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
+            <h2 class="mb-3 font-bold">Tags</h2>
+            <div id="tagPills" class="flex flex-wrap gap-1.5 text-xs">
+                @foreach($reservation->tags as $tag)
+                    <span class="tag-pill flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold"
+                          style="background:{{ $tag->color }}22;color:{{ $tag->color }}"
+                          data-id="{{ $tag->id }}">
+                        {{ $tag->name }}
+                        <button class="tag-remove ml-0.5 opacity-60 hover:opacity-100" data-id="{{ $tag->id }}">✕</button>
+                    </span>
+                @endforeach
+                <button id="tagAddBtn"
+                        class="rounded-full border border-dashed border-stone-300 px-2.5 py-1 text-stone-400 hover:border-stone-400 hover:text-stone-600">
+                    + Tag
+                </button>
+            </div>
+            <div id="tagPicker" class="mt-3 hidden">
+                <div id="tagList" class="mb-2 flex flex-wrap gap-1.5 text-xs"></div>
+                <div class="flex gap-2">
+                    <input id="tagNameInput" type="text" maxlength="40" placeholder="Neuer Tag-Name"
+                           class="flex-1 rounded-lg border-stone-200 text-xs">
+                    <input id="tagColorInput" type="color" value="#6b7280"
+                           class="h-8 w-8 cursor-pointer rounded-lg border-stone-200">
+                    <button id="tagCreateBtn"
+                            class="rounded-lg bg-stone-900 px-3 py-1.5 text-xs font-semibold text-white">Anlegen</button>
+                </div>
+            </div>
+        </div>
+
         {{-- Internal notes --}}
         <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
             <h2 class="mb-3 font-bold">Notizen</h2>
@@ -148,4 +178,101 @@
         </div>
     </div>
 </div>
+
+<script>
+(function () {
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? @json(csrf_token());
+    const syncUrl = @json(route('admin.reservations.tags', $reservation));
+    const indexUrl = @json(route('admin.tags.index'));
+    const storeUrl = @json(route('admin.tags.store'));
+
+    let activeTags = @json($reservation->tags->pluck('id')->values());
+    let allTags = [];
+
+    async function loadTags() {
+        const res = await fetch(indexUrl, { headers: { Accept: 'application/json' } });
+        if (res.ok) allTags = await res.json();
+        renderPicker();
+    }
+
+    async function sync() {
+        await fetch(syncUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, Accept: 'application/json' },
+            body: JSON.stringify({ tag_ids: activeTags }),
+        });
+    }
+
+    function renderPills() {
+        const container = document.getElementById('tagPills');
+        const btn = document.getElementById('tagAddBtn');
+        // Remove old pills (keep the add-button)
+        container.querySelectorAll('.tag-pill').forEach(el => el.remove());
+        activeTags.forEach(id => {
+            const tag = allTags.find(t => t.id === id);
+            if (!tag) return;
+            const pill = document.createElement('span');
+            pill.className = 'tag-pill flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold';
+            pill.style.background = tag.color + '22';
+            pill.style.color = tag.color;
+            pill.dataset.id = tag.id;
+            pill.innerHTML = `${tag.name} <button class="tag-remove ml-0.5 opacity-60 hover:opacity-100" data-id="${tag.id}">✕</button>`;
+            btn.before(pill);
+        });
+        container.querySelectorAll('.tag-remove').forEach(b => b.addEventListener('click', () => {
+            activeTags = activeTags.filter(id => id != b.dataset.id);
+            sync();
+            renderPills();
+        }));
+    }
+
+    function renderPicker() {
+        const list = document.getElementById('tagList');
+        list.innerHTML = allTags.map(tag => {
+            const active = activeTags.includes(tag.id);
+            return `<button class="tag-pick rounded-full px-2.5 py-1 font-semibold ring-1 transition"
+                            style="background:${active ? tag.color + '22' : 'transparent'};color:${tag.color};ring-color:${tag.color}"
+                            data-id="${tag.id}">${tag.name}</button>`;
+        }).join('');
+        list.querySelectorAll('.tag-pick').forEach(b => b.addEventListener('click', () => {
+            const id = +b.dataset.id;
+            if (activeTags.includes(id)) {
+                activeTags = activeTags.filter(x => x !== id);
+            } else {
+                activeTags.push(id);
+            }
+            sync();
+            renderPills();
+            renderPicker();
+        }));
+    }
+
+    document.getElementById('tagAddBtn').addEventListener('click', () => {
+        document.getElementById('tagPicker').classList.toggle('hidden');
+        if (!allTags.length) loadTags();
+    });
+
+    document.getElementById('tagCreateBtn').addEventListener('click', async () => {
+        const name = document.getElementById('tagNameInput').value.trim();
+        const color = document.getElementById('tagColorInput').value;
+        if (!name) return;
+        const res = await fetch(storeUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, Accept: 'application/json' },
+            body: JSON.stringify({ name, color }),
+        });
+        if (!res.ok) return;
+        const tag = await res.json();
+        if (!allTags.find(t => t.id === tag.id)) allTags.push(tag);
+        if (!activeTags.includes(tag.id)) activeTags.push(tag.id);
+        document.getElementById('tagNameInput').value = '';
+        sync();
+        renderPills();
+        renderPicker();
+    });
+
+    // Initialize pills from server-rendered state
+    loadTags().then(renderPills);
+})();
+</script>
 @endsection

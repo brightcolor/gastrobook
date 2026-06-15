@@ -71,6 +71,12 @@
     @endforeach
 </div>
 
+{{-- Reassign banner --}}
+<div id="reassignBanner" class="hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between gap-4 bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg">
+    <span>🔄 <span id="reassignLabel">Tisch wechseln – Zieltisch anklicken</span></span>
+    <button id="reassignCancel" class="rounded-lg bg-white/20 px-4 py-1.5 hover:bg-white/30">Abbrechen</button>
+</div>
+
 {{-- Reservation popup --}}
 <div id="tablePopup" class="fp-popup hidden"></div>
 
@@ -188,7 +194,9 @@
     const csrf = @json(csrf_token());
     let editMode = false;
     let tablesData = [];
+    let reservationsData = [];
     let selectedId = null;
+    let reassigning = null; // {reservationId, tableId, name}
 
     const dateInput = document.getElementById('planDate');
     const timeInput = document.getElementById('planTime');
@@ -199,6 +207,7 @@
         const res = await fetch(stateUrl + '?date=' + dateInput.value + '&time=' + timeInput.value, {headers: {Accept: 'application/json'}});
         const data = await res.json();
         tablesData = data.tables;
+        reservationsData = data.reservations;
         render();
     }
 
@@ -304,10 +313,23 @@
             const guest = (t.current && !editMode) ? `<span class="t-guest">${esc(t.current.name.split(' ').pop())}</span>` : '';
             const next = (t.upcoming && !t.current && !editMode) ? `<span class="t-next">ab ${t.upcoming.at}</span>` : '';
 
+            // Tag dots from current or upcoming reservation
+            const tagSource = t.current || t.upcoming;
+            const tagDots = (!editMode && tagSource?.tags?.length)
+                ? `<span class="t-tags">${tagSource.tags.map(tg => `<span class="t-tag-dot" style="background:${tg.color}" title="${esc(tg.name)}"></span>`).join('')}</span>`
+                : '';
+
+            // Reassign-mode highlight
+            if (reassigning) {
+                const isSource = t.id === reassigning.tableId;
+                el.classList.toggle('reassign-source', isSource);
+                el.classList.toggle('reassign-target', !isSource && t.status === 'free');
+            }
+
             el.innerHTML = (editMode ? '' : chairsHtml(t, w, h))
                 + `<div class="tbl-label" style="transform:rotate(${-(t.rotation || 0)}deg)">`
                 + `<span class="t-name"><span class="st-dot"></span>${esc(t.name)}</span>`
-                + `${editMode ? '' : occLine}${guest}${next}</div>`
+                + `${editMode ? '' : occLine}${guest}${next}${tagDots}</div>`
                 + (editMode ? `<button class="rot-btn" title="Drehen">⟳</button>` : '');
 
             if (editMode) {
@@ -323,7 +345,13 @@
                     el.querySelector('.tbl-label').style.transform = `rotate(${-r}deg)`;
                 });
             } else {
-                el.addEventListener('click', () => showPopup(t));
+                el.addEventListener('click', () => {
+                    if (reassigning) {
+                        if (t.id !== reassigning.tableId) doReassign(t.id);
+                    } else {
+                        showPopup(t);
+                    }
+                });
             }
             room.appendChild(el);
         });
@@ -335,8 +363,12 @@
         let body;
         if (t.current) {
             const cur = t.current.party, full = cur >= t.seats;
+            const tagBadges = (t.current.tags?.length)
+                ? `<div class="pp-tags">${t.current.tags.map(tg => `<span class="pp-tag" style="background:${tg.color}22;color:${tg.color}">${esc(tg.name)}</span>`).join('')}</div>`
+                : '';
             body = `<p class="pp-line"><strong>${esc(t.current.name)}</strong></p>
                 <p class="pp-sub">bis ${t.current.until} Uhr</p>
+                ${tagBadges}
                 <div class="pp-party">
                     <span class="pp-plabel">Gäste am Tisch</span>
                     <div class="pp-step-row">
@@ -348,6 +380,7 @@
                 ${full ? '<p class="pp-note">Tisch voll – für mehr Gäste einen größeren oder zusätzlichen Tisch nutzen.</p>' : ''}
                 ${['seated', 'partially_arrived'].includes(t.current.status)
                     ? `<button class="pp-btn pp-green" data-checkout="${t.current.id}">✓ Auschecken (Gäste gegangen)</button>` : ''}
+                <button class="pp-btn pp-soft" data-reassign="${t.current.id}" data-table="${t.id}" data-name="${esc(t.current.name)}">🔄 Tisch wechseln</button>
                 <a href="/admin/reservations/${t.current.id}" class="pp-btn pp-soft">Reservierung öffnen</a>`;
         } else if (t.upcoming) {
             body = `<p class="pp-line">Nächste: <strong>${esc(t.upcoming.name)}</strong></p>
@@ -375,7 +408,45 @@
         }));
         const co = popup.querySelector('[data-checkout]');
         if (co) co.addEventListener('click', () => checkout(co.dataset.checkout));
+        const ra = popup.querySelector('[data-reassign]');
+        if (ra) ra.addEventListener('click', () => startReassign(+ra.dataset.reassign, +ra.dataset.table, ra.dataset.name));
     }
+
+    function startReassign(reservationId, tableId, name) {
+        reassigning = { reservationId, tableId, name };
+        popup.classList.add('hidden');
+        document.getElementById('reassignLabel').textContent = `Tisch wechseln für „${name}" – Zieltisch anklicken`;
+        document.getElementById('reassignBanner').classList.remove('hidden');
+        render();
+    }
+
+    function cancelReassign() {
+        reassigning = null;
+        document.getElementById('reassignBanner').classList.add('hidden');
+        render();
+    }
+
+    async function doReassign(targetTableId) {
+        const banner = document.getElementById('reassignBanner');
+        banner.style.opacity = '0.6';
+        try {
+            const res = await fetch('/admin/reservations/' + reassigning.reservationId + '/tables', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, Accept: 'application/json' },
+                body: JSON.stringify({ table_ids: [targetTableId] }),
+            });
+            if (!res.ok) {
+                const j = await res.json().catch(() => ({}));
+                alert(j.message || 'Tisch konnte nicht geändert werden.');
+            }
+        } finally {
+            banner.style.opacity = '';
+            cancelReassign();
+            load();
+        }
+    }
+
+    document.getElementById('reassignCancel').addEventListener('click', cancelReassign);
 
     async function checkout(reservationId) {
         if (!confirm('Tisch auschecken – die Gäste sind gegangen?')) return;
@@ -925,5 +996,18 @@
     }
     .fp-combo-close:hover { background:#f5f5f4; }
     .fp-combo-body { flex:1; overflow-y:auto; padding:16px 18px; }
+
+    /* Tag dots on table tiles */
+    .t-tags { display:flex; gap:3px; flex-wrap:wrap; justify-content:center; margin-top:2px; }
+    .t-tag-dot { width:8px; height:8px; border-radius:50%; border:1.5px solid rgba(255,255,255,.6); flex-shrink:0; }
+
+    /* Tags in popup */
+    .pp-tags { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:8px; }
+    .pp-tag { font-size:11px; font-weight:600; padding:2px 8px; border-radius:99px; }
+
+    /* Reassign mode highlight */
+    .table-el.reassign-source { outline:3px solid #0d9488; outline-offset:3px; }
+    .table-el.reassign-target { cursor:crosshair !important; outline:2px dashed #0d9488; outline-offset:2px; opacity:.85; }
+    .table-el.reassign-target:hover { opacity:1; transform:scale(1.04); z-index:20; }
 </style>
 @endsection

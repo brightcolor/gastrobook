@@ -199,6 +199,25 @@
         </form>
     </div>
 
+    {{-- Tags --}}
+    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100" id="tagSection">
+        <h2 class="mb-1 font-bold">Reservierungs-Tags</h2>
+        <p class="mb-3 text-xs text-stone-500">Tags helfen beim schnellen Erkennen besonderer Reservierungen im Tischplan (VIP, Allergiker, Geburtstag, …).</p>
+        <div id="settingsTagList" class="mb-3 flex flex-wrap gap-2 text-sm"></div>
+        <div class="flex items-end gap-2">
+            <div class="grow">
+                <label class="mb-1 block text-xs font-semibold text-stone-500">Neuer Tag</label>
+                <input id="settingsTagName" type="text" maxlength="40" placeholder="z. B. VIP"
+                       class="w-full rounded-lg border-stone-200 text-sm">
+            </div>
+            <div>
+                <label class="mb-1 block text-xs font-semibold text-stone-500">Farbe</label>
+                <input id="settingsTagColor" type="color" value="#6b7280" class="h-9 w-10 cursor-pointer rounded-lg border-stone-200">
+            </div>
+            <button id="settingsTagCreate" class="rounded-lg bg-stone-900 px-4 py-2 font-semibold text-white">Anlegen</button>
+        </div>
+    </div>
+
     {{-- Booking form fields --}}
     @if(auth()->user()->canInTenant('tenant.settings.manage', app(\App\Support\TenantContext::class)->tenant(), $location))
     <form method="POST" action="{{ route('admin.settings.field-rules') }}" class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
@@ -555,5 +574,69 @@
             });
         });
     })();
+</script>
+
+<script>
+// ── Tags-Verwaltung ────────────────────────────────────────────────────────
+(function () {
+    const csrf = @json(csrf_token());
+    const indexUrl = @json(route('admin.tags.index'));
+    const storeUrl = @json(route('admin.tags.store'));
+    const deleteBase = @json(url('/admin/tags'));
+
+    let tags = [];
+
+    async function loadTags() {
+        const res = await fetch(indexUrl, { headers: { Accept: 'application/json' } });
+        if (res.ok) { tags = await res.json(); renderTags(); }
+    }
+
+    function renderTags() {
+        const list = document.getElementById('settingsTagList');
+        if (!list) return;
+        list.innerHTML = tags.length
+            ? tags.map(t => `
+                <span class="flex items-center gap-1.5 rounded-full px-3 py-1 font-semibold text-sm"
+                      style="background:${t.color}22;color:${t.color}">
+                    ${t.name}
+                    <button class="tag-del opacity-60 hover:opacity-100" data-id="${t.id}" title="Löschen">✕</button>
+                </span>`).join('')
+            : '<span class="text-sm text-stone-400">Noch keine Tags angelegt.</span>';
+
+        list.querySelectorAll('.tag-del').forEach(btn => btn.addEventListener('click', async () => {
+            if (!confirm('Tag „' + tags.find(t => t.id == btn.dataset.id)?.name + '" löschen?')) return;
+            btn.disabled = true;
+            const res = await fetch(`${deleteBase}/${btn.dataset.id}`, {
+                method: 'DELETE',
+                headers: { 'X-CSRF-TOKEN': csrf, Accept: 'application/json' },
+            });
+            if (res.ok) { tags = tags.filter(t => t.id != btn.dataset.id); renderTags(); }
+            else { btn.disabled = false; alert('Löschen fehlgeschlagen.'); }
+        }));
+    }
+
+    document.getElementById('settingsTagCreate')?.addEventListener('click', async () => {
+        const name = document.getElementById('settingsTagName').value.trim();
+        const color = document.getElementById('settingsTagColor').value;
+        if (!name) return;
+        const res = await fetch(storeUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, Accept: 'application/json' },
+            body: JSON.stringify({ name, color }),
+        });
+        if (res.ok) {
+            const tag = await res.json();
+            if (!tags.find(t => t.id === tag.id)) tags.push(tag);
+            else tags = tags.map(t => t.id === tag.id ? tag : t);
+            document.getElementById('settingsTagName').value = '';
+            renderTags();
+        } else {
+            const j = await res.json().catch(() => ({}));
+            alert(j.message || 'Tag konnte nicht angelegt werden.');
+        }
+    });
+
+    loadTags();
+})();
 </script>
 @endsection
