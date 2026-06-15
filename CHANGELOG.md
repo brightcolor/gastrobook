@@ -4,6 +4,15 @@ Alle nennenswerten Änderungen an Swayy. Das Projekt folgt
 [Semantic Versioning](https://semver.org). Die aktuelle Version steht in
 `config/version.php` und wird dezent in allen Admin-Oberflächen angezeigt.
 
+## [1.29.0] – 2026-06-15
+
+### Neu
+- **Personenanzahl beim Umbuchen änderbar:** Auf der Umbuchungsseite können Gäste
+  jetzt neben Datum und Uhrzeit auch die Personenanzahl anpassen. Die Slot-Auswahl
+  lädt automatisch neu wenn eine andere Personenzahl gewählt wird. Bei Salons bleibt
+  die Personenanzahl unverändert auf 1. Die neue Personenzahl wird in der Reservierung
+  gespeichert und im Audit-Log protokolliert.
+
 ## [1.28.6] – 2026-06-15
 
 ### Behoben

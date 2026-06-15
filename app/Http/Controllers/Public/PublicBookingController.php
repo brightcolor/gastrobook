@@ -670,6 +670,7 @@ class PublicBookingController extends Controller
             'reservation' => $reservation,
             'location' => $location,
             'tenant' => $tenant,
+            'settings' => $settings,
             'tooLate' => false,
             'isSalon' => $tenant?->isSalon() ?? false,
             'serviceIds' => $reservation->services->pluck('id')->all(),
@@ -688,15 +689,27 @@ class PublicBookingController extends Controller
             return back()->withErrors(['time' => __('Die Umbuchungsfrist ist abgelaufen.')]);
         }
 
-        $validated = $request->validate([
+        $isSalon = $location->tenant()->first()?->isSalon() ?? false;
+
+        $rules = [
             'date' => ['required', 'date_format:Y-m-d'],
             'time' => ['required', 'date_format:H:i'],
-        ]);
+        ];
+        if (! $isSalon) {
+            $rules['party_size'] = [
+                'required', 'integer',
+                'min:'.$settings->min_party_online,
+                'max:'.$settings->max_party_online,
+            ];
+        }
+
+        $validated = $request->validate($rules);
 
         $newStartLocal = CarbonImmutable::parse($validated['date'].' '.$validated['time'], $reservation->timezone);
+        $newPartySize = $isSalon ? null : (int) $validated['party_size'];
 
         try {
-            $this->lifecycle->reschedule($reservation, $newStartLocal, null, 'guest');
+            $this->lifecycle->reschedule($reservation, $newStartLocal, $newPartySize, null, 'guest');
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors());
         }

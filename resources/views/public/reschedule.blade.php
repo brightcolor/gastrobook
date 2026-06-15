@@ -1,10 +1,12 @@
 @extends('layouts.public', ['tenant' => $tenant])
-@section('title', 'Termin umbuchen')
+@section('title', $isSalon ? 'Termin umbuchen' : 'Reservierung umbuchen')
 @section('content')
 <div class="mx-auto max-w-md rounded-2xl bg-white p-6 shadow-sm">
-    <h1 class="text-center text-2xl font-bold">Termin umbuchen</h1>
+    <h1 class="text-center text-2xl font-bold">{{ $isSalon ? 'Termin' : 'Reservierung' }} umbuchen</h1>
     <p class="mt-2 text-center text-sm text-stone-600">
-        Aktuell: <strong>{{ $reservation->localStart()->format('d.m.Y · H:i') }} Uhr</strong> ({{ $reservation->code }})
+        Aktuell: <strong>{{ $reservation->localStart()->format('d.m.Y · H:i') }} Uhr</strong>
+        @if(! $isSalon) · <strong>{{ $reservation->party_size }} {{ $reservation->party_size === 1 ? 'Person' : 'Personen' }}</strong>@endif
+        ({{ $reservation->code }})
     </p>
 
     @if($tooLate)
@@ -19,12 +21,29 @@
         <form method="POST" action="{{ route('booking.reschedule.post', ['code' => $reservation->code, 'token' => $reservation->manage_token]) }}"
               class="mt-6 space-y-5" id="rescheduleForm">
             @csrf
+
+            @if(! $isSalon)
+            <div>
+                <label class="mb-2 block text-sm font-semibold">Personenanzahl</label>
+                <div class="grid gap-2" style="grid-template-columns: repeat({{ min($settings->max_party_online, 8) }}, minmax(0, 1fr))">
+                    @for($i = $settings->min_party_online; $i <= $settings->max_party_online; $i++)
+                    <button type="button" data-party="{{ $i }}"
+                            class="party-btn rounded-xl border-2 border-stone-200 py-2.5 text-lg font-bold transition-all hover:border-brand active:scale-95
+                                   {{ old('party_size', $reservation->party_size) == $i ? 'border-brand bg-brand text-white' : '' }}">
+                        {{ $i }}
+                    </button>
+                    @endfor
+                </div>
+                <input type="hidden" name="party_size" id="partySizeInput" value="{{ old('party_size', $reservation->party_size) }}">
+            </div>
+            @endif
+
             <div>
                 <label for="date" class="mb-2 block text-sm font-semibold">Neues Datum</label>
                 <input type="date" name="date" id="date" required
                        min="{{ now($location->timezone)->toDateString() }}"
-                       max="{{ now($location->timezone)->addDays($location->effectiveSettings()->max_advance_days)->toDateString() }}"
-                       value="{{ now($location->timezone)->toDateString() }}"
+                       max="{{ now($location->timezone)->addDays($settings->max_advance_days)->toDateString() }}"
+                       value="{{ old('date', now($location->timezone)->toDateString()) }}"
                        class="w-full rounded-xl border-2 border-stone-200 px-4 py-3 text-lg">
             </div>
             <div>
@@ -44,14 +63,29 @@
 
         <script>
         (function () {
-            const slotsUrl = @json(route('booking.slots', [$tenant->slug, $location->slug]));
-            const isSalon = @json($isSalon);
-            const partySize = @json($reservation->party_size);
+            const slotsUrl  = @json(route('booking.slots', [$tenant->slug, $location->slug]));
+            const isSalon   = @json($isSalon);
             const serviceIds = @json($serviceIds);
-            const staffId = @json($staffId);
-            const dateInput = document.getElementById('date');
-            const timeInput = document.getElementById('timeInput');
-            const slotContainer = document.getElementById('slotContainer');
+            const staffId   = @json($staffId);
+
+            const dateInput      = document.getElementById('date');
+            const timeInput      = document.getElementById('timeInput');
+            const slotContainer  = document.getElementById('slotContainer');
+            const partySizeInput = document.getElementById('partySizeInput');
+
+            // Party-size buttons (restaurant only)
+            document.querySelectorAll('.party-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.party-btn').forEach(b => {
+                        b.classList.remove('border-brand', 'bg-brand', 'text-white');
+                        b.classList.add('border-stone-200');
+                    });
+                    btn.classList.add('border-brand', 'bg-brand', 'text-white');
+                    btn.classList.remove('border-stone-200');
+                    partySizeInput.value = btn.dataset.party;
+                    loadSlots();
+                });
+            });
 
             async function loadSlots() {
                 if (!dateInput.value) return;
@@ -63,7 +97,7 @@
                     serviceIds.forEach(id => params.append('service_ids[]', id));
                     params.set('staff_member_id', staffId || 0);
                 } else {
-                    params.set('party_size', partySize);
+                    params.set('party_size', partySizeInput ? partySizeInput.value : @json($reservation->party_size));
                 }
                 try {
                     const res = await fetch(slotsUrl + '?' + params.toString(), {headers: {Accept: 'application/json'}});

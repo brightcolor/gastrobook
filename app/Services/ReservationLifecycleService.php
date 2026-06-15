@@ -337,14 +337,15 @@ class ReservationLifecycleService
      * duration, re-checks availability (tables for restaurants, staff for salons)
      * and reassigns tables when needed.
      */
-    public function reschedule(Reservation $reservation, CarbonImmutable $newStartLocal, ?User $actor = null, string $actorType = 'guest'): Reservation
+    public function reschedule(Reservation $reservation, CarbonImmutable $newStartLocal, ?int $newPartySize = null, ?User $actor = null, string $actorType = 'guest'): Reservation
     {
         $location = $reservation->location()->withoutGlobalScope('tenant')->first();
+        $partySize = $newPartySize ?? $reservation->party_size;
         $duration = (int) $reservation->start_at->diffInMinutes($reservation->end_at);
         $startUtc = $newStartLocal->utc();
         $endUtc = $startUtc->addMinutes($duration);
 
-        return DB::transaction(function () use ($reservation, $location, $newStartLocal, $startUtc, $endUtc, $actor, $actorType) {
+        return DB::transaction(function () use ($reservation, $location, $newStartLocal, $startUtc, $endUtc, $partySize, $actor, $actorType) {
             $tableIds = null;
 
             if ($reservation->staff_member_id) {
@@ -361,7 +362,7 @@ class ReservationLifecycleService
                 }
             } else {
                 // Restaurant: reassign a fitting free table/combination
-                $assignment = $this->tableAssignment->findTables($location, $startUtc, $endUtc, $reservation->party_size, [
+                $assignment = $this->tableAssignment->findTables($location, $startUtc, $endUtc, $partySize, [
                     'online' => true,
                     'exclude_reservation_id' => $reservation->id,
                 ]);
@@ -374,12 +375,14 @@ class ReservationLifecycleService
             $old = [
                 'start_at' => $reservation->start_at->toIso8601String(),
                 'end_at' => $reservation->end_at->toIso8601String(),
+                'party_size' => $reservation->party_size,
             ];
 
             $reservation->update([
                 'reservation_date' => $newStartLocal->toDateString(),
                 'start_at' => $startUtc,
                 'end_at' => $endUtc,
+                'party_size' => $partySize,
             ]);
             if ($tableIds !== null) {
                 $reservation->tables()->sync($tableIds);
