@@ -80,71 +80,74 @@
 {{-- Reservation popup --}}
 <div id="tablePopup" class="fp-popup hidden"></div>
 
-{{-- Combinations slide-over panel --}}
-<div id="comboPanel" class="fp-combo-panel">
-    <div class="fp-combo-head">
-        <div class="flex items-center gap-2">
-            <span class="text-xl">🔗</span>
-            <h3 class="text-base font-bold">Tischkombinationen</h3>
+{{-- Combinations modal --}}
+<div id="comboBack" class="fp-modal-back hidden">
+    <div class="fp-modal" style="max-width:520px;display:flex;flex-direction:column;max-height:90vh">
+        <div class="fp-modal-head" style="flex:none;justify-content:space-between">
+            <div class="flex items-center gap-2">
+                <span>🔗</span>
+                <h3>Tischkombinationen</h3>
+            </div>
+            <button id="comboPanelClose"
+                    style="width:30px;height:30px;border-radius:8px;border:1px solid #e7e5e4;background:#fff;cursor:pointer;font-size:13px;color:#78716c;flex:none">✕</button>
         </div>
-        <button id="comboPanelClose" class="fp-combo-close">✕</button>
-    </div>
-    <div class="fp-combo-body">
-        <p class="mb-3 text-xs text-stone-500">Verbinden Sie mehrere Tische zu einer Kombination für größere Gruppen. Die Kapazität wird automatisch vorgeschlagen.</p>
-        <div id="comboList" class="space-y-2 text-sm"></div>
+        <div class="fp-modal-body" style="overflow-y:auto;flex:1">
+            <p class="mb-3 text-xs text-stone-500">Verbinden Sie mehrere Tische zu einer Kombination für größere Gruppen. Die Kapazität wird automatisch vorgeschlagen.</p>
+            <div id="comboList" class="space-y-2 text-sm"></div>
 
-        @if($canEdit)
-        <div class="mt-4 border-t border-stone-100 pt-4">
-            <button id="openComboForm" class="fp-btn fp-btn-save w-full justify-center">＋ Neue Kombination</button>
+            @if($canEdit)
+            <div class="mt-4 border-t border-stone-100 pt-4">
+                <button id="openComboForm" class="fp-btn fp-btn-save w-full justify-center">＋ Neue Kombination</button>
 
-            <div id="comboForm" class="mt-4 hidden space-y-3">
-                <div>
-                    <p class="mb-2 text-xs font-semibold text-stone-500">Tische wählen (min. 2)</p>
-                    <div id="comboTableChecks" class="max-h-48 space-y-1 overflow-y-auto rounded-xl border border-stone-200 p-2 text-sm">
-                        @forelse($joinableTables as $jt)
-                            <label class="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-stone-50">
-                                <input type="checkbox" class="combo-check rounded" value="{{ $jt->id }}"
-                                       data-name="{{ $jt->name }}"
-                                       data-cap="{{ $jt->max_capacity }}"
-                                       data-shape="{{ $jt->shape }}">
-                                <span class="font-semibold">{{ $jt->name }}</span>
-                                <span class="text-stone-400">{{ $jt->room?->name }}</span>
-                                <span class="ml-auto text-stone-500">{{ $jt->max_capacity }} Pl.</span>
-                                @if($jt->shape === 'round')<span class="text-xs text-stone-400">⬭</span>@else<span class="text-xs text-stone-400">▭</span>@endif
-                            </label>
-                        @empty
-                            <p class="py-3 text-center text-xs text-stone-400">Keine kombinierbaren Tische vorhanden. Tische mit der Eigenschaft „kombinierbar" im Tischplan anlegen.</p>
-                        @endforelse
+                <div id="comboForm" class="mt-4 hidden space-y-3">
+                    <div>
+                        <p class="mb-2 text-xs font-semibold text-stone-500">Tische wählen (min. 2)</p>
+                        <div id="comboTableChecks" class="max-h-52 space-y-1 overflow-y-auto rounded-xl border border-stone-200 p-2 text-sm">
+                            @forelse($joinableTables as $jt)
+                                <label class="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-stone-50">
+                                    <input type="checkbox" class="combo-check rounded" value="{{ $jt->id }}"
+                                           data-name="{{ $jt->name }}"
+                                           data-cap="{{ $jt->max_capacity }}"
+                                           data-shape="{{ $jt->shape }}">
+                                    <span class="font-semibold">{{ $jt->name }}</span>
+                                    <span class="text-stone-400">{{ $jt->room?->name }}</span>
+                                    <span class="ml-auto text-stone-500">{{ $jt->max_capacity }} Pl.</span>
+                                    @if($jt->shape === 'round')<span class="text-xs text-stone-400">⬭</span>@else<span class="text-xs text-stone-400">▭</span>@endif
+                                </label>
+                            @empty
+                                <p class="py-3 text-center text-xs text-stone-400">Keine kombinierbaren Tische vorhanden. Tische mit der Eigenschaft „kombinierbar" im Tischplan anlegen.</p>
+                            @endforelse
+                        </div>
                     </div>
-                </div>
-                <div>
-                    <label class="mb-1 block text-xs font-semibold text-stone-500">Name der Kombination</label>
-                    <input id="comboNameInput" type="text" maxlength="80" placeholder="z. B. T1 + T2"
-                           class="w-full rounded-lg border-2 border-stone-200 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
-                </div>
-                <div>
+                    <div>
+                        <label class="mb-1 block text-xs font-semibold text-stone-500">Name der Kombination</label>
+                        <input id="comboNameInput" type="text" maxlength="80" placeholder="z. B. T1 + T2"
+                               class="w-full rounded-lg border-2 border-stone-200 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
+                    </div>
+                    <div>
+                        <div class="flex gap-2">
+                            <div class="flex-1">
+                                <label class="mb-1 block text-xs font-semibold text-stone-500">Min. Personen</label>
+                                <input id="comboMinInput" type="number" min="1" placeholder="2"
+                                       class="w-full rounded-lg border-2 border-stone-200 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
+                            </div>
+                            <div class="flex-1">
+                                <label class="mb-1 block text-xs font-semibold text-stone-500">Max. Personen</label>
+                                <input id="comboMaxInput" type="number" min="1" placeholder="8"
+                                       class="w-full rounded-lg border-2 border-stone-200 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
+                            </div>
+                        </div>
+                        <p id="comboHint" class="mt-1.5 hidden rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800"></p>
+                    </div>
+                    <p id="comboErr" class="hidden text-xs font-semibold text-red-600"></p>
                     <div class="flex gap-2">
-                        <div class="flex-1">
-                            <label class="mb-1 block text-xs font-semibold text-stone-500">Min. Personen</label>
-                            <input id="comboMinInput" type="number" min="1" placeholder="2"
-                                   class="w-full rounded-lg border-2 border-stone-200 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
-                        </div>
-                        <div class="flex-1">
-                            <label class="mb-1 block text-xs font-semibold text-stone-500">Max. Personen</label>
-                            <input id="comboMaxInput" type="number" min="1" placeholder="8"
-                                   class="w-full rounded-lg border-2 border-stone-200 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
-                        </div>
+                        <button id="cancelComboForm" class="fp-btn flex-1 justify-center">Abbrechen</button>
+                        <button id="saveComboBtn" class="fp-btn fp-btn-save flex-1 justify-center">Anlegen</button>
                     </div>
-                    <p id="comboHint" class="mt-1.5 hidden rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800"></p>
-                </div>
-                <p id="comboErr" class="hidden text-xs font-semibold text-red-600"></p>
-                <div class="flex gap-2">
-                    <button id="cancelComboForm" class="fp-btn flex-1 justify-center">Abbrechen</button>
-                    <button id="saveComboBtn" class="fp-btn fp-btn-save flex-1 justify-center">Anlegen</button>
                 </div>
             </div>
+            @endif
         </div>
-        @endif
     </div>
 </div>
 
@@ -634,32 +637,60 @@
     let combosData = @json($combosJson);
 
     // ── Capacity suggestion ───────────────────────────────────────────────
+    // Returns how many of a rect table's narrow-end (Stirnseite) seats exist.
+    // Mirrors chairsHtml: elongated rects with odd seat count get 1 head;
+    // those with ≥ 8 seats get 2 heads (one at each narrow end).
+    // Round tables never have end seats.
     function headCount(shape, n) {
         if (shape !== 'rect') return 0;
-        return n >= 8 ? 2 : (n % 2 === 1 && n >= 3 ? 1 : 0);
+        return n >= 8 ? 2 : (n % 2 === 1 ? 1 : 0);
     }
 
+    // Correct algorithm for N tables pushed together in a line.
+    //
+    // Physical model: N tables → N-1 junctions. At each junction the two
+    // touching narrow ends each lose their end seat (if one exists).
+    // An "end" table in the line has 1 junction; a "middle" table has 2.
+    //
+    // To get the realistic (minimum) capacity we maximise subtractions:
+    //   • Tables with 2 end seats should sit in MIDDLE positions so both
+    //     ends face junctions.
+    //   • Tables with 0/1 end seat go to the outer ends of the line.
+    //
+    // Formula (greedy match, sort both lists descending):
+    //   middleSlots = max(0, N-2)   → each worth 2 junction sides
+    //   endSlots    = 2             → each worth 1 junction side
+    //   sub = Σ min(headCount_i, junctionCapacity_i)
+    //
+    // Simplified closed form:
+    //   sub = h2*2 + h1 − max(0, h2 − middleSlots)
+    // where h2 = #tables with 2 heads, h1 = #tables with 1 head.
     function suggestCapacity(tables) {
         if (tables.length < 2) return 0;
         const total = tables.reduce((s, t) => s + t.max_capacity, 0);
-        // Arrange tables so those with most heads sit in middle (they serve two junctions)
-        const sorted = [...tables].sort((a, b) => headCount(b.shape, b.max_capacity) - headCount(a.shape, a.max_capacity));
-        const heads = sorted.map(t => headCount(t.shape, t.max_capacity));
-        let sub = 0;
-        for (let i = 0; i < sorted.length - 1; i++) {
-            if (heads[i] > 0)     { heads[i]--;     sub++; }
-            if (heads[i + 1] > 0) { heads[i + 1]--; sub++; }
-        }
+        const n = tables.length;
+        let h2 = 0, h1 = 0;
+        tables.forEach(t => {
+            const h = headCount(t.shape, t.max_capacity);
+            if (h >= 2) h2++;
+            else if (h === 1) h1++;
+        });
+        const middleSlots = Math.max(0, n - 2);
+        const sub = h2 * 2 + h1 - Math.max(0, h2 - middleSlots);
         return Math.max(total - sub, 1);
     }
 
-    // ── Panel open/close ─────────────────────────────────────────────────
-    const panel    = document.getElementById('comboPanel');
-    const comboBtn = document.getElementById('comboToggle');
-    const closeBtn = document.getElementById('comboPanelClose');
+    // ── Modal open/close ─────────────────────────────────────────────────
+    const comboBack = document.getElementById('comboBack');
+    const comboBtn  = document.getElementById('comboToggle');
+    const closeBtn  = document.getElementById('comboPanelClose');
 
-    comboBtn?.addEventListener('click', () => panel.classList.toggle('open'));
-    closeBtn?.addEventListener('click', () => panel.classList.remove('open'));
+    function openComboModal()  { comboBack.classList.remove('hidden'); comboBack.classList.add('flex'); }
+    function closeComboModal() { comboBack.classList.add('hidden'); comboBack.classList.remove('flex'); }
+
+    comboBtn?.addEventListener('click', openComboModal);
+    closeBtn?.addEventListener('click', closeComboModal);
+    comboBack?.addEventListener('click', e => { if (e.target === comboBack) closeComboModal(); });
 
     // ── Render combo list ─────────────────────────────────────────────────
     function renderList() {
@@ -972,30 +1003,6 @@
     .fp-err { font-size:13px; color:#dc2626; }
     .fp-modal-foot { display:flex; gap:10px; justify-content:flex-end; }
 
-    /* Combinations slide-over panel */
-    .fp-combo-panel {
-        position:fixed; top:0; right:0; bottom:0; z-index:45;
-        width: min(380px, 100vw);
-        background:#fff;
-        box-shadow:-6px 0 32px rgba(0,0,0,.12);
-        display:flex; flex-direction:column;
-        transform:translateX(100%);
-        transition:transform .25s cubic-bezier(.4,0,.2,1);
-        border-left:1px solid #f0efed;
-    }
-    .fp-combo-panel.open { transform:translateX(0); }
-    .fp-combo-head {
-        display:flex; align-items:center; justify-content:space-between;
-        padding:16px 18px; border-bottom:1px solid #f0efed;
-        background:#fafaf9; flex:none;
-    }
-    .fp-combo-close {
-        width:30px; height:30px; border-radius:8px;
-        border:1px solid #e7e5e4; background:#fff; cursor:pointer;
-        font-size:13px; color:#78716c; display:flex; align-items:center; justify-content:center;
-    }
-    .fp-combo-close:hover { background:#f5f5f4; }
-    .fp-combo-body { flex:1; overflow-y:auto; padding:16px 18px; }
 
     /* Tag dots on table tiles */
     .t-tags { display:flex; gap:3px; flex-wrap:wrap; justify-content:center; margin-top:2px; }

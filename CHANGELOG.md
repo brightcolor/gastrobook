@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.31.2] – 2026-06-16
+
+### Verbessert
+- **Tischkombinationen als Modal:** Panel ist jetzt ein zentriertes Modal mit Backdrop
+  (statt Slide-Over von rechts), konsistent mit den anderen Elementen im Tischplan.
+- **Stirnseiten-Kapazität korrigiert:** Algorithmus war falsch – Tische mit zwei
+  Stirnsitzen wurden ans äußere Ende der Reihe gesetzt statt in die Mitte, was zu einer
+  zu optimistischen Kapazitätszahl führte. Neue Formel berechnet korrekt:
+  `sub = h2×2 + h1 − max(0, h2 − mittlereSlots)` wobei h2/h1 = Anzahl Tische mit 2/1
+  Stirnsitzen; Tische in Mittelpositionen können beide Enden an Verbindungsstellen abgeben.
+
 ## [1.31.1] – 2026-06-16
 
 ### Neu
