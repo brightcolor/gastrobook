@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# pre-push hook – spiegelt exakt die CI-Checks.
+# Installiert via: git config core.hooksPath .githooks
+# Automatisch aktiv nach: composer install  (via "prepare"-Script in composer.json)
+#
+# Überspringen (Notfall): git push --no-verify
+
+set -e
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+RESET='\033[0m'
+
+step() { echo -e "\n${CYAN}${BOLD}▶ $1${RESET}"; }
+ok()   { echo -e "${GREEN}✔ $1${RESET}"; }
+fail() { echo -e "${RED}✘ $1${RESET}"; }
+
+echo -e "${BOLD}╔══════════════════════════════════════╗${RESET}"
+echo -e "${BOLD}║     Swayy pre-push checks            ║${RESET}"
+echo -e "${BOLD}╚══════════════════════════════════════╝${RESET}"
+
+# vendor/ vorhanden?
+if [ ! -f "vendor/bin/pint" ]; then
+    echo -e "${YELLOW}⚠ vendor/ nicht gefunden – bitte zuerst: composer install${RESET}"
+    exit 1
+fi
+
+# ── 1. Code Style (Pint) ─────────────────────────────────────────────────────
+step "Code Style (Pint)"
+if vendor/bin/pint --test --quiet; then
+    ok "Pint: kein Style-Problem"
+else
+    fail "Pint: Style-Fehler gefunden. Bitte korrigieren:"
+    vendor/bin/pint --test
+    echo -e "\n${YELLOW}Tipp: 'vendor/bin/pint' behebt alle Probleme automatisch.${RESET}"
+    exit 1
+fi
+
+# ── 2. Statische Analyse (Larastan) ──────────────────────────────────────────
+step "Statische Analyse (Larastan)"
+if vendor/bin/phpstan analyse --memory-limit=1G --no-progress --quiet 2>/dev/null; then
+    ok "Larastan: keine Fehler"
+else
+    fail "Larastan: Typfehler gefunden:"
+    vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+    exit 1
+fi
+
+# ── 3. Tests (PHPUnit) ───────────────────────────────────────────────────────
+step "Tests (PHPUnit)"
+if php artisan config:clear --quiet && php artisan test --compact; then
+    ok "Alle Tests grün"
+else
+    fail "Tests fehlgeschlagen"
+    exit 1
+fi
+
+echo -e "\n${GREEN}${BOLD}✔ Alle Checks bestanden – Push läuft.${RESET}\n"

@@ -1,5 +1,8 @@
 * text=auto eol=lf
 
+# Git hooks – immer LF damit der Shebang auf Linux/Mac greift
+.githooks/* text eol=lf
+
 *.blade.php diff=html
 *.css diff=css
 *.html diff=html
