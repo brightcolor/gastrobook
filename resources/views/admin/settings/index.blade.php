@@ -45,6 +45,71 @@
     @endif
 </div>
 
+{{-- Website-Widget --}}
+<div class="mb-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
+    <h2 class="mb-1 font-bold">Website-Widget</h2>
+    <p class="mb-4 text-xs text-stone-500">Binde die Buchungsfunktion direkt auf deiner Website ein. Wähle den Typ, der am besten passt.</p>
+
+    {{-- Tabs --}}
+    <div class="mb-4 flex gap-1 rounded-xl bg-stone-100 p-1 text-sm" role="tablist">
+        <button class="widget-tab flex-1 rounded-lg bg-white px-3 py-1.5 font-semibold shadow-sm" data-tab="popup" role="tab" aria-selected="true">Popup-Button</button>
+        <button class="widget-tab flex-1 rounded-lg px-3 py-1.5 font-medium text-stone-500" data-tab="inline" role="tab" aria-selected="false">Eingebettet</button>
+        <button class="widget-tab flex-1 rounded-lg px-3 py-1.5 font-medium text-stone-500" data-tab="link" role="tab" aria-selected="false">Direktlink</button>
+    </div>
+
+    {{-- Popup tab --}}
+    <div id="widgetTab-popup" role="tabpanel">
+        <p class="mb-3 text-xs text-stone-500">Ein Klick öffnet das Buchungsformular als Overlay – kein Seitenwechsel, kein neuer Tab. Ideal für alle Websites.</p>
+        <div class="mb-3 grid grid-cols-2 gap-3">
+            <div>
+                <label for="wLabel" class="mb-1 block text-xs font-semibold">Button-Text</label>
+                <input id="wLabel" value="Jetzt reservieren" class="w-full rounded-xl border-2 border-stone-200 px-3 py-2 text-sm">
+            </div>
+            <div>
+                <label for="wColor" class="mb-1 block text-xs font-semibold">Farbe</label>
+                <input type="color" id="wColor" value="{{ $tenant->brand_primary_color ?: '#0d9488' }}" class="h-10 w-full cursor-pointer rounded-xl border-2 border-stone-200">
+            </div>
+        </div>
+        <label class="mb-3 flex items-center gap-2 text-sm">
+            <input type="checkbox" id="wFloat" class="rounded"> Floating-Button (klebt unten rechts auf der Seite)
+        </label>
+        <div class="relative">
+            <pre id="wSnippetPopup" class="overflow-x-auto rounded-xl bg-stone-50 p-3 pr-20 text-xs leading-relaxed text-stone-700 ring-1 ring-stone-200"></pre>
+            <button onclick="swayyWidgetCopy('wSnippetPopup',this)" class="absolute right-2 top-2 rounded-lg bg-stone-800 px-2.5 py-1 text-xs font-semibold text-white hover:bg-stone-700">Kopieren</button>
+        </div>
+        <p class="mt-3 text-xs text-stone-400">Vor dem schließenden <code>&lt;/body&gt;</code>-Tag einfügen. Funktioniert mit WordPress, Squarespace, Webflow und jeder anderen Website.</p>
+    </div>
+
+    {{-- Inline/iframe tab --}}
+    <div id="widgetTab-inline" class="hidden" role="tabpanel">
+        <p class="mb-3 text-xs text-stone-500">Das Buchungsformular erscheint direkt auf der Seite als eingebettetes Formular. Ideal für eine eigene Reservierungs-Unterseite.</p>
+        <div class="relative">
+            <pre id="wSnippetInline" class="overflow-x-auto rounded-xl bg-stone-50 p-3 pr-20 text-xs leading-relaxed text-stone-700 ring-1 ring-stone-200"></pre>
+            <button onclick="swayyWidgetCopy('wSnippetInline',this)" class="absolute right-2 top-2 rounded-lg bg-stone-800 px-2.5 py-1 text-xs font-semibold text-white hover:bg-stone-700">Kopieren</button>
+        </div>
+        <p class="mt-3 text-xs text-stone-400">Das <code>div#swayy-widget</code> zeigt, wo das Formular erscheint. Das Script lädt es automatisch als responsive iFrame.</p>
+    </div>
+
+    {{-- Link tab --}}
+    <div id="widgetTab-link" class="hidden" role="tabpanel">
+        <p class="mb-3 text-xs text-stone-500">Ein einfacher HTML-Button-Link zur Buchungsseite – kein JavaScript, maximale Kompatibilität.</p>
+        <div class="mb-3 grid grid-cols-2 gap-3">
+            <div>
+                <label for="wLinkLabel" class="mb-1 block text-xs font-semibold">Button-Text</label>
+                <input id="wLinkLabel" value="Jetzt reservieren" class="w-full rounded-xl border-2 border-stone-200 px-3 py-2 text-sm">
+            </div>
+            <div>
+                <label for="wLinkColor" class="mb-1 block text-xs font-semibold">Farbe</label>
+                <input type="color" id="wLinkColor" value="{{ $tenant->brand_primary_color ?: '#0d9488' }}" class="h-10 w-full cursor-pointer rounded-xl border-2 border-stone-200">
+            </div>
+        </div>
+        <div class="relative">
+            <pre id="wSnippetLink" class="overflow-x-auto rounded-xl bg-stone-50 p-3 pr-20 text-xs leading-relaxed text-stone-700 ring-1 ring-stone-200"></pre>
+            <button onclick="swayyWidgetCopy('wSnippetLink',this)" class="absolute right-2 top-2 rounded-lg bg-stone-800 px-2.5 py-1 text-xs font-semibold text-white hover:bg-stone-700">Kopieren</button>
+        </div>
+    </div>
+</div>
+
 @if(auth()->user()->canInTenant('tenant.settings.manage', app(\App\Support\TenantContext::class)->tenant(), $location))
 <div class="mb-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
     <h2 class="mb-1 font-bold">Logo dieses Standorts</h2>
@@ -638,5 +703,77 @@
 
     loadTags();
 })();
+</script>
+
+<script>
+// ── Website-Widget ─────────────────────────────────────────────────────────
+(function () {
+    var popupSrc  = @json(route('booking.widget.popup', [$location->tenant->slug, $location->slug]));
+    var embedSrc  = @json(route('booking.embed',        [$location->tenant->slug, $location->slug]));
+    var bookingUrl = @json($bookingUrl);
+
+    function updateSnippets() {
+        var label     = document.getElementById('wLabel')?.value || 'Jetzt reservieren';
+        var color     = document.getElementById('wColor')?.value || '#0d9488';
+        var isFloat   = document.getElementById('wFloat')?.checked;
+        var linkLabel = document.getElementById('wLinkLabel')?.value || 'Jetzt reservieren';
+        var linkColor = document.getElementById('wLinkColor')?.value || '#0d9488';
+
+        var popupAttrs = ' data-color="' + color + '"';
+        if (label !== 'Jetzt reservieren') popupAttrs = ' data-label="' + label + '"' + popupAttrs;
+        if (isFloat) popupAttrs += ' data-float="1"';
+
+        var pop = document.getElementById('wSnippetPopup');
+        if (pop) pop.textContent = '<script src="' + popupSrc + '"' + popupAttrs + ' defer><\/script>';
+
+        var inl = document.getElementById('wSnippetInline');
+        if (inl) inl.textContent = '<div id="swayy-widget"></div>\n<script src="' + embedSrc + '" defer><\/script>';
+
+        var lnk = document.getElementById('wSnippetLink');
+        if (lnk) lnk.textContent =
+            '<a href="' + bookingUrl + '" target="_blank"\n' +
+            '   style="display:inline-flex;align-items:center;gap:8px;padding:12px 24px;\n' +
+            '          background:' + linkColor + ';color:#fff;border-radius:10px;\n' +
+            '          font-family:inherit;font-size:15px;font-weight:600;text-decoration:none;">\n' +
+            '  ' + linkLabel + '\n' +
+            '</a>';
+    }
+
+    // Tab switching
+    document.querySelectorAll('.widget-tab').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.widget-tab').forEach(function (b) {
+                b.classList.remove('bg-white', 'shadow-sm', 'font-semibold');
+                b.classList.add('font-medium', 'text-stone-500');
+                b.setAttribute('aria-selected', 'false');
+            });
+            btn.classList.add('bg-white', 'shadow-sm', 'font-semibold');
+            btn.classList.remove('font-medium', 'text-stone-500');
+            btn.setAttribute('aria-selected', 'true');
+
+            document.querySelectorAll('[id^="widgetTab-"]').forEach(function (el) { el.classList.add('hidden'); });
+            var panel = document.getElementById('widgetTab-' + btn.dataset.tab);
+            if (panel) panel.classList.remove('hidden');
+        });
+    });
+
+    // Live update snippets
+    ['wLabel', 'wColor', 'wFloat', 'wLinkLabel', 'wLinkColor'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) { el.addEventListener('input', updateSnippets); el.addEventListener('change', updateSnippets); }
+    });
+
+    updateSnippets();
+})();
+
+function swayyWidgetCopy(id, btn) {
+    var text = document.getElementById(id)?.textContent;
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(function () {
+        var orig = btn.textContent;
+        btn.textContent = 'Kopiert ✓';
+        setTimeout(function () { btn.textContent = orig; }, 1800);
+    });
+}
 </script>
 @endsection

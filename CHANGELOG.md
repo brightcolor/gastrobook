@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.32.0] – 2026-06-16
+
+### Neu
+- **Website-Widgets:** Gastronomen können die Buchungsfunktion jetzt direkt auf ihrer eigenen
+  Website einbinden – in drei Varianten:
+  - **Popup-Button** (`/widget/{tenant}/{location}/popup.js`) – Ein Button öffnet das
+    Buchungsformular als modales Overlay. Konfigurierbar per `data-label`, `data-color` und
+    `data-float` (floating-Button unten rechts). Keyboard-zugänglich (Escape schließt),
+    responsiv (Bottom-Sheet auf Mobile, zentriertes Modal ab 640 px).
+  - **Eingebettet (iFrame)** – Bekanntes Embed-Script als `<div id="swayy-widget"></div>`
+    mit automatischer Höhenanpassung via `postMessage`.
+  - **Direktlink** – Styled `<a>`-Button ohne JavaScript für maximale Kompatibilität.
+- **Widget-Einstellungen im Admin:** Neue Sektion „Website-Widget" in den Einstellungen mit
+  Tab-Auswahl, Live-Vorschau der Snippets und Kopier-Button. Button-Text, Farbe und
+  Floating-Modus sind live konfigurierbar und generieren automatisch den passenden Code.
+
 ## [1.31.3] – 2026-06-16
 
 ### Verbessert

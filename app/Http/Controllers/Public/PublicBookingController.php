@@ -23,6 +23,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -776,6 +777,103 @@ class PublicBookingController extends Controller
             });
         })();
         JS;
+
+        return response($js, 200, [
+            'Content-Type' => 'application/javascript; charset=utf-8',
+            'Cache-Control' => 'public, max-age=3600',
+        ]);
+    }
+
+    /**
+     * Popup-button widget: injects a branded button that opens the booking page in a modal overlay.
+     * Usage: <script src=".../widget/{tenant}/{location}/popup.js" data-label="Reservieren" data-color="#0d9488" data-float="1" defer></script>
+     */
+    public function popupScript(string $tenantSlug, string $locationSlug): Response
+    {
+        [$tenant, $location] = $this->resolve($tenantSlug, $locationSlug);
+
+        $src = $this->jsString(route('booking.show', [$tenantSlug, $locationSlug]));
+        $title = $this->jsString('Reservierung – '.$location->name);
+        $defColor = $this->jsString($tenant->brand_primary_color ?: '#0d9488');
+
+        $js = <<<JS
+(function () {
+    var s = document.currentScript;
+    var label   = (s && s.dataset.label) || 'Jetzt reservieren';
+    var color   = (s && s.dataset.color) || {$defColor};
+    var isFloat = !!(s && s.dataset.float === '1');
+    var src     = {$src};
+    var ttl     = {$title};
+
+    var css = document.createElement('style');
+    css.textContent =
+        '.swayy-btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;background:var(--swayy-c,#0d9488);color:#fff;border:none;border-radius:10px;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;line-height:1.25;transition:filter .15s;white-space:nowrap}' +
+        '.swayy-btn:hover{filter:brightness(1.1)}' +
+        '.swayy-btn--float{position:fixed;bottom:24px;right:24px;z-index:9998;box-shadow:0 4px 24px rgba(0,0,0,.22)}' +
+        '.swayy-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:flex-end;justify-content:center}' +
+        '@media(min-width:640px){.swayy-overlay{align-items:center;padding:16px}}' +
+        '.swayy-modal{width:100%;max-width:640px;max-height:92dvh;background:#fff;border-radius:16px 16px 0 0;overflow:hidden;display:flex;flex-direction:column}' +
+        '@media(min-width:640px){.swayy-modal{border-radius:16px}}' +
+        '.swayy-modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #e7e5e4;flex-shrink:0}' +
+        '.swayy-modal-title{font-size:14px;font-weight:600;color:#1c1917}' +
+        '.swayy-close{border:none;background:none;cursor:pointer;color:#78716c;font-size:18px;line-height:1;padding:4px 8px;border-radius:6px}' +
+        '.swayy-close:hover{background:#f5f5f4}' +
+        '.swayy-iframe{flex:1;border:none;width:100%;min-height:520px}';
+    document.head.appendChild(css);
+
+    var icon = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>';
+
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'swayy-btn' + (isFloat ? ' swayy-btn--float' : '');
+    btn.style.setProperty('--swayy-c', color);
+    btn.innerHTML = icon + label;
+
+    function mountBtn() {
+        if (isFloat) { document.body.appendChild(btn); }
+        else if (s && s.parentNode) { s.parentNode.insertBefore(btn, s.nextSibling); }
+        else { document.body.appendChild(btn); }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', mountBtn);
+    } else {
+        mountBtn();
+    }
+
+    btn.addEventListener('click', function () {
+        var overlay = document.createElement('div');
+        overlay.className = 'swayy-overlay';
+        var modal = document.createElement('div');
+        modal.className = 'swayy-modal';
+        modal.innerHTML =
+            '<div class="swayy-modal-head">' +
+                '<span class="swayy-modal-title">' + label + '</span>' +
+                '<button class="swayy-close" type="button" aria-label="Schließen">×</button>' +
+            '</div>' +
+            '<iframe class="swayy-iframe" src="' + src + '" title="' + ttl + '" allow="payment" loading="lazy"></iframe>';
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+        document.body.style.overflow = 'hidden';
+
+        function closeModal() {
+            document.body.removeChild(overlay);
+            document.body.style.overflow = '';
+            document.removeEventListener('keydown', onEsc);
+        }
+        function onEsc(e) { if (e.key === 'Escape') closeModal(); }
+
+        modal.querySelector('.swayy-close').addEventListener('click', closeModal);
+        overlay.addEventListener('click', function (e) { if (e.target === overlay) closeModal(); });
+        document.addEventListener('keydown', onEsc);
+
+        var iframe = modal.querySelector('.swayy-iframe');
+        window.addEventListener('message', function (e) {
+            if (e.data && e.data.swayyHeight) iframe.style.minHeight = (e.data.swayyHeight + 20) + 'px';
+        });
+    });
+})();
+JS;
 
         return response($js, 200, [
             'Content-Type' => 'application/javascript; charset=utf-8',
