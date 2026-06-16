@@ -36,10 +36,11 @@
     $bookingUrl = $bookableLocations <= 1
         ? route('booking.landing', $location->tenant->slug)
         : route('booking.show', [$location->tenant->slug, $location->slug]);
-    $widgetEmbedSrc = $bookableLocations <= 1
+    $useShortWidgetUrl = $location->slug === $location->tenant->slug || $bookableLocations <= 1;
+    $widgetEmbedSrc = $useShortWidgetUrl
         ? route('booking.embed.single', $location->tenant->slug)
         : route('booking.embed', [$location->tenant->slug, $location->slug]);
-    $widgetPopupSrc = $bookableLocations <= 1
+    $widgetPopupSrc = $useShortWidgetUrl
         ? route('booking.widget.popup.single', $location->tenant->slug)
         : route('booking.widget.popup', [$location->tenant->slug, $location->slug]);
 @endphp

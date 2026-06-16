@@ -897,16 +897,19 @@ JS;
         return $this->popupScript($tenantSlug, $locationSlug);
     }
 
-    /** Resolves the sole bookable location slug for a tenant (404 if 0 or >1). */
+    /** Resolves the best bookable location for a tenant-slug-only URL.
+     *  Priority: location with same slug as tenant → sole bookable location → 404. */
     private function resolveSingleLocation(string $tenantSlug): array
     {
         $tenant = Tenant::where('slug', $tenantSlug)->where('status', 'active')->firstOrFail();
 
-        $location = Location::withoutGlobalScope('tenant')
+        $base = Location::withoutGlobalScope('tenant')
             ->where('tenant_id', $tenant->id)
             ->where('is_active', true)
-            ->where('online_booking_enabled', true)
-            ->sole();
+            ->where('online_booking_enabled', true);
+
+        $location = (clone $base)->where('slug', $tenantSlug)->first()
+            ?? $base->sole();
 
         return [$tenant->slug, $location->slug];
     }
