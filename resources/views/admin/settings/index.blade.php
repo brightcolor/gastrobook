@@ -36,6 +36,12 @@
     $bookingUrl = $bookableLocations <= 1
         ? route('booking.landing', $location->tenant->slug)
         : route('booking.show', [$location->tenant->slug, $location->slug]);
+    $widgetEmbedSrc = $bookableLocations <= 1
+        ? route('booking.embed.single', $location->tenant->slug)
+        : route('booking.embed', [$location->tenant->slug, $location->slug]);
+    $widgetPopupSrc = $bookableLocations <= 1
+        ? route('booking.widget.popup.single', $location->tenant->slug)
+        : route('booking.widget.popup', [$location->tenant->slug, $location->slug]);
 @endphp
 <div class="mb-4 rounded-2xl bg-white p-4 text-sm shadow-sm">
     Öffentliche Buchungsseite:
@@ -708,8 +714,8 @@
 <script>
 // ── Website-Widget ─────────────────────────────────────────────────────────
 (function () {
-    var popupSrc  = @json(route('booking.widget.popup', [$location->tenant->slug, $location->slug]));
-    var embedSrc  = @json(route('booking.embed',        [$location->tenant->slug, $location->slug]));
+    var popupSrc  = @json($widgetPopupSrc);
+    var embedSrc  = @json($widgetEmbedSrc);
     var bookingUrl = @json($bookingUrl);
 
     function updateSnippets() {

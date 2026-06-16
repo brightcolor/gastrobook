@@ -881,6 +881,36 @@ JS;
         ]);
     }
 
+    /** Single-location shortcut: /embed/{tenant}.js */
+    public function embedScriptSingle(string $tenantSlug): Response
+    {
+        [$tenantSlug, $locationSlug] = $this->resolveSingleLocation($tenantSlug);
+
+        return $this->embedScript($tenantSlug, $locationSlug);
+    }
+
+    /** Single-location shortcut: /widget/{tenant}/popup.js */
+    public function popupScriptSingle(string $tenantSlug): Response
+    {
+        [$tenantSlug, $locationSlug] = $this->resolveSingleLocation($tenantSlug);
+
+        return $this->popupScript($tenantSlug, $locationSlug);
+    }
+
+    /** Resolves the sole bookable location slug for a tenant (404 if 0 or >1). */
+    private function resolveSingleLocation(string $tenantSlug): array
+    {
+        $tenant = Tenant::where('slug', $tenantSlug)->where('status', 'active')->firstOrFail();
+
+        $location = Location::withoutGlobalScope('tenant')
+            ->where('tenant_id', $tenant->id)
+            ->where('is_active', true)
+            ->where('online_booking_enabled', true)
+            ->sole();
+
+        return [$tenant->slug, $location->slug];
+    }
+
     /**
      * @return array{0: Tenant, 1: Location}
      */

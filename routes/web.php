@@ -59,7 +59,9 @@ Route::middleware('throttle:booking-slots')->group(function () {
     Route::get('/book/{tenantSlug}/{locationSlug}/slots', [PublicBookingController::class, 'slots'])->name('booking.slots');
     Route::get('/book/{tenantSlug}/{locationSlug}/floorplan', [PublicBookingController::class, 'floorplan'])->name('booking.floorplan');
     Route::get('/embed/{tenantSlug}/{locationSlug}.js', [PublicBookingController::class, 'embedScript'])->name('booking.embed');
+    Route::get('/embed/{tenantSlug}.js', [PublicBookingController::class, 'embedScriptSingle'])->name('booking.embed.single');
     Route::get('/widget/{tenantSlug}/{locationSlug}/popup.js', [PublicBookingController::class, 'popupScript'])->name('booking.widget.popup');
+    Route::get('/widget/{tenantSlug}/popup.js', [PublicBookingController::class, 'popupScriptSingle'])->name('booking.widget.popup.single');
     Route::get('/book/{tenantSlug}/{locationSlug}/events', [PublicEventController::class, 'index'])->name('events.index');
     Route::get('/book/{tenantSlug}/{locationSlug}/events/{eventSlug}', [PublicEventController::class, 'show'])->name('events.show');
 });
