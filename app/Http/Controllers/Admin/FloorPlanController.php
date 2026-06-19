@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\ReservationStatus;
 use App\Http\Controllers\Controller;
+use App\Models\FloorZone;
 use App\Models\Reservation;
 use App\Models\RestaurantTable;
 use App\Models\Room;
@@ -11,6 +12,7 @@ use App\Services\AuditLogger;
 use App\Services\PlanLimitService;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -131,6 +133,18 @@ class FloorPlanController extends Controller
             ];
         }
 
+        $zones = FloorZone::where('location_id', $location->id)
+            ->orderBy('sort_order')
+            ->get(['id', 'room_id', 'name', 'color', 'opacity', 'points'])
+            ->groupBy('room_id')
+            ->map(fn ($zs) => $zs->map(fn ($z) => [
+                'id' => $z->id,
+                'name' => $z->name,
+                'color' => $z->color,
+                'opacity' => $z->opacity,
+                'points' => $z->points,
+            ])->values());
+
         return response()->json([
             'tables' => $tableStates,
             'reservations' => $reservations->map(fn ($r) => [
@@ -143,7 +157,32 @@ class FloorPlanController extends Controller
                 'table_ids' => $r->tables->pluck('id'),
                 'risk' => $r->no_show_risk,
             ])->values(),
+            'zones' => $zones,
         ]);
+    }
+
+    /** Update a room's canvas dimensions (px and optional real-world meters). */
+    public function updateRoomSize(Request $request, Room $room): JsonResponse
+    {
+        $this->authorizeRoom($room);
+
+        $data = $request->validate([
+            'plan_width' => ['required', 'integer', 'min:200', 'max:5000'],
+            'plan_height' => ['required', 'integer', 'min:200', 'max:5000'],
+            'plan_width_m' => ['nullable', 'numeric', 'min:1', 'max:500'],
+            'plan_height_m' => ['nullable', 'numeric', 'min:1', 'max:500'],
+        ]);
+
+        $room->update($data);
+        $this->audit->log('floorplan.room_size.updated', null, null, null, ['room_id' => $room->id]);
+
+        return response()->json(['ok' => true, 'room' => [
+            'id' => $room->id,
+            'plan_width' => $room->plan_width,
+            'plan_height' => $room->plan_height,
+            'plan_width_m' => $room->plan_width_m,
+            'plan_height_m' => $room->plan_height_m,
+        ]]);
     }
 
     /**

@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.33.0] – 2026-06-19
+
+### Neu
+- **Flächenzonen im Tischplan:** Admins können jetzt farbige Polygon-Zonen über den Tischplan
+  legen – z. B. „VIP-Bereich", „Außenterrasse" oder „Standardbereich". Das Zeichentool wird
+  über den neuen „Zonen"-Button in der Tischplan-Toolbar aktiviert; ein Doppelklick oder Klick
+  auf den ersten Vertex schließt das Polygon. Name, Farbe und Transparenz sind frei wählbar.
+- **2-stufige Gast-Buchungsansicht:** Wenn Zonen definiert sind, sehen Gäste auf der
+  öffentlichen Buchungsseite zuerst eine Übersicht der Bereiche als anklickbare Karten.
+  Nach der Wahl werden im Tischplan nur die Tische der gewählten Zone aktiv dargestellt;
+  „Alle Bereiche" zeigt den ungefilterter Gesamtplan.
+- **Raumgröße in Metern:** Pro Raum können optional reale Abmessungen (Breite/Tiefe in m)
+  hinterlegt werden. Ist ein Wert gesetzt, erscheint unterhalb des Canvas ein Maßstab-Ruler.
+- **Zonen-Legende:** Oberhalb der Räume wird automatisch eine Farblegende aller definierten
+  Zonen eingeblendet.
+
 ## [1.32.0] – 2026-06-16
 
 ### Neu

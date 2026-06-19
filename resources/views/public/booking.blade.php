@@ -439,16 +439,31 @@ details > summary::-webkit-details-marker { display: none; }
 
                     @if($settings->public_floorplan_enabled)
                     <div id="floorplanSection" class="hidden">
-                        <div class="mb-3 flex items-center justify-between">
-                            <span class="text-sm font-semibold">Tisch wählen <span class="font-normal text-stone-400">(optional)</span></span>
-                            <span class="flex gap-3 text-xs text-stone-400">
-                                <span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-sm bg-[#34d399]"></span>frei</span>
-                                <span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-sm bg-[#d6d3d1]"></span>belegt</span>
-                            </span>
+                        {{-- Stage 1: Zone cards (shown when zones exist) --}}
+                        <div id="zoneStage" class="hidden">
+                            <p class="mb-3 text-sm font-semibold">Bereich wählen</p>
+                            <div id="zoneCards" class="grid grid-cols-2 gap-3 sm:grid-cols-3"></div>
                         </div>
-                        <div id="roomTabs" class="mb-2 flex flex-wrap gap-2"></div>
-                        <div id="floorplanCanvas" class="relative w-full overflow-hidden rounded-xl border-2 border-stone-100 bg-stone-50" style="height:280px"></div>
-                        <p class="mt-2 text-xs text-stone-500">Tippen Sie auf einen freien Tisch – oder leer lassen für automatische Zuteilung.</p>
+                        {{-- Stage 2: Floor plan (always present, hidden until zone chosen or "all areas") --}}
+                        <div id="planStage">
+                            <div id="zoneBackRow" class="mb-3 hidden">
+                                <button type="button" id="zoneBackBtn"
+                                        class="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-600 hover:border-brand hover:text-brand transition-colors">
+                                    ← Anderen Bereich wählen
+                                </button>
+                                <span id="zoneActiveLabel" class="ml-2 text-sm font-semibold"></span>
+                            </div>
+                            <div class="mb-3 flex items-center justify-between">
+                                <span class="text-sm font-semibold">Tisch wählen <span class="font-normal text-stone-400">(optional)</span></span>
+                                <span class="flex gap-3 text-xs text-stone-400">
+                                    <span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-sm bg-[#34d399]"></span>frei</span>
+                                    <span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-sm bg-[#d6d3d1]"></span>belegt</span>
+                                </span>
+                            </div>
+                            <div id="roomTabs" class="mb-2 flex flex-wrap gap-2"></div>
+                            <div id="floorplanCanvas" class="relative w-full overflow-hidden rounded-xl border-2 border-stone-100 bg-stone-50" style="height:280px"></div>
+                            <p class="mt-2 text-xs text-stone-500">Tippen Sie auf einen freien Tisch – oder leer lassen für automatische Zuteilung.</p>
+                        </div>
                         <input type="hidden" name="table_id" id="tableId" value="">
                     </div>
                     @endif
@@ -572,7 +587,29 @@ details > summary::-webkit-details-marker { display: none; }
         const fpCanvas      = document.getElementById('floorplanCanvas');
         const roomTabsEl    = document.getElementById('roomTabs');
         const tableIdInput  = document.getElementById('tableId');
+        const zoneStage     = document.getElementById('zoneStage');
+        const planStage     = document.getElementById('planStage');
+        const zoneCards     = document.getElementById('zoneCards');
+        const zoneBackRow   = document.getElementById('zoneBackRow');
+        const zoneActiveLabel = document.getElementById('zoneActiveLabel');
         let fpRooms = [];
+        let activeZoneFilter = null; // null = no filter, zone object = filtered
+
+        function pointInPolygon(px, py, points) {
+            let inside = false;
+            for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+                const [xi, yi] = points[i], [xj, yj] = points[j];
+                if (((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) inside = !inside;
+            }
+            return inside;
+        }
+
+        function tablesInZone(tables, zone) {
+            return tables.filter(t => {
+                const cx = t.pos_x + t.width / 2, cy = t.pos_y + t.height / 2;
+                return pointInPolygon(cx, cy, zone.points);
+            });
+        }
 
         function stepState(id, state) {
             const el = document.getElementById(id);
@@ -618,6 +655,10 @@ details > summary::-webkit-details-marker { display: none; }
             fpSection.classList.add('hidden');
             if (tableIdInput) tableIdInput.value = '';
             fpRooms = [];
+            activeZoneFilter = null;
+            if (zoneStage) { zoneStage.classList.add('hidden'); zoneStage.classList.remove('block'); }
+            if (planStage) planStage.classList.remove('hidden');
+            if (zoneBackRow) zoneBackRow.classList.add('hidden');
         }
 
         function makeSlotBtn(time) {
@@ -708,23 +749,97 @@ details > summary::-webkit-details-marker { display: none; }
         async function loadFp() {
             if (!fpSection || !timeInput.value) return;
             tableIdInput.value = '';
+            activeZoneFilter = null;
             try {
                 const res = await fetch(floorplanUrl + '?date=' + dateInput.value + '&time=' + timeInput.value + '&party_size=' + partyInput.value, {headers: {Accept: 'application/json'}});
                 const data = await res.json();
                 fpRooms = data.rooms || [];
                 if (!fpRooms.length) { fpSection.classList.add('hidden'); return; }
                 fpSection.classList.remove('hidden'); fpSection.classList.remove('reveal-up'); void fpSection.offsetHeight; fpSection.classList.add('reveal-up');
-                buildRoomTabs(); renderRoom(0);
+                buildRoomTabs();
+                // Check if any room has zones → show zone stage first
+                const allZones = fpRooms.flatMap(r => r.zones || []);
+                if (allZones.length > 0) {
+                    buildZoneCards(fpRooms[0], 0);
+                } else {
+                    if (zoneStage) zoneStage.classList.add('hidden');
+                    if (planStage) planStage.classList.remove('hidden');
+                    renderRoom(0);
+                }
             } catch (e) { fpSection.classList.add('hidden'); }
         }
+
+        function buildZoneCards(room, roomIdx) {
+            if (!zoneStage || !zoneCards) return;
+            if (!room.zones || !room.zones.length) {
+                zoneStage.classList.add('hidden');
+                if (planStage) planStage.classList.remove('hidden');
+                renderRoom(roomIdx); return;
+            }
+            zoneCards.innerHTML = '';
+            room.zones.forEach(zone => {
+                const inZone = tablesInZone(room.tables, zone);
+                const avail  = inZone.filter(t => t.status === 'available').length;
+                const card = document.createElement('button');
+                card.type = 'button';
+                card.className = 'zone-card text-left rounded-xl border-2 border-stone-200 bg-white overflow-hidden transition-all hover:border-stone-400 hover:shadow-sm active:scale-[0.98]';
+                card.innerHTML = `<div style="height:6px;background:${zone.color}"></div>
+                    <div class="p-3">
+                        <p class="font-bold text-sm text-stone-800">${zone.name}</p>
+                        <p class="text-xs text-stone-400 mt-0.5">${inZone.length} Tische · ${avail} frei</p>
+                        <p class="mt-2 text-xs font-semibold text-brand">Auswählen →</p>
+                    </div>`;
+                card.addEventListener('click', () => selectZone(zone, roomIdx));
+                zoneCards.appendChild(card);
+            });
+            // "Alle Bereiche" card
+            const allCard = document.createElement('button');
+            allCard.type = 'button';
+            allCard.className = 'zone-card text-left rounded-xl border-2 border-stone-200 bg-stone-50 overflow-hidden transition-all hover:border-stone-400 hover:shadow-sm active:scale-[0.98]';
+            allCard.innerHTML = `<div style="height:6px;background:#e7e5e4"></div>
+                <div class="p-3">
+                    <p class="font-bold text-sm text-stone-700">Alle Bereiche</p>
+                    <p class="text-xs text-stone-400 mt-0.5">Gesamten Plan anzeigen</p>
+                    <p class="mt-2 text-xs font-semibold text-stone-500">Öffnen →</p>
+                </div>`;
+            allCard.addEventListener('click', () => selectZone(null, roomIdx));
+            zoneCards.appendChild(allCard);
+            zoneStage.classList.remove('hidden');
+            if (planStage) planStage.classList.add('hidden');
+        }
+
+        function selectZone(zone, roomIdx) {
+            activeZoneFilter = zone;
+            if (zoneStage) zoneStage.classList.add('hidden');
+            if (planStage) { planStage.classList.remove('hidden'); }
+            if (zoneBackRow) zoneBackRow.classList.remove('hidden');
+            if (zoneActiveLabel) zoneActiveLabel.textContent = zone ? zone.name : '';
+            renderRoom(roomIdx);
+        }
+
+        document.getElementById('zoneBackBtn')?.addEventListener('click', () => {
+            activeZoneFilter = null;
+            if (tableIdInput) tableIdInput.value = '';
+            if (zoneBackRow) zoneBackRow.classList.add('hidden');
+            const roomIdx = parseInt(document.querySelector('.room-tab.border-brand')?.dataset?.idx || '0', 10);
+            buildZoneCards(fpRooms[roomIdx] || fpRooms[0], roomIdx);
+        });
 
         function buildRoomTabs() {
             roomTabsEl.innerHTML = '';
             fpRooms.forEach((room, i) => {
                 const b = document.createElement('button'); b.type = 'button';
                 b.textContent = (room.is_outdoor ? '☀ ' : '') + room.name;
+                b.dataset.idx = i;
                 b.className = 'room-tab rounded-full border-2 px-3 py-1.5 text-sm font-semibold transition-all ' + (i === 0 ? 'border-brand bg-stone-50' : 'border-stone-200 hover:border-brand hover:bg-brand/5');
-                b.addEventListener('click', () => { document.querySelectorAll('.room-tab').forEach(t => t.classList.remove('border-brand','bg-brand','text-white')); b.classList.add('border-brand','bg-brand','text-white'); renderRoom(i); });
+                b.addEventListener('click', () => {
+                    document.querySelectorAll('.room-tab').forEach(t => t.classList.remove('border-brand','bg-brand','text-white'));
+                    b.classList.add('border-brand','bg-brand','text-white');
+                    activeZoneFilter = null;
+                    if (zoneBackRow) zoneBackRow.classList.add('hidden');
+                    const zones = room.zones || [];
+                    if (zones.length > 0) { buildZoneCards(room, i); } else { renderRoom(i); }
+                });
                 roomTabsEl.appendChild(b);
             });
             roomTabsEl.classList.toggle('hidden', fpRooms.length < 2);
@@ -738,13 +853,62 @@ details > summary::-webkit-details-marker { display: none; }
             const cw = fpCanvas.clientWidth || 600, ch = fpCanvas.clientHeight || 280;
             const scale = Math.min((cw - pad * 2) / Math.max(maxX, 1), (ch - pad * 2) / Math.max(maxY, 1), 1);
             const colors = { available: '#34d399', occupied: '#d6d3d1', unsuitable: '#fde68a', unavailable: '#e7e5e4' };
+
+            // Zone highlight overlay (SVG)
+            const zones = room.zones || [];
+            if (zones.length > 0) {
+                const ns = 'http://www.w3.org/2000/svg';
+                const svg = document.createElementNS(ns, 'svg');
+                svg.setAttribute('xmlns', ns);
+                Object.assign(svg.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', pointerEvents: 'none' });
+                zones.forEach(z => {
+                    if (!z.points || z.points.length < 3) return;
+                    const isActive = activeZoneFilter && activeZoneFilter.id === z.id;
+                    const isOther  = activeZoneFilter && activeZoneFilter.id !== z.id;
+                    const pts = z.points.map(([x, y]) => `${pad + x * scale},${pad + y * scale}`).join(' ');
+                    const poly = document.createElementNS(ns, 'polygon');
+                    poly.setAttribute('points', pts);
+                    poly.setAttribute('fill', z.color);
+                    poly.setAttribute('fill-opacity', isActive ? 0.18 : (isOther ? 0.04 : z.opacity / 100));
+                    poly.setAttribute('stroke', z.color);
+                    poly.setAttribute('stroke-width', isActive ? '2' : '1');
+                    poly.setAttribute('stroke-opacity', isOther ? '0.3' : '0.7');
+                    svg.appendChild(poly);
+                });
+                fpCanvas.appendChild(svg);
+            }
+
             room.tables.forEach(t => {
+                const inActiveZone = activeZoneFilter
+                    ? pointInPolygon(t.pos_x + t.width / 2, t.pos_y + t.height / 2, activeZoneFilter.points)
+                    : true;
                 const el = document.createElement('button'); el.type = 'button';
                 el.title = 'Tisch ' + t.name + ' · ' + t.capacity + ' Pers.'; el.dataset.tableId = t.id;
-                Object.assign(el.style, { position: 'absolute', left: (pad + t.pos_x * scale) + 'px', top: (pad + t.pos_y * scale) + 'px', width: Math.max(28, t.width * scale) + 'px', height: Math.max(28, t.height * scale) + 'px', background: colors[t.status] || '#d6d3d1', borderRadius: t.shape === 'round' ? '50%' : '8px', border: '2px solid rgba(0,0,0,.12)', fontSize: '11px', fontWeight: '600', color: '#1c1917', transform: t.rotation ? 'rotate(' + t.rotation + 'deg)' : '' });
+                const selectable = t.selectable && inActiveZone;
+                Object.assign(el.style, {
+                    position: 'absolute',
+                    left: (pad + t.pos_x * scale) + 'px', top: (pad + t.pos_y * scale) + 'px',
+                    width: Math.max(28, t.width * scale) + 'px', height: Math.max(28, t.height * scale) + 'px',
+                    background: colors[t.status] || '#d6d3d1',
+                    borderRadius: t.shape === 'round' ? '50%' : '8px',
+                    border: '2px solid rgba(0,0,0,.12)',
+                    fontSize: '11px', fontWeight: '600', color: '#1c1917',
+                    transform: t.rotation ? 'rotate(' + t.rotation + 'deg)' : '',
+                    opacity: (activeZoneFilter && !inActiveZone) ? '0.3' : '1',
+                });
                 el.textContent = t.name;
-                if (t.selectable) { el.style.cursor = 'pointer'; el.addEventListener('click', () => { const was = tableIdInput.value === String(t.id); fpCanvas.querySelectorAll('button').forEach(b => b.style.outline = ''); tableIdInput.value = was ? '' : t.id; if (!was) { el.style.outline = '3px solid var(--brand)'; el.style.outlineOffset = '2px'; } }); }
-                else { el.disabled = true; el.style.opacity = '.7'; el.style.cursor = 'not-allowed'; }
+                if (selectable) {
+                    el.style.cursor = 'pointer';
+                    el.addEventListener('click', () => {
+                        const was = tableIdInput.value === String(t.id);
+                        fpCanvas.querySelectorAll('button').forEach(b => b.style.outline = '');
+                        tableIdInput.value = was ? '' : t.id;
+                        if (!was) { el.style.outline = '3px solid var(--brand)'; el.style.outlineOffset = '2px'; }
+                    });
+                } else {
+                    el.disabled = true;
+                    el.style.cursor = (activeZoneFilter && !inActiveZone) ? 'default' : 'not-allowed';
+                }
                 fpCanvas.appendChild(el);
             });
         }

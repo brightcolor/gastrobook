@@ -38,6 +38,11 @@ Bei einer Online-Reservierung bzw. Terminbuchung verarbeiten wir:
 - **Kontaktdaten:** E-Mail-Adresse und/oder Telefonnummer (je nach
   Konfiguration des Buchungsformulars).
 - **Freiwillige Angaben:** Anlass, Anmerkungen.
+- **Tischauswahl (optional):** Sofern Sie auf der Buchungsseite einen konkreten
+  Tisch oder Bereich (z. B. „Außenterrasse", „VIP-Bereich") auswählen, wird die
+  gewählte Tisch-ID mit der Reservierung gespeichert. Die Bereichseinteilung
+  (Zonenpolygone) ist reine Betriebskonfiguration und enthält keine
+  personenbezogenen Daten; sie wird nur zur Anzeige des Grundrisses verwendet.
 - **Technische Daten:** Zeitpunkt der Buchung, Buchungsquelle sowie zur
   Missbrauchs-/Spam-Abwehr ein **gekürzter/gehashter** Verarbeitungsnachweis
   Ihrer Einwilligungen (siehe Ziff. 5).

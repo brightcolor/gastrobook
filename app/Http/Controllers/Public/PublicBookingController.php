@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Public;
 use App\Enums\ReservationStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
+use App\Models\FloorZone;
 use App\Models\Guest;
 use App\Models\Location;
 use App\Models\Reservation;
@@ -333,6 +334,15 @@ class PublicBookingController extends Controller
 
         $busy = $this->tableAssignment->busyTableIds($location, $windowStart, $windowEnd, null);
 
+        $zonesByRoom = FloorZone::where('location_id', $location->id)
+            ->orderBy('sort_order')
+            ->get(['id', 'room_id', 'name', 'color', 'opacity', 'points'])
+            ->groupBy('room_id')
+            ->map(fn ($zs) => $zs->map(fn ($z) => [
+                'id' => $z->id, 'name' => $z->name,
+                'color' => $z->color, 'opacity' => $z->opacity, 'points' => $z->points,
+            ])->values());
+
         $blockedRooms = $location->blackoutPeriods()
             ->whereNotNull('room_id')
             ->whereNull('reduce_covers_to')
@@ -350,6 +360,11 @@ class PublicBookingController extends Controller
                 'id' => $room->id,
                 'name' => $room->name,
                 'is_outdoor' => (bool) $room->is_outdoor,
+                'plan_width' => (int) $room->plan_width,
+                'plan_height' => (int) $room->plan_height,
+                'plan_width_m' => $room->plan_width_m,
+                'plan_height_m' => $room->plan_height_m,
+                'zones' => $zonesByRoom->get($room->id, collect())->values()->all(),
                 'tables' => $room->tables->map(function ($t) use ($busy, $blockedRooms, $partySize) {
                     $status = 'available';
                     if (! $t->online_bookable || in_array($t->room_id, $blockedRooms, true)) {

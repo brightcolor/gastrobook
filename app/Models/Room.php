@@ -14,7 +14,8 @@ class Room extends Model
 
     protected $fillable = [
         'tenant_id', 'location_id', 'name', 'is_outdoor', 'is_active',
-        'online_bookable', 'sort_order', 'plan_width', 'plan_height', 'background_path',
+        'online_bookable', 'sort_order', 'plan_width', 'plan_height',
+        'plan_width_m', 'plan_height_m', 'background_path',
     ];
 
     protected function casts(): array

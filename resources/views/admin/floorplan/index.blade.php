@@ -16,6 +16,7 @@
             </div>
             <button id="comboToggle" class="fp-btn" title="Tischkombinationen verwalten">🔗 <span>Kombinationen</span></button>
             @if($canEdit)
+                <button id="zoneToggle" class="fp-btn" title="Flächenzonen zeichnen und verwalten">◈ <span>Zonen</span></button>
                 <button id="editToggle" class="fp-btn">✏️ <span>Bearbeiten</span></button>
                 <button id="saveLayout" class="fp-btn fp-btn-save hidden">💾 <span>Speichern</span></button>
             @endif
@@ -37,6 +38,8 @@
         <span class="fp-leg"><span class="fp-chip occ"></span>Platz belegt</span>
         <span class="fp-leg"><span class="fp-chip"></span>Platz frei</span>
     </div>
+
+    <div id="zoneLegend" class="fp-zone-legend hidden"></div>
 
     @foreach($rooms as $room)
         <div class="fp-room-wrap" data-room-wrap="{{ $room->id }}">
@@ -62,10 +65,13 @@
                 <div class="floor-room"
                      data-room="{{ $room->id }}"
                      data-w="{{ $room->plan_width }}" data-h="{{ $room->plan_height }}"
+                     data-width-m="{{ $room->plan_width_m ?? '' }}" data-height-m="{{ $room->plan_height_m ?? '' }}"
                      style="width:{{ (int) round($room->plan_width * 0.8) }}px;height:{{ (int) round($room->plan_height * 0.8) }}px;
                             @if($room->background_path)background-image:url('{{ route('admin.floorplan.background', $room) }}');@endif">
                     <div class="grid-overlay"></div>
+                    <svg class="zones-svg-layer" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
                 </div>
+                <div class="fp-ruler" data-ruler="{{ $room->id }}"></div>
             </div>
         </div>
     @endforeach
@@ -186,6 +192,43 @@
 </div>
 @endif
 
+{{-- Zone modal --}}
+@if($canEdit)
+<div id="zoneModalBack" class="fp-modal-back hidden">
+    <div class="fp-modal">
+        <div class="fp-modal-head"><span>◈</span><h3 id="zoneModalTitle">Zone anlegen</h3></div>
+        <div class="fp-modal-body">
+            <input type="hidden" id="zoneModalId">
+            <label class="fp-field">
+                <span>Name</span>
+                <input id="zoneModalName" maxlength="80" placeholder="z. B. VIP-Bereich" autocomplete="off">
+            </label>
+            <div class="fp-field">
+                <span>Farbe</span>
+                <div style="display:flex;align-items:center;gap:10px">
+                    <input id="zoneModalColor" type="color" value="#60a5fa"
+                           style="width:44px;height:36px;border-radius:8px;border:2px solid #e7e5e4;padding:2px;cursor:pointer">
+                    <span id="zoneModalColorHex" style="font-size:13px;color:#78716c;font-family:monospace">#60a5fa</span>
+                </div>
+            </div>
+            <label class="fp-field">
+                <span>Transparenz — <span id="zoneModalOpacityVal">25</span> %</span>
+                <input id="zoneModalOpacity" type="range" min="0" max="100" value="25"
+                       style="width:100%;accent-color:#0f766e">
+            </label>
+            <p id="zoneModalErr" class="fp-err hidden"></p>
+            <div class="fp-modal-foot" style="justify-content:space-between">
+                <button type="button" id="zoneModalDelete" class="fp-btn hidden" style="color:#dc2626;border-color:#fca5a5">Löschen</button>
+                <div style="display:flex;gap:10px">
+                    <button type="button" id="zoneModalCancel" class="fp-btn">Abbrechen</button>
+                    <button type="button" id="zoneModalSave" class="fp-btn fp-btn-save">Speichern</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 <script>
 (function () {
     const SCALE = 0.8;
@@ -195,11 +238,19 @@
     const tableStoreUrl = @json($canEdit ? route('admin.floorplan.tables.store') : '');
     const bgBase = @json(url('/admin/floorplan/rooms'));
     const csrf = @json(csrf_token());
+    const zoneIndexUrl  = @json(route('admin.floorplan.zones.index'));
+    const zoneStoreUrl  = @json($canEdit ? route('admin.floorplan.zones.store') : '');
+    const zoneBaseUrl   = @json(url('/admin/floorplan/zones'));
     let editMode = false;
     let tablesData = [];
     let reservationsData = [];
     let selectedId = null;
     let reassigning = null; // {reservationId, tableId, name}
+    let zoneMode = false;
+    let zonesData = {}; // {roomId: [{id,name,color,opacity,points},...]}
+    let drawPoints = [];
+    let drawingRoomId = null;
+    let editingZone = null; // {id, roomId, name, color, opacity, points}
 
     const dateInput = document.getElementById('planDate');
     const timeInput = document.getElementById('planTime');
@@ -211,7 +262,16 @@
         const data = await res.json();
         tablesData = data.tables;
         reservationsData = data.reservations;
+        zonesData = {};
+        if (data.zones) {
+            Object.entries(data.zones).forEach(([rid, zs]) => { zonesData[+rid] = zs; });
+        }
         render();
+        document.querySelectorAll('.floor-room').forEach(room => {
+            renderZones(+room.dataset.room);
+            renderRuler(+room.dataset.room);
+        });
+        renderZoneLegend();
     }
 
     function esc(s) { return (s ?? '').toString().replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -520,6 +580,252 @@
         el.addEventListener('pointercancel', end);
     }
 
+    // ---- Zone rendering ----
+    function renderZones(roomId) {
+        const svg = document.querySelector(`.floor-room[data-room="${roomId}"] .zones-svg-layer`);
+        if (!svg) return;
+        const room = document.querySelector(`.floor-room[data-room="${roomId}"]`);
+        const w = room ? room.clientWidth : 0;
+        const h = room ? room.clientHeight : 0;
+        svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+        svg.setAttribute('width', w);
+        svg.setAttribute('height', h);
+        const drawEls = [...svg.querySelectorAll('.draw-el')];
+        svg.innerHTML = '';
+        drawEls.forEach(el => svg.appendChild(el));
+        (zonesData[roomId] || []).forEach(z => {
+            if (!z.points || z.points.length < 3) return;
+            const pts = z.points.map(([x, y]) => `${x * SCALE},${y * SCALE}`).join(' ');
+            const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            poly.setAttribute('points', pts);
+            poly.setAttribute('fill', z.color);
+            poly.setAttribute('fill-opacity', z.opacity / 100);
+            poly.setAttribute('stroke', z.color);
+            poly.setAttribute('stroke-width', '1.5');
+            poly.setAttribute('stroke-opacity', '0.8');
+            poly.dataset.zoneId = z.id;
+            poly.style.pointerEvents = zoneMode ? 'all' : 'none';
+            if (zoneMode) {
+                poly.style.cursor = 'pointer';
+                poly.addEventListener('click', e => { e.stopPropagation(); openZoneModal(z, roomId); });
+            }
+            svg.appendChild(poly);
+            // Label in centroid
+            const cx = z.points.reduce((s, p) => s + p[0], 0) / z.points.length * SCALE;
+            const cy = z.points.reduce((s, p) => s + p[1], 0) / z.points.length * SCALE;
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', cx); text.setAttribute('y', cy);
+            text.setAttribute('text-anchor', 'middle');
+            text.setAttribute('dominant-baseline', 'middle');
+            text.setAttribute('fill', z.color);
+            text.setAttribute('font-size', '12');
+            text.setAttribute('font-weight', '700');
+            text.setAttribute('pointer-events', 'none');
+            text.textContent = z.name;
+            svg.appendChild(text);
+        });
+    }
+
+    function renderZoneLegend() {
+        const el = document.getElementById('zoneLegend');
+        if (!el) return;
+        const all = Object.values(zonesData).flat();
+        if (!all.length) { el.classList.add('hidden'); return; }
+        const seen = new Set();
+        const unique = all.filter(z => !seen.has(z.id) && seen.add(z.id));
+        el.innerHTML = '<span class="fp-zone-leg-title">Zonen:</span>'
+            + unique.map(z => `<span class="fp-leg"><span class="fp-leg-dot" style="background:${z.color};border-radius:50%"></span>${esc(z.name)}</span>`).join('');
+        el.classList.remove('hidden');
+    }
+
+    function renderRuler(roomId) {
+        const el = document.querySelector(`.fp-ruler[data-ruler="${roomId}"]`);
+        if (!el) return;
+        const room = document.querySelector(`.floor-room[data-room="${roomId}"]`);
+        if (!room) { el.classList.add('hidden'); return; }
+        const wm = parseFloat(room.dataset.widthM || '0');
+        const planW = parseFloat(room.dataset.w || '0');
+        if (!wm || !planW) { el.classList.add('hidden'); return; }
+        const pixelW = planW * SCALE;
+        const pxPerM = pixelW / wm;
+        let stepM = 1;
+        if (wm > 20) stepM = 5;
+        else if (wm > 10) stepM = 2;
+        const steps = Math.floor(wm / stepM);
+        let html = `<div style="position:relative;height:18px;width:${pixelW}px;overflow:hidden">`;
+        for (let i = 1; i <= steps; i++) {
+            const x = pxPerM * stepM * i;
+            html += `<span style="position:absolute;left:${x}px;transform:translateX(-50%);font-size:9px;color:#a8a29e;white-space:nowrap">${i * stepM}m</span>`;
+        }
+        html += `<div style="position:absolute;top:0;left:0;right:0;height:1px;background:#e7e5e4"></div></div>`;
+        el.innerHTML = html;
+        el.classList.remove('hidden');
+    }
+
+    // ---- Zone draw ----
+    function updateDrawPreview(roomId) {
+        const svg = document.querySelector(`.floor-room[data-room="${roomId}"] .zones-svg-layer`);
+        if (!svg) return;
+        svg.querySelectorAll('.draw-el').forEach(el => el.remove());
+        if (!drawPoints.length) return;
+        const ns = 'http://www.w3.org/2000/svg';
+        if (drawPoints.length >= 2) {
+            const line = document.createElementNS(ns, 'polyline');
+            line.setAttribute('points', drawPoints.map(([x, y]) => `${x * SCALE},${y * SCALE}`).join(' '));
+            line.setAttribute('fill', 'none');
+            line.setAttribute('stroke', '#0f766e');
+            line.setAttribute('stroke-width', '2');
+            line.setAttribute('stroke-dasharray', '6 3');
+            line.classList.add('draw-el');
+            svg.appendChild(line);
+        }
+        drawPoints.forEach(([x, y], i) => {
+            const c = document.createElementNS(ns, 'circle');
+            c.setAttribute('cx', x * SCALE); c.setAttribute('cy', y * SCALE);
+            c.setAttribute('r', (i === 0 && drawPoints.length >= 3) ? 8 : 5);
+            c.setAttribute('fill', i === 0 ? '#0f766e' : '#fff');
+            c.setAttribute('stroke', '#0f766e'); c.setAttribute('stroke-width', '2');
+            c.classList.add('draw-el');
+            svg.appendChild(c);
+        });
+    }
+
+    function addVertex(planX, planY, roomId) {
+        if (drawingRoomId !== null && drawingRoomId !== roomId) {
+            drawPoints = []; // switched room – start fresh
+        }
+        drawingRoomId = roomId;
+        if (drawPoints.length >= 3) {
+            const [fx, fy] = drawPoints[0];
+            if (Math.sqrt((planX - fx) ** 2 + (planY - fy) ** 2) < 12) {
+                closePolygon(roomId); return;
+            }
+        }
+        drawPoints.push([planX, planY]);
+        updateDrawPreview(roomId);
+    }
+
+    function closePolygon(roomId) {
+        if (drawPoints.length < 3) return;
+        editingZone = null;
+        openZoneModal(null, roomId);
+    }
+
+    function cancelDraw() {
+        drawPoints = []; drawingRoomId = null; editingZone = null;
+        document.querySelectorAll('.zones-svg-layer .draw-el').forEach(el => el.remove());
+    }
+
+    // ---- Zone modal ----
+    function openZoneModal(zone, roomId) {
+        const back  = document.getElementById('zoneModalBack');
+        if (!back) return;
+        const isNew = !zone || !zone.id;
+        document.getElementById('zoneModalTitle').textContent = isNew ? 'Zone anlegen' : 'Zone bearbeiten';
+        document.getElementById('zoneModalId').value = zone?.id || '';
+        document.getElementById('zoneModalName').value = zone?.name || '';
+        const col = zone?.color || '#60a5fa';
+        document.getElementById('zoneModalColor').value = col;
+        document.getElementById('zoneModalColorHex').textContent = col;
+        const op = zone?.opacity ?? 25;
+        document.getElementById('zoneModalOpacity').value = op;
+        document.getElementById('zoneModalOpacityVal').textContent = op;
+        document.getElementById('zoneModalErr').classList.add('hidden');
+        document.getElementById('zoneModalDelete').classList.toggle('hidden', isNew);
+        if (!isNew) editingZone = { ...zone, roomId };
+        back.classList.remove('hidden'); back.classList.add('flex');
+        document.getElementById('zoneModalName').focus();
+    }
+
+    function closeZoneModal() {
+        const back = document.getElementById('zoneModalBack');
+        if (!back) return;
+        back.classList.add('hidden'); back.classList.remove('flex');
+        if (editingZone) { editingZone = null; } else { cancelDraw(); }
+    }
+
+    async function saveZone() {
+        const nameEl  = document.getElementById('zoneModalName');
+        const colorEl = document.getElementById('zoneModalColor');
+        const opEl    = document.getElementById('zoneModalOpacity');
+        const idEl    = document.getElementById('zoneModalId');
+        const errEl   = document.getElementById('zoneModalErr');
+        const saveBt  = document.getElementById('zoneModalSave');
+        if (!nameEl.value.trim()) {
+            errEl.textContent = 'Bitte einen Namen eingeben.';
+            errEl.classList.remove('hidden'); return;
+        }
+        errEl.classList.add('hidden');
+        saveBt.disabled = true;
+        const payload = { name: nameEl.value.trim(), color: colorEl.value, opacity: parseInt(opEl.value, 10) };
+        const existingId = idEl.value;
+        let url, method;
+        if (existingId) {
+            url = zoneBaseUrl + '/' + existingId; method = 'PUT';
+            payload.points = editingZone?.points || [];
+        } else {
+            url = zoneStoreUrl; method = 'POST';
+            payload.room_id = drawingRoomId;
+            payload.points = drawPoints;
+        }
+        try {
+            const res = await fetch(url, {
+                method, headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, Accept: 'application/json'},
+                body: JSON.stringify(payload),
+            });
+            const j = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                errEl.textContent = j.message || (j.errors ? Object.values(j.errors).flat()[0] : 'Fehler');
+                errEl.classList.remove('hidden'); return;
+            }
+            const roomId = j.room_id || editingZone?.roomId || drawingRoomId;
+            if (!zonesData[roomId]) zonesData[roomId] = [];
+            if (existingId) {
+                const idx = zonesData[roomId].findIndex(z => z.id == existingId);
+                if (idx >= 0) zonesData[roomId][idx] = j; else zonesData[roomId].push(j);
+            } else {
+                zonesData[roomId].push(j);
+            }
+            closeZoneModal();
+            cancelDraw();
+            renderZones(roomId);
+            renderZoneLegend();
+        } catch {
+            errEl.textContent = 'Netzwerkfehler.';
+            errEl.classList.remove('hidden');
+        } finally { saveBt.disabled = false; }
+    }
+
+    async function deleteZone() {
+        if (!editingZone?.id) return;
+        if (!confirm('Zone löschen?')) return;
+        const res = await fetch(zoneBaseUrl + '/' + editingZone.id, {
+            method: 'DELETE', headers: {'X-CSRF-TOKEN': csrf, Accept: 'application/json'},
+        });
+        if (!res.ok) { alert('Zone konnte nicht gelöscht werden.'); return; }
+        const roomId = editingZone.roomId;
+        if (zonesData[roomId]) zonesData[roomId] = zonesData[roomId].filter(z => z.id !== editingZone.id);
+        closeZoneModal();
+        renderZones(roomId);
+        renderZoneLegend();
+    }
+
+    // Zone modal wiring
+    (function () {
+        const back = document.getElementById('zoneModalBack');
+        if (!back) return;
+        document.getElementById('zoneModalCancel').addEventListener('click', closeZoneModal);
+        back.addEventListener('click', e => { if (e.target === back) closeZoneModal(); });
+        document.getElementById('zoneModalSave').addEventListener('click', saveZone);
+        document.getElementById('zoneModalDelete').addEventListener('click', deleteZone);
+        document.getElementById('zoneModalColor').addEventListener('input', e => {
+            document.getElementById('zoneModalColorHex').textContent = e.target.value;
+        });
+        document.getElementById('zoneModalOpacity').addEventListener('input', e => {
+            document.getElementById('zoneModalOpacityVal').textContent = e.target.value;
+        });
+    })();
+
     // ---- Edit mode + save ----
     const editToggle = document.getElementById('editToggle');
     const saveBtn = document.getElementById('saveLayout');
@@ -547,6 +853,44 @@
             load();
         });
     }
+
+    // ---- Zone toggle ----
+    const zoneToggle = document.getElementById('zoneToggle');
+    if (zoneToggle) {
+        zoneToggle.addEventListener('click', () => {
+            zoneMode = !zoneMode;
+            if (zoneMode && editMode) {
+                editMode = false;
+                if (editToggle) editToggle.classList.remove('on');
+                if (saveBtn) saveBtn.classList.add('hidden');
+            }
+            zoneToggle.classList.toggle('on', zoneMode);
+            cancelDraw();
+            document.querySelectorAll('.floor-room').forEach(room => {
+                room.style.cursor = zoneMode ? 'crosshair' : '';
+                renderZones(+room.dataset.room);
+            });
+            if (!zoneMode) render();
+        });
+    }
+
+    // Floor-room click → zone vertex when in zone mode
+    document.querySelectorAll('.floor-room').forEach(room => {
+        room.addEventListener('click', e => {
+            if (!zoneMode) return;
+            if (e.target.closest('.table-el')) return;
+            if (e.target.tagName === 'polygon' && e.target.dataset.zoneId) return;
+            const rect = room.getBoundingClientRect();
+            const planX = Math.round((e.clientX - rect.left) / SCALE / 10) * 10;
+            const planY = Math.round((e.clientY - rect.top) / SCALE / 10) * 10;
+            addVertex(planX, planY, +room.dataset.room);
+        });
+        room.addEventListener('dblclick', e => {
+            if (!zoneMode) return;
+            e.preventDefault();
+            closePolygon(+room.dataset.room);
+        });
+    });
 
     // ---- New table modal ----
     const modal = document.getElementById('newTableBack');
@@ -1016,5 +1360,17 @@
     .table-el.reassign-source { outline:3px solid #0d9488; outline-offset:3px; }
     .table-el.reassign-target { cursor:crosshair !important; outline:2px dashed #0d9488; outline-offset:2px; opacity:.85; }
     .table-el.reassign-target:hover { opacity:1; transform:scale(1.04); z-index:20; }
+
+    /* Zone SVG layer */
+    .floor-room .zones-svg-layer { position:absolute; inset:0; pointer-events:none; overflow:visible; z-index:5; }
+
+    /* Zone legend */
+    .fp-zone-legend { display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; margin-bottom:10px; padding:8px 14px;
+        background:#f0fdfa; border:1px solid #99f6e4; border-radius:12px; font-size:12px; color:#134e4a; }
+    .fp-zone-leg-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#0f766e; }
+
+    /* Ruler */
+    .fp-ruler { padding:2px 0 0 0; font-size:9px; color:#a8a29e; overflow-x:auto; white-space:nowrap; }
+    .fp-ruler.hidden { display:none; }
 </style>
 @endsection
