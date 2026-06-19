@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\BoardController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EventAdminController;
 use App\Http\Controllers\Admin\FloorPlanController;
+use App\Http\Controllers\Admin\FloorZoneController;
 use App\Http\Controllers\Admin\GuestController;
 use App\Http\Controllers\Admin\RefundController;
 use App\Http\Controllers\Admin\ReportController;
@@ -181,6 +182,7 @@ Route::middleware(['auth', 'tenant', 'license'])->prefix('admin')->name('admin.'
         Route::get('/floorplan/state', [FloorPlanController::class, 'state'])->name('floorplan.state');
         Route::get('/floorplan/rooms/{room}/background', [FloorPlanController::class, 'background'])
             ->name('floorplan.background');
+        Route::get('/floorplan/zones', [FloorZoneController::class, 'index'])->name('floorplan.zones.index');
         Route::middleware('permission:floorplan.update')->group(function () {
             Route::post('/floorplan/positions', [FloorPlanController::class, 'updatePositions'])
                 ->name('floorplan.positions');
@@ -190,6 +192,11 @@ Route::middleware(['auth', 'tenant', 'license'])->prefix('admin')->name('admin.'
                 ->name('floorplan.background.upload');
             Route::delete('/floorplan/rooms/{room}/background', [FloorPlanController::class, 'deleteBackground'])
                 ->name('floorplan.background.delete');
+            Route::patch('/floorplan/rooms/{room}/size', [FloorPlanController::class, 'updateRoomSize'])
+                ->name('floorplan.rooms.size');
+            Route::post('/floorplan/zones', [FloorZoneController::class, 'store'])->name('floorplan.zones.store');
+            Route::put('/floorplan/zones/{zone}', [FloorZoneController::class, 'update'])->name('floorplan.zones.update');
+            Route::delete('/floorplan/zones/{zone}', [FloorZoneController::class, 'destroy'])->name('floorplan.zones.destroy');
         });
     });
 

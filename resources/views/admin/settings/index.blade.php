@@ -262,13 +262,42 @@
     <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
         <h2 class="mb-3 font-bold">Räume</h2>
         <p class="mb-3 text-xs text-stone-500">Räume anlegen, Tische und Kombinationen dann im <a href="{{ route('admin.floorplan.index') }}" class="font-semibold text-teal-700 underline">Tischplan</a> verwalten.</p>
-        <form method="POST" action="{{ route('admin.settings.rooms.store') }}" class="flex items-end gap-2 text-sm">
+
+        @foreach($location->rooms()->where('is_active', true)->orderBy('sort_order')->get() as $room)
+        <div class="mb-3 flex flex-wrap items-end gap-3 rounded-xl bg-stone-50 p-3 text-sm">
+            <span class="font-semibold text-stone-800">{{ $room->name }}</span>
+            @if($room->is_outdoor)<span class="rounded-full bg-sky-100 px-2 py-0.5 text-xs text-sky-700">Außen</span>@endif
+            <div class="ml-auto flex items-end gap-2">
+                <div>
+                    <label class="mb-1 block text-xs font-semibold text-stone-500">Breite (m)</label>
+                    <input type="number" step="0.5" min="1" max="500"
+                           value="{{ $room->plan_width_m }}" placeholder="—"
+                           class="room-size-m w-20 rounded-lg border-stone-200 text-sm"
+                           data-room="{{ $room->id }}" data-field="plan_width_m">
+                </div>
+                <div>
+                    <label class="mb-1 block text-xs font-semibold text-stone-500">Tiefe (m)</label>
+                    <input type="number" step="0.5" min="1" max="500"
+                           value="{{ $room->plan_height_m }}" placeholder="—"
+                           class="room-size-m w-20 rounded-lg border-stone-200 text-sm"
+                           data-room="{{ $room->id }}" data-field="plan_height_m">
+                </div>
+                <button type="button" onclick="saveRoomSize({{ $room->id }})"
+                        class="rounded-lg bg-stone-800 px-3 py-2 text-xs font-semibold text-white hover:bg-stone-700">
+                    Speichern
+                </button>
+            </div>
+        </div>
+        @endforeach
+
+        <form method="POST" action="{{ route('admin.settings.rooms.store') }}" class="mt-2 flex items-end gap-2 text-sm">
             @csrf
             <div class="grow"><label class="mb-1 block text-xs font-semibold text-stone-500">Neuer Raum</label>
                 <input type="text" name="name" required placeholder="z. B. Wintergarten" class="w-full rounded-lg border-stone-200"></div>
             <label class="flex items-center gap-1 pb-2 text-xs"><input type="checkbox" name="is_outdoor" value="1"> Außen</label>
             <button class="rounded-lg bg-stone-900 px-4 py-2 font-semibold text-white">Anlegen</button>
         </form>
+        <p class="mt-2 text-xs text-stone-400">Breite/Tiefe in Metern ist optional – ermöglicht einen Maßstab-Ruler im Tischplan und korrekte Proportionen bei großen Räumen.</p>
     </div>
 
     {{-- Tags --}}
@@ -772,6 +801,33 @@
 
     updateSnippets();
 })();
+
+// ── Raumgröße in Metern ────────────────────────────────────────────────────
+async function saveRoomSize(roomId) {
+    const inputs = document.querySelectorAll('.room-size-m[data-room="' + roomId + '"]');
+    const body = { plan_width: 1000, plan_height: 700 };
+    inputs.forEach(inp => {
+        const v = parseFloat(inp.value);
+        if (! isNaN(v)) body[inp.dataset.field] = v;
+        else body[inp.dataset.field] = null;
+    });
+    const csrf = document.querySelector('meta[name=csrf-token]')?.content
+               || document.querySelector('input[name=_token]')?.value || '';
+    const url = '/admin/floorplan/rooms/' + roomId + '/size';
+    const res = await fetch(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, Accept: 'application/json' },
+        body: JSON.stringify(body),
+    });
+    const toast = document.getElementById('settingsToast');
+    if (toast) {
+        toast.textContent = res.ok ? 'Raumgröße gespeichert.' : 'Fehler beim Speichern.';
+        toast.className = 'pointer-events-none fixed bottom-6 right-6 z-50 max-w-sm rounded-xl px-5 py-3 text-sm font-semibold shadow-xl transition-all duration-300 '
+            + (res.ok ? 'bg-stone-900 text-white' : 'bg-red-600 text-white');
+        toast.classList.remove('hidden', 'opacity-0');
+        setTimeout(() => { toast.classList.add('opacity-0'); setTimeout(() => toast.classList.add('hidden'), 300); }, 2000);
+    }
+}
 
 function swayyWidgetCopy(id, btn) {
     var text = document.getElementById(id)?.textContent;
