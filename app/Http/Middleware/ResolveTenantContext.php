@@ -53,7 +53,10 @@ class ResolveTenantContext
             abort(403, 'Kein Zugriff auf einen Mandanten.');
         }
 
-        if (! $tenant->isActive() && ! $user->isSaasAdmin()) {
+        // trial_expired and pending_billing are handled by EnsureTrialActive;
+        // only hard-block statuses (suspended, cancelled) are rejected here.
+        $hardBlocked = in_array($tenant->status, ['suspended', 'cancelled'], true);
+        if ($hardBlocked && ! $user->isSaasAdmin()) {
             abort(403, 'Dieser Mandant ist gesperrt.');
         }
 

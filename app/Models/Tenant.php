@@ -10,13 +10,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property Carbon|null $trial_ends_at
+ * @property Carbon|null $trial_warning_sent_at
+ */
 class Tenant extends Model
 {
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'name', 'slug', 'type', 'plan_id', 'status', 'trial_ends_at',
+        'name', 'slug', 'type', 'plan_id', 'status', 'trial_ends_at', 'trial_warning_sent_at',
         'default_locale', 'default_currency',
         'brand_logo_path', 'brand_primary_color', 'brand_accent_color',
         'mail_from_name', 'mail_reply_to',
@@ -29,6 +34,7 @@ class Tenant extends Model
         return [
             'type' => TenantType::class,
             'trial_ends_at' => 'datetime',
+            'trial_warning_sent_at' => 'datetime',
             'settings' => 'array',
             'feature_overrides' => 'array',
         ];
@@ -59,6 +65,40 @@ class Tenant extends Model
     public function billingProfile(): HasOne
     {
         return $this->hasOne(BillingProfile::class);
+    }
+
+    public function billingRequests(): HasMany
+    {
+        return $this->hasMany(BillingRequest::class);
+    }
+
+    public function latestBillingRequest(): HasOne
+    {
+        return $this->hasOne(BillingRequest::class)->latestOfMany();
+    }
+
+    /** Trial is running and not yet expired. */
+    public function isTrialing(): bool
+    {
+        return $this->trial_ends_at !== null && $this->trial_ends_at->isFuture();
+    }
+
+    /** Trial window has passed and the tenant is not yet re-activated. */
+    public function isTrialExpired(): bool
+    {
+        return $this->status === 'trial_expired';
+    }
+
+    /** Billing request submitted and email-confirmed; waiting for owner to activate. */
+    public function isPendingBilling(): bool
+    {
+        return $this->status === 'pending_billing';
+    }
+
+    /** Any state that blocks access to the admin. */
+    public function isLocked(): bool
+    {
+        return in_array($this->status, ['trial_expired', 'suspended', 'cancelled'], true);
     }
 
     /** @return HasMany<WebhookEndpoint, $this> */
