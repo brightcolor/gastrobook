@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.34.0] – 2026-06-25
+
+### Neu
+- **Trial-Ablauf (30 Tage):** Nach Ablauf des Testzeitraums werden alle Admin-Bereiche
+  gesperrt und Nutzer auf ein Upgrade-Formular weitergeleitet. Das Formular erfasst
+  Kontaktdaten, Rechnungsanschrift und gewünschten Tarif — Billing erfolgt manuell
+  außerhalb der Anwendung.
+- **E-Mail-Bestätigungsflow:** Nach dem Absenden des Formulars erhält der Kunde eine
+  Bestätigungs-E-Mail. Erst nach Klick auf den Link (72 h gültig) wird die Anfrage an den
+  Plattform-Owner weitergeleitet. Der Tenant-Status wechselt auf `pending_billing`.
+- **Owner-Benachrichtigung:** Erst nach E-Mail-Bestätigung durch den Kunden geht eine
+  vollständige Mail an `SWAYY_OWNER_EMAIL` mit allen Rechnungsdaten und einem
+  Direktlink zur Aktivierung.
+- **Billing-Anfragen-Übersicht (Admin):** Neue Seite `/admin/billing-requests` listet alle
+  Anfragen mit Status, Tarif, Kontaktdaten und einem „Konto freischalten"-Button.
+- **5-Tage-Vorwarnung:** Der tägliche Scheduler sendet 5 Tage vor Trial-Ablauf eine
+  Erinnerungs-E-Mail an alle Tenant-Owner-Nutzer sowie an den Plattform-Owner.
+  Erneuter Versand wird durch `trial_warning_sent_at` verhindert.
+- **Neue Umgebungsvariable:** `SWAYY_OWNER_EMAIL` steuert, an welche Adresse
+  Owner-Benachrichtigungen gesendet werden.
+
 ## [1.33.0] – 2026-06-19
 
 ### Neu
