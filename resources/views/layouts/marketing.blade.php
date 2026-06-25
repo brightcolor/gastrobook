@@ -4,23 +4,30 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'Swayy – Buchungssystem für Restaurants & Salons')</title>
-    <meta name="description" content="@yield('description', 'Reservierungen & Termine, Live-Board, Tischplan bzw. Mitarbeiter-Dienstplan, Zahlungen und No-Show-Schutz – die Buchungsplattform für Restaurants und Friseure/Dienstleister. DSGVO-konform, EU-Hosting. 30 Tage kostenlos.')">
+    <meta name="description" content="@yield('description', 'Reservierungen & Termine, Live-Board, Tischplan, Zahlungen und No-Show-Schutz – die Buchungsplattform für Restaurants und Friseure. DSGVO-konform, EU-Hosting. 30 Tage kostenlos.')">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @stack('styles')
 </head>
 <body class="min-h-screen bg-white text-stone-900 antialiased">
-    <header class="sticky top-0 z-40 border-b border-stone-200 bg-white/90 backdrop-blur">
-        <nav class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-            <a href="{{ route('home') }}" class="text-xl font-extrabold tracking-tight">Swayy</a>
-            <div class="hidden items-center gap-6 text-sm font-medium md:flex">
-                <a href="{{ route('home') }}#branchen" class="hover:text-teal-700">Branchen</a>
-                <a href="{{ route('home') }}#hauptfunktionen" class="hover:text-teal-700">Funktionen</a>
-                <a href="{{ route('home') }}#preise" class="hover:text-teal-700">Preise</a>
-                <a href="{{ route('home') }}#faq" class="hover:text-teal-700">FAQ</a>
-                <a href="{{ route('contact') }}" class="hover:text-teal-700">Kontakt</a>
+
+    <header id="mkt-header" class="sticky top-0 z-50 transition-all duration-300">
+        <nav class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5">
+            <a href="{{ route('home') }}" class="flex items-center gap-2 text-xl font-black tracking-tight">
+                <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-teal-500 to-teal-700 text-sm font-black text-white shadow-sm">S</span>
+                <span>Swayy</span>
+            </a>
+            <div class="hidden items-center gap-1 text-sm font-medium md:flex">
+                <a href="{{ route('home') }}#branchen"       class="rounded-lg px-3 py-2 text-stone-600 hover:bg-stone-100 hover:text-stone-900">Branchen</a>
+                <a href="{{ route('home') }}#hauptfunktionen" class="rounded-lg px-3 py-2 text-stone-600 hover:bg-stone-100 hover:text-stone-900">Funktionen</a>
+                <a href="{{ route('home') }}#preise"          class="rounded-lg px-3 py-2 text-stone-600 hover:bg-stone-100 hover:text-stone-900">Preise</a>
+                <a href="{{ route('home') }}#faq"             class="rounded-lg px-3 py-2 text-stone-600 hover:bg-stone-100 hover:text-stone-900">FAQ</a>
+                <a href="{{ route('contact') }}"              class="rounded-lg px-3 py-2 text-stone-600 hover:bg-stone-100 hover:text-stone-900">Kontakt</a>
             </div>
-            <div class="flex items-center gap-3">
-                <a href="{{ route('login') }}" class="text-sm font-semibold text-stone-600 hover:text-stone-900">Anmelden</a>
-                <a href="{{ route('register') }}" class="rounded-xl bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-800">Kostenlos testen</a>
+            <div class="flex items-center gap-2">
+                <a href="{{ route('login') }}" class="hidden rounded-lg px-3 py-2 text-sm font-semibold text-stone-600 hover:text-stone-900 sm:block">Anmelden</a>
+                <a href="{{ route('register') }}" class="rounded-xl bg-teal-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-teal-700">
+                    Kostenlos testen
+                </a>
             </div>
         </nav>
     </header>
@@ -28,30 +35,53 @@
     <main>
         @if(session('success'))
             <div class="mx-auto max-w-6xl px-4 pt-4">
-                <div class="rounded-xl bg-emerald-100 px-4 py-3 text-sm font-medium text-emerald-900">{{ session('success') }}</div>
+                <div class="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm font-medium text-emerald-900">{{ session('success') }}</div>
             </div>
         @endif
         @yield('content')
     </main>
 
     <footer class="border-t border-stone-200 bg-stone-50">
-        <div class="mx-auto max-w-6xl px-4 py-10">
-            <div class="flex flex-col items-start justify-between gap-6 md:flex-row">
+        <div class="mx-auto max-w-6xl px-4 py-12">
+            <div class="flex flex-col items-start justify-between gap-8 md:flex-row">
                 <div>
-                    <p class="text-lg font-extrabold">Swayy</p>
-                    <p class="mt-1 max-w-xs text-sm text-stone-500">Die Buchungsplattform für Restaurants, Cafés, Bars sowie Friseure und Dienstleister. Gehostet in der EU.</p>
+                    <div class="flex items-center gap-2">
+                        <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-teal-500 to-teal-700 text-sm font-black text-white">S</span>
+                        <p class="text-lg font-black">Swayy</p>
+                    </div>
+                    <p class="mt-2 max-w-xs text-sm text-stone-500 leading-relaxed">Die Buchungsplattform für Restaurants, Cafés, Bars sowie Friseure und Dienstleister. Gehostet in der EU.</p>
                 </div>
-                <div class="grid grid-cols-2 gap-x-12 gap-y-2 text-sm">
-                    <a href="{{ route('home') }}#hauptfunktionen" class="text-stone-600 hover:text-stone-900">Funktionen</a>
-                    <a href="{{ route('legal.imprint') }}" class="text-stone-600 hover:text-stone-900">Impressum</a>
-                    <a href="{{ route('home') }}#preise" class="text-stone-600 hover:text-stone-900">Preise</a>
-                    <a href="{{ route('legal.privacy') }}" class="text-stone-600 hover:text-stone-900">Datenschutz</a>
-                    <a href="{{ route('contact') }}" class="text-stone-600 hover:text-stone-900">Kontakt</a>
-                    <a href="{{ route('legal.terms') }}" class="text-stone-600 hover:text-stone-900">AGB</a>
+                <div class="grid grid-cols-2 gap-x-16 gap-y-2.5 text-sm">
+                    <a href="{{ route('home') }}#hauptfunktionen" class="text-stone-500 hover:text-stone-900">Funktionen</a>
+                    <a href="{{ route('legal.imprint') }}"        class="text-stone-500 hover:text-stone-900">Impressum</a>
+                    <a href="{{ route('home') }}#preise"          class="text-stone-500 hover:text-stone-900">Preise</a>
+                    <a href="{{ route('legal.privacy') }}"        class="text-stone-500 hover:text-stone-900">Datenschutz</a>
+                    <a href="{{ route('contact') }}"              class="text-stone-500 hover:text-stone-900">Kontakt</a>
+                    <a href="{{ route('legal.terms') }}"          class="text-stone-500 hover:text-stone-900">AGB</a>
                 </div>
             </div>
-            <p class="mt-8 text-xs text-stone-400">© {{ date('Y') }} Swayy · Alle Preise zzgl. USt.</p>
+            <div class="mt-10 flex flex-col items-start justify-between gap-2 border-t border-stone-200 pt-6 text-xs text-stone-400 sm:flex-row">
+                <p>© {{ date('Y') }} Swayy · Alle Preise zzgl. MwSt.</p>
+                <p>🇪🇺 EU-Hosting · DSGVO-konform · ohne Provision</p>
+            </div>
         </div>
     </footer>
+
+    <script>
+    // Nav becomes opaque on scroll
+    (function () {
+        const hdr = document.getElementById('mkt-header');
+        if (!hdr) return;
+        const update = () => {
+            const scrolled = window.scrollY > 20;
+            hdr.style.background    = scrolled ? 'rgba(255,255,255,0.92)' : 'transparent';
+            hdr.style.backdropFilter = scrolled ? 'blur(14px)' : 'none';
+            hdr.style.borderBottom  = scrolled ? '1px solid rgba(0,0,0,.07)' : '1px solid transparent';
+            hdr.style.boxShadow     = scrolled ? '0 1px 16px rgba(0,0,0,.06)' : 'none';
+        };
+        window.addEventListener('scroll', update, { passive: true });
+        update();
+    })();
+    </script>
 </body>
 </html>
