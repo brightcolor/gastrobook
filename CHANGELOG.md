@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.34.1] – 2026-06-25
+
+### Behoben
+- **Container-Restart-Schleife nach Update:** Die Trial-Migration legte Tabelle
+  und Spalte in einem Schritt an. Da MySQL-DDL nicht transaktional ist, blieb
+  bei einem Abbruch die Tabelle `billing_requests` bestehen, ohne dass die
+  Migration als erledigt markiert wurde — der nächste Boot scheiterte an
+  „table already exists" und der Container kam nicht mehr hoch. Die Migration
+  ist jetzt idempotent (`hasTable`/`hasColumn`-Guards) und re-run-sicher.
+
 ## [1.34.0] – 2026-06-25
 
 ### Neu
