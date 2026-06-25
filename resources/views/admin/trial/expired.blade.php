@@ -20,32 +20,7 @@
             </a>
         </div>
 
-        @if($pending)
-            {{-- Status: Billing-Anfrage bestätigt, warte auf Owner-Aktivierung --}}
-            <div class="card p-10 text-center">
-                <div class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-teal-50">
-                    <svg class="h-8 w-8 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                </div>
-                <h1 class="text-2xl font-bold text-stone-900">Anfrage eingegangen</h1>
-                <p class="mx-auto mt-4 max-w-md leading-relaxed text-stone-500">
-                    Ihre Billing-Anfrage wurde bestätigt und an uns weitergeleitet.
-                    Wir melden uns in Kürze bei <strong class="text-stone-700">{{ $pending->contact_email }}</strong>,
-                    um alles Weitere zu klären und Ihr Konto freizuschalten.
-                </p>
-                <p class="mt-6 text-sm text-stone-400">
-                    Fragen? <a href="mailto:info@swayy.de" class="text-teal-600 hover:underline">info@swayy.de</a>
-                </p>
-                <form action="{{ route('logout') }}" method="POST" class="mt-8">
-                    @csrf
-                    <button type="submit" class="text-sm text-stone-400 hover:text-stone-600 underline">
-                        Abmelden
-                    </button>
-                </form>
-            </div>
-
-        @elseif(session('success'))
+        @if(session('success'))
             {{-- Status: Formular abgeschickt, warte auf E-Mail-Bestätigung --}}
             <div class="card p-10 text-center">
                 <div class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-amber-50">

@@ -25,16 +25,12 @@ class BillingRequestController extends Controller
     {
         $tenant = $this->context->tenant() ?? abort(404);
 
-        $pending = $tenant->latestBillingRequest()
-            ->whereNotNull('confirmed_at')
-            ->first();
-
         $plans = Plan::where('is_active', true)
             ->where('key', '!=', 'trial')
             ->orderBy('sort_order')
             ->get();
 
-        return view('admin.trial.expired', compact('tenant', 'pending', 'plans'));
+        return view('admin.trial.expired', compact('tenant', 'plans'));
     }
 
     /** Store the billing request and send the confirmation e-mail. */
@@ -87,8 +83,8 @@ class BillingRequestController extends Controller
 
         $billingRequest->update(['confirmed_at' => now()]);
 
-        // Unlock tenant to "pending_billing" so they see a "we got it" screen
-        $billingRequest->tenant->update(['status' => 'pending_billing']);
+        // Immediately reactivate — billing is settled manually outside the app
+        $billingRequest->tenant->update(['status' => 'active', 'trial_ends_at' => null]);
 
         // Notify owner
         $ownerEmail = config('swayy.owner_email');

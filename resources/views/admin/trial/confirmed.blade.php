@@ -17,23 +17,21 @@
             </svg>
         </div>
 
-        <h1 class="text-2xl font-bold text-stone-900">E-Mail bestätigt!</h1>
+        <h1 class="text-2xl font-bold text-stone-900">Konto wieder aktiv!</h1>
         <p class="mx-auto mt-4 max-w-sm leading-relaxed text-stone-500">
-            Vielen Dank, <strong class="text-stone-700">{{ $billingRequest->contact_name }}</strong>.
-            Ihre Anfrage für den Tarif <strong class="text-stone-700">{{ $billingRequest->plan_key }}</strong>
-            wurde übermittelt. Wir melden uns in Kürze bei Ihnen.
+            Danke, <strong class="text-stone-700">{{ $billingRequest->contact_name }}</strong>.
+            Ihr Swayy-Konto ist freigeschaltet — Sie können sofort weitermachen.
+            Die Zahlungsdetails klären wir separat mit Ihnen.
         </p>
+
+        <a href="{{ route('admin.dashboard') }}"
+           class="mt-8 inline-block rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700">
+            Zum Dashboard →
+        </a>
 
         <p class="mt-6 text-sm text-stone-400">
             Fragen? <a href="mailto:info@swayy.de" class="text-teal-600 hover:underline">info@swayy.de</a>
         </p>
-
-        @auth
-            <form action="{{ route('logout') }}" method="POST" class="mt-6">
-                @csrf
-                <button type="submit" class="text-sm text-stone-400 hover:text-stone-600 underline">Abmelden</button>
-            </form>
-        @endauth
 
     </div>
 </div>
