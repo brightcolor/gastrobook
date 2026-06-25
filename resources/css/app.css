@@ -1,11 +1,18 @@
 @import 'tailwindcss';
 
+/* Self-hosted fonts (DSGVO: no third-party CDN, no visitor-IP leak) */
+@import '@fontsource-variable/inter/index.css';
+@import '@fontsource-variable/fraunces/index.css';
+@import '@fontsource-variable/fraunces/standard-italic.css';
+
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+    /* Editorial display serif for marketing headlines */
+    --font-display: 'Fraunces Variable', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
 
     /* Kantigere Ecken für Bedienelemente (rounded / -sm / -md / -lg).
        Karten (rounded-xl / -2xl) bleiben bewusst weicher. */

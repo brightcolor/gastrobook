@@ -2,492 +2,414 @@
 
 @push('styles')
 <style>
-:root {
-    --ac:  #0d9488;
-    --ac2: #0f766e;
-    --acl: #f0fdfa;
-    --br:  #e6e3dc;
-    --sa:  #f5f3ef;
-    --tx:  #1c1917;
-    --mu:  #78716c;
+:root{
+    --ink:#1c1917; --ink2:#44403c; --mu:#78716c; --mu2:#a8a29e;
+    --paper:#fbfaf8; --paper2:#f4f1ea; --line:#e9e5dd; --line2:#efece5;
+    --ac:#0f766e; --ac2:#0d9488; --acl:#f0fdfa;
 }
 
-/* ── Parallax (translate property keeps other transforms intact) ─── */
-[data-p] { will-change: translate; }
-
-@supports (animation-timeline: scroll()) {
-    .px-ring  { animation: px1 linear both; animation-timeline: scroll(root); animation-range: 0px 900px; }
-    .px-blob  { animation: px2 linear both; animation-timeline: scroll(root); animation-range: 0px 900px; }
-    .px-mock  { animation: px3 linear both; animation-timeline: scroll(root); animation-range: 0px 900px; }
-    .px-na    { animation: px4 linear both; animation-timeline: scroll(root); animation-range: 0px 900px; }
-    .px-nb    { animation: px5 linear both; animation-timeline: scroll(root); animation-range: 0px 900px; }
-    @keyframes px1 { to { translate: 0  80px; } }
-    @keyframes px2 { to { translate: 0 130px; } }
-    @keyframes px3 { to { translate: 0 190px; } }
-    @keyframes px4 { to { translate: 0 240px; } }
-    @keyframes px5 { to { translate: 0 210px; } }
+/* ── Type ──────────────────────────────────────────────────────── */
+.serif{ font-family:var(--font-display, 'Fraunces Variable', Georgia, serif); font-optical-sizing:auto; }
+.serif-i{ font-family:var(--font-display, 'Fraunces Variable', Georgia, serif); font-style:italic; }
+.display{
+    font-family:var(--font-display, 'Fraunces Variable', Georgia, serif);
+    font-weight:400; letter-spacing:-.02em; line-height:1.02;
+    font-optical-sizing:auto;
+    color:var(--ink);
+}
+.eyebrow{
+    font-size:.72rem; font-weight:600; letter-spacing:.18em; text-transform:uppercase; color:var(--ac);
 }
 
-/* ── Gradient text ─────────────────────────────────────────────── */
-.gt {
-    background: linear-gradient(120deg, #0d9488 0%, #6366f1 70%);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    background-clip: text;
+/* ── Grain (tactile, premium) ──────────────────────────────────── */
+/* ── Parallax orbs ─────────────────────────────────────────────── */
+.orb{ position:absolute; border-radius:50%; filter:blur(70px); pointer-events:none; will-change:transform; }
+.orb-a{ width:46rem;height:46rem; top:-16rem; right:-14rem; background:radial-gradient(circle,#5eead4 0,transparent 68%); opacity:.45; }
+.orb-b{ width:40rem;height:40rem; top:14rem; left:-18rem; background:radial-gradient(circle,#c7d2fe 0,transparent 68%); opacity:.40; }
+.orb-c{ width:32rem;height:32rem; background:radial-gradient(circle,#fde68a 0,transparent 70%); opacity:.30; }
+
+[data-par]{ will-change:transform; }
+
+/* ── Reveal ────────────────────────────────────────────────────── */
+.rv{ opacity:0; transform:translateY(26px); transition:opacity .9s cubic-bezier(.16,1,.3,1), transform .9s cubic-bezier(.16,1,.3,1); }
+.rv.on{ opacity:1; transform:none; }
+.d1{transition-delay:.07s}.d2{transition-delay:.14s}.d3{transition-delay:.21s}
+.d4{transition-delay:.28s}.d5{transition-delay:.35s}.d6{transition-delay:.42s}
+@media (prefers-reduced-motion:reduce){
+    .rv{opacity:1;transform:none;transition:none}
+    [data-par]{transform:none!important}
+    .floaty,.ldot{animation:none!important}
 }
 
-/* ── Hero ring (slow rotate) ───────────────────────────────────── */
-@keyframes slow-rot { to { transform: rotate(360deg); } }
-.hero-ring { animation: slow-rot 90s linear infinite; transform-origin: center; }
-
-/* ── Pulsing live dot ──────────────────────────────────────────── */
-@keyframes ldot { 0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,.4)} 60%{box-shadow:0 0 0 5px rgba(16,185,129,0)} }
-.ldot { display:inline-block; width:7px; height:7px; border-radius:50%; background:#10b981; animation: ldot 2.2s ease-in-out infinite; }
-
-/* ── Scroll reveal ─────────────────────────────────────────────── */
-.rv {
-    opacity:0; transform: translateY(22px);
-    transition: opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1);
+/* ── Buttons ───────────────────────────────────────────────────── */
+.btn-ink{
+    background:var(--ink); color:#fff; border-radius:999px;
+    box-shadow:0 1px 1px rgba(0,0,0,.04),0 10px 30px -12px rgba(28,25,23,.55);
+    transition:transform .25s cubic-bezier(.16,1,.3,1), box-shadow .25s, background .2s;
 }
-.rv.on { opacity:1; transform:none; }
-.d1{transition-delay:.05s} .d2{transition-delay:.11s} .d3{transition-delay:.17s}
-.d4{transition-delay:.23s} .d5{transition-delay:.29s} .d6{transition-delay:.35s}
+.btn-ink:hover{ transform:translateY(-2px); background:#000; box-shadow:0 1px 1px rgba(0,0,0,.04),0 18px 44px -14px rgba(28,25,23,.6); }
+.btn-ghost{
+    border:1px solid var(--line); background:rgba(255,255,255,.6); color:var(--ink2); border-radius:999px;
+    backdrop-filter:blur(6px); transition:border-color .2s,color .2s,background .2s,transform .25s;
+}
+.btn-ghost:hover{ border-color:#d6d1c7; color:var(--ink); transform:translateY(-2px); }
 
 /* ── Cards ─────────────────────────────────────────────────────── */
-.card {
-    background:#fff; border:1px solid var(--br); border-radius:20px;
-    transition: box-shadow .25s ease, transform .25s ease;
-}
-.card:hover { box-shadow:0 12px 48px -12px rgba(0,0,0,.10); transform:translateY(-2px); }
+.surf{ background:#fff; border:1px solid var(--line); border-radius:22px; }
+.lift{ transition:box-shadow .35s cubic-bezier(.16,1,.3,1), transform .35s cubic-bezier(.16,1,.3,1), border-color .35s; }
+.lift:hover{ transform:translateY(-4px); border-color:#ded8cd; box-shadow:0 30px 60px -24px rgba(28,25,23,.18); }
+
+/* hairline gradient ring used on premium cards */
+.ring-soft{ box-shadow:0 1px 0 rgba(255,255,255,.8) inset, 0 24px 60px -30px rgba(28,25,23,.25); }
+
+/* ── Live dot ──────────────────────────────────────────────────── */
+@keyframes ldot{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,.45)}60%{box-shadow:0 0 0 6px rgba(16,185,129,0)}}
+.ldot{ display:inline-block;width:7px;height:7px;border-radius:50%;background:#10b981;animation:ldot 2.4s ease-in-out infinite; }
+
+/* ── Float ─────────────────────────────────────────────────────── */
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.floaty{ animation:floaty 7s ease-in-out infinite; }
+.floaty.slow{ animation-duration:9s; }
+
+/* ── Slot / date pills ─────────────────────────────────────────── */
+.slot{ border:1.5px solid var(--line); border-radius:11px; padding:7px 0; text-align:center; font-size:12px; font-weight:600; color:var(--mu); background:#fff; }
+.slot.on{ border-color:var(--ac); background:var(--acl); color:var(--ac); }
 
 /* ── FAQ ───────────────────────────────────────────────────────── */
-details.faq summary { list-style:none; cursor:pointer; }
-details.faq summary::-webkit-details-marker { display:none; }
-details.faq .fb { display:grid; grid-template-rows:0fr; transition:grid-template-rows .35s ease; }
-details.faq .fb > div { overflow:hidden; }
-details.faq[open] .fb { grid-template-rows:1fr; }
-details.faq .fi { transition:transform .32s ease; }
-details.faq[open] .fi { transform:rotate(45deg); }
+details.faq summary{ list-style:none; cursor:pointer; }
+details.faq summary::-webkit-details-marker{ display:none; }
+details.faq .fb{ display:grid; grid-template-rows:0fr; transition:grid-template-rows .4s cubic-bezier(.16,1,.3,1); }
+details.faq .fb>div{ overflow:hidden; }
+details.faq[open] .fb{ grid-template-rows:1fr; }
+details.faq .fi{ transition:transform .35s cubic-bezier(.16,1,.3,1); }
+details.faq[open] .fi{ transform:rotate(45deg); }
 
-/* ── Mockup tilt ───────────────────────────────────────────────── */
-.tilt { transform: perspective(1100px) rotateY(-5deg) rotateX(2deg); }
+/* ── Marquee (value words, no vendors) ─────────────────────────── */
+.marq{ display:flex; gap:3.5rem; width:max-content; animation:marq 38s linear infinite; }
+@keyframes marq{ to{ transform:translateX(-50%); } }
+.marq:hover{ animation-play-state:paused; }
+.marq span{ font-family:var(--font-display,serif); font-style:italic; font-size:1.35rem; color:var(--mu2); white-space:nowrap; }
+.marq b{ color:var(--ac); font-style:normal; font-weight:600; font-family:var(--font-sans); font-size:.8rem; letter-spacing:.04em; }
 
-/* ── Notif float-in ────────────────────────────────────────────── */
-@keyframes finr { from{opacity:0;translate:16px 0} to{opacity:1;translate:0 0} }
-@keyframes finl { from{opacity:0;translate:-16px 0} to{opacity:1;translate:0 0} }
-.finr { animation: finr .6s .5s cubic-bezier(.16,1,.3,1) both; }
-.finl { animation: finl .6s .9s cubic-bezier(.16,1,.3,1) both; }
-
-/* ── Feature alternating ───────────────────────────────────────── */
-.feat-visual {
-    background: var(--sa); border:1px solid var(--br); border-radius:24px;
-    padding:2rem; overflow:hidden; min-height:320px;
-    display:flex; align-items:center; justify-content:center;
-}
-
-/* ── Board rows ────────────────────────────────────────────────── */
-.brow { transition:background .15s; border-radius:8px; }
-.brow:hover { background:var(--sa); }
-
-/* ── Slot pill ─────────────────────────────────────────────────── */
-.slot { border:1.5px solid var(--br); border-radius:10px; padding:6px 0; text-align:center; font-size:12px; font-weight:600; color:var(--mu); }
-.slot.on { border-color:var(--ac); background:color-mix(in oklch,var(--ac) 10%,white); color:var(--ac); }
-
-/* ── Pricing popular ───────────────────────────────────────────── */
-.pp { border:2px solid var(--ac); box-shadow:0 0 0 5px color-mix(in oklch,var(--ac) 12%,transparent), 0 16px 48px -8px color-mix(in oklch,var(--ac) 18%,transparent); }
+/* ── Section divider ───────────────────────────────────────────── */
+.rule{ height:1px; background:linear-gradient(90deg,transparent,var(--line),transparent); }
 
 /* ── CTA ───────────────────────────────────────────────────────── */
-.cta-bg { background: linear-gradient(140deg,#0d9488 0%,#0f766e 40%,#134e4a 100%); }
-.cta-dots {
-    background-image: radial-gradient(rgba(255,255,255,.18) 1px, transparent 1px);
-    background-size: 28px 28px;
-}
+.cta-wrap{ background:linear-gradient(160deg,#0f766e,#115e59 55%,#134e4a); border-radius:36px; position:relative; overflow:hidden; }
+.cta-grid{ background-image:radial-gradient(rgba(255,255,255,.16) 1px,transparent 1px); background-size:26px 26px; }
 </style>
 @endpush
 
 @section('content')
 
-{{-- ╔══════════════════════════════════════════════════════════════╗
-     ║  HERO                                                        ║
-     ╚══════════════════════════════════════════════════════════════╝ --}}
-<section class="relative overflow-hidden" style="background:#FAFAF8; min-height:calc(100vh - 62px)">
+{{-- ═══════════════════════════ HERO ═══════════════════════════ --}}
+<section class="relative overflow-hidden" style="background:var(--paper)">
+    <div class="orb orb-a" data-par="-0.18"></div>
+    <div class="orb orb-b" data-par="0.12"></div>
 
-    {{-- Decorative ring (parallax slow) --}}
-    <div class="px-ring pointer-events-none absolute -top-40 -right-40 opacity-[.07]">
-        <svg class="hero-ring" width="700" height="700" viewBox="0 0 700 700" fill="none">
-            <circle cx="350" cy="350" r="300" stroke="#0d9488" stroke-width="1"/>
-            <circle cx="350" cy="350" r="240" stroke="#0d9488" stroke-width=".5"/>
-            <circle cx="350" cy="350" r="180" stroke="#0d9488" stroke-width=".3"/>
-            <line x1="50" y1="350" x2="650" y2="350" stroke="#0d9488" stroke-width=".3"/>
-            <line x1="350" y1="50" x2="350" y2="650" stroke="#0d9488" stroke-width=".3"/>
-            <circle cx="350" cy="50"  r="3" fill="#0d9488"/>
-            <circle cx="350" cy="650" r="3" fill="#0d9488"/>
-            <circle cx="50"  cy="350" r="3" fill="#0d9488"/>
-            <circle cx="650" cy="350" r="3" fill="#0d9488"/>
-        </svg>
-    </div>
+    <div class="relative z-10 mx-auto grid max-w-6xl items-center gap-14 px-5 pb-24 pt-16 lg:grid-cols-[1.05fr_.95fr] lg:gap-10 lg:pb-32 lg:pt-24">
 
-    {{-- Soft gradient blob (parallax medium) --}}
-    <div class="px-blob pointer-events-none absolute top-0 right-0 w-[65vw] h-[65vw] max-w-3xl max-h-3xl opacity-[.22]"
-         style="background:radial-gradient(circle at 60% 30%, #14b8a6, transparent 65%)"></div>
-
-    <div class="relative z-10 mx-auto grid max-w-6xl items-center gap-16 px-4 py-20 lg:grid-cols-[1fr_460px] lg:py-28 xl:gap-24">
-
-        {{-- Text --}}
-        <div>
-            <span class="mb-6 inline-flex items-center gap-2.5 rounded-full border border-stone-200 bg-white px-4 py-1.5 text-sm font-semibold text-stone-600 shadow-sm">
-                <span class="ldot"></span>
-                Für Restaurants · Friseure &amp; Dienstleister
+        {{-- Copy --}}
+        <div data-par="0.04">
+            <span class="rv inline-flex items-center gap-2.5 rounded-full border px-4 py-1.5 text-sm font-medium"
+                  style="border-color:var(--line); background:rgba(255,255,255,.7); color:var(--ink2); backdrop-filter:blur(6px)">
+                <span class="ldot"></span> Für Restaurants, Cafés &amp; Salons
             </span>
 
-            <h1 class="mt-4 font-black tracking-tight leading-[1.04]"
-                style="font-size:clamp(2.6rem,6vw,4.2rem); text-wrap:balance">
-                <span class="gt">Reservierungen&nbsp;&amp;&nbsp;Termine</span>,<br>
-                die sich von selbst verwalten
+            <h1 class="display rv d1 mt-6" style="font-size:clamp(2.7rem,5.6vw,4.7rem)">
+                Reservierungen<br>
+                &amp; Termine, die sich<br>
+                <span class="serif-i" style="color:var(--ac)">von selbst</span> füllen.
             </h1>
 
-            <p class="mt-6 leading-relaxed text-stone-500" style="font-size:1.125rem; max-width:44ch; text-wrap:pretty">
-                Online-Buchung, Live-Board in Echtzeit, Tischplan, Zahlungen
-                und No&#8209;Show&#8209;Schutz — alles in einer Plattform.
-                <strong class="font-semibold text-stone-700">DSGVO&#8209;konform, in der EU gehostet,
-                ohne Provision.</strong>
+            <p class="rv d2 mt-7 leading-relaxed" style="font-size:1.15rem; color:var(--mu); max-width:30rem">
+                Online-Buchung, ein Live-Board in Echtzeit, Tischplan, Zahlungen und
+                No-Show-Schutz — in einer ruhigen, durchdachten Plattform.
+                <span style="color:var(--ink2)">DSGVO-konform, in der EU gehostet, ohne Provision.</span>
             </p>
 
-            <div class="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <a href="{{ route('register') }}"
-                   class="group inline-flex items-center justify-center gap-2 rounded-2xl px-8 py-4 text-base font-bold text-white shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5"
-                   style="background:linear-gradient(135deg,#0d9488,#0f766e); box-shadow:0 8px 24px -4px rgba(13,148,136,.35)">
-                    30 Tage kostenlos testen
-                    <svg class="h-4 w-4 transition-transform group-hover:translate-x-0.5" viewBox="0 0 16 16" fill="none">
-                        <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
+            <div class="rv d3 mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <a href="{{ route('register') }}" class="btn-ink group inline-flex items-center justify-center gap-2 px-7 py-3.5 text-[15px] font-semibold">
+                    30 Tage kostenlos
+                    <svg class="h-4 w-4 transition-transform group-hover:translate-x-1" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </a>
-                <a href="#hauptfunktionen"
-                   class="inline-flex items-center justify-center rounded-2xl border border-stone-200 bg-white px-8 py-4 text-base font-semibold text-stone-600 shadow-sm transition hover:border-stone-300 hover:text-stone-900">
+                <a href="#funktionen" class="btn-ghost inline-flex items-center justify-center px-7 py-3.5 text-[15px] font-semibold">
                     Funktionen ansehen
                 </a>
             </div>
 
-            <p class="mt-5 text-sm text-stone-400">Keine Kreditkarte · in 10 Minuten startklar · jederzeit kündbar</p>
-
-            <div class="mt-7 flex flex-wrap gap-2">
-                @foreach(['🇪🇺 EU-Hosting', '🚫 Keine Provision', '⚡ 10 Min. Setup', '✨ Voll anpassbar'] as $p)
-                    <span class="rounded-full border border-stone-200 bg-white px-3.5 py-1 text-xs font-semibold text-stone-500 shadow-sm">{{ $p }}</span>
-                @endforeach
+            <div class="rv d4 mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm" style="color:var(--mu2)">
+                <span class="inline-flex items-center gap-2"><svg class="h-4 w-4" style="color:var(--ac)" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3L13 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Keine Kreditkarte</span>
+                <span class="inline-flex items-center gap-2"><svg class="h-4 w-4" style="color:var(--ac)" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3L13 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>In 10 Minuten startklar</span>
+                <span class="inline-flex items-center gap-2"><svg class="h-4 w-4" style="color:var(--ac)" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3L13 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Jederzeit kündbar</span>
             </div>
         </div>
 
-        {{-- Product mockup column --}}
-        <div class="relative hidden lg:block">
+        {{-- Mockup --}}
+        <div class="relative" data-par="-0.06" style="min-height:30rem">
+            {{-- soft platform glow --}}
+            <div class="pointer-events-none absolute left-1/2 top-1/2 -z-0 h-[34rem] w-[34rem] -translate-x-1/2 -translate-y-1/2 rounded-full" style="background:radial-gradient(circle,rgba(94,234,212,.28),transparent 60%)"></div>
 
             {{-- Main booking widget --}}
-            <div class="px-mock tilt" style="position:relative; z-index:2">
-                <div style="background:#fff; border:1px solid #e6e3dc; border-radius:20px; box-shadow:0 24px 80px -16px rgba(0,0,0,.12), 0 0 0 1px rgba(0,0,0,.03); overflow:hidden">
-                    {{-- Window chrome --}}
-                    <div style="padding:10px 14px; border-bottom:1px solid #f0ede6; display:flex; align-items:center; gap:8px; background:#fafaf8">
-                        <span style="display:flex; gap:5px">
-                            <span style="width:10px;height:10px;border-radius:50%;background:#e6e3dc"></span>
-                            <span style="width:10px;height:10px;border-radius:50%;background:#e6e3dc"></span>
-                            <span style="width:10px;height:10px;border-radius:50%;background:#e6e3dc"></span>
+            <div class="floaty relative z-10 mx-auto max-w-[22rem]">
+                <div class="surf ring-soft overflow-hidden">
+                    <div class="flex items-center gap-2 border-b px-4 py-3" style="border-color:var(--line2); background:#fcfbf9">
+                        <span class="flex gap-1.5">
+                            <span class="h-2.5 w-2.5 rounded-full" style="background:var(--line)"></span>
+                            <span class="h-2.5 w-2.5 rounded-full" style="background:var(--line)"></span>
+                            <span class="h-2.5 w-2.5 rounded-full" style="background:var(--line)"></span>
                         </span>
-                        <span style="flex:1; text-align:center; font-size:11px; color:#a8a29e; font-weight:500">swayy.app/book/restaurant</span>
+                        <span class="flex-1 text-center text-[11px] font-medium" style="color:var(--mu2)">swayy.app · reservieren</span>
                     </div>
-                    {{-- Booking UI --}}
-                    <div style="padding:20px">
-                        <p style="font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#a8a29e; margin-bottom:12px">Termin wählen</p>
-                        {{-- Date row --}}
-                        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:12px">
+                    <div class="p-5">
+                        <p class="serif mb-1 text-lg" style="color:var(--ink)">Tisch reservieren</p>
+                        <p class="mb-4 text-xs" style="color:var(--mu2)">Wählen Sie Datum &amp; Uhrzeit</p>
+                        <div class="mb-3 grid grid-cols-4 gap-1.5">
                             @foreach(['Mo 21'=>false,'Di 22'=>true,'Mi 23'=>false,'Do 24'=>false] as $d=>$on)
-                                <div style="border-radius:10px; border:1.5px solid {{ $on ? '#0d9488' : '#e6e3dc' }}; padding:8px 4px; text-align:center; font-size:11px; font-weight:700; color:{{ $on ? '#0d9488' : '#a8a29e' }}; background:{{ $on ? 'color-mix(in oklch,#0d9488 10%,white)' : '#fff' }}">{{ $d }}</div>
+                                <div class="rounded-xl py-2 text-center text-[11px] font-semibold" style="border:1.5px solid {{ $on?'var(--ac)':'var(--line)' }}; color:{{ $on?'var(--ac)':'var(--mu2)' }}; background:{{ $on?'var(--acl)':'#fff' }}">{{ $d }}</div>
                             @endforeach
                         </div>
-                        {{-- Guests --}}
-                        <div style="border:1px solid #e6e3dc; border-radius:10px; padding:10px 14px; display:flex; align-items:center; justify-content:space-between; margin-bottom:12px">
-                            <span style="font-size:12px; color:#a8a29e">Personen</span>
-                            <div style="display:flex; align-items:center; gap:12px; font-size:12px">
-                                <span style="width:22px;height:22px;border-radius:50%;border:1px solid #e6e3dc;display:flex;align-items:center;justify-content:center;color:#78716c;cursor:pointer">−</span>
-                                <strong style="color:#1c1917">2</strong>
-                                <span style="width:22px;height:22px;border-radius:50%;border:1px solid #e6e3dc;display:flex;align-items:center;justify-content:center;color:#78716c;cursor:pointer">+</span>
+                        <div class="mb-3 flex items-center justify-between rounded-xl px-4 py-2.5" style="border:1px solid var(--line)">
+                            <span class="text-xs" style="color:var(--mu)">Personen</span>
+                            <div class="flex items-center gap-3 text-xs">
+                                <span class="flex h-5 w-5 items-center justify-center rounded-full" style="border:1px solid var(--line); color:var(--mu)">−</span>
+                                <strong style="color:var(--ink)">2</strong>
+                                <span class="flex h-5 w-5 items-center justify-center rounded-full" style="border:1px solid var(--line); color:var(--mu)">+</span>
                             </div>
                         </div>
-                        {{-- Slots --}}
-                        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:16px">
+                        <div class="mb-4 grid grid-cols-3 gap-1.5">
                             @foreach(['18:00'=>false,'18:30'=>true,'19:00'=>false,'19:30'=>false,'20:00'=>true,'20:30'=>false] as $t=>$on)
-                                <div class="slot {{ $on ? 'on' : '' }}">{{ $t }}</div>
+                                <div class="slot {{ $on?'on':'' }}">{{ $t }}</div>
                             @endforeach
                         </div>
-                        <button style="width:100%; border-radius:12px; padding:11px; background:linear-gradient(135deg,#0d9488,#0f766e); color:#fff; font-size:13px; font-weight:700; border:none; cursor:pointer">
-                            Tisch reservieren →
-                        </button>
+                        <button class="w-full rounded-xl py-2.5 text-[13px] font-semibold text-white" style="background:var(--ink)">Reservierung bestätigen</button>
                     </div>
                 </div>
             </div>
 
-            {{-- Notification A – top right --}}
-            <div class="px-na finr" style="position:absolute; top:-8px; right:-52px; z-index:3">
-                <div style="background:#fff; border:1px solid #e6e3dc; border-radius:14px; padding:12px 14px; box-shadow:0 8px 32px -8px rgba(0,0,0,.12); min-width:190px">
-                    <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px">
+            {{-- floating notif: new booking --}}
+            <div class="floaty slow absolute -right-2 top-2 z-20 sm:-right-6" data-par="0.10">
+                <div class="surf ring-soft px-4 py-3" style="min-width:11.5rem">
+                    <div class="mb-1.5 flex items-center gap-2">
                         <span class="ldot"></span>
-                        <span style="font-size:10px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:#a8a29e">Neue Buchung</span>
+                        <span class="text-[10px] font-bold uppercase tracking-wider" style="color:var(--mu2)">Neue Buchung</span>
                     </div>
-                    <p style="font-size:12px; font-weight:600; color:#1c1917; margin:0">Tisch 4 · 19:30 · 4 Pers.</p>
-                    <p style="font-size:11px; color:#a8a29e; margin:2px 0 0">gerade eben</p>
+                    <p class="text-[12.5px] font-semibold" style="color:var(--ink)">Tisch 4 · 19:30 · 4 P.</p>
+                    <p class="mt-0.5 text-[11px]" style="color:var(--mu2)">gerade eben</p>
                 </div>
             </div>
 
-            {{-- Notification B – bottom left --}}
-            <div class="px-nb finl" style="position:absolute; bottom:20px; left:-56px; z-index:3">
-                <div style="background:#fff; border:1px solid #e6e3dc; border-radius:14px; padding:12px 14px; box-shadow:0 8px 32px -8px rgba(0,0,0,.12); min-width:176px">
-                    <p style="font-size:10px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:#a8a29e; margin:0 0 8px">Live-Board</p>
-                    @foreach([['#10b981','18:30 · Müller · 2P'],['#f59e0b','19:00 · Anfrage · 6P'],['#3b82f6','20:00 · bestätigt · 3P']] as [$c,$l])
-                        <div style="display:flex; align-items:center; gap:7px; margin-bottom:5px; font-size:11px; color:#44403c">
-                            <span style="width:6px;height:6px;border-radius:50%;background:{{ $c }};flex:none"></span>{{ $l }}
-                        </div>
-                    @endforeach
+            {{-- floating notif: payment --}}
+            <div class="floaty absolute -left-3 bottom-6 z-20 sm:-left-8" data-par="0.16" style="animation-delay:-3s">
+                <div class="surf ring-soft flex items-center gap-3 px-4 py-3" style="min-width:11rem">
+                    <span class="flex h-8 w-8 items-center justify-center rounded-full text-sm" style="background:var(--acl); color:var(--ac)">✓</span>
+                    <div>
+                        <p class="text-[12.5px] font-semibold" style="color:var(--ink)">Anzahlung erhalten</p>
+                        <p class="text-[11px]" style="color:var(--mu2)">25,00 € gesichert</p>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    {{-- Fade to next section --}}
-    <div class="pointer-events-none absolute inset-x-0 bottom-0 h-32" style="background:linear-gradient(transparent,#fff)"></div>
-</section>
-
-
-{{-- ╔══════════════════════════════════════════════════════════════╗
-     ║  STATS STRIP                                                  ║
-     ╚══════════════════════════════════════════════════════════════╝ --}}
-<section style="background:#fff; border-top:1px solid var(--br); border-bottom:1px solid var(--br)">
-    <div class="mx-auto max-w-6xl px-4 py-8">
-        <div class="grid grid-cols-2 gap-px md:grid-cols-4">
-            @foreach([
-                ['Keine Provision', 'pro Buchung'],
-                ['EU-Hosting',      'DSGVO-konform'],
-                ['30 Tage',         'kostenlos testen'],
-                ['10 Minuten',      'bis zur ersten Buchung'],
-            ] as [$val, $label])
-                <div class="px-6 text-center rv">
-                    <p class="text-xl font-black text-stone-900">{{ $val }}</p>
-                    <p class="mt-0.5 text-sm text-stone-400">{{ $label }}</p>
-                </div>
+    {{-- value marquee --}}
+    <div class="relative z-10 overflow-hidden border-y py-5" style="border-color:var(--line2); background:rgba(255,255,255,.5)">
+        <div class="marq">
+            @php($words = ['Weniger Telefonate','Volle Tische','Kein No-Show','Mehr Zeit fürs Wesentliche','Gäste, die wiederkommen','Ruhiger Service'])
+            @foreach(array_merge($words,$words) as $w)
+                <span>{{ $w }} <b>·</b></span>
             @endforeach
         </div>
     </div>
 </section>
 
 
-{{-- ╔══════════════════════════════════════════════════════════════╗
-     ║  BRANCHEN                                                     ║
-     ╚══════════════════════════════════════════════════════════════╝ --}}
-<section id="branchen" class="mx-auto max-w-6xl px-4 py-24">
-    <div class="text-center rv">
-        <p class="text-xs font-bold uppercase tracking-widest" style="color:var(--ac)">Ein System, zwei Welten</p>
-        <h2 class="mt-3 font-black tracking-tight" style="font-size:clamp(1.8rem,4vw,2.8rem); text-wrap:balance">Für Gastronomie und Dienstleister</h2>
-        <p class="mx-auto mt-3 text-stone-500" style="max-width:42ch; line-height:1.7">Dasselbe Buchungssystem – je nach Betriebstyp als Tischreservierung oder Terminbuchung.</p>
-    </div>
-
-    <div class="mt-14 grid gap-5 md:grid-cols-2">
-        <div class="card rv d1 p-8">
-            <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#f0fdfa,#ccfbf1);display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:1.25rem">🍽️</div>
-            <h3 class="text-xl font-black">Restaurants, Cafés &amp; Bars</h3>
-            <p class="mt-2 text-stone-500 leading-relaxed">Tischbasierte Reservierung mit Grundriss, Kombinationen und automatischer Tischzuweisung.</p>
-            <ul class="mt-5 space-y-2.5 text-sm text-stone-600">
-                @foreach(['Grafischer Tischplan & Drag-and-Drop','Öffentlicher Grundriss zur Tischwahl','Events & Ticketverkauf'] as $li)
-                    <li class="flex items-start gap-2.5"><span class="mt-0.5 shrink-0 font-bold" style="color:var(--ac)">✓</span>{{ $li }}</li>
-                @endforeach
-            </ul>
+{{-- ═══════════════════════ BRANCHEN ═══════════════════════ --}}
+<section id="branchen" class="relative overflow-hidden" style="background:var(--paper)">
+    <div class="orb orb-c" data-par="0.10" style="top:8rem; right:-10rem"></div>
+    <div class="relative z-10 mx-auto max-w-6xl px-5 py-28">
+        <div class="mx-auto max-w-2xl text-center">
+            <p class="eyebrow rv">Ein System, zwei Welten</p>
+            <h2 class="display rv d1 mt-4" style="font-size:clamp(2rem,4vw,3rem)">Gemacht für Gastgeber<br>und <span class="serif-i" style="color:var(--ac)">Dienstleister</span></h2>
+            <p class="rv d2 mx-auto mt-5 leading-relaxed" style="color:var(--mu); max-width:34rem">Dieselbe Plattform — je nach Betrieb als Tischreservierung oder als Terminbuchung pro Mitarbeiter und Leistung.</p>
         </div>
-        <div class="card rv d2 p-8">
-            <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#eff6ff,#ddd6fe);display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:1.25rem">✂️</div>
-            <h3 class="text-xl font-black">Friseure &amp; Dienstleister</h3>
-            <p class="mt-2 text-stone-500 leading-relaxed">Terminbuchung pro Mitarbeiter und Leistung – mit Dienstplan, Abwesenheiten und Lückenoptimierer.</p>
-            <ul class="mt-5 space-y-2.5 text-sm text-stone-600">
-                @foreach(['Leistungen mit Dauer & Preis, kombinierbar','Mitarbeiter-Dienstplan & Urlaubsverwaltung','Buchung bei beliebigem oder bestimmtem Mitarbeiter'] as $li)
-                    <li class="flex items-start gap-2.5"><span class="mt-0.5 shrink-0 font-bold" style="color:var(--ac)">✓</span>{{ $li }}</li>
-                @endforeach
-            </ul>
+
+        <div class="mt-16 grid gap-6 md:grid-cols-2">
+            <div class="surf lift rv d1 p-9">
+                <div class="flex h-14 w-14 items-center justify-center rounded-2xl text-2xl" style="background:linear-gradient(140deg,#f0fdfa,#ccfbf1)">🍽️</div>
+                <h3 class="serif mt-6 text-2xl" style="color:var(--ink)">Restaurants, Cafés &amp; Bars</h3>
+                <p class="mt-3 leading-relaxed" style="color:var(--mu)">Tischbasierte Reservierung mit grafischem Grundriss, Kombinationen und automatischer Zuweisung.</p>
+                <ul class="mt-6 space-y-3 text-[15px]" style="color:var(--ink2)">
+                    @foreach(['Grafischer Tischplan mit Flächenzonen','Öffentlicher Grundriss zur Tischwahl','Events &amp; Ticketverkauf'] as $li)
+                        <li class="flex items-start gap-3"><span class="mt-1.5 h-1.5 w-1.5 flex-none rounded-full" style="background:var(--ac)"></span>{!! $li !!}</li>
+                    @endforeach
+                </ul>
+            </div>
+            <div class="surf lift rv d2 p-9">
+                <div class="flex h-14 w-14 items-center justify-center rounded-2xl text-2xl" style="background:linear-gradient(140deg,#eef2ff,#e0e7ff)">✂️</div>
+                <h3 class="serif mt-6 text-2xl" style="color:var(--ink)">Friseure &amp; Dienstleister</h3>
+                <p class="mt-3 leading-relaxed" style="color:var(--mu)">Terminbuchung pro Mitarbeiter und Leistung — mit Dienstplan, Abwesenheiten und Lückenoptimierer.</p>
+                <ul class="mt-6 space-y-3 text-[15px]" style="color:var(--ink2)">
+                    @foreach(['Leistungen mit Dauer &amp; Preis, kombinierbar','Mitarbeiter-Dienstplan &amp; Urlaubsverwaltung','Buchung bei beliebigem oder bestimmtem Mitarbeiter'] as $li)
+                        <li class="flex items-start gap-3"><span class="mt-1.5 h-1.5 w-1.5 flex-none rounded-full" style="background:var(--ac)"></span>{!! $li !!}</li>
+                    @endforeach
+                </ul>
+            </div>
         </div>
     </div>
 </section>
 
 
-{{-- ╔══════════════════════════════════════════════════════════════╗
-     ║  HAUPTFUNKTIONEN (alternating)                                ║
-     ╚══════════════════════════════════════════════════════════════╝ --}}
-<section id="hauptfunktionen" style="background:var(--sa)">
-<div class="mx-auto max-w-6xl px-4 py-24 space-y-32">
-
-    <div class="text-center rv">
-        <p class="text-xs font-bold uppercase tracking-widest" style="color:var(--ac)">Hauptfunktionen</p>
-        <h2 class="mt-3 font-black tracking-tight" style="font-size:clamp(1.8rem,4vw,2.8rem)">Alles für volle Auslastung</h2>
+{{-- ═══════════════════════ FUNKTIONEN (alternating) ═══════════════════════ --}}
+<section id="funktionen" style="background:var(--paper2)">
+<div class="mx-auto max-w-6xl px-5 py-28">
+    <div class="mx-auto max-w-2xl text-center">
+        <p class="eyebrow rv">Hauptfunktionen</p>
+        <h2 class="display rv d1 mt-4" style="font-size:clamp(2rem,4vw,3rem)">Alles für volle Auslastung</h2>
     </div>
 
-    {{-- FEATURE 1: Online-Buchung --}}
-    <div class="grid items-center gap-12 md:grid-cols-2">
-        <div class="rv d1">
-            <p class="text-xs font-bold uppercase tracking-widest" style="color:var(--ac)">Online-Buchung</p>
-            <h3 class="mt-3 text-2xl font-black tracking-tight leading-tight">Das Buchungs&shy;erlebnis, das Gäste lieben</h3>
-            <p class="mt-4 leading-relaxed text-stone-500">Mobile-first Buchungsseite mit Live-Verfügbarkeit — als Link teilen oder direkt auf Ihrer Website einbetten. Optionale Tisch- und Mitarbeiterwahl.</p>
-            <ul class="mt-6 space-y-2.5 text-sm text-stone-600">
-                @foreach(['Direktlink für Google, Instagram & Co.','Einbettbares Widget mit zwei Zeilen Code','Erinnerungen per E-Mail und SMS','Passwortloses Kundenkonto per Magic-Link'] as $li)
-                    <li class="flex items-start gap-2.5"><span class="mt-0.5 shrink-0 font-bold" style="color:var(--ac)">✓</span>{{ $li }}</li>
-                @endforeach
-            </ul>
-        </div>
-        <div class="feat-visual rv d2">
-            {{-- Mini booking widget --}}
-            <div style="background:#fff; border:1px solid var(--br); border-radius:16px; padding:20px; width:100%; max-width:300px; box-shadow:0 4px 24px -4px rgba(0,0,0,.08)">
-                <p style="font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#a8a29e; margin-bottom:14px">Datum &amp; Uhrzeit</p>
-                <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:5px; margin-bottom:14px">
-                    @foreach([22=>true,23=>false,24=>false,25=>false,26=>false] as $d=>$on)
-                        <div style="border-radius:9px; border:1.5px solid {{ $on ? '#0d9488' : '#e6e3dc' }}; padding:7px 2px; text-align:center; font-size:10px; font-weight:700; color:{{ $on ? '#0d9488' : '#a8a29e' }}; background:{{ $on ? 'color-mix(in oklch,#0d9488 10%,white)' : 'transparent' }}">{{ $d }}</div>
+    <div class="mt-24 space-y-28">
+
+        {{-- F1 Online-Buchung --}}
+        <div class="grid items-center gap-12 lg:grid-cols-2">
+            <div class="rv">
+                <p class="eyebrow">Online-Buchung</p>
+                <h3 class="serif mt-3" style="font-size:clamp(1.6rem,3vw,2.2rem); color:var(--ink); line-height:1.12">Ein Buchungserlebnis,<br>das Gäste lieben</h3>
+                <p class="mt-4 leading-relaxed" style="color:var(--mu)">Mobile-first Buchungsseite mit Live-Verfügbarkeit — als Link teilen oder mit zwei Zeilen Code einbetten. Optionale Tisch- und Mitarbeiterwahl.</p>
+                <ul class="mt-6 grid gap-3 sm:grid-cols-2 text-[15px]" style="color:var(--ink2)">
+                    @foreach(['Direktlink für Social &amp; Maps','Einbettbares Widget','E-Mail- &amp; SMS-Erinnerungen','Konto per Magic-Link'] as $li)
+                        <li class="flex items-start gap-2.5"><span class="mt-1.5 h-1.5 w-1.5 flex-none rounded-full" style="background:var(--ac)"></span>{!! $li !!}</li>
                     @endforeach
-                </div>
-                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; margin-bottom:14px">
-                    @foreach(['18:00'=>false,'18:30'=>true,'19:00'=>false,'19:30'=>false,'20:00'=>false,'20:30'=>true] as $t=>$on)
-                        <div class="slot {{ $on ? 'on' : '' }}" style="font-size:11px">{{ $t }}</div>
-                    @endforeach
-                </div>
-                <button style="width:100%;border-radius:10px;padding:10px;background:var(--ac);color:#fff;font-size:12px;font-weight:700;border:none">Reservieren →</button>
+                </ul>
             </div>
-        </div>
-    </div>
-
-    {{-- FEATURE 2: Live-Board --}}
-    <div class="grid items-center gap-12 md:grid-cols-2">
-        <div class="feat-visual rv d1 order-last md:order-first">
-            {{-- Mini live board --}}
-            <div style="background:#fff; border:1px solid var(--br); border-radius:16px; overflow:hidden; width:100%; max-width:340px; box-shadow:0 4px 24px -4px rgba(0,0,0,.08)">
-                <div style="padding:12px 16px; border-bottom:1px solid var(--br); display:flex; align-items:center; justify-content:space-between">
-                    <span style="font-size:12px; font-weight:700; color:#1c1917">Live-Board</span>
-                    <span class="ldot"></span>
-                </div>
-                <div style="padding:8px">
-                    @foreach([
-                        ['#10b981','18:30','Müller, 2 P.','Tisch 3','bestätigt'],
-                        ['#f59e0b','19:00','Weber, 4 P.','—','Anfrage'],
-                        ['#3b82f6','19:30','Schmidt, 6 P.','Tisch 7','bestätigt'],
-                        ['#a8a29e','20:00','Becker, 2 P.','Tisch 1','eingetroffen'],
-                    ] as [$c,$time,$guest,$table,$status])
-                        <div class="brow" style="display:grid; grid-template-columns:32px 1fr 1fr 70px; align-items:center; gap:8px; padding:8px">
-                            <span style="width:8px;height:8px;border-radius:50%;background:{{ $c }};display:block;margin:auto"></span>
-                            <span style="font-size:11px; font-weight:600; color:#44403c">{{ $time }}</span>
-                            <span style="font-size:11px; color:#78716c">{{ $guest }}</span>
-                            <span style="font-size:10px; font-weight:600; padding:2px 7px; border-radius:20px; background:{{ $c }}18; color:{{ $c }}; text-align:center">{{ $status }}</span>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-        </div>
-        <div class="rv d2">
-            <p class="text-xs font-bold uppercase tracking-widest" style="color:var(--ac)">Live-Board</p>
-            <h3 class="mt-3 text-2xl font-black tracking-tight leading-tight">Alle Buchungen auf einen Blick — in Echtzeit</h3>
-            <p class="mt-4 leading-relaxed text-stone-500">Neue und anstehende Reservierungen erscheinen sofort, ohne Seiten-Reload. Ideal für Tresen und Tablet. Mit Dark Mode, Vollbild und Inline-Aktionen.</p>
-            <ul class="mt-6 space-y-2.5 text-sm text-stone-600">
-                @foreach(['Live-Updates per Server-Sent Events','Inline: bestätigen, ablehnen, umbuchen','Dark Mode & Vollbild-Ansicht fürs Tresen-Tablet','Tagesübersicht nach Tisch oder Zeit'] as $li)
-                    <li class="flex items-start gap-2.5"><span class="mt-0.5 shrink-0 font-bold" style="color:var(--ac)">✓</span>{{ $li }}</li>
-                @endforeach
-            </ul>
-        </div>
-    </div>
-
-    {{-- FEATURE 3: Zahlungen --}}
-    <div class="grid items-center gap-12 md:grid-cols-2">
-        <div class="rv d1">
-            <p class="text-xs font-bold uppercase tracking-widest" style="color:var(--ac)">Zahlungen &amp; No-Show-Schutz</p>
-            <h3 class="mt-3 text-2xl font-black tracking-tight leading-tight">Anzahlungen, Rückerstattungen — automatisch</h3>
-            <p class="mt-4 leading-relaxed text-stone-500">Verlangen Sie eine Anzahlung bei der Buchung. Bei Nichterscheinen greift der Schutz automatisch. Rückerstattungen laufen mit einem Klick.</p>
-            <ul class="mt-6 space-y-2.5 text-sm text-stone-600">
-                @foreach(['Flexible Anzahlungsregeln pro Buchungsgröße','Automatische Rückerstattung nach Frist','Erinnerungen per E-Mail und SMS vor dem Termin','Nahtlose Zahlungsabwicklung für Gäste'] as $li)
-                    <li class="flex items-start gap-2.5"><span class="mt-0.5 shrink-0 font-bold" style="color:var(--ac)">✓</span>{{ $li }}</li>
-                @endforeach
-            </ul>
-        </div>
-        <div class="feat-visual rv d2">
-            {{-- Payment flow mini visual --}}
-            <div style="width:100%; max-width:300px; display:flex; flex-direction:column; gap:10px">
-                @foreach([
-                    ['✓','Buchung bestätigt','Tisch 5 · 20:00 · 4 P.','#10b981'],
-                    ['💳','Anzahlung erhalten','25,00 € · gerade eben','#6366f1'],
-                    ['🔔','Erinnerung gesendet','1 Tag vor dem Termin','#f59e0b'],
-                ] as [$ic,$title,$sub,$col])
-                    <div style="background:#fff; border:1px solid var(--br); border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:12px; box-shadow:0 2px 8px rgba(0,0,0,.04)">
-                        <span style="font-size:1.1rem">{{ $ic }}</span>
-                        <div>
-                            <p style="font-size:12px; font-weight:700; color:#1c1917; margin:0">{{ $title }}</p>
-                            <p style="font-size:11px; color:#a8a29e; margin:1px 0 0">{{ $sub }}</p>
+            <div class="rv d1 surf ring-soft flex items-center justify-center p-10" style="background:linear-gradient(160deg,#fff,#f8f6f1); min-height:22rem">
+                <div class="floaty w-full max-w-[18rem]">
+                    <div class="surf overflow-hidden" style="box-shadow:0 20px 50px -24px rgba(28,25,23,.25)">
+                        <div class="p-5">
+                            <p class="serif mb-3 text-base" style="color:var(--ink)">Termin wählen</p>
+                            <div class="mb-3 grid grid-cols-5 gap-1.5">
+                                @foreach([22=>true,23=>false,24=>false,25=>false,26=>false] as $d=>$on)
+                                    <div class="rounded-lg py-2 text-center text-[10px] font-bold" style="border:1.5px solid {{ $on?'var(--ac)':'var(--line)' }}; color:{{ $on?'var(--ac)':'var(--mu2)' }}; background:{{ $on?'var(--acl)':'transparent' }}">{{ $d }}</div>
+                                @endforeach
+                            </div>
+                            <div class="mb-4 grid grid-cols-3 gap-1.5">
+                                @foreach(['18:00'=>false,'18:30'=>true,'19:00'=>false,'19:30'=>false,'20:00'=>false,'20:30'=>true] as $t=>$on)
+                                    <div class="slot {{ $on?'on':'' }}" style="font-size:11px">{{ $t }}</div>
+                                @endforeach
+                            </div>
+                            <button class="w-full rounded-lg py-2.5 text-xs font-semibold text-white" style="background:var(--ac)">Reservieren</button>
                         </div>
                     </div>
-                @endforeach
+                </div>
             </div>
         </div>
-    </div>
 
+        {{-- F2 Live-Board --}}
+        <div class="grid items-center gap-12 lg:grid-cols-2">
+            <div class="rv order-last lg:order-first surf ring-soft flex items-center justify-center p-10" style="background:linear-gradient(160deg,#fff,#f8f6f1); min-height:22rem">
+                <div class="floaty slow surf w-full max-w-[20rem] overflow-hidden" style="box-shadow:0 20px 50px -24px rgba(28,25,23,.25)">
+                    <div class="flex items-center justify-between border-b px-4 py-3" style="border-color:var(--line2)">
+                        <span class="serif text-sm" style="color:var(--ink)">Heute · Live</span>
+                        <span class="ldot"></span>
+                    </div>
+                    <div class="p-2">
+                        @foreach([
+                            ['#10b981','18:30','Müller · 2 P.','bestätigt'],
+                            ['#f59e0b','19:00','Weber · 4 P.','Anfrage'],
+                            ['#3b82f6','19:30','Schmidt · 6 P.','bestätigt'],
+                            ['#a8a29e','20:00','Becker · 2 P.','da'],
+                        ] as [$c,$time,$g,$st])
+                            <div class="flex items-center gap-3 rounded-xl px-3 py-2.5" style="transition:background .15s" onmouseover="this.style.background='#faf8f4'" onmouseout="this.style.background='transparent'">
+                                <span class="h-2 w-2 flex-none rounded-full" style="background:{{ $c }}"></span>
+                                <span class="w-12 text-[12px] font-semibold" style="color:var(--ink2)">{{ $time }}</span>
+                                <span class="flex-1 text-[12px]" style="color:var(--mu)">{{ $g }}</span>
+                                <span class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold" style="background:{{ $c }}1a; color:{{ $c }}">{{ $st }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+            <div class="rv d1">
+                <p class="eyebrow">Live-Board</p>
+                <h3 class="serif mt-3" style="font-size:clamp(1.6rem,3vw,2.2rem); color:var(--ink); line-height:1.12">Alle Buchungen,<br>in Echtzeit</h3>
+                <p class="mt-4 leading-relaxed" style="color:var(--mu)">Neue und anstehende Reservierungen erscheinen sofort — ohne Reload. Ideal für Tresen und Tablet, mit Dark Mode und Vollbild.</p>
+                <ul class="mt-6 grid gap-3 sm:grid-cols-2 text-[15px]" style="color:var(--ink2)">
+                    @foreach(['Live-Updates ohne Reload','Inline bestätigen &amp; umbuchen','Dark Mode &amp; Vollbild','Ansicht nach Tisch oder Zeit'] as $li)
+                        <li class="flex items-start gap-2.5"><span class="mt-1.5 h-1.5 w-1.5 flex-none rounded-full" style="background:var(--ac)"></span>{!! $li !!}</li>
+                    @endforeach
+                </ul>
+            </div>
+        </div>
+
+        {{-- F3 Zahlungen --}}
+        <div class="grid items-center gap-12 lg:grid-cols-2">
+            <div class="rv">
+                <p class="eyebrow">Zahlungen &amp; No-Show-Schutz</p>
+                <h3 class="serif mt-3" style="font-size:clamp(1.6rem,3vw,2.2rem); color:var(--ink); line-height:1.12">Anzahlungen &amp; Erstattungen,<br><span class="serif-i" style="color:var(--ac)">automatisch</span></h3>
+                <p class="mt-4 leading-relaxed" style="color:var(--mu)">Verlangen Sie eine Anzahlung bei der Buchung. Bei Nichterscheinen greift der Schutz automatisch, Rückerstattungen laufen mit einem Klick.</p>
+                <ul class="mt-6 grid gap-3 sm:grid-cols-2 text-[15px]" style="color:var(--ink2)">
+                    @foreach(['Flexible Anzahlungsregeln','Automatische Erstattung','Sichere Abwicklung','Erinnerung vor dem Termin'] as $li)
+                        <li class="flex items-start gap-2.5"><span class="mt-1.5 h-1.5 w-1.5 flex-none rounded-full" style="background:var(--ac)"></span>{!! $li !!}</li>
+                    @endforeach
+                </ul>
+            </div>
+            <div class="rv d1 surf ring-soft flex items-center justify-center p-10" style="background:linear-gradient(160deg,#fff,#f8f6f1); min-height:22rem">
+                <div class="w-full max-w-[18rem] space-y-3">
+                    @foreach([
+                        ['floaty','✓','Buchung bestätigt','Tisch 5 · 20:00 · 4 P.','var(--acl)','var(--ac)','0s'],
+                        ['floaty slow','💳','Anzahlung erhalten','25,00 € · gerade eben','#eef2ff','#6366f1','-2s'],
+                        ['floaty','🔔','Erinnerung gesendet','1 Tag vor dem Termin','#fffbeb','#f59e0b','-4s'],
+                    ] as [$cls,$ic,$t,$s,$bg,$col,$delay])
+                        <div class="{{ $cls }} surf flex items-center gap-3 px-4 py-3" style="box-shadow:0 12px 30px -18px rgba(28,25,23,.25); animation-delay:{{ $delay }}">
+                            <span class="flex h-9 w-9 flex-none items-center justify-center rounded-full text-sm" style="background:{{ $bg }}; color:{{ $col }}">{{ $ic }}</span>
+                            <div>
+                                <p class="text-[13px] font-semibold" style="color:var(--ink)">{{ $t }}</p>
+                                <p class="text-[11px]" style="color:var(--mu2)">{{ $s }}</p>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+
+    </div>
 </div>
 </section>
 
 
-{{-- ╔══════════════════════════════════════════════════════════════╗
-     ║  FEATURE-LISTE                                                ║
-     ╚══════════════════════════════════════════════════════════════╝ --}}
-<section class="mx-auto max-w-6xl px-4 py-24">
-    <div class="text-center rv">
-        <p class="text-xs font-bold uppercase tracking-widest" style="color:var(--ac)">Und vieles mehr</p>
-        <h2 class="mt-3 font-black tracking-tight" style="font-size:clamp(1.8rem,4vw,2.8rem)">Jedes Detail mitgedacht</h2>
-    </div>
-
-    <div class="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        @foreach([
-            ['🗺️','Grafischer Tischplan & Flächenzonen'],
-            ['👤','Kundenkonto per Magic-Link (passwortlos)'],
-            ['🔁','Online-Umbuchung durch den Gast'],
-            ['✉️','E-Mail- & SMS-Erinnerungen'],
-            ['⏱', 'Lückenoptimierer für dichte Auslastung'],
-            ['🎟️','Events & Ticketverkauf'],
-            ['🔔','Warteliste mit automatischem Angebot'],
-            ['👥','Gäste-CRM mit Besuchshistorie & Tags'],
-            ['📊','Berichte, CSV-Export, API & Webhooks'],
-            ['🏪','Mehrere Standorte, ein Konto'],
-            ['🎨','Eigenes Branding (Logo, Farben)'],
-            ['🔐','Audit-Log & Rollen-/Rechteverwaltung'],
-            ['♻️','Automatische DSGVO-Datenlöschung'],
-            ['💬','Feedback-Booster'],
-            ['📄','Rechtstexte direkt pflegbar'],
-            ['🔌','Einbettbares Widget per iFrame'],
-            ['🔗','Tischkombinationen per Klick'],
-            ['🚶','Walk-ins in einem Klick'],
-        ] as $i => [$icon, $text])
-            <div class="rv flex items-center gap-3 rounded-2xl border border-stone-100 bg-white px-4 py-3.5 shadow-sm transition hover:border-stone-200 hover:shadow"
-                 style="transition-delay:{{ ($i % 6) * 0.04 }}s">
-                <span class="text-base flex-none">{{ $icon }}</span>
-                <span class="text-sm text-stone-700">{{ $text }}</span>
-            </div>
-        @endforeach
-    </div>
-</section>
-
-
-{{-- ╔══════════════════════════════════════════════════════════════╗
-     ║  HOW IT WORKS                                                 ║
-     ╚══════════════════════════════════════════════════════════════╝ --}}
-<section style="background:var(--sa); border-top:1px solid var(--br); border-bottom:1px solid var(--br)">
-    <div class="mx-auto max-w-5xl px-4 py-24">
-        <div class="text-center rv">
-            <p class="text-xs font-bold uppercase tracking-widest" style="color:var(--ac)">So einfach geht's</p>
-            <h2 class="mt-3 font-black tracking-tight" style="font-size:clamp(1.8rem,4vw,2.8rem)">In 10 Minuten startklar</h2>
+{{-- ═══════════════════════ FEATURE-GRID ═══════════════════════ --}}
+<section class="relative overflow-hidden" style="background:var(--paper)">
+    <div class="relative z-10 mx-auto max-w-6xl px-5 py-28">
+        <div class="mx-auto max-w-2xl text-center">
+            <p class="eyebrow rv">Und vieles mehr</p>
+            <h2 class="display rv d1 mt-4" style="font-size:clamp(2rem,4vw,3rem)">Jedes Detail mitgedacht</h2>
         </div>
-
-        <div class="relative mt-16 grid gap-8 md:grid-cols-3">
-            {{-- Connector line --}}
-            <div class="absolute left-[16.6%] right-[16.6%] top-7 hidden h-px md:block" style="background:linear-gradient(90deg,transparent,var(--br),var(--br),transparent)"></div>
+        <div class="mt-14 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             @foreach([
-                ['1','Konto erstellen','Betrieb registrieren — Testzeitraum startet sofort, keine Zahlungsdaten nötig.'],
-                ['2','Einrichten','Öffnungszeiten, Tische oder Leistungen anlegen — in wenigen Minuten.'],
-                ['3','Link teilen','Buchungslink auf Website, Instagram oder Google — Buchungen laufen digital.'],
-            ] as $i => [$n,$t,$d])
-                <div class="rv d{{ $i+1 }} relative text-center">
-                    <div class="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-white font-black text-lg shadow-sm" style="border:1px solid var(--br); color:var(--ac)">{{ $n }}</div>
-                    <h3 class="font-black text-stone-900">{{ $t }}</h3>
-                    <p class="mt-2 text-sm leading-relaxed text-stone-500">{{ $d }}</p>
+                ['🗺️','Grafischer Tischplan &amp; Zonen'],
+                ['👤','Kundenkonto per Magic-Link'],
+                ['🔁','Online-Umbuchung durch den Gast'],
+                ['✉️','E-Mail- &amp; SMS-Erinnerungen'],
+                ['⏱','Lückenoptimierer'],
+                ['🎟️','Events &amp; Ticketverkauf'],
+                ['🔔','Warteliste mit Auto-Angebot'],
+                ['👥','Gäste-CRM mit Historie'],
+                ['📊','Berichte, Export, API &amp; Webhooks'],
+                ['🏪','Mehrere Standorte, ein Konto'],
+                ['🎨','Eigenes Branding'],
+                ['🔐','Audit-Log &amp; Rollenrechte'],
+                ['♻️','Automatische DSGVO-Löschung'],
+                ['💬','Feedback-Booster'],
+                ['📄','Rechtstexte direkt pflegbar'],
+                ['🔌','Einbettbares Widget'],
+                ['🔗','Tischkombinationen'],
+                ['🚶','Walk-ins in einem Klick'],
+            ] as $i => [$icon,$text])
+                <div class="rv surf flex items-center gap-3 px-4 py-3.5" style="border-radius:14px; transition:border-color .25s,box-shadow .25s,transform .25s; transition-delay:{{ ($i%6)*.05 }}s"
+                     onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 12px 26px -18px rgba(28,25,23,.22)';this.style.borderColor='#ded8cd'"
+                     onmouseout="this.style.transform='';this.style.boxShadow='';this.style.borderColor='var(--line)'">
+                    <span class="text-base flex-none">{{ $icon }}</span>
+                    <span class="text-[14px]" style="color:var(--ink2)">{!! $text !!}</span>
                 </div>
             @endforeach
         </div>
@@ -495,105 +417,106 @@ details.faq[open] .fi { transform:rotate(45deg); }
 </section>
 
 
-{{-- ╔══════════════════════════════════════════════════════════════╗
-     ║  PRICING                                                      ║
-     ╚══════════════════════════════════════════════════════════════╝ --}}
-<section id="preise" class="mx-auto max-w-6xl px-4 py-24">
-    <div class="text-center rv">
-        <p class="text-xs font-bold uppercase tracking-widest" style="color:var(--ac)">Preise</p>
-        <h2 class="mt-3 font-black tracking-tight" style="font-size:clamp(1.8rem,4vw,2.8rem)">Fair &amp; monatlich kündbar</h2>
-        <p class="mx-auto mt-3 text-stone-500" style="max-width:46ch; line-height:1.7">
-            <strong class="text-stone-700">Voller Funktionsumfang in jedem Tarif</strong> —
-            unbegrenzte Benutzer, API, Zahlungen und Berichte inklusive. Ohne Provision.
-        </p>
-    </div>
-
-    <div class="mt-14 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-        @forelse($plans as $plan)
-            @php($popular = $plan->key === 'professional')
-            <div class="rv flex flex-col rounded-2xl bg-white p-6 d{{ $loop->index + 1 }} {{ $popular ? 'pp' : 'card' }}">
-                @if($popular)
-                    <span class="mb-3 -mt-10 self-center rounded-full px-4 py-1 text-xs font-black text-white"
-                          style="background:linear-gradient(135deg,var(--ac),var(--ac2))">✦ Beliebt</span>
-                @endif
-                <h3 class="font-black text-stone-900">{{ $plan->name }}</h3>
-                <p class="mt-3 flex items-end gap-1">
-                    @if($plan->key === 'enterprise')
-                        <span class="text-2xl font-black">Auf Anfrage</span>
-                    @else
-                        <span class="text-4xl font-black leading-none">{{ number_format($plan->price_monthly_minor / 100, 0, ',', '.') }}</span>
-                        <span class="mb-1 text-sm text-stone-400">€ / Monat</span>
-                    @endif
-                </p>
-                <div class="my-5 space-y-3 border-y py-4" style="border-color:var(--br)">
-                    <div>
-                        <p class="text-2xl font-black">{{ isset($plan->limits['max_locations']) ? $plan->limits['max_locations'] : '∞' }}</p>
-                        <p class="text-[10px] font-bold uppercase tracking-wider text-stone-400">{{ (isset($plan->limits['max_locations']) && $plan->limits['max_locations'] == 1) ? 'Standort' : 'Standorte' }}</p>
-                    </div>
-                    <div>
-                        <p class="text-2xl font-black">{{ isset($plan->limits['max_tables']) ? 'bis '.$plan->limits['max_tables'] : '∞' }}</p>
-                        <p class="text-[10px] font-bold uppercase tracking-wider text-stone-400">Tische / Ressourcen</p>
-                    </div>
+{{-- ═══════════════════════ SO EINFACH ═══════════════════════ --}}
+<section style="background:var(--paper2)">
+    <div class="mx-auto max-w-5xl px-5 py-28">
+        <div class="mx-auto max-w-2xl text-center">
+            <p class="eyebrow rv">So einfach</p>
+            <h2 class="display rv d1 mt-4" style="font-size:clamp(2rem,4vw,3rem)">In 10 Minuten startklar</h2>
+        </div>
+        <div class="relative mt-20 grid gap-10 md:grid-cols-3">
+            <div class="absolute left-[16%] right-[16%] top-7 hidden h-px md:block" style="background:linear-gradient(90deg,transparent,var(--line),var(--line),transparent)"></div>
+            @foreach([
+                ['01','Konto erstellen','Betrieb registrieren — der Testzeitraum startet sofort, ganz ohne Zahlungsdaten.'],
+                ['02','Einrichten','Öffnungszeiten, Tische oder Leistungen anlegen — in wenigen Minuten erledigt.'],
+                ['03','Link teilen','Buchungslink auf Website, Social oder Maps — ab jetzt läuft alles digital.'],
+            ] as $i => [$n,$t,$d])
+                <div class="rv d{{ $i+1 }} relative text-center">
+                    <div class="serif mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-white text-xl" style="border:1px solid var(--line); color:var(--ac); box-shadow:0 8px 20px -12px rgba(28,25,23,.2)">{{ $n }}</div>
+                    <h3 class="serif text-xl" style="color:var(--ink)">{{ $t }}</h3>
+                    <p class="mx-auto mt-2.5 text-[15px] leading-relaxed" style="color:var(--mu); max-width:18rem">{{ $d }}</p>
                 </div>
-                <p class="flex-1 text-xs leading-relaxed text-stone-500">
-                    <strong class="text-stone-700">Alle Funktionen inklusive</strong> —
-                    unbegr. Benutzer · API &amp; Webhooks · Zahlungen · Warteliste · Berichte · Branding
-                </p>
-                @if($plan->key === 'enterprise')
-                    <a href="{{ route('contact') }}" class="mt-5 rounded-xl border py-3 text-center text-sm font-bold text-stone-700 transition hover:bg-stone-50" style="border-color:var(--br)">Kontakt aufnehmen</a>
-                @else
-                    <a href="{{ route('register') }}"
-                       class="mt-5 rounded-xl py-3 text-center text-sm font-bold transition
-                              {{ $popular ? 'text-white' : 'text-stone-700 hover:bg-stone-50' }}"
-                       style="{{ $popular ? 'background:linear-gradient(135deg,#0d9488,#0f766e)' : 'border:1px solid #e6e3dc' }}">
-                        Kostenlos testen
-                    </a>
-                @endif
-            </div>
-        @empty
-            <p class="col-span-full text-center text-stone-500">Preise auf Anfrage –
-                <a href="{{ route('contact') }}" class="font-semibold" style="color:var(--ac)">kontaktieren Sie uns</a>.</p>
-        @endforelse
+            @endforeach
+        </div>
     </div>
-    <p class="mx-auto mt-8 max-w-xl text-center text-sm text-stone-400">Mehr Tische oder Standorte nötig? Jederzeit upgraden — Sie zahlen nur, wenn Ihr Betrieb wächst.</p>
 </section>
 
 
-{{-- ╔══════════════════════════════════════════════════════════════╗
-     ║  FAQ                                                          ║
-     ╚══════════════════════════════════════════════════════════════╝ --}}
-<section id="faq" style="background:var(--sa); border-top:1px solid var(--br)">
-    <div class="mx-auto max-w-3xl px-4 py-24">
-        <div class="text-center rv">
-            <p class="text-xs font-bold uppercase tracking-widest" style="color:var(--ac)">FAQ</p>
-            <h2 class="mt-3 font-black tracking-tight" style="font-size:clamp(1.8rem,4vw,2.8rem)">Häufige Fragen</h2>
+{{-- ═══════════════════════ PREISE ═══════════════════════ --}}
+<section id="preise" class="relative overflow-hidden" style="background:var(--paper)">
+    <div class="orb orb-c" data-par="-0.08" style="bottom:0; left:-12rem; opacity:.22"></div>
+    <div class="relative z-10 mx-auto max-w-6xl px-5 py-28">
+        <div class="mx-auto max-w-2xl text-center">
+            <p class="eyebrow rv">Preise</p>
+            <h2 class="display rv d1 mt-4" style="font-size:clamp(2rem,4vw,3rem)">Fair &amp; monatlich kündbar</h2>
+            <p class="rv d2 mx-auto mt-5 leading-relaxed" style="color:var(--mu); max-width:34rem"><span style="color:var(--ink2)">Voller Funktionsumfang in jedem Tarif</span> — unbegrenzte Benutzer, API, Zahlungen und Berichte inklusive. Ohne Provision.</p>
         </div>
 
+        <div class="mt-16 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+            @forelse($plans as $plan)
+                @php($popular = $plan->key === 'professional')
+                <div class="rv d{{ $loop->index+1 }} surf lift flex flex-col p-7" @style(['border-color:var(--ac); box-shadow:0 0 0 4px var(--acl), 0 30px 60px -30px rgba(15,118,110,.45)' => $popular])>
+                    @if($popular)
+                        <span class="serif-i mb-3 -mt-9 self-center rounded-full px-4 py-1 text-sm text-white" style="background:var(--ac)">beliebt</span>
+                    @endif
+                    <h3 class="serif text-xl" style="color:var(--ink)">{{ $plan->name }}</h3>
+                    <p class="mt-3 flex items-end gap-1">
+                        @if($plan->key === 'enterprise')
+                            <span class="serif text-3xl" style="color:var(--ink)">Auf Anfrage</span>
+                        @else
+                            <span class="serif text-5xl leading-none" style="color:var(--ink)">{{ number_format($plan->price_monthly_minor/100,0,',','.') }}</span>
+                            <span class="mb-1 text-sm" style="color:var(--mu2)">€ / Monat</span>
+                        @endif
+                    </p>
+                    <div class="my-5 grid grid-cols-2 gap-3 border-y py-4" style="border-color:var(--line)">
+                        <div>
+                            <p class="serif text-2xl" style="color:var(--ink)">{{ isset($plan->limits['max_locations']) ? $plan->limits['max_locations'] : '∞' }}</p>
+                            <p class="text-[10px] font-semibold uppercase tracking-wider" style="color:var(--mu2)">{{ (isset($plan->limits['max_locations']) && $plan->limits['max_locations']==1) ? 'Standort' : 'Standorte' }}</p>
+                        </div>
+                        <div>
+                            <p class="serif text-2xl" style="color:var(--ink)">{{ isset($plan->limits['max_tables']) ? 'bis '.$plan->limits['max_tables'] : '∞' }}</p>
+                            <p class="text-[10px] font-semibold uppercase tracking-wider" style="color:var(--mu2)">Tische / Ress.</p>
+                        </div>
+                    </div>
+                    <p class="flex-1 text-[13px] leading-relaxed" style="color:var(--mu)"><span style="color:var(--ink2)">Alle Funktionen inklusive</span> — unbegr. Benutzer · API · Zahlungen · Warteliste · Branding</p>
+                    @if($plan->key === 'enterprise')
+                        <a href="{{ route('contact') }}" class="btn-ghost mt-6 py-3 text-center text-sm font-semibold">Kontakt</a>
+                    @else
+                        <a href="{{ route('register') }}" class="mt-6 rounded-full py-3 text-center text-sm font-semibold {{ $popular?'btn-ink text-white':'btn-ghost' }}">Kostenlos testen</a>
+                    @endif
+                </div>
+            @empty
+                <p class="col-span-full text-center" style="color:var(--mu)">Preise auf Anfrage — <a href="{{ route('contact') }}" class="font-semibold" style="color:var(--ac)">kontaktieren Sie uns</a>.</p>
+            @endforelse
+        </div>
+        <p class="mx-auto mt-8 max-w-xl text-center text-sm" style="color:var(--mu2)">Mehr Tische oder Standorte nötig? Jederzeit upgraden — Sie zahlen nur, wenn Ihr Betrieb wächst.</p>
+    </div>
+</section>
+
+
+{{-- ═══════════════════════ FAQ ═══════════════════════ --}}
+<section id="faq" style="background:var(--paper2)">
+    <div class="mx-auto max-w-3xl px-5 py-28">
+        <div class="mx-auto max-w-2xl text-center">
+            <p class="eyebrow rv">FAQ</p>
+            <h2 class="display rv d1 mt-4" style="font-size:clamp(2rem,4vw,3rem)">Häufige Fragen</h2>
+        </div>
         <div class="mt-12 space-y-2.5">
             @foreach([
-                ['Für wen ist Swayy geeignet?',
-                 'Für Restaurants, Cafés und Bars (tischbasiert) ebenso wie für Friseure und Dienstleister (terminbasiert pro Mitarbeiter und Leistung). Der Betriebstyp lässt sich pro Konto umstellen.'],
-                ['Brauche ich eine eigene Website?',
-                 'Nein. Sie erhalten einen Buchungslink für Google, Instagram & Co. Wer eine Website hat, bettet das Widget mit zwei Zeilen Code ein.'],
-                ['Welche Zahlungsmöglichkeiten gibt es?',
-                 'Gängige Zahlungsarten sind direkt integriert. Kreditkartendaten werden nie bei uns gespeichert — die Abwicklung erfolgt sicher beim Zahlungsdienstleister.'],
-                ['Was passiert nach dem Testzeitraum?',
-                 'Sie wählen einen Tarif — oder nicht. Es gibt keine automatische Abbuchung, da im Test keine Zahlungsdaten erhoben werden.'],
-                ['Ist Swayy DSGVO-konform?',
-                 'Ja. EU-Hosting, Einwilligungsverwaltung, Datenexport und Anonymisierung pro Gast sind eingebaut, IP-Adressen werden minimiert. Rechtstexte sind als Markdown direkt pflegbar.'],
-                ['Kann ich mehrere Standorte verwalten?',
-                 'Ja, ab dem Multi-Location-Tarif beliebig viele Standorte unter einem Konto — mit getrennten Plänen, Berichten und Teams.'],
-                ['Kann ich das Erscheinungsbild anpassen?',
-                 'Vollständig. Eigenes Logo, Farben, Schriften und Rechtstexte lassen sich direkt im Admin-Bereich hinterlegen und sind sofort aktiv. Das Widget passt sich dem Corporate Design Ihres Betriebs an.'],
-            ] as [$q, $a])
-                <details class="faq rv rounded-2xl bg-white" style="border:1px solid var(--br)">
-                    <summary class="flex items-center justify-between gap-4 px-6 py-4 font-bold text-stone-800 select-none">
-                        <span>{{ $q }}</span>
-                        <span class="fi flex-none font-light text-2xl leading-none" style="color:var(--ac)">+</span>
+                ['Für wen ist Swayy geeignet?','Für Restaurants, Cafés und Bars (tischbasiert) ebenso wie für Friseure und Dienstleister (terminbasiert pro Mitarbeiter und Leistung). Der Betriebstyp lässt sich pro Konto umstellen.'],
+                ['Brauche ich eine eigene Website?','Nein. Sie erhalten einen Buchungslink für Social und Maps. Wer eine Website hat, bettet das Widget mit zwei Zeilen Code ein.'],
+                ['Welche Zahlungsmöglichkeiten gibt es?','Gängige Zahlungsarten sind direkt integriert. Kreditkartendaten werden nie bei uns gespeichert — die Abwicklung erfolgt sicher beim Zahlungsdienstleister.'],
+                ['Was passiert nach dem Testzeitraum?','Sie wählen einen Tarif — oder nicht. Es gibt keine automatische Abbuchung, da im Test keine Zahlungsdaten erhoben werden.'],
+                ['Ist Swayy DSGVO-konform?','Ja. EU-Hosting, Einwilligungsverwaltung, Datenexport und Anonymisierung pro Gast sind eingebaut, IP-Adressen werden minimiert. Selbst die Schriften sind lokal eingebunden, ganz ohne externe CDN.'],
+                ['Kann ich mehrere Standorte verwalten?','Ja, ab dem Multi-Location-Tarif beliebig viele Standorte unter einem Konto — mit getrennten Plänen, Berichten und Teams.'],
+                ['Kann ich das Erscheinungsbild anpassen?','Vollständig. Eigenes Logo, Farben, Schriften und Rechtstexte lassen sich direkt im Admin-Bereich hinterlegen und sind sofort aktiv. Das Widget passt sich Ihrem Corporate Design an.'],
+            ] as [$q,$a])
+                <details class="faq rv surf">
+                    <summary class="flex items-center justify-between gap-4 px-6 py-5">
+                        <span class="serif text-[1.05rem]" style="color:var(--ink)">{{ $q }}</span>
+                        <span class="fi flex-none text-2xl font-light leading-none" style="color:var(--ac)">+</span>
                     </summary>
-                    <div class="fb">
-                        <div><p class="px-6 pb-5 text-sm leading-relaxed text-stone-500">{{ $a }}</p></div>
-                    </div>
+                    <div class="fb"><div><p class="px-6 pb-5 leading-relaxed" style="color:var(--mu)">{{ $a }}</p></div></div>
                 </details>
             @endforeach
         </div>
@@ -601,65 +524,59 @@ details.faq[open] .fi { transform:rotate(45deg); }
 </section>
 
 
-{{-- ╔══════════════════════════════════════════════════════════════╗
-     ║  CTA                                                          ║
-     ╚══════════════════════════════════════════════════════════════╝ --}}
-<section class="cta-bg cta-dots relative overflow-hidden">
-    <div class="pointer-events-none absolute inset-0" style="background:radial-gradient(80rem 40rem at 50% 120%,rgba(255,255,255,.07),transparent)"></div>
-    <div class="relative mx-auto max-w-4xl px-4 py-28 text-center text-white">
-        <p class="text-xs font-bold uppercase tracking-widest text-teal-200/60 rv">Jetzt starten</p>
-        <h2 class="mt-4 font-black tracking-tight text-white rv d1" style="font-size:clamp(2rem,5vw,3.2rem); text-wrap:balance">
-            Bereit für volle Auslastung<br>ohne Telefonchaos?
-        </h2>
-        <p class="mx-auto mt-5 text-lg text-teal-50/80 rv d2" style="max-width:42ch">
-            In wenigen Minuten eingerichtet. 30 Tage kostenlos, ohne Risiko, ohne Kreditkarte.
-        </p>
-        <a href="{{ route('register') }}"
-           class="rv d3 group mt-9 inline-flex items-center gap-2.5 rounded-2xl bg-white px-10 py-4 text-lg font-black text-teal-800 shadow-2xl shadow-teal-900/30 transition hover:bg-teal-50 hover:-translate-y-0.5">
-            Jetzt kostenlos starten
-            <svg class="h-5 w-5 transition-transform group-hover:translate-x-0.5" viewBox="0 0 16 16" fill="none">
-                <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-        </a>
-        <p class="rv d4 mt-5 text-sm text-teal-100/50">Keine Kreditkarte · jederzeit kündbar · DSGVO-konform · EU-Hosting</p>
+{{-- ═══════════════════════ CTA ═══════════════════════ --}}
+<section style="background:var(--paper)">
+    <div class="mx-auto max-w-6xl px-5 py-20">
+        <div class="cta-wrap rv px-6 py-24 text-center">
+            <div class="cta-grid pointer-events-none absolute inset-0 opacity-60"></div>
+            <div class="pointer-events-none absolute inset-x-0 -top-32 mx-auto h-64 w-[40rem] rounded-full" style="background:radial-gradient(circle,rgba(94,234,212,.35),transparent 60%)"></div>
+            <div class="relative z-10 mx-auto max-w-2xl text-white">
+                <p class="eyebrow" style="color:rgba(204,251,241,.75)">Jetzt starten</p>
+                <h2 class="display mt-4 text-white" style="font-size:clamp(2.1rem,4.5vw,3.4rem)">Bereit für volle Auslastung,<br><span class="serif-i">ohne Telefonchaos?</span></h2>
+                <p class="mx-auto mt-5 text-lg leading-relaxed" style="color:rgba(240,253,250,.82); max-width:30rem">In wenigen Minuten eingerichtet. 30 Tage kostenlos — ohne Risiko, ohne Kreditkarte.</p>
+                <a href="{{ route('register') }}" class="group mt-9 inline-flex items-center gap-2.5 rounded-full bg-white px-9 py-4 text-base font-semibold transition hover:-translate-y-1" style="color:var(--ac); box-shadow:0 20px 50px -16px rgba(0,0,0,.4)">
+                    Jetzt kostenlos starten
+                    <svg class="h-5 w-5 transition-transform group-hover:translate-x-1" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </a>
+                <p class="mt-5 text-sm" style="color:rgba(204,251,241,.6)">Keine Kreditkarte · jederzeit kündbar · DSGVO-konform · EU-Hosting</p>
+            </div>
+        </div>
     </div>
 </section>
 
 
-{{-- ╔══════════════════════════════════════════════════════════════╗
-     ║  SCRIPTS                                                      ║
-     ╚══════════════════════════════════════════════════════════════╝ --}}
 <script>
-(function () {
+(function(){
     'use strict';
+    const rm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    /* ── Scroll reveal ────────────────────────────────────────── */
-    const io = new IntersectionObserver(entries => {
-        entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('on'); io.unobserve(e.target); } });
-    }, { threshold: 0.1 });
-    document.querySelectorAll('.rv').forEach(el => io.observe(el));
+    /* Reveal */
+    const io = new IntersectionObserver((es)=>{
+        es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('on'); io.unobserve(e.target); } });
+    },{ threshold:.12, rootMargin:'0px 0px -8% 0px' });
+    document.querySelectorAll('.rv').forEach(el=>io.observe(el));
 
-    /* ── JS Parallax (Safari + fallback) ──────────────────────── */
-    const supportsScrollTimeline = CSS.supports('animation-timeline', 'scroll()');
-    if (!supportsScrollTimeline) {
-        const map = [
-            ['.px-ring',  0.10],
-            ['.px-blob',  0.14],
-            ['.px-mock',  0.21],
-            ['.px-na',    0.27],
-            ['.px-nb',    0.24],
-        ].map(([sel, rate]) => ({ el: document.querySelector(sel), rate }))
-         .filter(x => x.el);
-
-        let raf = null;
-        function tick() {
-            const y = window.scrollY;
-            map.forEach(({ el, rate }) => { el.style.translate = `0 ${y * rate}px`; });
-            raf = null;
+    /* Parallax — always-on rAF engine, relative to viewport centre.
+       Visible on every browser, buttery via translate3d. */
+    if(rm) return;
+    const layers = [...document.querySelectorAll('[data-par]')].map(el=>({
+        el, speed: parseFloat(el.dataset.par) || 0
+    }));
+    let ticking = false;
+    function frame(){
+        const vh = window.innerHeight;
+        for(const {el,speed} of layers){
+            const r = el.getBoundingClientRect();
+            const centre = r.top + r.height/2;
+            const delta = centre - vh/2;
+            el.style.transform = `translate3d(0, ${(-delta*speed).toFixed(2)}px, 0)`;
         }
-        window.addEventListener('scroll', () => { if (!raf) raf = requestAnimationFrame(tick); }, { passive: true });
+        ticking = false;
     }
+    function onScroll(){ if(!ticking){ ticking = true; requestAnimationFrame(frame); } }
+    window.addEventListener('scroll', onScroll, { passive:true });
+    window.addEventListener('resize', onScroll, { passive:true });
+    frame();
 })();
 </script>
-
 @endsection

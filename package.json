@@ -7,6 +7,8 @@
         "dev": "vite"
     },
     "devDependencies": {
+        "@fontsource-variable/fraunces": "^5.2.9",
+        "@fontsource-variable/inter": "^5.2.8",
         "@tailwindcss/vite": "^4.0.0",
         "concurrently": "^9.0.1",
         "laravel-vite-plugin": "^3.1",
