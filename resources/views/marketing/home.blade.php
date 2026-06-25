@@ -584,7 +584,7 @@ details.faq[open] .fi { transform:rotate(45deg); }
                 ['Kann ich mehrere Standorte verwalten?',
                  'Ja, ab dem Multi-Location-Tarif beliebig viele Standorte unter einem Konto — mit getrennten Plänen, Berichten und Teams.'],
                 ['Kann ich das Erscheinungsbild anpassen?',
-                 'Vollständig. Eigenes Logo, Farben, Schriften und Rechtstexte lassen sich ohne Neustart hinterlegen. Das Widget passt sich dem Corporate Design Ihres Betriebs an.'],
+                 'Vollständig. Eigenes Logo, Farben, Schriften und Rechtstexte lassen sich direkt im Admin-Bereich hinterlegen und sind sofort aktiv. Das Widget passt sich dem Corporate Design Ihres Betriebs an.'],
             ] as [$q, $a])
                 <details class="faq rv rounded-2xl bg-white" style="border:1px solid var(--br)">
                     <summary class="flex items-center justify-between gap-4 px-6 py-4 font-bold text-stone-800 select-none">
