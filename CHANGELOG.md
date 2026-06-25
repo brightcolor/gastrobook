@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.34.2] – 2026-06-25
+
+### Behoben
+- **Redis nahm keine Schreibzugriffe mehr an / App nicht erreichbar:** Schlug ein
+  RDB-Snapshot fehl (Rechte auf dem Bind-Mount `docker/data/redis`), ging Redis
+  per Default in den Read-Only-Modus (`stop-writes-on-bgsave-error yes`). Da
+  Cache, Session und Queue alle auf Redis laufen, fiel damit die komplette App
+  aus. Redis startet jetzt mit `--dir /data --stop-writes-on-bgsave-error no`
+  und einem `redis-cli ping`-Healthcheck; die App wartet via
+  `condition: service_healthy` auf ein wirklich antwortendes Redis.
+
 ## [1.34.1] – 2026-06-25
 
 ### Behoben

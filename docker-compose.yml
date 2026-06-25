@@ -22,7 +22,7 @@ services:
       db:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       # PHP-FPM is ready once it accepts connections on port 9000
       test: ["CMD-SHELL", "nc -z localhost 9000 || exit 1"]
@@ -99,5 +99,16 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    # --dir /data: Arbeitsverzeichnis explizit auf den Bind-Mount pinnen.
+    # --stop-writes-on-bgsave-error no: schlägt ein RDB-Snapshot fehl (z. B.
+    #   Rechte auf dem Bind-Mount), darf Redis NICHT in den Read-Only-Modus
+    #   gehen — sonst fallen Cache, Session UND Queue gleichzeitig aus und die
+    #   App ist nicht mehr erreichbar.
+    command: redis-server --dir /data --stop-writes-on-bgsave-error no
     volumes:
       - ./docker/data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
