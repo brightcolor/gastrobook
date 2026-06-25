@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\ApiTokenController;
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\BillingRequestController;
 use App\Http\Controllers\Admin\BoardController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EventAdminController;
@@ -136,7 +137,18 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->n
 | Admin (tenant context)
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'tenant', 'license'])->prefix('admin')->name('admin.')->group(function () {
+// E-mail confirmation link (no auth – customer clicks from their inbox)
+Route::get('/billing/confirm/{token}', [BillingRequestController::class, 'confirm'])
+    ->name('billing.confirm');
+
+Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name('admin.')->group(function () {
+    // Trial-expired screen + billing request form (accessible even when locked)
+    Route::get('/trial/expired', [BillingRequestController::class, 'expired'])->name('trial.expired');
+    Route::post('/trial/request', [BillingRequestController::class, 'store'])->name('trial.request');
+
+    // Owner-only billing request management (SaaS admin – no tenant scope needed here)
+    Route::get('/billing-requests', [BillingRequestController::class, 'index'])->name('billing-requests.index');
+    Route::post('/billing-requests/{billingRequest}/activate', [BillingRequestController::class, 'activate'])->name('billing-requests.activate');
     Route::get('/', DashboardController::class)->name('dashboard');
     Route::get('/dashboard/stats', [DashboardController::class, 'stats'])->name('dashboard.stats');
 

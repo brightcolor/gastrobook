@@ -44,6 +44,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Plattform-Owner E-Mail
+    |--------------------------------------------------------------------------
+    |
+    | Wohin Trial-Ablauf-Warnungen und bestätigte Billing-Anfragen gesendet
+    | werden. Im SaaS-Betrieb auf die eigene E-Mail setzen.
+    |
+    */
+    'owner_email' => env('SWAYY_OWNER_EMAIL'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Rechtstexte (Markdown)
     |--------------------------------------------------------------------------
     |

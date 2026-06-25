@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\EnsureTrialActive;
 use App\Http\Middleware\RequirePermission;
 use App\Http\Middleware\RequireValidLicense;
 use App\Http\Middleware\ResolveTenantContext;
@@ -22,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant' => ResolveTenantContext::class,
             'permission' => RequirePermission::class,
             'license' => RequireValidLicense::class,
+            'trial' => EnsureTrialActive::class,
         ]);
 
         // Already-logged-in visitors hitting a "guest" page (e.g. /login) should

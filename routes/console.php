@@ -5,6 +5,7 @@ use App\Jobs\ProcessScheduledRefunds;
 use App\Jobs\RunRetentionPolicies;
 use App\Jobs\SendFeedbackRequests;
 use App\Jobs\SendReservationReminders;
+use App\Jobs\SendTrialExpiryWarnings;
 use App\Models\Reservation;
 use App\Services\ReservationLifecycleService;
 use App\Services\WaitlistService;
@@ -15,6 +16,7 @@ Schedule::job(new SendFeedbackRequests)->hourly();
 Schedule::job(new ProcessScheduledRefunds)->everyFifteenMinutes();
 Schedule::call(fn () => app(WaitlistService::class)->expireStale())->everyTenMinutes();
 Schedule::job(new RunRetentionPolicies)->dailyAt('03:30');
+Schedule::job(new SendTrialExpiryWarnings)->dailyAt('08:00');
 
 // Expire unpaid reservations past their payment deadline
 Schedule::call(function () {
