@@ -16,7 +16,6 @@
             </div>
             <button id="comboToggle" class="fp-btn" title="Tischkombinationen verwalten">🔗 <span>Kombinationen</span></button>
             @if($canEdit)
-                <button id="zoneToggle" class="fp-btn" title="Flächenzonen zeichnen und verwalten">◈ <span>Zonen</span></button>
                 <button id="editToggle" class="fp-btn">✏️ <span>Bearbeiten</span></button>
                 <button id="saveLayout" class="fp-btn fp-btn-save hidden">💾 <span>Speichern</span></button>
             @endif
@@ -26,7 +25,11 @@
     @if($canEdit)
         <div id="editHint" class="fp-hint hidden">
             <span>✦ Bearbeiten aktiv</span>
-            <span class="fp-hint-tip">Ziehen zum Verschieben · ⟳ drehen · am Raster ausgerichtet · „Speichern" nicht vergessen</span>
+            <div class="fp-edit-seg">
+                <button id="editSubTables" class="on">🪑 Tische</button>
+                <button id="editSubZones">◈ Zonen</button>
+            </div>
+            <span id="editHintTip" class="fp-hint-tip">Ziehen zum Verschieben · ⟳ drehen · am Raster ausgerichtet · „Speichern" nicht vergessen</span>
         </div>
     @endif
 
@@ -775,7 +778,7 @@
             });
             const j = await res.json().catch(() => ({}));
             if (!res.ok) {
-                errEl.textContent = j.message || (j.errors ? Object.values(j.errors).flat()[0] : 'Fehler');
+                errEl.textContent = j.message || (j.errors ? Object.values(j.errors).flat()[0] : `Fehler ${res.status}`);
                 errEl.classList.remove('hidden'); return;
             }
             const roomId = j.room_id || editingZone?.roomId || drawingRoomId;
@@ -827,17 +830,52 @@
     })();
 
     // ---- Edit mode + save ----
-    const editToggle = document.getElementById('editToggle');
-    const saveBtn = document.getElementById('saveLayout');
+    const editToggle  = document.getElementById('editToggle');
+    const saveBtn     = document.getElementById('saveLayout');
+    const editHintTip = document.getElementById('editHintTip');
+    const subBtnTables = document.getElementById('editSubTables');
+    const subBtnZones  = document.getElementById('editSubZones');
+
+    function applyEditSubMode(subMode) {
+        // subMode: 'tables' | 'zones'
+        zoneMode = subMode === 'zones';
+        subBtnTables?.classList.toggle('on', !zoneMode);
+        subBtnZones?.classList.toggle('on', zoneMode);
+        if (editHintTip) {
+            editHintTip.textContent = zoneMode
+                ? 'Klicken = Vertex setzen · Doppelklick = Polygon schließen · Zone anklicken = bearbeiten'
+                : 'Ziehen zum Verschieben · ⟳ drehen · am Raster ausgerichtet · „Speichern" nicht vergessen';
+        }
+        if (!zoneMode) cancelDraw();
+        document.querySelectorAll('.floor-room').forEach(room => {
+            room.style.cursor = zoneMode ? 'crosshair' : '';
+            renderZones(+room.dataset.room);
+        });
+        if (!zoneMode) render();
+    }
+
     if (editToggle) {
         editToggle.addEventListener('click', () => {
             editMode = !editMode;
             editToggle.classList.toggle('on', editMode);
             saveBtn.classList.toggle('hidden', !editMode);
+            editHint?.classList.toggle('hidden', !editMode);
             popup.classList.add('hidden');
             selectedId = null;
+            if (!editMode) {
+                // leaving edit mode: reset zone sub-mode
+                zoneMode = false;
+                cancelDraw();
+                subBtnTables?.classList.add('on');
+                subBtnZones?.classList.remove('on');
+                document.querySelectorAll('.floor-room').forEach(r => { r.style.cursor = ''; renderZones(+r.dataset.room); });
+            }
             render();
         });
+
+        subBtnTables?.addEventListener('click', () => applyEditSubMode('tables'));
+        subBtnZones?.addEventListener('click',  () => applyEditSubMode('zones'));
+
         saveBtn.addEventListener('click', async () => {
             saveBtn.disabled = true;
             await fetch(posUrl, {
@@ -847,30 +885,16 @@
             });
             saveBtn.disabled = false;
             editMode = false;
+            zoneMode = false;
+            cancelDraw();
             editToggle.classList.remove('on');
             saveBtn.classList.add('hidden');
+            editHint?.classList.add('hidden');
+            subBtnTables?.classList.add('on');
+            subBtnZones?.classList.remove('on');
+            document.querySelectorAll('.floor-room').forEach(r => r.style.cursor = '');
             selectedId = null;
             load();
-        });
-    }
-
-    // ---- Zone toggle ----
-    const zoneToggle = document.getElementById('zoneToggle');
-    if (zoneToggle) {
-        zoneToggle.addEventListener('click', () => {
-            zoneMode = !zoneMode;
-            if (zoneMode && editMode) {
-                editMode = false;
-                if (editToggle) editToggle.classList.remove('on');
-                if (saveBtn) saveBtn.classList.add('hidden');
-            }
-            zoneToggle.classList.toggle('on', zoneMode);
-            cancelDraw();
-            document.querySelectorAll('.floor-room').forEach(room => {
-                room.style.cursor = zoneMode ? 'crosshair' : '';
-                renderZones(+room.dataset.room);
-            });
-            if (!zoneMode) render();
         });
     }
 
@@ -1228,6 +1252,10 @@
     .fp-hint { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:14px; padding:9px 14px; border-radius:12px;
         background:linear-gradient(90deg,#fef3c7,#fffbeb); border:1px solid #fde68a; font-size:13px; font-weight:600; color:#92400e; }
     .fp-hint-tip { font-weight:500; color:#a16207; }
+    .fp-edit-seg { display:inline-flex; border:1px solid #d6d3d1; border-radius:8px; overflow:hidden; }
+    .fp-edit-seg button { padding:4px 12px; font-size:12px; font-weight:600; background:#fff; color:#57534e; border:none; cursor:pointer; transition:background .1s,color .1s; }
+    .fp-edit-seg button + button { border-left:1px solid #d6d3d1; }
+    .fp-edit-seg button.on { background:#0f766e; color:#fff; }
 
     /* Legend */
     .fp-legend { display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; margin-bottom:18px; padding:10px 14px; background:#fafaf9; border:1px solid #f0efed; border-radius:12px; font-size:12px; color:#57534e; }
