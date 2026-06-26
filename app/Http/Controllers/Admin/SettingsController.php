@@ -612,6 +612,23 @@ class SettingsController extends Controller
         return $this->saved($request, __('Öffnungszeiten gespeichert.'));
     }
 
+    public function updateBranding(Request $request)
+    {
+        $tenant = $this->context->tenant();
+        abort_if($tenant === null, 404);
+
+        $validated = $request->validate([
+            'brand_primary_color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
+        ]);
+
+        $old = ['brand_primary_color' => $tenant->brand_primary_color];
+        $tenant->update($validated);
+
+        $this->audit->log('tenant.branding_updated', $tenant, $old, $validated);
+
+        return $this->saved($request, __('Markenfarbe gespeichert.'));
+    }
+
     public function updateTenantType(Request $request)
     {
         $tenant = $this->context->tenant();

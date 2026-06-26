@@ -302,6 +302,8 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
             ->middleware('permission:special_hours.manage')->name('settings.special-hours');
         Route::put('/settings/tenant-type', [SettingsController::class, 'updateTenantType'])
             ->middleware('permission:tenant.settings.manage')->name('settings.tenant-type');
+        Route::put('/settings/branding', [SettingsController::class, 'updateBranding'])
+            ->middleware('permission:tenant.settings.manage')->name('settings.branding');
     });
 
     // Salon: Leistungen
