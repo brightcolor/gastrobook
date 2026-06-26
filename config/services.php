@@ -31,6 +31,13 @@ return [
     // Recipient for the public contact form (falls back to mail.from.address)
     'support_email' => env('SUPPORT_EMAIL'),
 
+    // GoCardless (SEPA Lastschrift) – platform-level account for SaaS subscriptions
+    'gocardless' => [
+        'access_token' => env('GOCARDLESS_ACCESS_TOKEN'),
+        'environment' => env('GOCARDLESS_ENVIRONMENT', 'sandbox'), // sandbox | live
+        'webhook_secret' => env('GOCARDLESS_WEBHOOK_SECRET'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

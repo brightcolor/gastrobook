@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.52.0] – 2026-06-26
+
+### Neu
+- **SEPA-Lastschrift fürs Software-Abo (GoCardless)** – Betreiber können ihr
+  Abonnement **jederzeit** per Lastschrift einrichten und **direkt im Konto wieder
+  kündigen** (neuer Bereich „Abrechnung", Recht `billing.manage`):
+  - Mandatserteilung über die GoCardless-Redirect-Seite, danach automatische
+    monatliche Subscription in Höhe des Tarifpreises; Tenant wird auf „aktiv"
+    gesetzt.
+  - **E-Mail an Kunde UND Plattformbetreiber** bei Einrichtung, Kündigung sowie
+    asynchronen Ereignissen (Zahlung eingegangen/fehlgeschlagen, Mandat beendet)
+    via signiertem GoCardless-Webhook (`/webhooks/gocardless`).
+  - Mandats-Einrichtung als „genau-einmal"-Flow per `lockForUpdate` abgesichert
+    (kein Doppel-Abo bei doppeltem Rücksprung).
+  - Konfiguration über `GOCARDLESS_ACCESS_TOKEN` / `_ENVIRONMENT` /
+    `_WEBHOOK_SECRET`; Plattform-Mail-Empfänger `SWAYY_OWNER_EMAIL`.
+  - Datenschutzerklärung um GoCardless als Zahlungsdienstleister ergänzt.
+
 ## [1.51.1] – 2026-06-26
 
 ### Behoben (Tiefen-Audit, 3. Runde)

@@ -119,6 +119,19 @@ Cie, S.C.A.]. Es gelten deren Datenschutzbestimmungen. Eine Übermittlung in
 Drittländer kann erfolgen; sie ist durch geeignete Garantien
 (EU-Standardvertragsklauseln) abgesichert (siehe Ziff. 12).
 
+### 8a. SEPA-Lastschrift für das Software-Abonnement (sofern aktiviert)
+
+Für die Bezahlung des Software-Abonnements per SEPA-Lastschrift nutzen wir den
+Zahlungsdienstleister **GoCardless**. Bei der Mandatserteilung werden Name,
+Kontaktdaten und Bankverbindung **direkt bei GoCardless** erfasst; **wir
+speichern keine Bankdaten**, sondern lediglich Referenzen (Kunden-, Mandats- und
+Abonnement-Kennung) sowie Betrag, Währung und Status zur Zuordnung der
+Abbuchungen. Das Mandat kann jederzeit im Konto gekündigt werden.
+
+**Zweck:** Wiederkehrender Einzug der Abonnementgebühr, Kündigung.
+**Rechtsgrundlage:** Art. 6 Abs. 1 lit. b DSGVO (Vertragserfüllung).
+**Empfänger:** [GoCardless Ltd.] – es gelten deren Datenschutzbestimmungen.
+
 ## 9. Benachrichtigungen (E-Mail, SMS)
 
 - **E-Mail:** Bestätigungen, Erinnerungen, Statusänderungen, Feedback-Anfragen

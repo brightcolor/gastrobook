@@ -52,6 +52,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Signed provider webhooks authenticate via signature, not session
         $middleware->validateCsrfTokens(except: [
             'webhooks/stripe',
+            'webhooks/gocardless',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

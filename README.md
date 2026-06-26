@@ -96,6 +96,7 @@ Fertige Docker-Images baut die CI automatisch: `ghcr.io/brightcolor/gastrobook:l
 | Modul | Status |
 |---|---|
 | Multi-Tenancy (Tenants → Standorte) mit globalem Scope + expliziten Checks | ✅ |
+| SEPA-Lastschrift fürs Abo (GoCardless): jederzeit buchen/kündigen, Mail an beide | ✅ |
 | Standort-Verwaltung im Admin (anlegen/umbenennen/aktivieren, Tarif-Limit) | ✅ |
 | Sperrzeiten/Blackouts (pro Standort/Raum, voll gesperrt oder Cover-Limit) | ✅ |
 | Räume & Tische editieren, Events nachträglich bearbeiten, Sonderzeiten löschen | ✅ |
