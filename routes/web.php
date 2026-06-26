@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\EventAdminController;
 use App\Http\Controllers\Admin\FloorPlanController;
 use App\Http\Controllers\Admin\FloorZoneController;
 use App\Http\Controllers\Admin\GuestController;
+use App\Http\Controllers\Admin\LocationController;
 use App\Http\Controllers\Admin\OnboardingController;
 use App\Http\Controllers\Admin\RefundController;
 use App\Http\Controllers\Admin\ReportController;
@@ -334,6 +335,14 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
         Route::put('/staff/{member}/working-hours', [StaffMemberController::class, 'updateWorkingHours'])->name('staff.working-hours');
         Route::post('/staff/{member}/absences', [StaffMemberController::class, 'storeAbsence'])->name('staff.absences.store');
         Route::delete('/staff/absences/{absence}', [StaffMemberController::class, 'deleteAbsence'])->name('staff.absences.destroy');
+    });
+
+    // Locations (multi-location management)
+    Route::middleware('permission:locations.manage')->group(function () {
+        Route::get('/locations', [LocationController::class, 'index'])->name('locations.index');
+        Route::post('/locations', [LocationController::class, 'store'])->name('locations.store');
+        Route::put('/locations/{location}', [LocationController::class, 'update'])->name('locations.update');
+        Route::post('/locations/{location}/toggle-active', [LocationController::class, 'toggleActive'])->name('locations.toggle-active');
     });
 
     // Users & roles
