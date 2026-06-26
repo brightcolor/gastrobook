@@ -32,7 +32,16 @@ class EventBookingService
         $this->assertBookable($event, (int) $data['ticket_count']);
 
         return DB::transaction(function () use ($event, $data, $actor) {
-            // Re-check capacity with the row set locked by the surrounding transaction
+            // Serialize concurrent bookings for the same event. Without this, two
+            // transactions under READ COMMITTED can both read the same remaining
+            // capacity, both pass the check, and both commit → the event is oversold.
+            // pg_advisory_xact_lock is released automatically when the transaction ends.
+            // (Mirrors the locking in ReservationLifecycleService::create.)
+            if (DB::getDriverName() === 'pgsql') {
+                DB::statement('SELECT pg_advisory_xact_lock(?)', [crc32("swayy_event_{$event->id}")]);
+            }
+
+            // Re-check capacity now that the slot is serialized.
             $event->refresh();
             if ($event->remainingCapacity() < (int) $data['ticket_count']) {
                 throw ValidationException::withMessages([
