@@ -27,6 +27,10 @@ class AuditLogController extends Controller
             ->paginate(100)
             ->withQueryString();
 
-        return view('admin.audit.index', ['logs' => $logs]);
+        // Timestamps are stored in UTC; display them in the location's local
+        // timezone (default Europe/Berlin) so the times match the wall clock.
+        $tz = $this->context->location()?->timezone ?? config('app.display_timezone', 'Europe/Berlin');
+
+        return view('admin.audit.index', ['logs' => $logs, 'tz' => $tz]);
     }
 }

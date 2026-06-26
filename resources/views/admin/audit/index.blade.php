@@ -24,7 +24,7 @@
         <tbody class="divide-y divide-stone-50 [&>tr:hover]:bg-stone-50/70">
             @forelse($logs as $log)
                 <tr>
-                    <td class="whitespace-nowrap px-4 py-2.5 text-stone-500">{{ $log->created_at->format('d.m.Y H:i:s') }}</td>
+                    <td class="whitespace-nowrap px-4 py-2.5 text-stone-500">{{ $log->created_at->copy()->setTimezone($tz)->format('d.m.Y H:i:s') }}</td>
                     <td class="px-4 py-2.5">
                         {{ $log->user?->name ?? 'System' }}
                         @if($log->impersonator_id)<span class="rounded bg-amber-100 px-1.5 text-xs text-amber-800">Support</span>@endif

@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.35.1] – 2026-06-26
+
+### Behoben
+- **Falsche Uhrzeiten im Auditlog:** Zeitstempel werden in UTC gespeichert, aber
+  unkonvertiert angezeigt – dadurch erschienen die Zeiten 2 Stunden zu früh
+  (Sommerzeit). Das Auditlog zeigt die Zeit jetzt in der Zeitzone des Standorts
+  (Standard Europe/Berlin).
+
 ## [1.35.0] – 2026-06-26
 
 ### Neu
