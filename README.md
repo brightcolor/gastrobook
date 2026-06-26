@@ -402,6 +402,52 @@ Sicherheit: Webhook-Signaturprüfung (HMAC, Replay-Schutz ±5 min) gegen das Sec
 
 ---
 
+## Abo-Abrechnung per SEPA-Lastschrift (GoCardless)
+
+> **Wichtig:** Das ist die **SaaS-Abrechnung** – also wie deine *Kunden (Betreiber)* ihr **Software-Abo** an *dich (Plattformbetreiber)* zahlen. Nicht zu verwechseln mit Stripe/PayPal oben, die Anzahlungen von *Gästen* an *Betreiber* abwickeln.
+
+Betreiber richten ihr Abo unter **Abrechnung → „Per Lastschrift einrichten"** (Recht `billing.manage`) selbst ein und können dort **jederzeit wieder kündigen**. Technisch ist das **kein Dauerauftrag**, sondern ein **SEPA-Lastschriftmandat**: der Kunde autorisiert einmalig, danach zieht GoCardless den Tarifpreis monatlich automatisch ein (Pull). Bei Einrichtung, Kündigung und jedem Zahlungsereignis geht eine E-Mail an **Kunde *und* Plattformbetreiber**.
+
+### Ablauf
+1. **Mandat** – Klick → Weiterleitung zur gehosteten GoCardless-Seite, Kunde gibt IBAN ein und bestätigt das Mandat (Redirect Flow).
+2. **Abo** – nach Rückkehr legt Swayy automatisch eine GoCardless-*Subscription* in Höhe von `plan.price_monthly_minor` an (`day_of_month: 1`), Tenant-Status → `active`.
+3. **Einzüge** – GoCardless bucht monatlich ab und meldet jedes Ereignis per Webhook; Swayy verschickt die Benachrichtigungen.
+4. **Kündigung** – „Lastschrift kündigen" storniert Subscription + Mandat; keine weiteren Einzüge.
+
+**Es werden keine Bankdaten in Swayy gespeichert** – nur Referenzen (`gocardless_customer_id`, `_mandate_id`, `_subscription_id`, Status) auf `billing_profiles`. IBAN/Mandat liegen ausschließlich bei GoCardless.
+
+### Konfiguration (`.env`)
+
+| Variable | Pflicht | Bedeutung |
+|----------|---------|-----------|
+| `GOCARDLESS_ACCESS_TOKEN` | ja | Access-Token aus dem GoCardless-Dashboard. Sandbox-Tokens beginnen mit `sandbox_…`, Live mit `live_…`. Leer = der „Per Lastschrift einrichten"-Button erscheint nicht. |
+| `GOCARDLESS_ENVIRONMENT` | nein | `sandbox` (Default) → API `api-sandbox.gocardless.com`; `live` → `api.gocardless.com`. Bestimmt allein über Test- vs. Echtbetrieb. |
+| `GOCARDLESS_WEBHOOK_SECRET` | empfohlen | Secret des in GoCardless angelegten Webhook-Endpoints. Wird zur HMAC-SHA256-Prüfung eingehender Events genutzt. Ohne Secret werden Webhooks abgelehnt (Einrichten/Kündigen funktioniert trotzdem, nur die asynchronen Zahlungs-Mails fehlen). |
+| `SWAYY_OWNER_EMAIL` | empfohlen | Empfänger der Plattform-Benachrichtigungen (z. B. deine Adresse). Fällt zurück auf `SUPPORT_EMAIL`, dann `MAIL_FROM_ADDRESS`. |
+
+Nach Änderungen `php artisan config:clear` (bzw. Container neu starten).
+
+### Sandbox zuerst (empfohlen)
+1. Auf **manage-sandbox.gocardless.com** registrieren → *Developers → Access tokens* → `sandbox_…`-Token erzeugen.
+2. `.env`: `GOCARDLESS_ACCESS_TOKEN=sandbox_…`, `GOCARDLESS_ENVIRONMENT=sandbox`. Zum reinen Durchklicken `MAIL_MAILER=log` (Mails landen im Log).
+3. „Abrechnung → Per Lastschrift einrichten" → auf der Sandbox-Seite die dort angezeigten **Test-Bankdaten** verwenden.
+4. **Webhook (optional):** *Developers → Webhook endpoints* → URL `https://DEINE-DOMAIN/webhooks/gocardless`, Secret nach `GOCARDLESS_WEBHOOK_SECRET`. Lokal braucht es eine öffentliche URL (z. B. ngrok). Im Sandbox-Dashboard kannst du Zahlungen manuell auf `confirmed`/`failed` setzen, um die Webhook-Mails zu testen.
+
+**Umstieg auf Live:** nur Live-Token (`live_…`) eintragen und `GOCARDLESS_ENVIRONMENT=live` – sonst nichts.
+
+### Webhook-Events
+`POST /webhooks/gocardless` (CSRF-exempt, HMAC-signaturgeprüft). Verarbeitet: `payments.confirmed` (→ Status `active` + Mail „Zahlung eingegangen"), `payments.failed` (→ `past_due` + Mail), `mandates.cancelled|failed|expired` (→ Abo beendet + Mail). Zuordnung zum Tenant über die `mandate`-Referenz im Event.
+
+### Hinweise zum SEPA-Betrieb
+- Geld fließt zuerst an GoCardless und wird gebündelt **ausgezahlt (Payout)** – SEPA-Einzüge sind **nicht sofort** „confirmed“ (mehrere Werktage Vorlauf).
+- **Rücklastschriften** (bis zu 8 Wochen) kommen als `payments.failed` → Status `past_due` + Mail an beide.
+- Gebühren je Einzug regelt GoCardless (anbieterseitig, nicht in Swayy).
+- Voraussetzung: der Tarif hat einen Preis (`price_monthly_minor > 0`); bei kostenlosen/Trial-Tarifen erscheint kein Lastschrift-Button.
+
+Sicherheit: Mandats-Einrichtung als „genau-einmal“-Flow per `lockForUpdate` (kein Doppel-Abo bei doppeltem Rücksprung), HMAC-Webhook-Prüfung, Fehler externer Aufrufe werden abgefangen (keine internen Details an Nutzer), Audit-Log (`billing.directdebit.activated|cancelled|webhook`).
+
+---
+
 ## Newsletter (MailWizz)
 
 Konfiguration im Adminbereich unter **Einstellungen → Newsletter: MailWizz** (Recht `integrations.manage`):
