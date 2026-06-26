@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.38.0] – 2026-06-26
+
+### Neu
+- **CLI: Nutzerliste** – Neuer Befehl `php artisan swayy:users` listet alle Nutzer
+  über alle Mandanten hinweg: ID, Name, E-Mail, Plattform-Rolle (saas_role),
+  Mandanten-Mitgliedschaften samt Rolle, angelegt. Optionen: `--tenant=ID|slug`,
+  `--saas` (nur Plattform-Admins), `--search=`. Auf dem Server via
+  `docker compose exec app php artisan swayy:users`.
+
 ## [1.37.0] – 2026-06-26
 
 ### Neu
