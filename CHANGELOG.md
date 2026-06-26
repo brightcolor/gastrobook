@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.39.0] – 2026-06-26
+
+### Neu
+- **Weitere CLI-Auflistungen** für den Plattformbetrieb:
+  - `php artisan swayy:reservations` – Reservierungen über alle Mandanten
+    (Filter: `--tenant`, `--date`, `--upcoming`, `--status`, `--limit`).
+  - `php artisan swayy:billing-requests` – eingegangene Billing-Anfragen
+    (Option `--pending` = bestätigt, aber noch nicht freigeschaltet).
+  - `php artisan swayy:plans` – Tarife inkl. Mandantenzahl (`--all` für inaktive).
+  - `php artisan swayy:stats` – Plattform-Überblick (Mandanten nach Status,
+    Nutzer, Gäste, Reservierungen, offene Billing-Anfragen).
+- **SaaS-Admin: Trial verlängern** – In der Mandantenübersicht (`/saas/tenants`)
+  gibt es jetzt eine Trial-Spalte mit Ablaufdatum und einem „+ Tage"-Feld, das den
+  Testzeitraum verlängert und das Konto sofort wieder aktiviert. Trial-Status
+  (abgelaufen / Billing ausstehend) wird in der Status-Spalte korrekt angezeigt.
+
 ## [1.38.0] – 2026-06-26
 
 ### Neu

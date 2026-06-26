@@ -355,6 +355,7 @@ Route::middleware('auth')->prefix('saas')->name('saas.')->group(function () {
     Route::post('/tenants', [SaasTenantController::class, 'store'])->name('tenants.store');
     Route::put('/tenants/{tenant}/status', [SaasTenantController::class, 'updateStatus'])->name('tenants.status');
     Route::put('/tenants/{tenant}/plan', [SaasTenantController::class, 'updatePlan'])->name('tenants.plan');
+    Route::put('/tenants/{tenant}/trial', [SaasTenantController::class, 'extendTrial'])->name('tenants.trial');
     Route::post('/tenants/{tenant}/impersonate', [SaasTenantController::class, 'impersonate'])->name('tenants.impersonate');
     Route::post('/stop-impersonation', [SaasTenantController::class, 'stopImpersonation'])->name('stop-impersonation');
 });

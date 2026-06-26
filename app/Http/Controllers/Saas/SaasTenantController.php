@@ -113,6 +113,31 @@ class SaasTenantController extends Controller
         return back()->with('success', __('Status geändert.'));
     }
 
+    public function extendTrial(Request $request, Tenant $tenant)
+    {
+        $this->authorizeSaas($request, write: true);
+
+        $validated = $request->validate(['days' => ['required', 'integer', 'min:1', 'max:365']]);
+
+        // Extend from the later of "now" or the current trial end, and reactivate
+        // the tenant so an expired account works again immediately.
+        $base = $tenant->trial_ends_at && $tenant->trial_ends_at->isFuture()
+            ? $tenant->trial_ends_at
+            : now();
+        $newEnd = $base->copy()->addDays((int) $validated['days']);
+
+        $old = ['status' => $tenant->status, 'trial_ends_at' => $tenant->trial_ends_at?->toDateTimeString()];
+        $tenant->update(['trial_ends_at' => $newEnd, 'status' => 'active']);
+
+        $this->audit->log('tenant.trial_extended', $tenant, $old,
+            ['trial_ends_at' => $newEnd->toDateTimeString(), 'days' => $validated['days']],
+            null, $request->user(), $tenant->id);
+
+        return back()->with('success', __('Trial verlängert bis :date.', [
+            'date' => $newEnd->copy()->setTimezone('Europe/Berlin')->format('d.m.Y'),
+        ]));
+    }
+
     public function updatePlan(Request $request, Tenant $tenant)
     {
         $this->authorizeSaas($request, write: true);

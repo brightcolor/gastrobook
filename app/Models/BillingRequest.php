@@ -6,7 +6,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property Carbon|null $confirmed_at
+ * @property Carbon|null $owner_notified_at
+ */
 class BillingRequest extends Model
 {
     protected $fillable = [

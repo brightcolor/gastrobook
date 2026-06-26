@@ -32,6 +32,7 @@
                             <th class="px-4 py-3">Benutzer</th>
                             <th class="px-4 py-3">Res./Monat</th>
                             <th class="px-4 py-3">Status</th>
+                            <th class="px-4 py-3">Trial</th>
                             <th class="px-4 py-3"></th>
                         </tr>
                     </thead>
@@ -51,13 +52,27 @@
                                 <td class="px-4 py-3">{{ $tenant->memberships_count }}</td>
                                 <td class="px-4 py-3">{{ $reservationCounts[$tenant->id] ?? 0 }}</td>
                                 <td class="px-4 py-3">
+                                    @php $trialState = in_array($tenant->status, ['trial_expired','pending_billing'], true); @endphp
                                     <form method="POST" action="{{ route('saas.tenants.status', $tenant) }}">
                                         @csrf @method('PUT')
                                         <select name="status" onchange="this.form.submit()" class="rounded-lg border-stone-200 text-xs">
+                                            @if($trialState)
+                                                <option value="" selected disabled>{{ $tenant->status === 'trial_expired' ? 'Trial abgelaufen' : 'Billing ausstehend' }}</option>
+                                            @endif
                                             @foreach(['active' => 'Aktiv', 'suspended' => 'Gesperrt', 'cancelled' => 'Gekündigt'] as $val => $label)
                                                 <option value="{{ $val }}" @selected($tenant->status === $val)>{{ $label }}</option>
                                             @endforeach
                                         </select>
+                                    </form>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="text-xs text-stone-500">
+                                        {{ $tenant->trial_ends_at ? $tenant->trial_ends_at->copy()->setTimezone('Europe/Berlin')->format('d.m.Y') : '—' }}
+                                    </div>
+                                    <form method="POST" action="{{ route('saas.tenants.trial', $tenant) }}" class="mt-1 flex items-center gap-1">
+                                        @csrf @method('PUT')
+                                        <input type="number" name="days" value="30" min="1" max="365" class="w-14 rounded-lg border-stone-200 text-xs">
+                                        <button class="rounded-lg bg-stone-100 px-2 py-1 text-xs font-semibold text-stone-700 hover:bg-stone-200" title="Trial um X Tage verlängern und Konto aktivieren">+ Tage</button>
                                     </form>
                                 </td>
                                 <td class="px-4 py-3">
