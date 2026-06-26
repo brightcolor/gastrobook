@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.34.3] – 2026-06-26
+
+### Behoben
+- **Betriebstyp-Umschaltung (Restaurant ↔ Friseursalon/Dienstleister) ohne
+  sichtbare Wirkung:** Das Settings-Formular wird per AJAX abgeschickt und lädt
+  die Seite nur neu, wenn die Antwort ein `reload`-Flag enthält. Beim Typwechsel
+  fehlte dieses Flag — der Typ wurde zwar gespeichert, aber Navigation, Auswahl
+  und Buchungsseite spiegelten den neuen Typ erst nach manuellem Reload wider.
+  `updateTenantType` gibt jetzt `reload: true` zurück; abgedeckt durch zwei neue
+  Tests.
+
 ## [1.34.2] – 2026-06-25
 
 ### Behoben

@@ -625,9 +625,13 @@ class SettingsController extends Controller
 
         $this->audit->log('tenant.type_changed', $tenant, ['type' => $old], ['type' => $validated['type']]);
 
+        // reload: true — der Typwechsel ändert Navigation, Labels und die
+        // öffentliche Buchungsseite. Ohne Reload schickt das AJAX-Settings-JS
+        // das Formular ab und speichert zwar, aber die UI spiegelt den neuen
+        // Typ nicht wider ("umschalten geht nicht").
         return $this->saved($request, __('Betriebstyp geändert auf: :type', [
             'type' => TenantType::from($validated['type'])->label(),
-        ]));
+        ]), reload: true);
     }
 
     public function storeSpecialHours(Request $request)
