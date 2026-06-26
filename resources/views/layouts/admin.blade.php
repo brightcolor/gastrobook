@@ -82,6 +82,10 @@
                     <button class="w-full rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold">Supportzugriff beenden</button>
                 </form>
             @endif
+            <a href="{{ route('admin.account.show') }}"
+               class="mb-1 block w-full rounded-md px-3 py-1.5 text-center text-xs text-stone-400 hover:bg-stone-700 hover:text-stone-100">
+                Mein Konto
+            </a>
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
                 <button class="w-full rounded-md bg-stone-700 px-3 py-1.5 text-xs hover:bg-stone-600">Abmelden</button>
@@ -161,6 +165,10 @@
                     <button class="w-full rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold">Supportzugriff beenden</button>
                 </form>
             @endif
+            <a href="{{ route('admin.account.show') }}"
+               class="mb-1 block w-full rounded-md px-3 py-2 text-center text-xs text-stone-400 hover:bg-stone-700 hover:text-stone-100">
+                Mein Konto
+            </a>
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
                 <button class="w-full rounded-md bg-stone-700 px-3 py-2 text-xs hover:bg-stone-600">Abmelden</button>

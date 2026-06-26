@@ -131,4 +131,31 @@ class UserManagementController extends Controller
 
         return back()->with('success', __('Benutzer entfernt.'));
     }
+
+    public function deleteUser(Request $request, TenantUser $membership)
+    {
+        $tenant = $this->context->tenant();
+        abort_if($membership->tenant_id !== $tenant->id, 404);
+        abort_if($membership->user_id === $request->user()->id, 422);
+
+        if ($membership->role === 'tenant_owner'
+            && $tenant->memberships()->where('role', 'tenant_owner')->count() <= 1) {
+            return back()->withErrors(['delete' => __('Der letzte Inhaber kann nicht gelöscht werden.')]);
+        }
+
+        $user = User::findOrFail($membership->user_id);
+        $otherTenants = $user->tenants()->where('tenants.id', '!=', $tenant->id)->exists();
+
+        if ($otherTenants) {
+            $this->audit->log('user.removed', $membership, ['user_id' => $user->id]);
+            $membership->delete();
+
+            return back()->with('success', __('Benutzer aus diesem Betrieb entfernt (Konto bleibt bestehen – in anderen Betrieben aktiv).'));
+        }
+
+        $this->audit->log('user.deleted', $user, ['email' => $user->email, 'name' => $user->name]);
+        $user->delete();
+
+        return back()->with('success', __('Benutzerkonto vollständig gelöscht.'));
+    }
 }

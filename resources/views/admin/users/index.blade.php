@@ -30,10 +30,18 @@
                             <td class="px-4 py-3 text-stone-500">{{ $m->all_locations ? 'Alle' : 'Eingeschränkt' }}</td>
                             <td class="px-4 py-3 text-right">
                                 @if(auth()->user()->canInTenant('users.roles.manage', $tenant) && $m->user_id !== auth()->id())
-                                    <form method="POST" action="{{ route('admin.users.remove', $m) }}" onsubmit="return confirm('Benutzer entfernen?')">
-                                        @csrf @method('DELETE')
-                                        <button class="text-red-500 hover:underline">Entfernen</button>
-                                    </form>
+                                    <div class="flex justify-end gap-4">
+                                        <form method="POST" action="{{ route('admin.users.remove', $m) }}"
+                                              onsubmit="return confirm('Benutzer aus diesem Betrieb entfernen?')">
+                                            @csrf @method('DELETE')
+                                            <button class="text-xs text-stone-400 hover:text-stone-700">Entfernen</button>
+                                        </form>
+                                        <form method="POST" action="{{ route('admin.users.delete', $m) }}"
+                                              onsubmit="return confirm('Benutzerkonto vollständig löschen? Das ist unwiderruflich.')">
+                                            @csrf @method('DELETE')
+                                            <button class="text-xs font-semibold text-red-500 hover:text-red-700">Löschen</button>
+                                        </form>
+                                    </div>
                                 @endif
                             </td>
                         </tr>

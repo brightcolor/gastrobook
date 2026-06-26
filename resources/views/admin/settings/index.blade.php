@@ -221,15 +221,11 @@
         <div class="mt-4 border-t border-stone-100 pt-4">
             <h3 class="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">Online-Buchung</h3>
             <div class="space-y-1.5 text-sm">
-                @php
-                    $confirmMode = $settings->request_only ? 'request' : ($settings->auto_confirm ? 'auto' : 'manual');
-                @endphp
                 <div class="flex items-center gap-3">
-                    <label class="text-stone-700 shrink-0">Online-Bestätigung <span class="tip" tabindex="0" data-tip="&#39;Sofort bestätigen&#39; – Buchung ist direkt fix, Gast bekommt sofort eine Bestätigung. &#39;Manuell bestätigen&#39; – du bestätigst per Klick, Gast wartet kurz. &#39;Nur Anfrage&#39; – Gast stellt eine Anfrage, du entscheidest ob du annimmst oder absagst.">?</span></label>
+                    <label class="text-stone-700 shrink-0">Online-Bestätigung <span class="tip" tabindex="0" data-tip="&#39;Sofort&#39; – Gast erhält direkt eine Bestätigung, kein Eingriff nötig. &#39;Manuell&#39; – die Buchung landet als offen, du bestätigst oder lehnst ab. Beide Varianten landen intern als &#39;Anfrage&#39; solange sie offen sind.">?</span></label>
                     <select name="booking_confirmation_mode" class="rounded-lg border-stone-200 text-sm">
-                        <option value="auto"    @selected($confirmMode === 'auto')>Sofort bestätigen</option>
-                        <option value="manual"  @selected($confirmMode === 'manual')>Manuell bestätigen</option>
-                        <option value="request" @selected($confirmMode === 'request')>Nur Anfrage</option>
+                        <option value="auto"   @selected($settings->auto_confirm)>Sofort bestätigen</option>
+                        <option value="manual" @selected(!$settings->auto_confirm)>Manuell bestätigen</option>
                     </select>
                 </div>
                 <label class="flex items-center gap-2"><input type="checkbox" name="waitlist_enabled" value="1" @checked($settings->waitlist_enabled)> Warteliste aktiv <span class="tip" tabindex="0" data-tip="Wenn nichts mehr frei ist, können sich Gäste auf die Warteliste setzen. Springt jemand ab, erhalten sie automatisch ein Angebot per E-Mail – kein Platz geht verloren!">?</span></label>

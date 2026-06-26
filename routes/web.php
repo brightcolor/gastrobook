@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\StaffMemberController;
 use App\Http\Controllers\Admin\TagController;
+use App\Http\Controllers\Admin\AccountController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Admin\WaitlistAdminController;
 use App\Http\Controllers\Admin\WalkInController;
@@ -272,6 +273,10 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
     Route::get('/onboarding', [OnboardingController::class, 'show'])->name('onboarding.show');
     Route::post('/onboarding/complete', [OnboardingController::class, 'complete'])->name('onboarding.complete');
 
+    // Own account / danger zone
+    Route::get('/account', [AccountController::class, 'show'])->name('account.show');
+    Route::delete('/account', [AccountController::class, 'destroy'])->name('account.destroy');
+
     // Settings (rooms, tables, hours, booking rules)
     Route::middleware('permission:tables.manage')->group(function () {
         Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
@@ -338,6 +343,8 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
             ->middleware('permission:users.roles.manage')->name('users.role');
         Route::delete('/users/{membership}', [UserManagementController::class, 'remove'])
             ->middleware('permission:users.roles.manage')->name('users.remove');
+        Route::delete('/users/{membership}/delete-account', [UserManagementController::class, 'deleteUser'])
+            ->middleware('permission:users.roles.manage')->name('users.delete');
     });
 
     // API tokens
