@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.36.0] – 2026-06-26
+
+### Neu
+- **CLI: Kundenliste** – Neuer Befehl `php artisan swayy:guests` zeigt angelegte
+  Kunden im Terminal (Name, E-Mail, Telefon, Besuche, letzter Besuch, angelegt).
+  Optionen: `--tenant=ID|slug` (nach Mandant filtern), `--search=` (Name/E-Mail/
+  Telefon), `--limit=` (Standard 50, `0` = alle), `--with-anonymized`. Anonymisierte
+  (gelöschte) Kunden sind standardmäßig ausgeblendet. Auf dem Server via
+  `docker compose exec app php artisan swayy:guests`.
+
 ## [1.35.1] – 2026-06-26
 
 ### Behoben
