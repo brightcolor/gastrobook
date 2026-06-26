@@ -105,10 +105,10 @@ return [
      * Feldspezifische Meldungen mit Hinweisen/Lösungen.
      */
     'password' => [
-        'letters'       => ':attribute muss mindestens einen Buchstaben enthalten.',
-        'mixed'         => ':attribute muss Groß- und Kleinbuchstaben enthalten.',
-        'numbers'       => ':attribute muss mindestens eine Zahl enthalten.',
-        'symbols'       => ':attribute muss mindestens ein Sonderzeichen enthalten.',
+        'letters' => ':attribute muss mindestens einen Buchstaben enthalten.',
+        'mixed' => ':attribute muss Groß- und Kleinbuchstaben enthalten.',
+        'numbers' => ':attribute muss mindestens eine Zahl enthalten.',
+        'symbols' => ':attribute muss mindestens ein Sonderzeichen enthalten.',
         'uncompromised' => ':attribute ist in einem Datenleck aufgetaucht – bitte ein anderes wählen.',
     ],
 
