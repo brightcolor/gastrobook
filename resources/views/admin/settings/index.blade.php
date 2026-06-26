@@ -155,13 +155,15 @@
         <h2 class="mb-1 font-bold">Formularfelder im Buchungswidget <span class="tip" tabindex="0" data-tip="Bestimme, welche Felder auf deiner Buchungsseite erscheinen und ob sie Pflicht oder freiwillig sind. 'Ausgeblendet' heißt, das Feld ist für Gäste komplett unsichtbar. Der Name des Gastes ist immer Pflicht.">?</span></h2>
         <p class="mb-3 text-xs text-stone-500">Steuert pro Feld, ob es Gästen angezeigt wird und ob es Pflicht ist. Name ist immer Pflicht.</p>
         <div class="space-y-2 text-sm">
-            @php($fieldTips = [
-                'email'     => ['E-Mail',                         'Wird für die Buchungsbestätigung und den Storno-Link benötigt. Wir empfehlen mindestens "Optional" – ohne E-Mail kann kein Gast seine Buchung verwalten.'],
-                'phone'     => ['Telefon',                        'Hilfreich wenn du Gäste anrufen oder SMS-Erinnerungen schicken möchtest. "Optional" reicht für die meisten Betriebe.'],
-                'occasion'  => ['Anlass',                         'Gäste können angeben ob sie Geburtstag feiern oder ein Jubiläum begehen – so kannst du sie schon im Voraus mit einem kleinen Extra überraschen.'],
-                'allergies' => ['Allergien / Unverträglichkeiten','Sehr wertvoll für die Küche! Gäste tragen Hinweise zu Nüssen, Laktose, Gluten & Co. ein – du weißt Bescheid bevor sie ankommen.'],
-                'note'      => ['Anmerkung',                      'Ein freies Feld für alles Weitere: Sonderwünsche, Fensterplatz-Anfragen oder ob der Geburtstagskuchen schon im Kühlschrank warten soll. 🎂'],
-            ])
+            @php
+                $fieldTips = [
+                    'email'     => ['E-Mail',                         'Wird für die Buchungsbestätigung und den Storno-Link benötigt. Wir empfehlen mindestens "Optional" – ohne E-Mail kann kein Gast seine Buchung verwalten.'],
+                    'phone'     => ['Telefon',                        'Hilfreich wenn du Gäste anrufen oder SMS-Erinnerungen schicken möchtest. "Optional" reicht für die meisten Betriebe.'],
+                    'occasion'  => ['Anlass',                         'Gäste können angeben ob sie Geburtstag feiern oder ein Jubiläum begehen – so kannst du sie schon im Voraus mit einem kleinen Extra überraschen.'],
+                    'allergies' => ['Allergien / Unverträglichkeiten','Sehr wertvoll für die Küche! Gäste tragen Hinweise zu Nüssen, Laktose, Gluten & Co. ein – du weißt Bescheid bevor sie ankommen.'],
+                    'note'      => ['Anmerkung',                      'Ein freies Feld für alles Weitere: Sonderwünsche, Fensterplatz-Anfragen oder ob der Geburtstagskuchen schon im Kühlschrank warten soll. 🎂'],
+                ];
+            @endphp
             @foreach($fieldTips as $field => [$label, $tip])
                 <div class="flex items-center justify-between gap-3">
                     <span>{{ $label }} <span class="tip" tabindex="0" data-tip="{{ $tip }}">?</span></span>
@@ -219,8 +221,17 @@
         <div class="mt-4 border-t border-stone-100 pt-4">
             <h3 class="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">Online-Buchung</h3>
             <div class="space-y-1.5 text-sm">
-                <label class="flex items-center gap-2"><input type="checkbox" name="auto_confirm" value="1" @checked($settings->auto_confirm)> Online-Reservierungen automatisch bestätigen <span class="tip" tabindex="0" data-tip="Buchungen werden sofort bestätigt – kein manueller Klick nötig. Super wenn du immer ausreichend Kapazität hast und deinen Gästen schnell Sicherheit geben willst.">?</span></label>
-                <label class="flex items-center gap-2"><input type="checkbox" name="request_only" value="1" @checked($settings->request_only)> Nur als Anfrage annehmen <span class="tip" tabindex="0" data-tip="Gäste schicken eine Anfrage und du entscheidest, ob du bestätigst oder absagst. Gibt dir maximale Kontrolle über deinen Betrieb.">?</span></label>
+                @php
+                    $confirmMode = $settings->request_only ? 'request' : ($settings->auto_confirm ? 'auto' : 'manual');
+                @endphp
+                <div class="flex items-center gap-3">
+                    <label class="text-stone-700 shrink-0">Online-Bestätigung <span class="tip" tabindex="0" data-tip="&#39;Sofort bestätigen&#39; – Buchung ist direkt fix, Gast bekommt sofort eine Bestätigung. &#39;Manuell bestätigen&#39; – du bestätigst per Klick, Gast wartet kurz. &#39;Nur Anfrage&#39; – Gast stellt eine Anfrage, du entscheidest ob du annimmst oder absagst.">?</span></label>
+                    <select name="booking_confirmation_mode" class="rounded-lg border-stone-200 text-sm">
+                        <option value="auto"    @selected($confirmMode === 'auto')>Sofort bestätigen</option>
+                        <option value="manual"  @selected($confirmMode === 'manual')>Manuell bestätigen</option>
+                        <option value="request" @selected($confirmMode === 'request')>Nur Anfrage</option>
+                    </select>
+                </div>
                 <label class="flex items-center gap-2"><input type="checkbox" name="waitlist_enabled" value="1" @checked($settings->waitlist_enabled)> Warteliste aktiv <span class="tip" tabindex="0" data-tip="Wenn nichts mehr frei ist, können sich Gäste auf die Warteliste setzen. Springt jemand ab, erhalten sie automatisch ein Angebot per E-Mail – kein Platz geht verloren!">?</span></label>
                 <label class="flex items-center gap-2"><input type="checkbox" name="walkins_enabled" value="1" @checked($settings->walkins_enabled)> Walk-ins aktiv <span class="tip" tabindex="0" data-tip="Ermöglicht deinem Personal, Laufgäste direkt im Live-Board auf einen freien Tisch zu setzen – schnell, einfach, ohne Papierkram.">?</span></label>
                 <label class="flex items-center gap-2"><input type="checkbox" name="require_email_confirmation" value="1" @checked($settings->require_email_confirmation)> E-Mail-Bestätigung verlangen <span class="tip" tabindex="0" data-tip="Beim ersten Buchen klickt der Gast auf einen Bestätigungslink in seiner E-Mail – so weißt du, dass die Adresse stimmt. Schützt effektiv vor Fake-Buchungen.">?</span></label>

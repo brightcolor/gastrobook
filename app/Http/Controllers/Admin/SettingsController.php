@@ -92,8 +92,7 @@ class SettingsController extends Controller
             'max_advance_days' => ['required', 'integer', 'min:1', 'max:730'],
             'min_party_online' => ['required', 'integer', 'min:1', 'max:50'],
             'max_party_online' => ['required', 'integer', 'min:1', 'max:100', 'gte:min_party_online'],
-            'auto_confirm' => ['nullable', 'boolean'],
-            'request_only' => ['nullable', 'boolean'],
+            'booking_confirmation_mode' => ['required', 'in:auto,manual,request'],
             'capacity_mode' => ['required', 'in:table,person,hybrid'],
             'max_covers_per_slot' => ['nullable', 'integer', 'min:1', 'max:2000'],
             'waitlist_enabled' => ['nullable', 'boolean'],
@@ -115,9 +114,10 @@ class SettingsController extends Controller
         $settings = $location->settings()->firstOrCreate(['tenant_id' => $location->tenant_id]);
         $old = $settings->only(array_keys($validated));
 
+        $mode = $request->input('booking_confirmation_mode');
         $settings->update($validated + [
-            'auto_confirm' => $request->boolean('auto_confirm'),
-            'request_only' => $request->boolean('request_only'),
+            'auto_confirm' => $mode === 'auto',
+            'request_only' => $mode === 'request',
             'waitlist_enabled' => $request->boolean('waitlist_enabled'),
             'walkins_enabled' => $request->boolean('walkins_enabled'),
             'reminder_enabled' => $request->boolean('reminder_enabled'),
