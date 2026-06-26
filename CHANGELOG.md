@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.48.0] – 2026-06-26
+
+### Geändert
+- **Betrieb löschen entfernt jetzt wirklich alles** – Die Inhaber-Löschung in
+  „Mein Konto → Betrieb löschen" nutzte bisher Soft-Delete, wodurch abhängige
+  Daten erhalten blieben. Jetzt `forceDelete`: Mandant samt Standorten,
+  Reservierungen, Gästen, Personal, Einstellungen und Audit-Logs wird endgültig
+  entfernt (DB-Kaskade), der Slug wird wieder frei.
+
+### Behoben
+- **Sicherheits-/Bug-Audit** (Branch `audit/bug-security-fixes`):
+  - **Event-Überbuchung** bei gleichzeitigen Buchungen verhindert –
+    `EventBookingService::book` serialisiert den Kapazitäts-Recheck nun per
+    `pg_advisory_xact_lock` (wie der Reservierungspfad). Vorher konnten zwei
+    parallele Buchungen denselben Restplatz belegen.
+  - **Ungültiger Reservierungsstatus** führte zu HTTP 500 (ValueError aus
+    `ReservationStatus::from`). Wird jetzt per `Rule::enum` sauber abgewiesen.
+- Regressionstests ergänzt (Status-Validierung, Betrieb-Hard-Delete inkl.
+  Kaskade). Gesamt 207 Tests grün.
+
 ## [1.39.0] – 2026-06-26
 
 ### Neu
