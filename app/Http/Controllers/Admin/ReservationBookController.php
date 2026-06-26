@@ -12,6 +12,7 @@ use App\Services\ReservationLifecycleService;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReservationBookController extends Controller
@@ -160,7 +161,7 @@ class ReservationBookController extends Controller
         $this->authorizeReservation($reservation);
 
         $validated = $request->validate([
-            'status' => ['required', 'string'],
+            'status' => ['required', 'string', Rule::enum(ReservationStatus::class)],
             'reason' => ['nullable', 'string', 'max:255'],
         ]);
 
