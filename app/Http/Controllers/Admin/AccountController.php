@@ -84,8 +84,11 @@ class AccountController extends Controller
             'deleted_by' => $user->email,
         ]);
 
-        // Cascade deletes everything (locations, reservations, guests, staff, …)
-        $tenant->delete();
+        // Hard delete: forceDelete bypasses SoftDeletes and triggers the
+        // ON DELETE CASCADE foreign keys, so everything tied to the tenant
+        // (locations, reservations, guests, staff, settings, audit logs, …)
+        // is permanently removed and the slug is freed again.
+        $tenant->forceDelete();
 
         Auth::logout();
         $request->session()->invalidate();
