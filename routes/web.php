@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AccountController;
 use App\Http\Controllers\Admin\ApiTokenController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BillingRequestController;
@@ -17,7 +18,6 @@ use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\StaffMemberController;
 use App\Http\Controllers\Admin\TagController;
-use App\Http\Controllers\Admin\AccountController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Admin\WaitlistAdminController;
 use App\Http\Controllers\Admin\WalkInController;
