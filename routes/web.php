@@ -252,6 +252,7 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
         Route::get('/events', [EventAdminController::class, 'index'])->name('events.index');
         Route::post('/events', [EventAdminController::class, 'store'])->name('events.store');
         Route::get('/events/{event}', [EventAdminController::class, 'show'])->name('events.show');
+        Route::put('/events/{event}', [EventAdminController::class, 'update'])->name('events.update');
         Route::put('/events/{event}/status', [EventAdminController::class, 'updateStatus'])->name('events.status');
         Route::get('/events/{event}/attendees.csv', [EventAdminController::class, 'exportAttendees'])->name('events.attendees');
         Route::post('/event-bookings/{booking}/check-in', [EventAdminController::class, 'checkIn'])->name('events.check-in');
@@ -286,7 +287,12 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
             ->middleware('permission:opening_hours.manage')->name('settings.booking-rules');
         Route::post('/settings/rooms', [SettingsController::class, 'storeRoom'])
             ->middleware('permission:rooms.manage')->name('settings.rooms.store');
+        Route::put('/settings/rooms/{room}', [SettingsController::class, 'updateRoom'])
+            ->middleware('permission:rooms.manage')->name('settings.rooms.update');
+        Route::delete('/settings/rooms/{room}', [SettingsController::class, 'deleteRoom'])
+            ->middleware('permission:rooms.manage')->name('settings.rooms.delete');
         Route::post('/settings/tables', [SettingsController::class, 'storeTable'])->name('settings.tables.store');
+        Route::put('/settings/tables/{table}', [SettingsController::class, 'updateTable'])->name('settings.tables.update');
         Route::delete('/settings/tables/{table}', [SettingsController::class, 'deleteTable'])->name('settings.tables.delete');
         Route::post('/settings/combinations', [SettingsController::class, 'storeCombination'])->name('settings.combinations.store');
         Route::delete('/settings/combinations/{combination}', [SettingsController::class, 'deleteCombination'])->name('settings.combinations.delete');
@@ -312,6 +318,12 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
             ->middleware('permission:opening_hours.manage')->name('settings.opening-hours');
         Route::post('/settings/special-hours', [SettingsController::class, 'storeSpecialHours'])
             ->middleware('permission:special_hours.manage')->name('settings.special-hours');
+        Route::delete('/settings/special-hours/{special}', [SettingsController::class, 'deleteSpecialHours'])
+            ->middleware('permission:special_hours.manage')->name('settings.special-hours.delete');
+        Route::post('/settings/blackouts', [SettingsController::class, 'storeBlackout'])
+            ->middleware('permission:blackouts.manage')->name('settings.blackouts.store');
+        Route::delete('/settings/blackouts/{blackout}', [SettingsController::class, 'deleteBlackout'])
+            ->middleware('permission:blackouts.manage')->name('settings.blackouts.delete');
         Route::put('/settings/tenant-type', [SettingsController::class, 'updateTenantType'])
             ->middleware('permission:tenant.settings.manage')->name('settings.tenant-type');
         Route::put('/settings/branding', [SettingsController::class, 'updateBranding'])
