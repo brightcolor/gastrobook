@@ -276,6 +276,7 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
     // Own account / danger zone
     Route::get('/account', [AccountController::class, 'show'])->name('account.show');
     Route::delete('/account', [AccountController::class, 'destroy'])->name('account.destroy');
+    Route::delete('/account/tenant', [AccountController::class, 'destroyTenant'])->name('account.tenant.destroy');
 
     // Settings (rooms, tables, hours, booking rules)
     Route::middleware('permission:tables.manage')->group(function () {
