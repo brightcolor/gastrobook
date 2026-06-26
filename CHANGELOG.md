@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.37.0] – 2026-06-26
+
+### Neu
+- **CLI: Mandantenliste** – Neuer Befehl `php artisan swayy:tenants` zeigt deine
+  Kunden (Betriebe) im Terminal: ID, Name, Slug, Typ, Status, Tarif, Trial-Ende,
+  Nutzerzahl, Owner-E-Mail, angelegt. Optionen: `--status=` (z. B. active,
+  trial_expired), `--search=` (Name/Slug), `--with-trashed`. Auf dem Server via
+  `docker compose exec app php artisan swayy:tenants`.
+
 ## [1.36.0] – 2026-06-26
 
 ### Neu

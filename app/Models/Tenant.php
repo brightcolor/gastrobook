@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 /**
+ * @property TenantType $type
  * @property Carbon|null $trial_ends_at
  * @property Carbon|null $trial_warning_sent_at
  */
