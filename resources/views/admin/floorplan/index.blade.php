@@ -69,8 +69,7 @@
                      data-room="{{ $room->id }}"
                      data-w="{{ $room->plan_width }}" data-h="{{ $room->plan_height }}"
                      data-width-m="{{ $room->plan_width_m ?? '' }}" data-height-m="{{ $room->plan_height_m ?? '' }}"
-                     style="width:{{ (int) round($room->plan_width * 0.8) }}px;height:{{ (int) round($room->plan_height * 0.8) }}px;
-                            @if($room->background_path)background-image:url('{{ route('admin.floorplan.background', $room) }}');@endif">
+                     style="@if($room->background_path)background-image:url('{{ route('admin.floorplan.background', $room) }}');@endif">
                     <div class="grid-overlay"></div>
                     <svg class="zones-svg-layer" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
                 </div>
@@ -234,7 +233,7 @@
 
 <script>
 (function () {
-    const SCALE = 0.8;
+    let SCALE = 0.8;            // px per plan unit (1 unit = 1 cm); recomputed to fit
     const SNAP = 10; // grid snap in plan units
     const stateUrl = @json(route('admin.floorplan.state'));
     const posUrl = @json(route('admin.floorplan.positions'));
@@ -260,7 +259,32 @@
     const popup = document.getElementById('tablePopup');
     const editHint = document.getElementById('editHint');
 
+    // Pick a single px-per-cm scale so the LARGEST room fits the available
+    // canvas column, and size every room div accordingly. One shared scale
+    // keeps rooms comparable (1 cm is the same number of px everywhere) and
+    // lets arbitrarily large rooms render without overflow — tables and zones
+    // use the same SCALE, so they always stay proportional and never overlap.
+    function computeScale() {
+        const rooms = [...document.querySelectorAll('.floor-room')];
+        if (!rooms.length) return;
+        const host = rooms[0].parentElement;
+        const avail = Math.max(320, (host ? host.clientWidth : 900) - 8);
+        const MAX_W = Math.min(avail, 1100);   // px
+        const MAX_H = 760;                      // px per room
+        let maxW = 1, maxH = 1;
+        rooms.forEach(r => {
+            maxW = Math.max(maxW, +r.dataset.w || 1000);
+            maxH = Math.max(maxH, +r.dataset.h || 700);
+        });
+        SCALE = Math.max(0.04, Math.min(0.9, MAX_W / maxW, MAX_H / maxH));
+        rooms.forEach(r => {
+            r.style.width  = Math.round((+r.dataset.w || 1000) * SCALE) + 'px';
+            r.style.height = Math.round((+r.dataset.h || 700) * SCALE) + 'px';
+        });
+    }
+
     async function load() {
+        computeScale();
         const res = await fetch(stateUrl + '?date=' + dateInput.value + '&time=' + timeInput.value, {headers: {Accept: 'application/json'}});
         const data = await res.json();
         tablesData = data.tables;
@@ -989,6 +1013,22 @@
 
     dateInput.addEventListener('change', load);
     timeInput.addEventListener('change', load);
+
+    // Re-fit the canvas when the window/column width changes, then re-place
+    // tables and zones at the new scale.
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            computeScale();
+            render();
+            document.querySelectorAll('.floor-room').forEach(room => {
+                renderZones(+room.dataset.room);
+                renderRuler(+room.dataset.room);
+            });
+        }, 150);
+    });
+
     load();
     setInterval(() => { if (!editMode) load(); }, 30000);
 })();
@@ -1284,6 +1324,7 @@
 
     .floor-scroll { overflow:auto; border-radius:18px; border:1px solid #e7e5e4; box-shadow:0 1px 3px rgba(0,0,0,.05), inset 0 1px 0 #fff; background:#fff; }
     .floor-room { position:relative; background-color:#fcfcfb; background-position:center; background-repeat:no-repeat; background-size:cover;
+        width:800px; height:560px; /* fallback until JS computes the fitted scale */
         transition:box-shadow .2s; }
     .floor-room .grid-overlay { position:absolute; inset:0; pointer-events:none;
         background-image:linear-gradient(rgba(120,113,108,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(120,113,108,.06) 1px,transparent 1px);

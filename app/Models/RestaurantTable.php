@@ -43,18 +43,30 @@ class RestaurantTable extends Model
      */
     public static function sizeForCapacity(string $shape, int $maxCapacity): array
     {
-        $max = max(1, $maxCapacity);
+        // 1 plan unit = 1 cm. Gastronomy standard: ~60 cm of table edge per
+        // cover. Sizes grow strictly with capacity (no upper cap) so seats are
+        // always spaced ≥ SEAT_SPAN apart and never overlap — this holds for any
+        // capacity, from a 2-top up to a 100-seat banquet table.
+        $n = max(1, $maxCapacity);
+
+        $seatSpan = 60;   // linear space per cover (cm)
 
         if ($shape === 'round') {
-            $d = (int) min(190, 84 + $max * 9);
+            // Circumference must fit n covers: π·d ≥ n·seatSpan.
+            $d = (int) max(90, (int) ceil($n * $seatSpan / M_PI));
 
             return [$d, $d];
         }
 
-        // Two long sides seat ~half each; the table gets longer with capacity.
-        $width = (int) min(260, 96 + (int) ceil($max / 2) * 28);
+        // Rectangular: guests sit on the two long sides; for ≥7 covers the short
+        // ends ("heads") are used too. Length grows with the busiest long side.
+        $heads = $n >= 8 ? 2 : ($n % 2 === 1 ? 1 : 0);
+        $perSide = (int) ceil(($n - $heads) / 2);
 
-        return [$width, 88];
+        $length = max(70, $perSide * $seatSpan);
+        $depth = $n <= 2 ? 70 : ($n >= 8 ? 90 : 80);
+
+        return [$length, $depth];
     }
 
     public function location(): BelongsTo

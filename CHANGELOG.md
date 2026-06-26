@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.35.0] – 2026-06-26
+
+### Neu
+- **Tischplan skaliert mit der Raumgröße:** Das Zeichen-Canvas passt sich jetzt
+  dynamisch der verfügbaren Breite und der hinterlegten Raumgröße an (1 Einheit =
+  1 cm). Unter Einstellungen → Räume eingetragene Meter (Breite × Tiefe) bestimmen
+  direkt die Größe und Proportion der Zeichenfläche – große Räume bekommen eine
+  große Fläche, alle Tische/Zonen skalieren proportional mit.
+- **Realistische, dynamische Tischmaße:** Tischgrößen folgen jetzt gastronomischen
+  Standardmaßen (~60 cm pro Gedeck, Tiefe 80–90 cm; runde Tische nach Umfang) und
+  wachsen unbegrenzt mit der Personenzahl. Dadurch überlappen die Stühle bei keiner
+  Platzzahl mehr – vom 2er-Tisch bis zur Banketttafel. Bestehende Tische werden per
+  Migration auf die neuen Maße umgerechnet.
+
+### Behoben
+- **Zonen ließen sich nicht anlegen/bearbeiten:** Das Anlegen, Ändern und Löschen
+  von Flächenzonen warf serverseitig einen Fehler (falscher Audit-Log-Aufruf) und
+  brach mit „Fehler 500" ab. Zonen sind jetzt voll bearbeitbar (anlegen, umbenennen,
+  Farbe/Transparenz, Eckpunkte verschieben, löschen); abgesichert durch Tests.
+
 ## [1.34.3] – 2026-06-26
 
 ### Behoben

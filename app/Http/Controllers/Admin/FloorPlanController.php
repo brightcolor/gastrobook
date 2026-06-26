@@ -167,13 +167,27 @@ class FloorPlanController extends Controller
         $this->authorizeRoom($room);
 
         $data = $request->validate([
-            'plan_width' => ['required', 'integer', 'min:200', 'max:5000'],
-            'plan_height' => ['required', 'integer', 'min:200', 'max:5000'],
+            'plan_width' => ['nullable', 'integer', 'min:200', 'max:50000'],
+            'plan_height' => ['nullable', 'integer', 'min:200', 'max:50000'],
             'plan_width_m' => ['nullable', 'numeric', 'min:1', 'max:500'],
             'plan_height_m' => ['nullable', 'numeric', 'min:1', 'max:500'],
         ]);
 
-        $room->update($data);
+        // 1 plan unit = 1 cm. When real-world meters are given they drive the
+        // logical canvas size so it scales with the actual room; otherwise an
+        // explicit pixel size (or the existing value) is kept.
+        $update = [
+            'plan_width_m' => $data['plan_width_m'] ?? null,
+            'plan_height_m' => $data['plan_height_m'] ?? null,
+            'plan_width' => ! empty($data['plan_width_m'])
+                ? (int) round($data['plan_width_m'] * 100)
+                : ($data['plan_width'] ?? $room->plan_width),
+            'plan_height' => ! empty($data['plan_height_m'])
+                ? (int) round($data['plan_height_m'] * 100)
+                : ($data['plan_height'] ?? $room->plan_height),
+        ];
+
+        $room->update($update);
         $this->audit->log('floorplan.room_size.updated', null, null, null, ['room_id' => $room->id]);
 
         return response()->json(['ok' => true, 'room' => [

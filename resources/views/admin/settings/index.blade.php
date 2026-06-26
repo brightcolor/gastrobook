@@ -805,11 +805,12 @@
 // ── Raumgröße in Metern ────────────────────────────────────────────────────
 async function saveRoomSize(roomId) {
     const inputs = document.querySelectorAll('.room-size-m[data-room="' + roomId + '"]');
-    const body = { plan_width: 1000, plan_height: 700 };
+    // Only send the meter fields — the server derives the logical canvas size
+    // (1 unit = 1 cm) from them so the floor plan scales with the real room.
+    const body = {};
     inputs.forEach(inp => {
         const v = parseFloat(inp.value);
-        if (! isNaN(v)) body[inp.dataset.field] = v;
-        else body[inp.dataset.field] = null;
+        body[inp.dataset.field] = isNaN(v) ? null : v;
     });
     const csrf = document.querySelector('meta[name=csrf-token]')?.content
                || document.querySelector('input[name=_token]')?.value || '';

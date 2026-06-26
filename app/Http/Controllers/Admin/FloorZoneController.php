@@ -58,7 +58,7 @@ class FloorZoneController extends Controller
             'points' => $data['points'],
         ]);
 
-        $this->audit->log('zone.created', ['name' => $zone->name]);
+        $this->audit->log('zone.created', $zone, null, null, ['name' => $zone->name]);
 
         return response()->json($zone->only(['id', 'room_id', 'name', 'color', 'opacity', 'points', 'sort_order']), 201);
     }
@@ -77,7 +77,7 @@ class FloorZoneController extends Controller
         ]);
 
         $zone->update($data);
-        $this->audit->log('zone.updated', ['id' => $zone->id]);
+        $this->audit->log('zone.updated', $zone);
 
         return response()->json($zone->only(['id', 'room_id', 'name', 'color', 'opacity', 'points', 'sort_order']));
     }
@@ -87,7 +87,7 @@ class FloorZoneController extends Controller
         $location = $this->context->location();
         abort_if($location === null || $zone->location_id !== $location->id, 403);
 
-        $this->audit->log('zone.deleted', ['name' => $zone->name]);
+        $this->audit->log('zone.deleted', $zone, null, null, ['name' => $zone->name]);
         $zone->delete();
 
         return response()->json(['ok' => true]);
