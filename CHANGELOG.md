@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.51.1] – 2026-06-26
+
+### Behoben (Tiefen-Audit, 3. Runde)
+- **Warteliste: Doppel-Annahme verhindert** – `WaitlistService::acceptOffer`
+  prüfte den Angebotsstatus vor der Transaktion und ohne Sperre. Ein
+  Gast-Doppelklick auf den Annehmen-Link konnte zwei Reservierungen aus einem
+  einzigen Angebot erzeugen (Doppelbuchung, zwei Tische belegt). Das Angebot
+  wird jetzt innerhalb der Transaktion per `lockForUpdate` gesperrt und erneut
+  geprüft; nur die erste Annahme erstellt eine Reservierung.
+
 ## [1.51.0] – 2026-06-26
 
 ### Sicherheit / Behoben (Tiefen-Audit)

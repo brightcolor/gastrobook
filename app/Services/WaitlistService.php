@@ -115,11 +115,22 @@ class WaitlistService
      */
     public function acceptOffer(WaitlistOffer $offer): Reservation
     {
+        // Fast pre-check for the common case; the authoritative check happens
+        // under a row lock below.
         if ($offer->status !== 'open' || $offer->offer_expires_at->isPast()) {
             throw ValidationException::withMessages(['offer' => __('Dieses Angebot ist nicht mehr gültig.')]);
         }
 
         return DB::transaction(function () use ($offer) {
+            // Lock the offer row and re-check inside the transaction. Without this
+            // two concurrent accepts (guest double-clicks the link) could both pass
+            // the pre-check and each create a reservation from a single offer
+            // (= double booking, two tables consumed).
+            $offer = WaitlistOffer::withoutGlobalScopes()->lockForUpdate()->find($offer->id);
+            if ($offer === null || $offer->status !== 'open' || $offer->offer_expires_at->isPast()) {
+                throw ValidationException::withMessages(['offer' => __('Dieses Angebot ist nicht mehr gültig.')]);
+            }
+
             $entry = $offer->entry()->withoutGlobalScope('tenant')->first();
             $location = $entry->location()->withoutGlobalScope('tenant')->first();
 
