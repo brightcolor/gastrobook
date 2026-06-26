@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BillingRequestController;
 use App\Http\Controllers\Admin\BoardController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\DirectDebitController;
 use App\Http\Controllers\Admin\EventAdminController;
 use App\Http\Controllers\Admin\FloorPlanController;
 use App\Http\Controllers\Admin\FloorZoneController;
@@ -26,6 +27,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\RegistrationController;
+use App\Http\Controllers\GoCardlessWebhookController;
 use App\Http\Controllers\Public\FeedbackController;
 use App\Http\Controllers\Public\GuestPortalController;
 use App\Http\Controllers\Public\MarketingController;
@@ -89,6 +91,7 @@ Route::get('/pay/reservation/{code}/{token}', [PaymentController::class, 'checko
 Route::get('/pay/paypal/return/{intent}', [PaymentController::class, 'paypalReturn'])
     ->middleware('throttle:booking')->name('pay.paypal.return');
 Route::post('/webhooks/stripe', [PaymentController::class, 'stripeWebhook'])->name('webhooks.stripe');
+Route::post('/webhooks/gocardless', [GoCardlessWebhookController::class, 'handle'])->name('webhooks.gocardless');
 
 Route::get('/reservation/{code}/confirmed/{token}', [PublicBookingController::class, 'confirmation'])->name('booking.confirmation');
 Route::get('/reservation/{code}/manage/{token}', [PublicBookingController::class, 'manage'])->name('booking.manage');
@@ -274,6 +277,14 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
     // Onboarding wizard (new tenants only)
     Route::get('/onboarding', [OnboardingController::class, 'show'])->name('onboarding.show');
     Route::post('/onboarding/complete', [OnboardingController::class, 'complete'])->name('onboarding.complete');
+
+    // Billing / SEPA direct debit (tenant subscription)
+    Route::middleware('permission:billing.manage')->group(function () {
+        Route::get('/billing', [DirectDebitController::class, 'show'])->name('billing.show');
+        Route::get('/billing/direct-debit/setup', [DirectDebitController::class, 'setup'])->name('billing.directdebit.setup');
+        Route::get('/billing/direct-debit/complete', [DirectDebitController::class, 'complete'])->name('billing.directdebit.complete');
+        Route::post('/billing/direct-debit/cancel', [DirectDebitController::class, 'cancel'])->name('billing.directdebit.cancel');
+    });
 
     // Own account / danger zone
     Route::get('/account', [AccountController::class, 'show'])->name('account.show');
