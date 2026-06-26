@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\WebhookEndpoint;
 use App\Services\AuditLogger;
+use App\Support\OutboundUrlGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -27,7 +28,15 @@ class WebhookApiController extends Controller
         abort_unless($request->user()->tokenCan('webhooks:manage'), 403);
 
         $validated = $request->validate([
-            'url' => ['required', 'url:https'],
+            'url' => [
+                'required', 'url:https',
+                // SSRF guard: reject URLs resolving to private/loopback/reserved IPs.
+                function (string $attr, mixed $value, callable $fail) {
+                    if (! is_string($value) || ! OutboundUrlGuard::isAllowed($value)) {
+                        $fail(__('Die URL muss öffentlich erreichbar sein (keine internen/privaten Adressen).'));
+                    }
+                },
+            ],
             'events' => ['required', 'array', 'min:1'],
             'events.*' => ['string', 'max:64'],
         ]);

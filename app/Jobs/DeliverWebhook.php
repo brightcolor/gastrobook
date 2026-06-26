@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\WebhookDelivery;
+use App\Support\OutboundUrlGuard;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -37,11 +38,22 @@ class DeliverWebhook implements ShouldQueue
             return;
         }
 
+        // SSRF guard: re-check at delivery time (defeats DNS-rebinding) that the
+        // target resolves to a public address. Disable the endpoint so we don't
+        // keep retrying a forbidden target.
+        if (! OutboundUrlGuard::isAllowed($endpoint->url)) {
+            $delivery->update(['status' => 'failed', 'response_body' => 'blocked: non-public URL']);
+            $endpoint->update(['is_active' => false, 'disabled_at' => now()]);
+
+            return;
+        }
+
         $body = json_encode($delivery->payload, JSON_UNESCAPED_SLASHES);
         $signature = hash_hmac('sha256', $body, $endpoint->secret);
 
         try {
             $response = Http::timeout(10)
+                ->withoutRedirecting()
                 ->withHeaders([
                     'Content-Type' => 'application/json',
                     'X-Gastrobook-Event' => $delivery->event,

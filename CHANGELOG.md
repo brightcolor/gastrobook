@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.51.0] – 2026-06-26
+
+### Sicherheit / Behoben (Tiefen-Audit)
+- **SSRF in ausgehenden Webhooks geschlossen** – Endpoint-URLs wurden nur als
+  `https` geprüft. Ein Tenant-Admin konnte interne Adressen hinterlegen
+  (`169.254.169.254`, `localhost`, private IPs); der Zustell-Job rief sie auf
+  und speicherte die Antwort (reflektiertes SSRF). Neuer `OutboundUrlGuard`
+  lehnt URLs ab, die auf private/loopback/link-local/reservierte IPs auflösen
+  (sowie URLs mit eingebetteten Zugangsdaten) – geprüft **beim Anlegen und bei
+  der Zustellung** (gegen DNS-Rebinding); der HTTP-Client folgt keinen Redirects
+  mehr.
+- **Doppel-Erstattung verhindert** – `RefundService::process()` war nur durch
+  einen Status-Check geschützt und ließ sich für eine bereits laufende Erstattung
+  erneut ausführen. Bei gleichzeitigem Lauf (Sofort-Verarbeitung + geplanter
+  Batch, oder Wiederholen-Button + Batch) konnte der Anbieter zweimal erstatten.
+  Jetzt sichert ein atomarer `approved→processing`-Compare-and-Swap, dass nur ein
+  Aufruf die Anbieter-Erstattung ausführt.
+
 ## [1.50.0] – 2026-06-26
 
 ### Neu / Geschlossene Flow-Lücken
