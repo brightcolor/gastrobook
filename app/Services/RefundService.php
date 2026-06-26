@@ -138,11 +138,22 @@ class RefundService
         if ($refund->status === 'completed') {
             return true;
         }
-        if (! in_array($refund->status, ['approved', 'processing'], true)) {
-            return false;
+
+        // Atomically claim the refund: only the caller that flips approved→processing
+        // in a single UPDATE proceeds. Without this compare-and-swap two concurrent
+        // runs (immediate processing + scheduled batch, or the retry button + batch)
+        // could both reach $provider->refund() and refund the guest twice.
+        $claimed = Refund::withoutGlobalScopes()
+            ->whereKey($refund->id)
+            ->where('status', 'approved')
+            ->update(['status' => 'processing']);
+
+        if ($claimed === 0) {
+            // Someone else already claimed/finished it (or it isn't approved).
+            return $refund->fresh()?->status === 'completed';
         }
 
-        $refund->update(['status' => 'processing']);
+        $refund->setAttribute('status', 'processing');
 
         $tenant = Tenant::find($refund->tenant_id);
         $provider = $tenant ? $this->payments->provider($tenant, $refund->provider) : null;
