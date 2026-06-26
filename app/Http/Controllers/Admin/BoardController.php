@@ -104,10 +104,17 @@ class BoardController extends Controller
 
         $base = Reservation::query()->where('location_id', $location->id);
 
-        // Today's active reservations → timeline
+        $needsAttentionStatuses = [
+            ReservationStatus::Requested->value,
+            ReservationStatus::PendingConfirmation->value,
+            ReservationStatus::PaymentPending->value,
+        ];
+
+        // Today's active reservations → timeline (excludes unconfirmed requests shown in NEU & OFFEN)
         $timeline = (clone $base)
             ->whereDate('reservation_date', $today)
             ->whereIn('status', ReservationStatus::activeStatuses())
+            ->whereNotIn('status', $needsAttentionStatuses)
             ->with($with)
             ->orderBy('start_at')
             ->get()

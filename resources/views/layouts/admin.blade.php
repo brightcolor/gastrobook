@@ -119,7 +119,7 @@
             @yield('content')
 
             <footer class="mt-10 text-center text-[11px] text-stone-400">
-                Swayy v{{ config('version.number') }}
+                Swayy v{{ config('version.number') }} &middot; <span class="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600">Beta</span>
             </footer>
         </main>
     </div>
