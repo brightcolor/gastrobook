@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.49.0] – 2026-06-26
+
+### Neu
+- **Standort-Verwaltung im Admin** (`/admin/locations`, Recht `locations.manage`) –
+  bisher konnte ein weiterer Standort nur per SaaS-Admin oder DB angelegt werden,
+  obwohl Tarif-Limit, Standort-Umschalter und pro-Standort-Einstellungen längst
+  existierten (Flow-Sackgasse). Jetzt können Inhaber/Admins Standorte **anlegen,
+  umbenennen/bearbeiten und aktivieren/deaktivieren**:
+  - Tarif-Limit-Prüfung über `PlanLimitService` (Starter/Professional 1,
+    Multi-Location 5, Enterprise unbegrenzt) inkl. Hinweis bei erreichtem Limit.
+  - Beim Anlegen wird automatisch der `LocationSettings`-Datensatz erzeugt; der
+    Slug ist pro Mandant eindeutig und bleibt beim Umbenennen stabil
+    (Buchungslinks bleiben gültig).
+  - Der letzte aktive Standort kann nicht deaktiviert werden (kein Lockout).
+  - Neuer Navigationspunkt „Standorte".
+
 ## [1.48.0] – 2026-06-26
 
 ### Geändert

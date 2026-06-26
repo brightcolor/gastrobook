@@ -96,6 +96,7 @@ Fertige Docker-Images baut die CI automatisch: `ghcr.io/brightcolor/gastrobook:l
 | Modul | Status |
 |---|---|
 | Multi-Tenancy (Tenants → Standorte) mit globalem Scope + expliziten Checks | ✅ |
+| Standort-Verwaltung im Admin (anlegen/umbenennen/aktivieren, Tarif-Limit) | ✅ |
 | SaaS-Adminbereich (Mandanten, Tarife, Status, Supportzugriff mit Auditlog) | ✅ |
 | Tarif-/Limit-System (Trial, Starter, Professional, Multi-Location, Enterprise) | ✅ |
 | Rollen & Rechte (8 Tenant-Rollen, 4 SaaS-Rollen, Standorteinschränkung) | ✅ |
