@@ -16,13 +16,14 @@ use Illuminate\Support\Carbon;
  * @property TenantType $type
  * @property Carbon|null $trial_ends_at
  * @property Carbon|null $trial_warning_sent_at
+ * @property Carbon|null $onboarding_completed_at
  */
 class Tenant extends Model
 {
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'name', 'slug', 'type', 'plan_id', 'status', 'trial_ends_at', 'trial_warning_sent_at',
+        'name', 'slug', 'type', 'plan_id', 'status', 'trial_ends_at', 'trial_warning_sent_at', 'onboarding_completed_at',
         'default_locale', 'default_currency',
         'brand_logo_path', 'brand_primary_color', 'brand_accent_color',
         'mail_from_name', 'mail_reply_to',
@@ -36,6 +37,7 @@ class Tenant extends Model
             'type' => TenantType::class,
             'trial_ends_at' => 'datetime',
             'trial_warning_sent_at' => 'datetime',
+            'onboarding_completed_at' => 'datetime',
             'settings' => 'array',
             'feature_overrides' => 'array',
         ];

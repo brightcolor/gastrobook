@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\EventAdminController;
 use App\Http\Controllers\Admin\FloorPlanController;
 use App\Http\Controllers\Admin\FloorZoneController;
 use App\Http\Controllers\Admin\GuestController;
+use App\Http\Controllers\Admin\OnboardingController;
 use App\Http\Controllers\Admin\RefundController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ReservationBookController;
@@ -266,6 +267,10 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
     // Reports
     Route::get('/reports', [ReportController::class, 'index'])
         ->middleware('permission:reports.view')->name('reports.index');
+
+    // Onboarding wizard (new tenants only)
+    Route::get('/onboarding', [OnboardingController::class, 'show'])->name('onboarding.show');
+    Route::post('/onboarding/complete', [OnboardingController::class, 'complete'])->name('onboarding.complete');
 
     // Settings (rooms, tables, hours, booking rules)
     Route::middleware('permission:tables.manage')->group(function () {

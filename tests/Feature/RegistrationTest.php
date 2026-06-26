@@ -29,7 +29,7 @@ class RegistrationTest extends TestCase
             'privacy_accepted' => '1',
         ]);
 
-        $response->assertRedirect(route('admin.dashboard'));
+        $response->assertRedirect(route('admin.onboarding.show'));
         $this->assertAuthenticated();
 
         $tenant = Tenant::where('slug', 'trattoria-bella')->firstOrFail();

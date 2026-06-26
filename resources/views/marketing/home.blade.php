@@ -428,7 +428,7 @@ details.faq[open] .fi{ transform:rotate(45deg); }
             <div class="absolute left-[16%] right-[16%] top-7 hidden h-px md:block" style="background:linear-gradient(90deg,transparent,var(--line),var(--line),transparent)"></div>
             @foreach([
                 ['01','Konto erstellen','Betrieb registrieren — der Testzeitraum startet sofort, ganz ohne Zahlungsdaten.'],
-                ['02','Einrichten','Öffnungszeiten, Tische oder Leistungen anlegen — in wenigen Minuten erledigt.'],
+                ['02','Einrichten','Geführter Assistent führt durch Betriebstyp, Öffnungszeiten und erste Tische oder Mitarbeiter — fertig in Minuten.'],
                 ['03','Link teilen','Buchungslink auf Website, Social oder Maps — ab jetzt läuft alles digital.'],
             ] as $i => [$n,$t,$d])
                 <div class="rv d{{ $i+1 }} relative text-center">

@@ -1,6 +1,27 @@
 @extends('layouts.admin')
 @section('title', 'Dashboard')
 @section('content')
+@if($onboardingPending ?? false)
+<div class="mb-5 flex items-center justify-between gap-4 rounded-2xl bg-teal-600 px-5 py-4 text-white shadow-sm">
+    <div>
+        <p class="font-bold">Einrichtung nicht abgeschlossen</p>
+        <p class="mt-0.5 text-sm text-teal-100">Öffnungszeiten und mindestens ein Tisch / Mitarbeiter fehlen noch, bevor Gäste buchen können.</p>
+    </div>
+    <div class="flex shrink-0 gap-2">
+        <a href="{{ route('admin.onboarding.show') }}"
+           class="rounded-xl bg-white px-4 py-2 text-sm font-bold text-teal-700 hover:bg-teal-50">
+            Setup starten →
+        </a>
+        <form method="POST" action="{{ route('admin.onboarding.complete') }}">
+            @csrf
+            <button class="rounded-xl border border-teal-400 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700">
+                Überspringen
+            </button>
+        </form>
+    </div>
+</div>
+@endif
+
 <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
     <h1 class="text-2xl font-bold">{{ $location->name }} – Heute</h1>
     <a href="{{ route('admin.reservations.create') }}"

@@ -43,7 +43,6 @@ class RegistrationController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
-        return redirect()->route('admin.dashboard')
-            ->with('success', __('Willkommen bei Swayy! Ihr Testzeitraum läuft 30 Tage – richten Sie als Erstes Öffnungszeiten und Tische ein.'));
+        return redirect()->route('admin.onboarding.show');
     }
 }

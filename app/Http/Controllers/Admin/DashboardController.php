@@ -45,7 +45,10 @@ class DashboardController extends Controller
             ->groupBy('source')
             ->pluck('cnt', 'source');
 
-        return view('admin.dashboard', compact('location', 'stats', 'upcoming', 'overdue', 'todayReservations', 'sources'));
+        $tenant = $location->tenant;
+        $onboardingPending = $tenant->onboarding_completed_at === null;
+
+        return view('admin.dashboard', compact('location', 'stats', 'upcoming', 'overdue', 'todayReservations', 'sources', 'onboardingPending'));
     }
 
     public function stats(TenantContext $context): JsonResponse
