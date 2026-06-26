@@ -335,8 +335,59 @@
                         {{ $sh->closed ? '🔒 geschlossen' : substr($sh->opens_at, 0, 5) . '–' . substr($sh->closes_at, 0, 5) }}
                         @if($sh->label) ({{ $sh->label }}) @endif
                     </span>
+                    <form method="POST" action="{{ route('admin.settings.special-hours.delete', $sh) }}"
+                          onsubmit="return confirm('Sonderöffnungszeit löschen?')">
+                        @csrf @method('DELETE')
+                        <button class="text-xs text-red-500 hover:text-red-700">Löschen</button>
+                    </form>
                 </div>
             @endforeach
+        </div>
+    </div>
+
+    {{-- Sperrzeiten (Blackouts) --}}
+    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
+        <h2 class="mb-3 font-bold">Sperrzeiten <span class="tip" tabindex="0" data-tip="Blockiere einen Zeitraum komplett (z. B. Betriebsfeier, Renovierung) oder reduziere die Gästezahl. Sperrzeiten gelten für den ganzen Standort oder einen einzelnen Raum und blockieren neue Online-Buchungen im Zeitraum.">?</span></h2>
+        <form method="POST" action="{{ route('admin.settings.blackouts.store') }}" class="grid grid-cols-2 gap-2 text-sm">
+            @csrf
+            <label class="block">Von
+                <input type="datetime-local" name="starts_at" required class="mt-1 w-full rounded-lg border-stone-200">
+            </label>
+            <label class="block">Bis
+                <input type="datetime-local" name="ends_at" required class="mt-1 w-full rounded-lg border-stone-200">
+            </label>
+            <label class="block">Raum (optional)
+                <select name="room_id" class="mt-1 w-full rounded-lg border-stone-200">
+                    <option value="">Ganzer Standort</option>
+                    @foreach($rooms as $room)
+                        <option value="{{ $room->id }}">{{ $room->name }}</option>
+                    @endforeach
+                </select>
+            </label>
+            <label class="block">Max. Gäste (optional)
+                <input type="number" name="reduce_covers_to" min="0" placeholder="leer = voll gesperrt" class="mt-1 w-full rounded-lg border-stone-200">
+            </label>
+            <input type="text" name="reason" placeholder="Grund (z. B. Betriebsfeier)" class="col-span-2 rounded-lg border-stone-200">
+            <button class="col-span-2 rounded-lg bg-stone-900 px-4 py-2 font-semibold text-white">Sperrzeit anlegen</button>
+        </form>
+        <div class="mt-3 space-y-1 text-sm">
+            @forelse($blackouts as $bo)
+                <div class="flex items-center justify-between rounded-lg bg-stone-50 px-3 py-2">
+                    <span>
+                        {{ $bo->starts_at->setTimezone($location->timezone)->format('d.m.Y H:i') }}–{{ $bo->ends_at->setTimezone($location->timezone)->format('d.m.Y H:i') }}
+                        · {{ $bo->room?->name ?? 'ganzer Standort' }}
+                        · {{ $bo->reduce_covers_to === null ? 'voll gesperrt' : 'max. '.$bo->reduce_covers_to.' Gäste' }}
+                        @if($bo->reason) ({{ $bo->reason }}) @endif
+                    </span>
+                    <form method="POST" action="{{ route('admin.settings.blackouts.delete', $bo) }}"
+                          onsubmit="return confirm('Sperrzeit löschen?')">
+                        @csrf @method('DELETE')
+                        <button class="text-xs text-red-500 hover:text-red-700">Löschen</button>
+                    </form>
+                </div>
+            @empty
+                <p class="text-xs text-stone-400">Keine aktiven Sperrzeiten.</p>
+            @endforelse
         </div>
     </div>
 </div>
@@ -353,8 +404,20 @@
 
         @foreach($location->rooms()->where('is_active', true)->orderBy('sort_order')->get() as $room)
         <div class="mb-3 flex flex-wrap items-end gap-3 rounded-xl bg-stone-50 p-3 text-sm">
-            <span class="font-semibold text-stone-800">{{ $room->name }}</span>
-            @if($room->is_outdoor)<span class="rounded-full bg-sky-100 px-2 py-0.5 text-xs text-sky-700">Außen</span>@endif
+            <form method="POST" action="{{ route('admin.settings.rooms.update', $room) }}" class="flex items-end gap-2">
+                @csrf @method('PUT')
+                <div>
+                    <label class="mb-1 block text-xs font-semibold text-stone-500">Name</label>
+                    <input type="text" name="name" value="{{ $room->name }}" required class="w-36 rounded-lg border-stone-200 text-sm">
+                </div>
+                <label class="flex items-center gap-1 pb-2 text-xs"><input type="checkbox" name="is_outdoor" value="1" @checked($room->is_outdoor)> Außen</label>
+                <button class="rounded-lg bg-stone-800 px-3 py-2 text-xs font-semibold text-white hover:bg-stone-700">Speichern</button>
+            </form>
+            <form method="POST" action="{{ route('admin.settings.rooms.delete', $room) }}" class="pb-2"
+                  onsubmit="return confirm('Raum löschen? Das geht nur, wenn keine Tische mehr enthalten sind.')">
+                @csrf @method('DELETE')
+                <button class="text-xs text-red-500 hover:text-red-700">Löschen</button>
+            </form>
             <div class="ml-auto flex items-end gap-2">
                 <div>
                     <label class="mb-1 block text-xs font-semibold text-stone-500">Breite (m) <span class="tip" tabindex="0" data-tip="Echte Raummaße in Metern – optional, aber fein: Das System zeigt dann im Tischplan einen Maßstab-Ruler, damit Tische maßstabsgetreu dargestellt werden.">?</span></label>
@@ -385,7 +448,33 @@
             <label class="flex items-center gap-1 pb-2 text-xs"><input type="checkbox" name="is_outdoor" value="1"> Außen <span class="tip" tabindex="0" data-tip="Markiert diesen Raum als Außenbereich (Terrasse, Biergarten …). Diese Info hilft Gästen beim Wählen ihres Lieblingsplatzes.">?</span></label>
             <button class="rounded-lg bg-stone-900 px-4 py-2 font-semibold text-white">Anlegen</button>
         </form>
+        @error('room')<p class="mt-2 text-xs text-red-600">{{ $message }}</p>@enderror
         <p class="mt-2 text-xs text-stone-400">Breite/Tiefe in Metern ist optional – ermöglicht einen Maßstab-Ruler im Tischplan.</p>
+    </div>
+
+    {{-- Tische bearbeiten --}}
+    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100 lg:col-span-2">
+        <h2 class="mb-1 font-bold">Tische bearbeiten</h2>
+        <p class="mb-3 text-xs text-stone-500">Name, Kapazität und Eigenschaften ändern. Position & Anlegen weiterhin im <a href="{{ route('admin.floorplan.index') }}" class="font-semibold text-teal-700 underline">Tischplan</a>.</p>
+        <div class="space-y-2">
+            @foreach($tables as $t)
+                <form method="POST" action="{{ route('admin.settings.tables.update', $t) }}" class="flex flex-wrap items-end gap-2 rounded-xl bg-stone-50 p-2 text-sm">
+                    @csrf @method('PUT')
+                    <span class="pb-2 text-xs text-stone-400">{{ $t->room?->name }}</span>
+                    <div><label class="block text-xs text-stone-500">Name</label>
+                        <input name="name" value="{{ $t->name }}" required class="w-24 rounded-lg border-stone-200 text-sm"></div>
+                    <div><label class="block text-xs text-stone-500">Min</label>
+                        <input type="number" name="min_capacity" value="{{ $t->min_capacity }}" min="1" max="50" required class="w-16 rounded-lg border-stone-200 text-sm"></div>
+                    <div><label class="block text-xs text-stone-500">Max</label>
+                        <input type="number" name="max_capacity" value="{{ $t->max_capacity }}" min="1" max="50" required class="w-16 rounded-lg border-stone-200 text-sm"></div>
+                    <label class="flex items-center gap-1 pb-2 text-xs"><input type="checkbox" name="online_bookable" value="1" @checked($t->online_bookable)> Online</label>
+                    <label class="flex items-center gap-1 pb-2 text-xs"><input type="checkbox" name="joinable" value="1" @checked($t->joinable)> Komb.</label>
+                    <label class="flex items-center gap-1 pb-2 text-xs"><input type="checkbox" name="accessible" value="1" @checked($t->accessible)> Barrierefrei</label>
+                    <button class="rounded-lg bg-stone-800 px-3 py-2 text-xs font-semibold text-white hover:bg-stone-700">Speichern</button>
+                </form>
+            @endforeach
+            @if($tables->isEmpty())<p class="text-xs text-stone-400">Noch keine Tische – lege sie im Tischplan an.</p>@endif
+        </div>
     </div>
 
     {{-- Tags --}}

@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.50.0] – 2026-06-26
+
+### Neu / Geschlossene Flow-Lücken
+Aus dem Vollständigkeits-Audit – Funktionen, die im Datenmodell/Recht vorhanden,
+aber nie über die Oberfläche bedienbar waren:
+
+- **Sperrzeiten (Blackouts) verwalten** (`blackouts.manage`) – Die Logik war
+  längst in der Verfügbarkeitsprüfung verdrahtet (Voll-Sperre + Cover-Reduktion),
+  aber es gab keine UI. Jetzt: Sperrzeiten pro Standort **oder** Raum anlegen
+  (voll gesperrt oder max. Gästezahl) und löschen, im Tab „Öffnungszeiten".
+- **Events bearbeiten** – Bisher nur Status änderbar; jetzt vollständiges Edit
+  (Titel, Beschreibung, Datum/Zeit, Kapazität, Preis, öffentlich) auf der
+  Event-Detailseite. Kapazität kann nicht unter bereits verkaufte Tickets fallen;
+  der Slug bleibt stabil (öffentliche Links bleiben gültig).
+- **Räume umbenennen & löschen** – bisher nur anlegbar. Löschen ist gesperrt,
+  solange noch Tische im Raum sind (kein versehentlicher Tisch-/Historienverlust).
+- **Tische bearbeiten** – Name, Min/Max-Kapazität und Eigenschaften (online
+  buchbar, kombinierbar, barrierefrei) änderbar (Tab „Räume & Tags"); Anlegen
+  und Positionieren weiterhin im Tischplan.
+- **Sonderöffnungszeiten löschen** – bisher nur hinzufügbar.
+
 ## [1.49.0] – 2026-06-26
 
 ### Neu

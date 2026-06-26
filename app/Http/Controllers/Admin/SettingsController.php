@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\TenantType;
 use App\Http\Controllers\Controller;
+use App\Models\BlackoutPeriod;
 use App\Models\DepositRule;
 use App\Models\IntegrationConnection;
 use App\Models\OpeningHour;
 use App\Models\RestaurantTable;
+use App\Models\Room;
 use App\Models\SpecialOpeningHour;
 use App\Models\TableCombination;
 use App\Services\AuditLogger;
@@ -16,6 +18,7 @@ use App\Services\PlanLimitService;
 use App\Services\Sms\SevenIoProvider;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Storage;
 
@@ -76,6 +79,7 @@ class SettingsController extends Controller
             'openingHours' => $location->openingHours()->orderBy('weekday')->orderBy('opens_at')->get(),
             'specialHours' => $location->specialOpeningHours()->where('date', '>=', now()->subDay())->orderBy('date')->get(),
             'combinations' => $location->tableCombinations()->with('tables')->get(),
+            'blackouts' => $location->blackoutPeriods()->with('room')->where('ends_at', '>=', now())->orderBy('starts_at')->get(),
         ]);
     }
 
@@ -688,6 +692,135 @@ class SettingsController extends Controller
         $combination->delete();
 
         return $this->saved($request, __('Tischkombination gelöscht.'));
+    }
+
+    public function deleteSpecialHours(SpecialOpeningHour $special, Request $request)
+    {
+        abort_if($special->location_id !== $this->context->locationId(), 404);
+        $this->audit->log('special_hours.deleted', $special, [
+            'date' => $special->getRawOriginal('date'),
+            'label' => $special->label,
+        ]);
+        $special->delete();
+
+        return $this->saved($request, __('Sonderöffnungszeit gelöscht.'), true);
+    }
+
+    public function storeBlackout(Request $request)
+    {
+        $location = $this->context->location();
+        abort_if($location === null, 404);
+
+        $validated = $request->validate([
+            'starts_at' => ['required', 'date'],
+            'ends_at' => ['required', 'date', 'after:starts_at'],
+            'room_id' => ['nullable', 'integer'],
+            'reduce_covers_to' => ['nullable', 'integer', 'min:0', 'max:10000'],
+            'reason' => ['nullable', 'string', 'max:200'],
+            'staff_note' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        // A room filter, if given, must belong to this location.
+        $roomId = null;
+        if (! empty($validated['room_id'])) {
+            abort_unless($location->rooms()->where('id', $validated['room_id'])->exists(), 422);
+            $roomId = (int) $validated['room_id'];
+        }
+
+        // Interpret the wall-clock input in the location timezone, store UTC
+        // (the availability service compares against UTC start/end).
+        $tz = $location->timezone;
+        $blackout = $location->blackoutPeriods()->create([
+            'tenant_id' => $location->tenant_id,
+            'room_id' => $roomId,
+            'starts_at' => Carbon::parse($validated['starts_at'], $tz)->utc(),
+            'ends_at' => Carbon::parse($validated['ends_at'], $tz)->utc(),
+            'reduce_covers_to' => $validated['reduce_covers_to'] ?? null,
+            'reason' => $validated['reason'] ?? null,
+            'staff_note' => $validated['staff_note'] ?? null,
+        ]);
+
+        $this->audit->log('blackout.created', $blackout, null, $validated);
+
+        return $this->saved($request, __('Sperrzeit gespeichert.'), true);
+    }
+
+    public function deleteBlackout(BlackoutPeriod $blackout, Request $request)
+    {
+        abort_if($blackout->location_id !== $this->context->locationId(), 404);
+        $this->audit->log('blackout.deleted', $blackout, ['reason' => $blackout->reason]);
+        $blackout->delete();
+
+        return $this->saved($request, __('Sperrzeit gelöscht.'), true);
+    }
+
+    public function updateRoom(Request $request, Room $room)
+    {
+        abort_if($room->location_id !== $this->context->locationId(), 404);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:80'],
+            'is_outdoor' => ['nullable', 'boolean'],
+        ]);
+
+        $old = ['name' => $room->name, 'is_outdoor' => $room->is_outdoor];
+        $room->update([
+            'name' => $validated['name'],
+            'is_outdoor' => $request->boolean('is_outdoor'),
+        ]);
+
+        $this->audit->log('room.updated', $room, $old, $validated);
+
+        return $this->saved($request, __('Raum gespeichert.'));
+    }
+
+    public function deleteRoom(Room $room, Request $request)
+    {
+        abort_if($room->location_id !== $this->context->locationId(), 404);
+
+        // Rooms cascade-delete their tables (and thereby reservation links) at the
+        // DB level. Refuse deletion while tables exist so the operator removes them
+        // deliberately first instead of silently losing tables + their history.
+        if ($room->tables()->exists()) {
+            return back()->withErrors([
+                'room' => __('Dieser Raum enthält noch Tische. Bitte zuerst die Tische löschen.'),
+            ]);
+        }
+
+        $this->audit->log('room.deleted', $room, ['name' => $room->name]);
+        $room->delete();
+
+        return $this->saved($request, __('Raum gelöscht.'));
+    }
+
+    public function updateTable(Request $request, RestaurantTable $table)
+    {
+        abort_if($table->location_id !== $this->context->locationId(), 404);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:40'],
+            'min_capacity' => ['required', 'integer', 'min:1', 'max:50'],
+            'max_capacity' => ['required', 'integer', 'min:1', 'max:50', 'gte:min_capacity'],
+            'outdoor' => ['nullable', 'boolean'],
+            'accessible' => ['nullable', 'boolean'],
+            'joinable' => ['nullable', 'boolean'],
+            'online_bookable' => ['nullable', 'boolean'],
+        ]);
+
+        $old = ['name' => $table->name, 'min_capacity' => $table->min_capacity, 'max_capacity' => $table->max_capacity];
+        $table->update([
+            'name' => $validated['name'],
+            'min_capacity' => (int) $validated['min_capacity'],
+            'max_capacity' => (int) $validated['max_capacity'],
+            'outdoor' => $request->boolean('outdoor'),
+            'accessible' => $request->boolean('accessible'),
+            'joinable' => $request->boolean('joinable'),
+            'online_bookable' => $request->boolean('online_bookable'),
+        ]);
+
+        $this->audit->log('table.updated', $table, $old, $validated);
+
+        return $this->saved($request, __('Tisch gespeichert.'));
     }
 
     private function saved(Request $request, string $message, bool $reload = false): mixed

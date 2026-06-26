@@ -125,6 +125,72 @@ class EventAdminController extends Controller
         ]);
     }
 
+    public function update(Request $request, Event $event)
+    {
+        $this->authorizeEvent($event);
+        $location = $this->context->location();
+        abort_if($location === null, 404);
+
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:160'],
+            'description' => ['nullable', 'string', 'max:5000'],
+            'date' => ['required', 'date_format:Y-m-d'],
+            'start_time' => ['required', 'date_format:H:i'],
+            'end_time' => ['required', 'date_format:H:i'],
+            'capacity' => ['required', 'integer', 'min:1', 'max:5000'],
+            'price' => ['nullable', 'numeric', 'min:0', 'max:100000'],
+            'room_id' => ['nullable', 'integer'],
+            'booking_deadline_hours' => ['nullable', 'integer', 'min:0', 'max:720'],
+            'cancellation_deadline_hours' => ['nullable', 'integer', 'min:0', 'max:720'],
+            'is_public' => ['nullable', 'boolean'],
+        ]);
+
+        if ($validated['room_id'] ?? null) {
+            abort_unless($location->rooms()->where('id', $validated['room_id'])->exists(), 422);
+        }
+
+        // Capacity may not drop below tickets already sold.
+        $sold = (int) $event->bookings()->whereIn('status', ['confirmed', 'checked_in'])->sum('ticket_count');
+        if ((int) $validated['capacity'] < $sold) {
+            return back()->withErrors([
+                'capacity' => __('Die Kapazität kann nicht unter die bereits verkauften :n Tickets gesenkt werden.', ['n' => $sold]),
+            ]);
+        }
+
+        $tz = $location->timezone;
+        $startLocal = CarbonImmutable::parse($validated['date'].' '.$validated['start_time'], $tz);
+        $endLocal = CarbonImmutable::parse($validated['date'].' '.$validated['end_time'], $tz);
+        if ($endLocal->lte($startLocal)) {
+            $endLocal = $endLocal->addDay();
+        }
+
+        $old = ['title' => $event->title, 'capacity' => $event->capacity, 'starts_at' => $event->starts_at?->toDateTimeString()];
+
+        // The slug stays fixed so existing public event links keep working.
+        $event->update([
+            'room_id' => $validated['room_id'] ?? null,
+            'title' => $validated['title'],
+            'description' => $validated['description'] ?? null,
+            'starts_at' => $startLocal->utc(),
+            'ends_at' => $endLocal->utc(),
+            'capacity' => (int) $validated['capacity'],
+            'price_minor' => isset($validated['price']) && $validated['price'] !== null
+                ? (int) round($validated['price'] * 100)
+                : null,
+            'booking_deadline_at' => isset($validated['booking_deadline_hours'])
+                ? $startLocal->subHours((int) $validated['booking_deadline_hours'])->utc()
+                : null,
+            'cancellation_deadline_at' => isset($validated['cancellation_deadline_hours'])
+                ? $startLocal->subHours((int) $validated['cancellation_deadline_hours'])->utc()
+                : null,
+            'is_public' => $request->boolean('is_public', true),
+        ]);
+
+        $this->audit->log('event.updated', $event, $old, ['title' => $event->title]);
+
+        return back()->with('success', __('Event aktualisiert.'));
+    }
+
     public function updateStatus(Request $request, Event $event)
     {
         $this->authorizeEvent($event);

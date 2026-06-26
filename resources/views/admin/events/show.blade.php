@@ -21,6 +21,44 @@
     </div>
 </div>
 
+<details class="mb-5 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
+    <summary class="cursor-pointer font-bold">Event bearbeiten</summary>
+    @php($endLocal = $event->ends_at->setTimezone($location->timezone))
+    <form method="POST" action="{{ route('admin.events.update', $event) }}" class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+        @csrf @method('PUT')
+        <label class="block sm:col-span-2">Titel *
+            <input name="title" required value="{{ old('title', $event->title) }}" class="mt-1 w-full rounded-lg border-stone-200">
+        </label>
+        <label class="block sm:col-span-2">Beschreibung
+            <textarea name="description" rows="2" class="mt-1 w-full rounded-lg border-stone-200">{{ old('description', $event->description) }}</textarea>
+        </label>
+        <label class="block">Datum *
+            <input type="date" name="date" required value="{{ old('date', $startLocal->format('Y-m-d')) }}" class="mt-1 w-full rounded-lg border-stone-200">
+        </label>
+        <div class="grid grid-cols-2 gap-2">
+            <label class="block">Beginn *
+                <input type="time" name="start_time" required value="{{ old('start_time', $startLocal->format('H:i')) }}" class="mt-1 w-full rounded-lg border-stone-200">
+            </label>
+            <label class="block">Ende *
+                <input type="time" name="end_time" required value="{{ old('end_time', $endLocal->format('H:i')) }}" class="mt-1 w-full rounded-lg border-stone-200">
+            </label>
+        </div>
+        <label class="block">Kapazität *
+            <input type="number" name="capacity" required min="1" max="5000" value="{{ old('capacity', $event->capacity) }}" class="mt-1 w-full rounded-lg border-stone-200">
+        </label>
+        <label class="block">Preis (€)
+            <input type="number" step="0.01" min="0" name="price" value="{{ old('price', $event->price_minor !== null ? number_format($event->price_minor / 100, 2, '.', '') : '') }}" class="mt-1 w-full rounded-lg border-stone-200">
+        </label>
+        <label class="flex items-center gap-2 sm:col-span-2">
+            <input type="checkbox" name="is_public" value="1" @checked(old('is_public', $event->is_public))> Öffentlich buchbar
+        </label>
+        @error('capacity')<p class="text-xs text-red-600 sm:col-span-2">{{ $message }}</p>@enderror
+        <div class="sm:col-span-2">
+            <button class="rounded-xl bg-stone-900 px-5 py-2 font-bold text-white">Änderungen speichern</button>
+        </div>
+    </form>
+</details>
+
 <div class="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-stone-100">
     <table class="w-full min-w-[42rem] text-sm">
         <thead class="border-b border-stone-100 text-left text-xs font-semibold uppercase tracking-wide text-stone-500">
