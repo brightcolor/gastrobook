@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.52.1] – 2026-06-26
+
+### Behoben
+- **Öffentlicher Tischplan wurde nie angezeigt** – obwohl aktiviert. Die
+  Tischplan-Sektion lag im `.sp-body` von Schritt 2 („Wann?"); sobald ein
+  Zeit-Slot gewählt wurde, markierte das JS den Schritt als „done", was den
+  `.sp-body` per CSS auf `display:none` setzt – und damit den gerade
+  eingeblendeten Tischplan gleich wieder versteckte. Der Tischplan ist jetzt ein
+  eigener Block zwischen Schritt 2 und 3 und bleibt sichtbar. Regressionstest
+  ergänzt (Sektion liegt außerhalb des einklappenden Schritts).
+
 ## [1.52.0] – 2026-06-26
 
 ### Neu

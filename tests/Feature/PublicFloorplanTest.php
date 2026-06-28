@@ -90,6 +90,30 @@ class PublicFloorplanTest extends TestCase
         $this->assertTrue($reservation->tables->contains('id', $table->id));
     }
 
+    public function test_booking_page_renders_floorplan_section_outside_collapsing_step(): void
+    {
+        $setup = $this->createTenantSetup();
+        $setup['location']->settings->update(['public_floorplan_enabled' => true]);
+        $this->clearTenantContext();
+
+        $html = $this->get('/book/'.$setup['tenant']->slug.'/'.$setup['location']->slug)
+            ->assertOk()
+            ->getContent();
+
+        // Section must be present …
+        $this->assertStringContainsString('id="floorplanSection"', $html);
+
+        // … and must NOT sit inside step 2's collapsing .sp-body (which gets
+        // display:none once a time slot is picked). Regression guard: the
+        // floorplan section must appear after step 2's panel closes.
+        $sp2Pos = strpos($html, 'id="sp2"');
+        $sp3Pos = strpos($html, 'id="sp3"');
+        $fpPos = strpos($html, 'id="floorplanSection"');
+        $this->assertNotFalse($fpPos);
+        $this->assertTrue($fpPos > $sp2Pos && $fpPos < $sp3Pos,
+            'Floorplan must live between step 2 and step 3, not inside the collapsing step body.');
+    }
+
     public function test_too_small_table_is_rejected(): void
     {
         $setup = $this->createTenantSetup();

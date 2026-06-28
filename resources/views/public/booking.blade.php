@@ -437,38 +437,40 @@ details > summary::-webkit-details-marker { display: none; }
                     <div id="alternatives" class="hidden rounded-xl bg-amber-50 p-3 text-sm text-amber-900"></div>
                     @error('time')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
 
-                    @if($settings->public_floorplan_enabled)
-                    <div id="floorplanSection" class="hidden">
-                        {{-- Stage 1: Zone cards (shown when zones exist) --}}
-                        <div id="zoneStage" class="hidden">
-                            <p class="mb-3 text-sm font-semibold">Bereich wählen</p>
-                            <div id="zoneCards" class="grid grid-cols-2 gap-3 sm:grid-cols-3"></div>
-                        </div>
-                        {{-- Stage 2: Floor plan (always present, hidden until zone chosen or "all areas") --}}
-                        <div id="planStage">
-                            <div id="zoneBackRow" class="mb-3 hidden">
-                                <button type="button" id="zoneBackBtn"
-                                        class="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-600 hover:border-brand hover:text-brand transition-colors">
-                                    ← Anderen Bereich wählen
-                                </button>
-                                <span id="zoneActiveLabel" class="ml-2 text-sm font-semibold"></span>
-                            </div>
-                            <div class="mb-3 flex items-center justify-between">
-                                <span class="text-sm font-semibold">Tisch wählen <span class="font-normal text-stone-400">(optional)</span></span>
-                                <span class="flex gap-3 text-xs text-stone-400">
-                                    <span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-sm bg-[#34d399]"></span>frei</span>
-                                    <span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-sm bg-[#d6d3d1]"></span>belegt</span>
-                                </span>
-                            </div>
-                            <div id="roomTabs" class="mb-2 flex flex-wrap gap-2"></div>
-                            <div id="floorplanCanvas" class="relative w-full overflow-hidden rounded-xl border-2 border-stone-100 bg-stone-50" style="height:280px"></div>
-                            <p class="mt-2 text-xs text-stone-500">Tippen Sie auf einen freien Tisch – oder leer lassen für automatische Zuteilung.</p>
-                        </div>
-                        <input type="hidden" name="table_id" id="tableId" value="">
-                    </div>
-                    @endif
                 </div>
             </div>
+
+            {{-- ── Tischplan (eigener Block, bleibt sichtbar wenn Schritt 2 zugeklappt ist) ── --}}
+            @if($settings->public_floorplan_enabled)
+            <div id="floorplanSection" class="hidden px-5 pb-5 sm:px-6">
+                {{-- Stage 1: Zone cards (shown when zones exist) --}}
+                <div id="zoneStage" class="hidden">
+                    <p class="mb-3 text-sm font-semibold">Bereich wählen</p>
+                    <div id="zoneCards" class="grid grid-cols-2 gap-3 sm:grid-cols-3"></div>
+                </div>
+                {{-- Stage 2: Floor plan (always present, hidden until zone chosen or "all areas") --}}
+                <div id="planStage">
+                    <div id="zoneBackRow" class="mb-3 hidden">
+                        <button type="button" id="zoneBackBtn"
+                                class="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-600 hover:border-brand hover:text-brand transition-colors">
+                            ← Anderen Bereich wählen
+                        </button>
+                        <span id="zoneActiveLabel" class="ml-2 text-sm font-semibold"></span>
+                    </div>
+                    <div class="mb-3 flex items-center justify-between">
+                        <span class="text-sm font-semibold">Tisch wählen <span class="font-normal text-stone-400">(optional)</span></span>
+                        <span class="flex gap-3 text-xs text-stone-400">
+                            <span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-sm bg-[#34d399]"></span>frei</span>
+                            <span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-sm bg-[#d6d3d1]"></span>belegt</span>
+                        </span>
+                    </div>
+                    <div id="roomTabs" class="mb-2 flex flex-wrap gap-2"></div>
+                    <div id="floorplanCanvas" class="relative w-full overflow-hidden rounded-xl border-2 border-stone-100 bg-stone-50" style="height:280px"></div>
+                    <p class="mt-2 text-xs text-stone-500">Tippen Sie auf einen freien Tisch – oder leer lassen für automatische Zuteilung.</p>
+                </div>
+                <input type="hidden" name="table_id" id="tableId" value="">
+            </div>
+            @endif
 
             {{-- ── Step 3: Kontaktdaten ──────────────────────────────────────── --}}
             <div id="sp3" class="step-panel" data-state="locked">
