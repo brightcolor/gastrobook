@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.53.1] – 2026-06-26
+
+### Behoben
+- **Passwort-Reset-Mail kam nicht an** – die Mail wurde per `queue()` versendet
+  und hing damit an einem laufenden Queue-Worker/Redis (steht der oder ist Redis
+  im Read-only-Lockup, geht die Mail still verloren – unabhängig von der Rolle).
+  Der Passwort-Reset wird jetzt **synchron** verschickt (unabhängig von der
+  Queue); Versandfehler werden geloggt statt verschluckt, die enumeration-sichere
+  Erfolgsmeldung bleibt. Regressionstests ergänzt (Super-Admin + normaler Nutzer).
+
 ## [1.53.0] – 2026-06-26
 
 ### Neu / Geändert

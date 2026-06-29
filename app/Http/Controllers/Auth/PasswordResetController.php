@@ -9,6 +9,7 @@ use App\Mail\PasswordResetMail;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
@@ -42,7 +43,19 @@ class PasswordResetController extends Controller
             ['email' => $request->input('email')],
             function ($user, $token) {
                 $url = route('password.reset', ['token' => $token, 'email' => $user->getEmailForPasswordReset()]);
-                Mail::to($user->getEmailForPasswordReset())->queue(new PasswordResetMail($url));
+
+                // Send synchronously: password reset is interactive and must not
+                // depend on a running queue worker / Redis (which can stall and
+                // silently swallow the mail). Failures are logged, never surfaced,
+                // so we keep the enumeration-safe generic response.
+                try {
+                    Mail::to($user->getEmailForPasswordReset())->send(new PasswordResetMail($url));
+                } catch (\Throwable $e) {
+                    Log::error('Password-Reset-Mail konnte nicht gesendet werden.', [
+                        'user_id' => $user->getAuthIdentifier(),
+                        'error' => $e->getMessage(),
+                    ]);
+                }
             }
         );
 
