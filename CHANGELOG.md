@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.56.0] – 2026-06-29
+
+### Neu / Behoben
+- **Warteliste auf der Buchungsseite tatsächlich eintragbar** – bisher erwähnte
+  die Seite bei ausgebuchtem Tag die Warteliste nur als **toten Text** (kein
+  Link/Formular); der Backend-Endpoint existierte, war aber über die UI nicht
+  erreichbar. Jetzt: „Auf die Warteliste setzen →" öffnet ein Formular
+  (Name/E-Mail/Telefon + Datenschutz, Honeypot), das per fetch an
+  `booking.waitlist` sendet, mit Inline-Erfolg/-Fehlermeldung. Datum/Personen
+  werden aus der Buchungsmaske übernommen.
+- Versand-Handler folgt **keinem Redirect** (`redirect: 'manual'`): nur echtes
+  HTTP 200 gilt als Erfolg, damit ein Validierungs-Redirect nicht fälschlich als
+  Erfolg gewertet wird.
+- 3 Feature-Tests (Eintrag, Datenschutz-Pflicht, Honeypot).
+
 ## [1.55.1] – 2026-06-29
 
 ### Behoben (CI / Build)

@@ -565,6 +565,27 @@ details > summary::-webkit-details-marker { display: none; }
         </div>{{-- /divide-y --}}
     </form>
 
+    {{-- Warteliste: eigener Block AUSSERHALB des Buchungsformulars (kein nested form);
+         wird per JS eingeblendet, wenn kein Slot frei ist, und per fetch gesendet. --}}
+    <div id="waitlistBox" class="mx-5 mb-5 hidden rounded-2xl border-2 border-amber-200 bg-amber-50/60 p-4 sm:mx-6">
+        <p class="mb-1 text-sm font-bold text-amber-900">Auf die Warteliste setzen</p>
+        <p id="wlContext" class="mb-3 text-xs text-amber-800"></p>
+        <div class="space-y-2">
+            <input type="text" id="wlName" required placeholder="Name *" class="w-full rounded-xl border-2 border-stone-200 px-4 py-2.5 text-sm">
+            <input type="email" id="wlEmail" required placeholder="E-Mail *" class="w-full rounded-xl border-2 border-stone-200 px-4 py-2.5 text-sm">
+            <input type="tel" id="wlPhone" placeholder="Telefon (optional)" class="w-full rounded-xl border-2 border-stone-200 px-4 py-2.5 text-sm">
+            <input type="text" id="wlWebsite" tabindex="-1" autocomplete="off" class="hidden" aria-hidden="true">
+            <label class="flex items-start gap-2 text-xs text-stone-600">
+                <input type="checkbox" id="wlPrivacy" class="mt-0.5">
+                <span>Ich akzeptiere die <a href="{{ route('legal.privacy') }}" target="_blank" class="underline">Datenschutzerklärung</a>.</span>
+            </label>
+            <p id="wlError" class="hidden text-xs font-medium text-red-600"></p>
+            <button type="button" id="wlSubmit" class="w-full rounded-xl bg-amber-600 py-2.5 text-sm font-bold text-white hover:bg-amber-700 active:scale-[0.98]">
+                Eintragen – wir melden uns
+            </button>
+        </div>
+    </div>
+
     @if(session('alternatives'))
     <div class="mx-5 mb-5 rounded-2xl bg-amber-50 p-4 text-sm text-amber-900 sm:mx-6">
         <p class="font-semibold">Dieser Zeitpunkt ist leider nicht mehr verfügbar.</p>
@@ -578,6 +599,7 @@ details > summary::-webkit-details-marker { display: none; }
     (function () {
         const slotsUrl      = @json(route('booking.slots', [$tenant->slug, $location->slug]));
         const floorplanUrl  = @json(route('booking.floorplan', [$tenant->slug, $location->slug]));
+        const waitlistUrl   = @json(route('booking.waitlist', [$tenant->slug, $location->slug]));
         const partyInput    = document.getElementById('partySize');
         const dateInput     = document.getElementById('date');
         const timeInput     = document.getElementById('timeInput');
@@ -739,7 +761,12 @@ details > summary::-webkit-details-marker { display: none; }
                             slotContainer.appendChild(b);
                         });
                     }
-                    if (data.waitlist_available) { altBox.innerHTML = 'Kein Termin passend? Tragen Sie sich auf die <strong>Warteliste</strong> ein – wir melden uns, sobald etwas frei wird.'; altBox.classList.remove('hidden'); }
+                    if (data.waitlist_available) {
+                        altBox.innerHTML = 'Kein Termin passend? <button type="button" id="wlOpen" class="font-semibold text-amber-900 underline underline-offset-2">Auf die Warteliste setzen →</button>';
+                        altBox.classList.remove('hidden');
+                        const open = document.getElementById('wlOpen');
+                        if (open) open.addEventListener('click', openWaitlist);
+                    }
                     return;
                 }
                 renderSlots(data.slots);
@@ -747,6 +774,57 @@ details > summary::-webkit-details-marker { display: none; }
                 slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-stone-50 px-3 py-2.5 text-sm text-stone-500">Kurze Unterbrechung – bitte Seite neu laden.</p>';
             }
         }
+
+        // ── Warteliste ─────────────────────────────────────────────────────
+        const wlBox = document.getElementById('waitlistBox');
+        function openWaitlist() {
+            if (!wlBox) return;
+            const ctx = document.getElementById('wlContext');
+            if (ctx) ctx.textContent = 'Für ' + (partyInput.value || '?') + ' Personen am ' + fmtDate(dateInput.value)
+                + '. Wir benachrichtigen dich, sobald ein Tisch frei wird.';
+            wlBox.classList.remove('hidden');
+            wlBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            document.getElementById('wlName').focus();
+        }
+        const wlSubmit = document.getElementById('wlSubmit');
+        if (wlSubmit) wlSubmit.addEventListener('click', async () => {
+            const err = document.getElementById('wlError');
+            const name = document.getElementById('wlName').value.trim();
+            const email = document.getElementById('wlEmail').value.trim();
+            const privacy = document.getElementById('wlPrivacy').checked;
+            err.classList.add('hidden');
+            if (!name || !email || !privacy) {
+                err.textContent = 'Bitte Name, E-Mail und die Datenschutz-Zustimmung ausfüllen.';
+                err.classList.remove('hidden'); return;
+            }
+            wlSubmit.disabled = true; wlSubmit.textContent = 'Wird gesendet…';
+            try {
+                const token = document.querySelector('input[name=_token]')?.value;
+                const res = await fetch(waitlistUrl, {
+                    method: 'POST',
+                    redirect: 'manual', // validation errors redirect (302); only a real 200 = success
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': token },
+                    body: JSON.stringify({
+                        date: dateInput.value, time: timeInput.value || null, party_size: partyInput.value,
+                        name, email, phone: document.getElementById('wlPhone').value.trim(),
+                        website: document.getElementById('wlWebsite').value,
+                        privacy_accepted: privacy ? 1 : 0,
+                    }),
+                });
+                if (res.ok && res.status === 200) {
+                    wlBox.innerHTML = '<div class="py-2 text-center"><p class="text-2xl">✅</p><p class="mt-1 text-sm font-bold text-amber-900">Du stehst auf der Warteliste!</p><p class="mt-1 text-xs text-amber-800">Wir melden uns per E-Mail, sobald ein Tisch frei wird.</p></div>';
+                    return;
+                }
+                const data = await res.json().catch(() => ({}));
+                err.textContent = data?.message || 'Eintragen fehlgeschlagen – bitte Angaben prüfen und erneut versuchen.';
+                err.classList.remove('hidden');
+            } catch (e) {
+                err.textContent = 'Verbindungsfehler. Bitte später erneut versuchen.';
+                err.classList.remove('hidden');
+            } finally {
+                wlSubmit.disabled = false; wlSubmit.textContent = 'Eintragen – wir melden uns';
+            }
+        });
 
         async function loadFp() {
             if (!fpSection || !timeInput.value) return;
