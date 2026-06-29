@@ -74,11 +74,42 @@ class NotificationTemplateRenderer
     }
 
     /**
+     * Placeholder names available in every template (for the editor hint list).
+     *
+     * @return list<string>
+     */
+    public static function placeholderHints(): array
+    {
+        return [
+            'guest_name', 'reservation_date', 'reservation_time', 'party_size',
+            'location_name', 'tenant_name', 'table_name', 'room_name',
+            'reservation_code', 'cancel_link', 'modify_link', 'feedback_link',
+            'waitlist_link', 'custom_message',
+        ];
+    }
+
+    /**
      * @return array{subject: string, body: string}
      */
     private function builtIn(string $key): array
     {
-        $defaults = [
+        $defaults = self::defaults();
+
+        return $defaults[$key] ?? [
+            'subject' => 'Ihre Reservierung – {location_name}',
+            'body' => "Hallo {guest_name},\n\n{custom_message}\n\n{location_name}",
+        ];
+    }
+
+    /**
+     * Built-in default templates, keyed by template key. Public so the admin
+     * editor can show defaults and offer a reset.
+     *
+     * @return array<string, array{subject: string, body: string}>
+     */
+    public static function defaults(): array
+    {
+        return [
             'reservation_confirmed' => [
                 'subject' => 'Reservierungsbestätigung – {location_name} am {reservation_date}',
                 'body' => "Hallo {guest_name},\n\nIhre Reservierung ist bestätigt:\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nPersonen: {party_size}\nReservierungsnummer: {reservation_code}\n\nÄndern oder stornieren: {cancel_link}\n\nWir freuen uns auf Ihren Besuch!\n{location_name}",
@@ -107,11 +138,6 @@ class NotificationTemplateRenderer
                 'subject' => 'Ein Tisch ist frei geworden – {location_name}',
                 'body' => "Hallo {guest_name},\n\nfür Ihren Wartelisteneintrag ist ein Tisch frei geworden. Bitte bestätigen Sie zeitnah:\n\n{waitlist_link}\n\n{location_name}",
             ],
-        ];
-
-        return $defaults[$key] ?? [
-            'subject' => 'Ihre Reservierung – {location_name}',
-            'body' => "Hallo {guest_name},\n\n{custom_message}\n\n{location_name}",
         ];
     }
 }

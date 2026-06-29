@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\FloorPlanController;
 use App\Http\Controllers\Admin\FloorZoneController;
 use App\Http\Controllers\Admin\GuestController;
 use App\Http\Controllers\Admin\LocationController;
+use App\Http\Controllers\Admin\NotificationTemplateController;
 use App\Http\Controllers\Admin\OnboardingController;
 use App\Http\Controllers\Admin\RefundController;
 use App\Http\Controllers\Admin\ReportController;
@@ -386,6 +387,13 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
         Route::get('/api-tokens', [ApiTokenController::class, 'index'])->name('api-tokens.index');
         Route::post('/api-tokens', [ApiTokenController::class, 'store'])->name('api-tokens.store');
         Route::delete('/api-tokens/{tokenId}', [ApiTokenController::class, 'destroy'])->name('api-tokens.destroy');
+    });
+
+    // E-mail templates (per-tenant overrides of the built-in notification texts)
+    Route::middleware('permission:templates.manage')->group(function () {
+        Route::get('/templates', [NotificationTemplateController::class, 'index'])->name('templates.index');
+        Route::put('/templates/{key}', [NotificationTemplateController::class, 'update'])->name('templates.update');
+        Route::delete('/templates/{key}', [NotificationTemplateController::class, 'reset'])->name('templates.reset');
     });
 
     // Audit log

@@ -113,6 +113,10 @@ class SettingsController extends Controller
             'require_email_confirmation' => ['nullable', 'boolean'],
             'confetti_on_booking' => ['nullable', 'boolean'],
             'guest_address' => ['required', 'in:du,Sie'],
+            'feedback_enabled' => ['nullable', 'boolean'],
+            'feedback_hours_after' => ['required', 'integer', 'min:1', 'max:336'],
+            'feedback_redirect_min_score' => ['required', 'integer', 'min:1', 'max:5'],
+            'feedback_external_url' => ['nullable', 'url:https', 'max:300'],
         ]);
 
         $settings = $location->settings()->firstOrCreate(['tenant_id' => $location->tenant_id]);
@@ -130,6 +134,7 @@ class SettingsController extends Controller
             'public_floorplan_enabled' => $request->boolean('public_floorplan_enabled'),
             'require_email_confirmation' => $request->boolean('require_email_confirmation'),
             'confetti_on_booking' => $request->boolean('confetti_on_booking'),
+            'feedback_enabled' => $request->boolean('feedback_enabled'),
         ]);
 
         $this->audit->log('location.settings_updated', $settings, $old, $validated);

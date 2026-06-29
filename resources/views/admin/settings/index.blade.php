@@ -265,6 +265,24 @@
         </div>
 
         <div class="mt-4 border-t border-stone-100 pt-4">
+            <h3 class="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">Feedback nach dem Besuch</h3>
+            <div class="space-y-3 text-sm">
+                <label class="flex items-center gap-2"><input type="checkbox" name="feedback_enabled" value="1" @checked($settings->feedback_enabled)> Feedback-Mail aktiv <span class="tip" tabindex="0" data-tip="Schickt Gästen nach dem Besuch automatisch eine kurze Bewertungsanfrage (1–5 Sterne). Zufriedene Gäste leitest du danach gezielt zu deinem öffentlichen Bewertungsportal weiter.">?</span></label>
+                <div class="flex flex-wrap items-end gap-4">
+                    <div><label class="mb-1 block text-xs font-semibold text-stone-500">Stunden nach Besuch</label>
+                        <input type="number" name="feedback_hours_after" min="1" max="336" value="{{ $settings->feedback_hours_after }}" class="w-24 rounded-lg border-stone-200"></div>
+                    <div><label class="mb-1 block text-xs font-semibold text-stone-500">Ab Sterne → Portal <span class="tip" tabindex="0" data-tip="Ab dieser Bewertung wird der Gast zu deinem externen Bewertungsportal weitergeleitet (z. B. Google). Niedrigere Bewertungen bleiben intern – so landet Kritik bei dir statt öffentlich.">?</span></label>
+                        <input type="number" name="feedback_redirect_min_score" min="1" max="5" value="{{ $settings->feedback_redirect_min_score }}" class="w-24 rounded-lg border-stone-200"></div>
+                </div>
+                <div><label class="mb-1 block text-xs font-semibold text-stone-500">Bewertungsportal-URL (z. B. Google-Bewertung)</label>
+                    <input type="url" name="feedback_external_url" placeholder="https://g.page/r/…/review" value="{{ $settings->feedback_external_url }}" class="w-full rounded-lg border-stone-200">
+                    @error('feedback_external_url')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+                </div>
+            </div>
+            <p class="mt-1 text-xs text-stone-400">Ohne hinterlegte Portal-URL bleibt jedes Feedback intern (keine Weiterleitung).</p>
+        </div>
+
+        <div class="mt-4 border-t border-stone-100 pt-4">
             <h3 class="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">Rückerstattung der Anzahlung</h3>
             <div class="flex flex-wrap items-end gap-4 text-sm">
                 <div><label class="mb-1 block text-xs font-semibold text-stone-500">Modus <span class="tip" tabindex="0" data-tip="&#39;Aus&#39; – bei Storno wird die Anzahlung behalten. &#39;Manuell&#39; – dein Team gibt die Rückerstattung frei. &#39;Automatisch&#39; – läuft ohne Zutun. Greift nur bei Storno innerhalb der Frist.">?</span></label>

@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.57.0] – 2026-06-29
+
+### Geliefert: angekündigte Features, die keine UI hatten
+- **E-Mail-Vorlagen-Editor** (`/admin/templates`, Recht `templates.manage`) – das
+  Recht und die `NotificationTemplate`-Override-Logik existierten, aber es gab
+  **keine Oberfläche**, um Vorlagen anzupassen (README versprach es). Jetzt:
+  Betreff/Text aller 7 automatischen Mails bearbeiten, Platzhalter-Referenz,
+  „angepasst/Standard"-Badge, Zurücksetzen auf Standard. Der Renderer nutzt den
+  Mandanten-Override automatisch.
+- **Feedback-Booster konfigurierbar** – die Logik (positives Feedback → externes
+  Bewertungsportal) war verdrahtet, aber die Einstellungen (`feedback_enabled`,
+  `feedback_external_url`, `feedback_redirect_min_score`, `feedback_hours_after`)
+  waren **nicht im Admin editierbar** → Portal-URL war nie setzbar, die
+  Weiterleitung triggerte nie. Jetzt im Tab „Buchungsregeln → Feedback nach dem
+  Besuch" einstellbar.
+- 7 neue Tests.
+
 ## [1.56.0] – 2026-06-29
 
 ### Neu / Behoben
