@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.55.1] – 2026-06-29
+
+### Behoben (CI / Build)
+- **Frontend-Build (und damit der Release-Image-Build) schlug fehl** – `vite build`
+  lud über `laravel-vite-plugin` zur **Build-Zeit eine Remote-Font** (`bunny('Instrument
+  Sans')`) aus dem Netz; in der CI/offline führte das zu `fetch failed` / `ECONNRESET`.
+  Die Font war zudem **ungenutzt** (die CSS hostet Inter/Fraunces bereits selbst via
+  `@fontsource-variable/*`). Remote-Font-Config aus `vite.config.js` entfernt → der
+  Build hat **keine Netzabhängigkeit** mehr und läuft zuverlässig.
+
 ## [1.55.0] – 2026-06-26
 
 ### Neu
