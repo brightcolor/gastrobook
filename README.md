@@ -471,6 +471,20 @@ php artisan schedule:work     # lokal; Produktion: Cron-Eintrag jede Minute
 
 Geplante Jobs: Reservierungs-Reminder (alle 15 min), Feedback-Follow-ups (stündlich), Wartelisten-Expiry (alle 10 min), unbezahlte Reservierungen abräumen (alle 10 min), DSGVO-Retention (täglich 03:30).
 
+Im Docker-Setup laufen `queue` und `scheduler` als **eigene Container** (`docker-compose.yml`). Die meisten Mails (Buchungsbestätigung, Erinnerung, Billing-Benachrichtigung) werden **über die Queue** verschickt – ohne laufenden `queue`-Container kommen sie nicht an. **Ausnahme:** der Passwort-Reset wird bewusst **synchron** versendet (unabhängig von der Queue).
+
+**Mail kommt nicht an? Mail-Config vs. Queue trennen:**
+```bash
+# 1) Sendet SYNCHRON (ohne Queue) – isoliert das SMTP-Problem
+docker compose exec app php artisan swayy:test-mail you@example.com
+# 2) Laufen die Worker?  3) Stecken Jobs als "failed" fest?
+docker compose ps queue
+docker compose logs --tail=100 queue
+docker compose exec app php artisan queue:failed
+```
+Klappt `swayy:test-mail`, aber echte Mails fehlen → Queue-Container/Worker prüfen.
+Schlägt schon `swayy:test-mail` fehl → `MAIL_*` in der `.env` korrigieren (`smtp.example.com` ist nur ein Platzhalter!).
+
 ---
 
 ## Rechtstexte (Impressum / Datenschutz / AGB)

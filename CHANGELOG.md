@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.54.0] – 2026-06-26
+
+### Neu / Diagnose
+- **`php artisan swayy:test-mail {email}`** – sendet eine Testmail **synchron
+  (ohne Queue)** und zeigt Mailer/Host/From an. Trennt eindeutig ein
+  SMTP-/Mail-Config-Problem von einem Queue-Worker-Problem.
+- README-Abschnitt „Queue & Scheduler" um eine Troubleshooting-Checkliste
+  ergänzt (`swayy:test-mail`, `queue:failed`, Container-Logs).
+
+### Hinweis (kein Code-Bug)
+- Die Queue-/Worker-/Redis-Konfiguration in `docker-compose.yml` ist korrekt
+  (eigener `queue`-Container mit `queue:work`, frische Env – kein Build-Time
+  `config:cache` –, Redis-Read-only-Lockup via `--stop-writes-on-bgsave-error
+  no` entschärft). Fehlende Mails liegen daher i. d. R. an der **SMTP-Config**
+  (`MAIL_*`) oder einem nicht laufenden `queue`-Container, nicht am App-Code.
+
 ## [1.53.2] – 2026-06-26
 
 ### Geändert
