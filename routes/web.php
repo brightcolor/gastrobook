@@ -36,6 +36,7 @@ use App\Http\Controllers\Public\PublicBookingController;
 use App\Http\Controllers\Public\PublicEventController;
 use App\Http\Controllers\Public\WaitlistResponseController;
 use App\Http\Controllers\Saas\SaasTenantController;
+use App\Http\Controllers\Saas\SaasUserController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -398,6 +399,7 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth')->prefix('saas')->name('saas.')->group(function () {
+    Route::get('/', [SaasTenantController::class, 'dashboard'])->name('dashboard');
     Route::get('/tenants', [SaasTenantController::class, 'index'])->name('tenants.index');
     Route::post('/tenants', [SaasTenantController::class, 'store'])->name('tenants.store');
     Route::put('/tenants/{tenant}/status', [SaasTenantController::class, 'updateStatus'])->name('tenants.status');
@@ -405,4 +407,10 @@ Route::middleware('auth')->prefix('saas')->name('saas.')->group(function () {
     Route::put('/tenants/{tenant}/trial', [SaasTenantController::class, 'extendTrial'])->name('tenants.trial');
     Route::post('/tenants/{tenant}/impersonate', [SaasTenantController::class, 'impersonate'])->name('tenants.impersonate');
     Route::post('/stop-impersonation', [SaasTenantController::class, 'stopImpersonation'])->name('stop-impersonation');
+
+    // Platform user management
+    Route::get('/users', [SaasUserController::class, 'index'])->name('users.index');
+    Route::post('/users', [SaasUserController::class, 'store'])->name('users.store');
+    Route::put('/users/{user}/role', [SaasUserController::class, 'updateRole'])->name('users.role');
+    Route::delete('/users/{user}', [SaasUserController::class, 'destroy'])->name('users.destroy');
 });

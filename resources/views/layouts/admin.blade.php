@@ -54,15 +54,19 @@
         <div class="px-5 py-5 text-lg font-bold tracking-tight">Swayy</div>
         @if($tenant)
             <div class="px-5 pb-3 text-xs text-stone-400">{{ $tenant->name }}</div>
-            <form method="POST" action="{{ route('admin.switch-location') }}" class="px-4 pb-4">
-                @csrf
-                <select name="location_id" onchange="this.form.submit()"
-                        class="w-full rounded-md border-0 bg-stone-800 px-2 py-1.5 text-sm text-stone-100">
-                    @foreach($tenant->locations as $loc)
-                        <option value="{{ $loc->id }}" @selected($location && $loc->id === $location->id)>{{ $loc->name }}</option>
-                    @endforeach
-                </select>
-            </form>
+            @if($tenant->locations->count() > 1)
+                <form method="POST" action="{{ route('admin.switch-location') }}" class="px-4 pb-4">
+                    @csrf
+                    <select name="location_id" onchange="this.form.submit()"
+                            class="w-full rounded-md border-0 bg-stone-800 px-2 py-1.5 text-sm text-stone-100">
+                        @foreach($tenant->locations as $loc)
+                            <option value="{{ $loc->id }}" @selected($location && $loc->id === $location->id)>{{ $loc->name }}</option>
+                        @endforeach
+                    </select>
+                </form>
+            @elseif($location)
+                <div class="px-5 pb-4 text-sm text-stone-200">{{ $location->name }}</div>
+            @endif
         @endif
         <nav class="flex-1 space-y-0.5 px-3 text-sm">
             @foreach($visibleItems as $item)
@@ -73,7 +77,7 @@
             @endforeach
             @if($user->isSaasAdmin())
                 <div class="my-2 border-t border-stone-700"></div>
-                <a href="{{ route('saas.tenants.index') }}" class="flex items-center gap-2 rounded-md px-3 py-2 hover:bg-stone-800">{!! $si('M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21') !!} SaaS-Admin</a>
+                <a href="{{ route('saas.dashboard') }}" class="flex items-center gap-2 rounded-md px-3 py-2 hover:bg-stone-800">{!! $si('M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21') !!} SaaS-Admin</a>
             @endif
         </nav>
         <div class="border-t border-stone-700 p-4 text-sm">
@@ -137,15 +141,19 @@
         </div>
         @if($tenant)
             <div class="px-5 pb-2 text-xs text-stone-400">{{ $tenant->name }}</div>
-            <form method="POST" action="{{ route('admin.switch-location') }}" class="px-4 pb-3">
-                @csrf
-                <select name="location_id" onchange="this.form.submit()"
-                        class="w-full rounded-md border-0 bg-stone-800 px-2 py-1.5 text-sm text-stone-100">
-                    @foreach($tenant->locations as $loc)
-                        <option value="{{ $loc->id }}" @selected($location && $loc->id === $location->id)>{{ $loc->name }}</option>
-                    @endforeach
-                </select>
-            </form>
+            @if($tenant->locations->count() > 1)
+                <form method="POST" action="{{ route('admin.switch-location') }}" class="px-4 pb-3">
+                    @csrf
+                    <select name="location_id" onchange="this.form.submit()"
+                            class="w-full rounded-md border-0 bg-stone-800 px-2 py-1.5 text-sm text-stone-100">
+                        @foreach($tenant->locations as $loc)
+                            <option value="{{ $loc->id }}" @selected($location && $loc->id === $location->id)>{{ $loc->name }}</option>
+                        @endforeach
+                    </select>
+                </form>
+            @elseif($location)
+                <div class="px-5 pb-3 text-sm text-stone-200">{{ $location->name }}</div>
+            @endif
         @endif
         <nav class="flex-1 space-y-0.5 overflow-y-auto px-3 text-sm">
             @foreach($visibleItems as $item)
@@ -156,7 +164,7 @@
             @endforeach
             @if($user->isSaasAdmin())
                 <div class="my-2 border-t border-stone-700"></div>
-                <a href="{{ route('saas.tenants.index') }}" class="flex items-center gap-2 rounded-md px-3 py-2.5 hover:bg-stone-800">{!! $si('M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21') !!} SaaS-Admin</a>
+                <a href="{{ route('saas.dashboard') }}" class="flex items-center gap-2 rounded-md px-3 py-2.5 hover:bg-stone-800">{!! $si('M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21') !!} SaaS-Admin</a>
             @endif
         </nav>
         <div class="border-t border-stone-700 p-4 text-sm">

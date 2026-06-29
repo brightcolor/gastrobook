@@ -47,7 +47,7 @@ class AuthController extends Controller
 
         return redirect()->intended(
             $user->isSaasAdmin() && $user->current_tenant_id === null
-                ? route('saas.tenants.index')
+                ? route('saas.dashboard')
                 : route('admin.dashboard')
         );
     }
