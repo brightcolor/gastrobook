@@ -29,7 +29,7 @@ class GoCardlessWebhookController extends Controller
         $payload = $request->getContent();
 
         if (! $this->gocardless->verifyWebhookSignature($payload, (string) $request->header('Webhook-Signature'))) {
-            return response()->json(['error' => 'invalid signature'], 498);
+            return response()->json(['error' => 'invalid signature'], 401);
         }
 
         $events = json_decode($payload, true);
