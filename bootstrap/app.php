@@ -33,7 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
             $user = $request->user();
 
             return $user && $user->isSaasAdmin() && $user->current_tenant_id === null
-                ? route('saas.tenants.index')
+                ? route('saas.dashboard')
                 : route('admin.dashboard');
         });
 

@@ -19,6 +19,31 @@ class SaasTenantController extends Controller
 {
     public function __construct(private readonly AuditLogger $audit) {}
 
+    public function dashboard(Request $request)
+    {
+        $this->authorizeSaas($request);
+
+        $byStatus = Tenant::query()
+            ->selectRaw('status, count(*) as cnt')
+            ->groupBy('status')
+            ->pluck('cnt', 'status');
+
+        $reservationsThisMonth = Reservation::withoutGlobalScope('tenant')
+            ->whereBetween('created_at', [now()->startOfMonth(), now()])
+            ->count();
+
+        return view('saas.dashboard', [
+            'tenantsTotal' => Tenant::count(),
+            'byStatus' => $byStatus,
+            'trialing' => Tenant::whereNotNull('trial_ends_at')->where('trial_ends_at', '>', now())->count(),
+            'usersTotal' => User::count(),
+            'saasAdmins' => User::whereNotNull('saas_role')->count(),
+            'reservationsThisMonth' => $reservationsThisMonth,
+            'recentTenants' => Tenant::with('plan')->latest()->limit(8)->get(),
+            'plans' => Plan::withCount('tenants')->orderBy('sort_order')->get(),
+        ]);
+    }
+
     public function index(Request $request)
     {
         $this->authorizeSaas($request);

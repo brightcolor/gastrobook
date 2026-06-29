@@ -100,7 +100,7 @@ Fertige Docker-Images baut die CI automatisch: `ghcr.io/brightcolor/gastrobook:l
 | Standort-Verwaltung im Admin (anlegen/umbenennen/aktivieren, Tarif-Limit) | ✅ |
 | Sperrzeiten/Blackouts (pro Standort/Raum, voll gesperrt oder Cover-Limit) | ✅ |
 | Räume & Tische editieren, Events nachträglich bearbeiten, Sonderzeiten löschen | ✅ |
-| SaaS-Adminbereich (Mandanten, Tarife, Status, Supportzugriff mit Auditlog) | ✅ |
+| SaaS-Adminbereich: Dashboard, Mandanten-Karten, Plattform-Benutzerverwaltung, Supportzugriff (Auditlog) | ✅ |
 | Tarif-/Limit-System (Trial, Starter, Professional, Multi-Location, Enterprise) | ✅ |
 | Rollen & Rechte (8 Tenant-Rollen, 4 SaaS-Rollen, Standorteinschränkung) | ✅ |
 | Öffentliches Buchungswidget (mobile-first, Slots-API, Honeypot, Rate Limits) | ✅ |

@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.53.0] – 2026-06-26
+
+### Neu / Geändert
+- **SaaS-Admin überarbeitet** – aus der einzelnen scrollbaren Tabelle wurde ein
+  echtes Verwaltungs-Interface mit eigenem Layout (Sidebar):
+  - **Dashboard** (`/saas`) mit KPI-Karten (Mandanten, Testphasen, Benutzer,
+    Reservierungen/Monat), Status-Aufschlüsselung, Tarif-Übersicht und zuletzt
+    angelegten Mandanten.
+  - **Mandanten** als responsive Karten statt Mini-Tabelle, mit Suche, Inline-
+    Bearbeitung (Tarif/Status/Trial), Supportzugriff und einklappbarem Anlegen.
+  - **Benutzerverwaltung** (`/saas/users`): Plattform-Benutzer anlegen, Plattform-
+    Rolle ändern und löschen (Super-Admin); Schutz vor Selbstlöschung und vor dem
+    Entfernen des letzten Super-Admins.
+- **Standort-Umschalter ausgeblendet bei nur einem Standort** – statt eines
+  sinnlosen Dropdowns wird der Standortname schlicht angezeigt.
+
 ## [1.52.1] – 2026-06-26
 
 ### Behoben
