@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.55.0] – 2026-06-26
+
+### Neu
+- **README: vollständige Artisan-Befehlsreferenz** – neuer Abschnitt
+  „CLI-Befehle (Artisan)" mit Tabellen (Plattform-Verwaltung, Diagnose & Betrieb,
+  Lizenz) inkl. der **kompletten Befehle samt Beispiel-Optionen**, nicht nur der
+  Parameter.
+- **`php artisan swayy:queue-health`** – zeigt Queue-Verbindung, wartende und
+  fehlgeschlagene Jobs (inkl. der letzten 5 Fehler) auf einen Blick; ergänzt
+  `swayy:test-mail` für die Mail-/Queue-Diagnose.
+
 ## [1.54.0] – 2026-06-26
 
 ### Neu / Diagnose

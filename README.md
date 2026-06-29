@@ -84,10 +84,11 @@ Fertige Docker-Images baut die CI automatisch: `ghcr.io/brightcolor/gastrobook:l
 9. [API](#api)
 10. [Webhooks](#webhooks)
 11. [Queue & Scheduler](#queue--scheduler)
-12. [E-Mails testen](#e-mails-testen)
-13. [Tests & Codequalität](#tests--codequalität)
-14. [Datenschutz (DSGVO)](#datenschutz-dsgvo)
-15. [Backup, Updates, Produktion](#backup-updates-produktion)
+12. [CLI-Befehle (Artisan)](#cli-befehle-artisan)
+13. [E-Mails testen](#e-mails-testen)
+14. [Tests & Codequalität](#tests--codequalität)
+15. [Datenschutz (DSGVO)](#datenschutz-dsgvo)
+16. [Backup, Updates, Produktion](#backup-updates-produktion)
 
 ---
 
@@ -484,6 +485,62 @@ docker compose exec app php artisan queue:failed
 ```
 Klappt `swayy:test-mail`, aber echte Mails fehlen → Queue-Container/Worker prüfen.
 Schlägt schon `swayy:test-mail` fehl → `MAIL_*` in der `.env` korrigieren (`smtp.example.com` ist nur ein Platzhalter!).
+
+---
+
+## CLI-Befehle (Artisan)
+
+> Im Docker-Betrieb mit `docker compose exec app <befehl>` ausführen, z. B.
+> `docker compose exec app php artisan swayy:stats`. Lokal genügt `php artisan …`.
+
+### Plattform-Verwaltung
+
+| Befehl | Zweck |
+|--------|-------|
+| `php artisan swayy:create-admin` | Plattform-Oberadmin interaktiv anlegen |
+| `php artisan swayy:create-admin --email=du@firma.de --password=GEHEIM1234 --name="Chef"` | Oberadmin nicht-interaktiv anlegen |
+| `php artisan swayy:create-admin --force` | Bestehenden Account zum Oberadmin machen / Passwort zurücksetzen |
+| `php artisan swayy:create-admin --if-missing` | Nur anlegen, wenn noch keiner existiert (läuft beim Container-Start) |
+| `php artisan swayy:stats` | Plattform-Überblick: Mandanten, Nutzer, Gäste, Reservierungen |
+| `php artisan swayy:tenants` | Mandanten (Kunden) auflisten |
+| `php artisan swayy:tenants --status=active --search=müller --with-trashed` | Mandanten gefiltert (Status / Name / inkl. gelöschte) |
+| `php artisan swayy:users` | Alle Nutzer über alle Mandanten |
+| `php artisan swayy:users --tenant=demo --saas --search=anna` | Nutzer gefiltert (Mandant / nur Plattform-Admins / Suche) |
+| `php artisan swayy:guests` | Kunden (Gäste) auflisten |
+| `php artisan swayy:guests --tenant=demo --search=meier --limit=0 --with-anonymized` | Gäste gefiltert (Mandant / Suche / alle Zeilen / inkl. anonymisierte) |
+| `php artisan swayy:reservations` | Reservierungen über alle Mandanten |
+| `php artisan swayy:reservations --tenant=demo --date=2026-07-01 --upcoming --status=confirmed --limit=0` | Reservierungen gefiltert (Mandant / Datum / nur künftige / Status / alle) |
+| `php artisan swayy:plans` | Tarife auflisten |
+| `php artisan swayy:plans --all` | Tarife inkl. inaktive |
+| `php artisan swayy:billing-requests` | Eingegangene Billing-Anfragen (nach Trial-Ablauf) |
+| `php artisan swayy:billing-requests --pending` | Nur bestätigte, aber noch nicht aktivierte |
+| `php artisan swayy:install-legal` | Impressum/Datenschutz/AGB anlegen, falls fehlend |
+| `php artisan swayy:install-legal --force` | Vorhandene Rechtstexte überschreiben |
+
+### Diagnose & Betrieb
+
+| Befehl | Zweck |
+|--------|-------|
+| `php artisan swayy:test-mail du@firma.de` | Testmail **synchron** senden (trennt SMTP- von Queue-Problem) |
+| `php artisan swayy:queue-health` | Queue-Verbindung, wartende + fehlgeschlagene Jobs anzeigen |
+| `php artisan swayy:queue-health --queue=default` | Wie oben für einen bestimmten Queue-Namen |
+| `php artisan queue:failed` | Fehlgeschlagene Jobs auflisten |
+| `php artisan queue:retry all` | Alle fehlgeschlagenen Jobs erneut versuchen |
+| `php artisan queue:flush` | Fehlgeschlagene Jobs verwerfen |
+| `php artisan queue:work --sleep=3 --tries=3 --max-time=3600` | Worker (läuft im `queue`-Container) |
+| `php artisan schedule:run` | Geplante Jobs (läuft minütlich im `scheduler`-Container) |
+| `php artisan migrate --force` | Migrationen (Container führt das beim Start aus) |
+| `php artisan config:cache` / `php artisan config:clear` | Config-Cache bauen / leeren (nach `.env`-Änderung) |
+| `php artisan db:seed --class=PlanSeeder --force` | Tarife (neu) einspielen |
+
+### Lizenz (Self-Hosting)
+
+| Befehl | Zweck |
+|--------|-------|
+| `php artisan license:keygen` | Ed25519-Schlüsselpaar für die Lizenzsignierung erzeugen |
+| `php artisan license:sign --id=lic_abc123 --licensee="Firma GmbH" --email=du@firma.de --plan=professional --expires=2027-12-31 --secret=<base64-key>` | Lizenz erstellen & signieren (weitere `--max-*`/`--features=*` Optionen via `php artisan help license:sign`) |
+| `php artisan license:validate` | Self-Hosted-Lizenz prüfen + Status anzeigen |
+| `php artisan license:validate --fresh` | Cache umgehen und sofort neu prüfen |
 
 ---
 
