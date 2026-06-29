@@ -492,55 +492,90 @@ Schlägt schon `swayy:test-mail` fehl → `MAIL_*` in der `.env` korrigieren (`s
 
 > Im Docker-Betrieb mit `docker compose exec app <befehl>` ausführen, z. B.
 > `docker compose exec app php artisan swayy:stats`. Lokal genügt `php artisan …`.
+> Optionen lassen sich beliebig kombinieren; `--limit=0` heißt „alle Zeilen".
 
 ### Plattform-Verwaltung
 
-| Befehl | Zweck |
-|--------|-------|
-| `php artisan swayy:create-admin` | Plattform-Oberadmin interaktiv anlegen |
-| `php artisan swayy:create-admin --email=du@firma.de --password=GEHEIM1234 --name="Chef"` | Oberadmin nicht-interaktiv anlegen |
-| `php artisan swayy:create-admin --force` | Bestehenden Account zum Oberadmin machen / Passwort zurücksetzen |
-| `php artisan swayy:create-admin --if-missing` | Nur anlegen, wenn noch keiner existiert (läuft beim Container-Start) |
-| `php artisan swayy:stats` | Plattform-Überblick: Mandanten, Nutzer, Gäste, Reservierungen |
-| `php artisan swayy:tenants` | Mandanten (Kunden) auflisten |
-| `php artisan swayy:tenants --status=active --search=müller --with-trashed` | Mandanten gefiltert (Status / Name / inkl. gelöschte) |
-| `php artisan swayy:users` | Alle Nutzer über alle Mandanten |
-| `php artisan swayy:users --tenant=demo --saas --search=anna` | Nutzer gefiltert (Mandant / nur Plattform-Admins / Suche) |
-| `php artisan swayy:guests` | Kunden (Gäste) auflisten |
-| `php artisan swayy:guests --tenant=demo --search=meier --limit=0 --with-anonymized` | Gäste gefiltert (Mandant / Suche / alle Zeilen / inkl. anonymisierte) |
-| `php artisan swayy:reservations` | Reservierungen über alle Mandanten |
-| `php artisan swayy:reservations --tenant=demo --date=2026-07-01 --upcoming --status=confirmed --limit=0` | Reservierungen gefiltert (Mandant / Datum / nur künftige / Status / alle) |
-| `php artisan swayy:plans` | Tarife auflisten |
-| `php artisan swayy:plans --all` | Tarife inkl. inaktive |
-| `php artisan swayy:billing-requests` | Eingegangene Billing-Anfragen (nach Trial-Ablauf) |
-| `php artisan swayy:billing-requests --pending` | Nur bestätigte, aber noch nicht aktivierte |
-| `php artisan swayy:install-legal` | Impressum/Datenschutz/AGB anlegen, falls fehlend |
-| `php artisan swayy:install-legal --force` | Vorhandene Rechtstexte überschreiben |
+**`php artisan swayy:create-admin`** — Legt einen Plattform-Oberadmin (`saas_role=super_admin`) an, der den SaaS-Adminbereich (`/saas`) und alle Mandanten verwalten darf. Ohne Optionen interaktiv (fragt E-Mail/Passwort/Name ab).
+- `--email=` / `--password=` / `--name=` — Werte direkt mitgeben (nicht-interaktiv, z. B. für Skripte).
+- `--force` — einen **bestehenden** Account zum Oberadmin hochstufen bzw. dessen Passwort zurücksetzen.
+- `--if-missing` — nur anlegen, wenn noch **kein** Oberadmin existiert. Genau das läuft beim Container-Start, damit beim ersten Hochfahren ein Admin da ist.
+```bash
+php artisan swayy:create-admin --email=du@firma.de --password=GEHEIM1234 --name="Chef"
+```
+
+**`php artisan swayy:stats`** — Schneller Plattform-Überblick im Terminal: Anzahl Mandanten (nach Status), Nutzer, Gäste und Reservierungen. Gut für einen Gesundheits-/Wachstums-Check ohne ins UI zu gehen.
+
+**`php artisan swayy:tenants`** — Listet deine Mandanten (zahlende Kunden/Betriebe) mit Tarif, Status und Standortzahl.
+- `--status=` — nur ein Status: `active`, `trial_expired`, `pending_billing`, `suspended`, `cancelled`.
+- `--search=` — nach Name oder Slug filtern.
+- `--with-trashed` — auch soft-gelöschte Mandanten einbeziehen.
+```bash
+php artisan swayy:tenants --status=active --search=müller --with-trashed
+```
+
+**`php artisan swayy:users`** — Listet alle Login-Nutzer über alle Mandanten hinweg, samt Mandanten-Mitgliedschaften und Plattform-Rolle.
+- `--tenant=` — nur Nutzer eines Mandanten (ID oder Slug).
+- `--saas` — nur Plattform-Admins (Nutzer mit gesetzter `saas_role`).
+- `--search=` — nach Name oder E-Mail filtern.
+
+**`php artisan swayy:guests`** — Listet die **Kunden/Gäste** (die bei den Betrieben reservieren), nicht die Login-Nutzer.
+- `--tenant=` — nur Gäste eines Mandanten.
+- `--search=` — Name, E-Mail oder Telefon.
+- `--limit=` — Zeilenzahl (Standard 50, `0` = alle).
+- `--with-anonymized` — auch DSGVO-anonymisierte (gelöschte) Gäste anzeigen.
+```bash
+php artisan swayy:guests --tenant=demo --search=meier --limit=0 --with-anonymized
+```
+
+**`php artisan swayy:reservations`** — Listet Reservierungen über alle Mandanten.
+- `--tenant=` — auf einen Mandanten beschränken.
+- `--date=` — nur ein Tag (`Y-m-d`).
+- `--upcoming` — nur künftige.
+- `--status=` — z. B. `confirmed`, `requested`, `cancelled_by_guest`.
+- `--limit=` — Zeilenzahl (Standard 50, `0` = alle).
+```bash
+php artisan swayy:reservations --tenant=demo --date=2026-07-01 --upcoming --status=confirmed --limit=0
+```
+
+**`php artisan swayy:plans`** — Listet die Tarife (Pläne) mit Preis, Limits und Mandantenzahl. Mit `--all` auch deaktivierte Tarife.
+
+**`php artisan swayy:billing-requests`** — Zeigt eingegangene Billing-Anfragen (entstehen, wenn ein Trial ausläuft und der Betreiber zahlen will). Mit `--pending` nur die, die der Kunde bestätigt hat, du aber noch nicht freigeschaltet hast.
+
+**`php artisan swayy:install-legal`** — Legt Impressum/Datenschutz/AGB als Markdown unter `storage/app/legal/` an, falls sie fehlen (läuft beim Container-Start). `--force` überschreibt vorhandene Dateien mit den Vorlagen.
 
 ### Diagnose & Betrieb
 
-| Befehl | Zweck |
-|--------|-------|
-| `php artisan swayy:test-mail du@firma.de` | Testmail **synchron** senden (trennt SMTP- von Queue-Problem) |
-| `php artisan swayy:queue-health` | Queue-Verbindung, wartende + fehlgeschlagene Jobs anzeigen |
-| `php artisan swayy:queue-health --queue=default` | Wie oben für einen bestimmten Queue-Namen |
-| `php artisan queue:failed` | Fehlgeschlagene Jobs auflisten |
-| `php artisan queue:retry all` | Alle fehlgeschlagenen Jobs erneut versuchen |
-| `php artisan queue:flush` | Fehlgeschlagene Jobs verwerfen |
-| `php artisan queue:work --sleep=3 --tries=3 --max-time=3600` | Worker (läuft im `queue`-Container) |
-| `php artisan schedule:run` | Geplante Jobs (läuft minütlich im `scheduler`-Container) |
-| `php artisan migrate --force` | Migrationen (Container führt das beim Start aus) |
-| `php artisan config:cache` / `php artisan config:clear` | Config-Cache bauen / leeren (nach `.env`-Änderung) |
-| `php artisan db:seed --class=PlanSeeder --force` | Tarife (neu) einspielen |
+**`php artisan swayy:test-mail du@firma.de`** — Verschickt **synchron** (an der Queue vorbei) eine Testmail und zeigt Mailer/Host/Absender. Damit trennst du eindeutig ein **SMTP-Problem** von einem **Queue-Problem**: kommt die Testmail an, ist SMTP ok und die Ursache liegt im Queue-Worker; schlägt sie schon hier fehl, stimmt die `MAIL_*`-Konfiguration nicht.
+
+**`php artisan swayy:queue-health`** — Zeigt die aktive Queue-Verbindung, die Zahl **wartender** Jobs und **fehlgeschlagener** Jobs (inkl. der letzten 5 Fehlermeldungen). Erste Anlaufstelle, wenn Mails/Webhooks nicht rausgehen. `--queue=` für einen bestimmten Queue-Namen (Standard `default`).
+
+**`php artisan queue:failed`** — Listet alle in `failed_jobs` gelandeten Jobs (nach 3 Fehlversuchen) mit ID und Fehler. **`queue:retry all`** stellt sie erneut in die Queue (z. B. nachdem du die SMTP-Daten korrigiert hast); **`queue:flush`** verwirft sie endgültig.
+
+**`php artisan queue:work --sleep=3 --tries=3 --max-time=3600`** — Der Worker, der Jobs (Mails, Webhooks) abarbeitet. Läuft im Docker-Setup als eigener `queue`-Container — manuell nur nötig, wenn du ohne diesen Container arbeitest.
+
+**`php artisan schedule:run`** — Führt fällige geplante Jobs aus (Reminder, Wartelisten-Expiry, Retention …). Läuft im `scheduler`-Container minütlich; muss sonst per Cron jede Minute aufgerufen werden.
+
+**`php artisan migrate --force`** — Spielt ausstehende Datenbank-Migrationen ein (`--force` = ohne Rückfrage, für Produktion). Der App-Container macht das beim Start automatisch.
+
+**`php artisan config:cache` / `config:clear`** — Baut bzw. leert den Config-Cache. **Nach jeder `.env`-Änderung** nötig (bzw. Container neu starten), sonst greifen neue Werte nicht.
+
+**`php artisan db:seed --class=PlanSeeder --force`** — Spielt die Standard-Tarife (neu) ein. Idempotent — läuft auch beim Container-Start.
 
 ### Lizenz (Self-Hosting)
 
-| Befehl | Zweck |
-|--------|-------|
-| `php artisan license:keygen` | Ed25519-Schlüsselpaar für die Lizenzsignierung erzeugen |
-| `php artisan license:sign --id=lic_abc123 --licensee="Firma GmbH" --email=du@firma.de --plan=professional --expires=2027-12-31 --secret=<base64-key>` | Lizenz erstellen & signieren (weitere `--max-*`/`--features=*` Optionen via `php artisan help license:sign`) |
-| `php artisan license:validate` | Self-Hosted-Lizenz prüfen + Status anzeigen |
-| `php artisan license:validate --fresh` | Cache umgehen und sofort neu prüfen |
+**`php artisan license:keygen`** — Erzeugt ein Ed25519-Schlüsselpaar zum Signieren/Prüfen von Self-Hosted-Lizenzen. Den **privaten** Schlüssel sicher aufbewahren, den öffentlichen in die App-Config legen.
+
+**`php artisan license:sign …`** — Erstellt und signiert eine Lizenzdatei für einen Lizenznehmer.
+- `--id=` Lizenz-ID, `--licensee=` Name, `--email=` Kontakt, `--plan=` (`starter|professional|enterprise`).
+- `--max-tenants=` / `--max-locations=` / `--max-tables=` / `--max-users=` — Limits.
+- `--expires=` Ablaufdatum (`YYYY-MM-DD`, leer = unbegrenzt), `--features=*` freigeschaltete Features, `--secret=` privater Key (base64), `--out=` Zieldatei.
+```bash
+php artisan license:sign --id=lic_abc123 --licensee="Firma GmbH" --email=du@firma.de \
+  --plan=professional --max-locations=5 --expires=2027-12-31 --secret=<base64-key> --out=license.json
+```
+
+**`php artisan license:validate`** — Prüft die installierte Lizenz und zeigt ihren Status. `--fresh` umgeht den Cache und prüft sofort neu.
 
 ---
 
