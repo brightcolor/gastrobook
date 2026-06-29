@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.53.2] – 2026-06-26
+
+### Geändert
+- **GoCardless-Flow vollständig verifiziert** (SEPA-Abrechnung aus v1.52.0):
+  Einrichten → Mandat → Subscription → Mails an beide, Kündigen, Webhook-Events
+  (Zahlung bestätigt/fehlgeschlagen, Mandat beendet) – alle 6 Feature-Tests grün.
+  Webhook gibt bei ungültiger Signatur jetzt **401** zurück (statt des
+  nicht-standardisierten 498).
+
 ## [1.53.1] – 2026-06-26
 
 ### Behoben

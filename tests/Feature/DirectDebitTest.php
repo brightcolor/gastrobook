@@ -152,7 +152,7 @@ class DirectDebitTest extends TestCase
         // Bad signature → rejected.
         $this->call('POST', '/webhooks/gocardless', [], [], [], [
             'HTTP_WEBHOOK_SIGNATURE' => 'deadbeef', 'CONTENT_TYPE' => 'application/json',
-        ], $payload)->assertStatus(498);
+        ], $payload)->assertStatus(401);
 
         // Valid signature → processed.
         $this->call('POST', '/webhooks/gocardless', [], [], [], [
