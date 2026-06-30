@@ -114,7 +114,7 @@ Fertige Docker-Images baut die CI automatisch: `ghcr.io/brightcolor/gastrobook:l
 | Tisch teilen (zweite separate Gruppe an einen belegten Tisch, solange Plätze frei sind) | ✅ |
 | Stammgast-Erkennung (VIP-Flag oder ab X Besuchen; ⭐-Badge in Board, Gästeliste, Reservierung) | ✅ |
 | Internes Reservierungsbuch (Filter, Suche, Schnellaktionen, Statushistorie) | ✅ |
-| Grafischer Tischplan (Statusfarben, Drag&Drop-Editor mit Pointer-Touch, Tisch anlegen, Hintergrundbild pro Raum, Stühle mit Sitzplatz-/Belegungsanzeige, Drehen, Live-Refresh) | ✅ |
+| Grafischer Tischplan (Statusfarben, Drag&Drop-Editor mit Pointer-Touch, Tisch anlegen **und bearbeiten** – Name/Kapazität/Eigenschaften per ✎ direkt am Tisch, Tischkombinationen anlegen **und bearbeiten**, Hintergrundbild pro Raum, Stühle mit Sitzplatz-/Belegungsanzeige, Drehen, Live-Refresh) | ✅ |
 | Öffentlicher Tischplan auf der Buchungsseite (Verfügbarkeit live, optionale Tischwahl, Räume/Etagen) | ✅ |
 | Walk-ins (freie Tische sofort, "frei bis", als Reservierung mit Quelle `walk_in`) | ✅ |
 | Warteliste (online + intern, Angebote per Mail mit Ablauf, Annahme-Link) | ✅ |

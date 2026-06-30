@@ -761,6 +761,52 @@ class SettingsController extends Controller
         return $this->saved($request, __('Sonderöffnungszeit gespeichert.'), true);
     }
 
+    public function updateCombination(Request $request, TableCombination $combination)
+    {
+        $location = $this->context->location();
+        abort_if($location === null, 404);
+        abort_if($combination->location_id !== $location->id, 404);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:80'],
+            'table_ids' => ['required', 'array', 'min:2'],
+            'table_ids.*' => ['integer'],
+            'min_capacity' => ['required', 'integer', 'min:1'],
+            'max_capacity' => ['required', 'integer', 'min:1', 'gte:min_capacity'],
+        ]);
+
+        $tableIds = collect($validated['table_ids'])
+            ->filter(fn ($id) => $location->tables()->where('id', $id)->where('joinable', true)->exists())
+            ->values();
+        abort_if($tableIds->count() < 2, 422, 'Mindestens zwei kombinierbare Tische erforderlich.');
+
+        $combination->update([
+            'name' => $validated['name'],
+            'min_capacity' => (int) $validated['min_capacity'],
+            'max_capacity' => (int) $validated['max_capacity'],
+        ]);
+        $combination->tables()->sync($tableIds);
+
+        $this->audit->log('table_combination.updated', $combination, null, $validated);
+
+        if ($request->wantsJson()) {
+            $combination->load('tables:id,name');
+
+            return response()->json([
+                'message' => __('Tischkombination aktualisiert.'),
+                'combination' => [
+                    'id' => $combination->id,
+                    'name' => $combination->name,
+                    'min_capacity' => $combination->min_capacity,
+                    'max_capacity' => $combination->max_capacity,
+                    'tables' => $combination->tables->map(fn ($t) => ['id' => $t->id, 'name' => $t->name])->values(),
+                ],
+            ]);
+        }
+
+        return back()->with('success', __('Tischkombination aktualisiert.'));
+    }
+
     public function deleteCombination(TableCombination $combination, Request $request)
     {
         abort_if($combination->location_id !== $this->context->locationId(), 404);

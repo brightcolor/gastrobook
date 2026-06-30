@@ -84,4 +84,50 @@ class CrudEditingTest extends TestCase
             'name' => 'X', 'color' => '#222222',
         ])->assertForbidden();
     }
+
+    public function test_table_can_be_edited_from_the_floorplan(): void
+    {
+        $setup = $this->createTenantSetup();
+        $admin = $this->createMember($setup['tenant'], 'tenant_owner');
+        $table = $setup['tables'][0];
+        $this->clearTenantContext();
+
+        $this->actingAs($admin)->putJson("/admin/floorplan/tables/{$table->id}", [
+            'name' => 'Fenster 1', 'min_capacity' => 2, 'max_capacity' => 6,
+            'online_bookable' => true, 'joinable' => true, 'outdoor' => false, 'accessible' => true,
+        ])->assertOk()->assertJsonPath('table.name', 'Fenster 1');
+
+        $table->refresh();
+        $this->assertSame('Fenster 1', $table->name);
+        $this->assertSame(6, $table->max_capacity);
+        $this->assertTrue($table->joinable);
+        $this->assertTrue($table->accessible);
+    }
+
+    public function test_combination_can_be_edited(): void
+    {
+        $setup = $this->createTenantSetup();
+        $admin = $this->createMember($setup['tenant'], 'tenant_owner');
+        foreach ($setup['tables'] as $t) {
+            $t->update(['joinable' => true]);
+        }
+        $combo = $setup['location']->tableCombinations()->create([
+            'tenant_id' => $setup['tenant']->id, 'name' => 'Alt', 'min_capacity' => 4, 'max_capacity' => 6,
+        ]);
+        $combo->tables()->sync([$setup['tables'][0]->id, $setup['tables'][1]->id]);
+        $this->clearTenantContext();
+
+        $this->actingAs($admin)->putJson("/admin/settings/combinations/{$combo->id}", [
+            'name' => 'Große Tafel', 'min_capacity' => 6, 'max_capacity' => 12,
+            'table_ids' => [$setup['tables'][1]->id, $setup['tables'][2]->id],
+        ])->assertOk()->assertJsonPath('combination.name', 'Große Tafel');
+
+        $combo->refresh()->load('tables');
+        $this->assertSame('Große Tafel', $combo->name);
+        $this->assertSame(12, $combo->max_capacity);
+        $this->assertEqualsCanonicalizing(
+            [$setup['tables'][1]->id, $setup['tables'][2]->id],
+            $combo->tables->pluck('id')->all()
+        );
+    }
 }

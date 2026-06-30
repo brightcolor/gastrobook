@@ -113,6 +113,12 @@ class FloorPlanController extends Controller
                 'width' => $table->width, 'height' => $table->height,
                 'rotation' => $table->rotation, 'shape' => $table->shape,
                 'capacity' => $table->min_capacity.'-'.$table->max_capacity,
+                'min_capacity' => (int) $table->min_capacity,
+                'max_capacity' => (int) $table->max_capacity,
+                'outdoor' => (bool) $table->outdoor,
+                'accessible' => (bool) $table->accessible,
+                'joinable' => (bool) $table->joinable,
+                'online_bookable' => (bool) $table->online_bookable,
                 'seats' => (int) $table->max_capacity,
                 'occupied' => min((int) $occupiedSeats, (int) $table->max_capacity),
                 'current' => $current ? [
@@ -261,6 +267,52 @@ class FloorPlanController extends Controller
             'occupied' => 0,
             'current' => null,
             'upcoming' => null,
+        ]]);
+    }
+
+    /**
+     * Edit a table's properties (name, capacity, flags) straight from the
+     * floor-plan editor – so the operator edits the table where they see it,
+     * instead of jumping to Settings → Räume & Tags. Gated by floorplan.update.
+     */
+    public function updateTable(Request $request, RestaurantTable $table)
+    {
+        abort_if($table->location_id !== $this->context->locationId(), 404);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:40'],
+            'min_capacity' => ['required', 'integer', 'min:1', 'max:50'],
+            'max_capacity' => ['required', 'integer', 'min:1', 'max:50', 'gte:min_capacity'],
+            'outdoor' => ['nullable', 'boolean'],
+            'accessible' => ['nullable', 'boolean'],
+            'joinable' => ['nullable', 'boolean'],
+            'online_bookable' => ['nullable', 'boolean'],
+        ]);
+
+        $old = ['name' => $table->name, 'min_capacity' => $table->min_capacity, 'max_capacity' => $table->max_capacity];
+        $table->update([
+            'name' => $validated['name'],
+            'min_capacity' => (int) $validated['min_capacity'],
+            'max_capacity' => (int) $validated['max_capacity'],
+            'outdoor' => $request->boolean('outdoor'),
+            'accessible' => $request->boolean('accessible'),
+            'joinable' => $request->boolean('joinable'),
+            'online_bookable' => $request->boolean('online_bookable'),
+        ]);
+
+        $this->audit->log('table.updated', $table, $old, $validated);
+
+        return response()->json(['table' => [
+            'id' => $table->id,
+            'name' => $table->name,
+            'min_capacity' => (int) $table->min_capacity,
+            'max_capacity' => (int) $table->max_capacity,
+            'capacity' => $table->min_capacity.'-'.$table->max_capacity,
+            'seats' => (int) $table->max_capacity,
+            'outdoor' => (bool) $table->outdoor,
+            'accessible' => (bool) $table->accessible,
+            'joinable' => (bool) $table->joinable,
+            'online_bookable' => (bool) $table->online_bookable,
         ]]);
     }
 

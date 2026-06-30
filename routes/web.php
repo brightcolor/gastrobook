@@ -209,6 +209,8 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
                 ->name('floorplan.positions');
             Route::post('/floorplan/tables', [FloorPlanController::class, 'storeTable'])
                 ->name('floorplan.tables.store');
+            Route::put('/floorplan/tables/{table}', [FloorPlanController::class, 'updateTable'])
+                ->name('floorplan.tables.update');
             Route::post('/floorplan/rooms/{room}/background', [FloorPlanController::class, 'uploadBackground'])
                 ->name('floorplan.background.upload');
             Route::delete('/floorplan/rooms/{room}/background', [FloorPlanController::class, 'deleteBackground'])
@@ -309,6 +311,7 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
         Route::put('/settings/tables/{table}', [SettingsController::class, 'updateTable'])->name('settings.tables.update');
         Route::delete('/settings/tables/{table}', [SettingsController::class, 'deleteTable'])->name('settings.tables.delete');
         Route::post('/settings/combinations', [SettingsController::class, 'storeCombination'])->name('settings.combinations.store');
+        Route::put('/settings/combinations/{combination}', [SettingsController::class, 'updateCombination'])->name('settings.combinations.update');
         Route::delete('/settings/combinations/{combination}', [SettingsController::class, 'deleteCombination'])->name('settings.combinations.delete');
         Route::put('/settings/field-rules', [SettingsController::class, 'updateFieldRules'])
             ->middleware('permission:tenant.settings.manage')->name('settings.field-rules');

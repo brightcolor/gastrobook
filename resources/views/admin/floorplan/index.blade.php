@@ -194,6 +194,42 @@
 </div>
 @endif
 
+{{-- Edit table modal --}}
+@if($canEdit)
+<div id="tableEditBack" class="fp-modal-back hidden">
+    <div class="fp-modal">
+        <div class="fp-modal-head"><span>✎</span><h3>Tisch bearbeiten</h3></div>
+        <form id="tableEditForm" class="fp-modal-body">
+            <input type="hidden" name="id">
+            <label class="fp-field">
+                <span>Name / Nummer</span>
+                <input name="name" required maxlength="40" autocomplete="off">
+            </label>
+            <div class="fp-grid2">
+                <label class="fp-field"><span>Plätze min.</span>
+                    <input name="min_capacity" type="number" min="1" max="50" required></label>
+                <label class="fp-field"><span>Plätze max.</span>
+                    <input name="max_capacity" type="number" min="1" max="50" required></label>
+            </div>
+            <div class="fp-field">
+                <span>Eigenschaften</span>
+                <div class="space-y-1.5 text-sm">
+                    <label class="flex items-center gap-2"><input type="checkbox" name="online_bookable" class="rounded"> Online buchbar</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" name="joinable" class="rounded"> Kombinierbar</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" name="outdoor" class="rounded"> Außenbereich</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" name="accessible" class="rounded"> Barrierefrei</label>
+                </div>
+            </div>
+            <p id="tableEditErr" class="fp-err hidden"></p>
+            <div class="fp-modal-foot">
+                <button type="button" id="tableEditCancel" class="fp-btn">Abbrechen</button>
+                <button type="submit" class="fp-btn fp-btn-save">Speichern</button>
+            </div>
+        </form>
+    </div>
+</div>
+@endif
+
 {{-- Zone modal --}}
 @if($canEdit)
 <div id="zoneModalBack" class="fp-modal-back hidden">
@@ -238,6 +274,7 @@
     const stateUrl = @json(route('admin.floorplan.state'));
     const posUrl = @json(route('admin.floorplan.positions'));
     const tableStoreUrl = @json($canEdit ? route('admin.floorplan.tables.store') : '');
+    const tableUpdateBase = @json($canEdit ? url('/admin/floorplan/tables') : '');
     const bgBase = @json(url('/admin/floorplan/rooms'));
     const csrf = @json(csrf_token());
     const zoneIndexUrl  = @json(route('admin.floorplan.zones.index'));
@@ -420,7 +457,7 @@
                 + `<div class="tbl-label" style="transform:rotate(${-(t.rotation || 0)}deg)">`
                 + `<span class="t-name"><span class="st-dot"></span>${esc(t.name)}</span>`
                 + `${editMode ? '' : occLine}${guest}${next}${tagDots}</div>`
-                + (editMode ? `<button class="rot-btn" title="Drehen">⟳</button>` : '');
+                + (editMode ? `<button class="edit-btn" title="Eigenschaften bearbeiten">✎</button><button class="rot-btn" title="Drehen">⟳</button>` : '');
 
             if (editMode) {
                 makeDraggable(el, room);
@@ -434,6 +471,9 @@
                     el.style.setProperty('--rot', r + 'deg');
                     el.querySelector('.tbl-label').style.transform = `rotate(${-r}deg)`;
                 });
+                const eb = el.querySelector('.edit-btn');
+                eb.addEventListener('pointerdown', e => e.stopPropagation());
+                eb.addEventListener('click', e => { e.stopPropagation(); openTableEdit(t); });
             } else {
                 el.addEventListener('click', () => {
                     if (reassigning) {
@@ -987,6 +1027,68 @@
         });
     }
 
+    // ---- Edit table modal ----
+    const editModal = document.getElementById('tableEditBack');
+    let editModalOpen = null;
+    if (editModal) {
+        const eForm = document.getElementById('tableEditForm');
+        const eErr = document.getElementById('tableEditErr');
+        const closeEdit = () => { editModal.classList.add('hidden'); editModal.classList.remove('flex'); editModalOpen = null; };
+        document.getElementById('tableEditCancel').addEventListener('click', closeEdit);
+        editModal.addEventListener('click', e => { if (e.target === editModal) closeEdit(); });
+
+        // Called from the per-table ✎ button (function declaration → hoisted).
+        window.openTableEditImpl = function (t) {
+            editModalOpen = t.id;
+            eErr.classList.add('hidden');
+            eForm.id.value = t.id;
+            eForm.name.value = t.name || '';
+            eForm.min_capacity.value = t.min_capacity ?? 2;
+            eForm.max_capacity.value = t.max_capacity ?? 4;
+            eForm.online_bookable.checked = !!t.online_bookable;
+            eForm.joinable.checked = !!t.joinable;
+            eForm.outdoor.checked = !!t.outdoor;
+            eForm.accessible.checked = !!t.accessible;
+            editModal.classList.remove('hidden');
+            editModal.classList.add('flex');
+        };
+
+        eForm.addEventListener('submit', async e => {
+            e.preventDefault();
+            eErr.classList.add('hidden');
+            const id = eForm.id.value;
+            const payload = {
+                name: eForm.name.value,
+                min_capacity: eForm.min_capacity.value,
+                max_capacity: eForm.max_capacity.value,
+                online_bookable: eForm.online_bookable.checked,
+                joinable: eForm.joinable.checked,
+                outdoor: eForm.outdoor.checked,
+                accessible: eForm.accessible.checked,
+            };
+            const res = await fetch(`${tableUpdateBase}/${id}`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, Accept: 'application/json'},
+                body: JSON.stringify(payload),
+            });
+            if (!res.ok) {
+                const j = await res.json().catch(() => ({}));
+                eErr.textContent = j.message || (j.errors ? Object.values(j.errors)[0][0] : 'Konnte nicht gespeichert werden.');
+                eErr.classList.remove('hidden');
+                return;
+            }
+            const j = await res.json();
+            const idx = tablesData.findIndex(x => x.id == id);
+            if (idx !== -1) tablesData[idx] = { ...tablesData[idx], ...j.table };
+            closeEdit();
+            render();
+        });
+    }
+
+    function openTableEdit(t) {
+        if (window.openTableEditImpl) window.openTableEditImpl(t);
+    }
+
     // ---- Background upload / clear ----
     document.querySelectorAll('.bg-upload').forEach(input => input.addEventListener('change', async () => {
         const file = input.files[0];
@@ -1041,8 +1143,10 @@
     const canEdit   = @json($canEdit);
     const storeUrl  = @json($canEdit ? route('admin.settings.combinations.store') : '');
     const deleteBase = @json($canEdit ? url('/admin/settings/combinations') : '');
+    const updateBase = @json($canEdit ? url('/admin/settings/combinations') : '');
 
     let combosData = @json($combosJson);
+    let editingId = null;
 
     // ── Capacity suggestion ───────────────────────────────────────────────
     // Returns how many of a rect table's narrow-end (Stirnseite) seats exist.
@@ -1114,11 +1218,20 @@
                     <p class="font-semibold text-stone-800">${c.name}</p>
                     <p class="mt-0.5 text-xs text-stone-500">${c.tables.map(t => t.name).join(' + ')} · ${c.min_capacity}–${c.max_capacity} Personen</p>
                 </div>
-                ${canEdit ? `<button class="combo-del fp-mini fp-mini-ghost shrink-0 !py-1 !px-2 text-red-500 hover:!border-red-300 hover:bg-red-50 hover:text-red-700" data-id="${c.id}" title="Kombination löschen">✕</button>` : ''}
+                ${canEdit ? `<div class="flex shrink-0 gap-1">
+                    <button class="combo-edit fp-mini fp-mini-ghost !py-1 !px-2 text-teal-600 hover:!border-teal-300 hover:bg-teal-50" data-id="${c.id}" title="Kombination bearbeiten">✎</button>
+                    <button class="combo-del fp-mini fp-mini-ghost !py-1 !px-2 text-red-500 hover:!border-red-300 hover:bg-red-50 hover:text-red-700" data-id="${c.id}" title="Kombination löschen">✕</button>
+                </div>` : ''}
             </div>
         `).join('');
 
         if (canEdit) {
+            list.querySelectorAll('.combo-edit').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const c = combosData.find(x => x.id == btn.dataset.id);
+                    if (c) openComboEdit(c);
+                });
+            });
             list.querySelectorAll('.combo-del').forEach(btn => {
                 btn.addEventListener('click', async () => {
                     if (!confirm('Tischkombination löschen?')) return;
@@ -1167,14 +1280,34 @@
     }
 
     openBtn.addEventListener('click', () => {
+        editingId = null;
+        if (saveBtn) saveBtn.textContent = 'Anlegen';
         resetForm();
         form.classList.remove('hidden');
         openBtn.classList.add('hidden');
     });
     cancelBtn?.addEventListener('click', () => {
+        editingId = null;
+        if (saveBtn) saveBtn.textContent = 'Anlegen';
         form.classList.add('hidden');
         openBtn.classList.remove('hidden');
     });
+
+    // Pre-fill the form to edit an existing combination.
+    function openComboEdit(c) {
+        editingId = c.id;
+        resetForm();
+        const ids = c.tables.map(t => t.id);
+        checksWrap?.querySelectorAll('.combo-check').forEach(cb => {
+            cb.checked = ids.includes(parseInt(cb.value, 10));
+        });
+        if (nameInput) { nameInput.value = c.name; nameManual = true; }
+        if (minInput)  minInput.value = c.min_capacity;
+        if (maxInput)  maxInput.value = c.max_capacity;
+        if (saveBtn)   saveBtn.textContent = 'Speichern';
+        form.classList.remove('hidden');
+        openBtn.classList.add('hidden');
+    }
 
     function getSelectedTables() {
         return [...(checksWrap?.querySelectorAll('.combo-check:checked') || [])].map(cb => ({
@@ -1238,8 +1371,8 @@
         };
 
         try {
-            const res = await fetch(storeUrl, {
-                method: 'POST',
+            const res = await fetch(editingId ? `${updateBase}/${editingId}` : storeUrl, {
+                method: editingId ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
                 body: JSON.stringify(payload),
             });
@@ -1249,7 +1382,15 @@
                 if (errEl) { errEl.textContent = msg; errEl.classList.remove('hidden'); }
                 return;
             }
-            if (json.combination) combosData.push(json.combination);
+            if (json.combination) {
+                if (editingId) {
+                    const idx = combosData.findIndex(c => c.id == editingId);
+                    if (idx !== -1) combosData[idx] = json.combination; else combosData.push(json.combination);
+                } else {
+                    combosData.push(json.combination);
+                }
+            }
+            editingId = null;
             renderList();
             form.classList.add('hidden');
             openBtn.classList.remove('hidden');
@@ -1258,7 +1399,7 @@
             if (errEl) { errEl.textContent = 'Netzwerkfehler.'; errEl.classList.remove('hidden'); }
         } finally {
             saveBtn.disabled = false;
-            saveBtn.textContent = 'Anlegen';
+            saveBtn.textContent = editingId ? 'Speichern' : 'Anlegen';
         }
     });
 })();
@@ -1379,6 +1520,10 @@
         background:#0f766e; color:#fff; font-size:13px; line-height:1; cursor:pointer; box-shadow:0 2px 5px rgba(0,0,0,.3);
         opacity:0; transform:scale(.7); transition:opacity .12s, transform .12s; }
     .floor-room .table-el:hover .rot-btn, .floor-room .table-el.selected .rot-btn { opacity:1; transform:scale(1); }
+    .floor-room .edit-btn { position:absolute; top:-11px; left:-11px; width:24px; height:24px; border-radius:9999px; border:2px solid #fff;
+        background:#1c1917; color:#fff; font-size:12px; line-height:1; cursor:pointer; box-shadow:0 2px 5px rgba(0,0,0,.3);
+        opacity:0; transform:scale(.7); transition:opacity .12s, transform .12s; }
+    .floor-room .table-el:hover .edit-btn, .floor-room .table-el.selected .edit-btn { opacity:1; transform:scale(1); }
 
     /* Reservation popup */
     .fp-popup { position:fixed; inset-inline:16px; bottom:16px; z-index:50; border-radius:18px; overflow:hidden; background:#fff;

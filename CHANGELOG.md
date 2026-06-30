@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.62.0] – 2026-06-29
+
+### Neu: Bearbeiten direkt im Tischplan (Teil 2)
+- **Tisch bearbeiten, wo man ihn sieht.** Im Tischplan-Editor hat jeder Tisch
+  jetzt einen ✎-Button: Name, Min/Max-Plätze und Eigenschaften (online buchbar,
+  kombinierbar, Außenbereich, barrierefrei) ändern – ohne den Umweg über
+  Einstellungen → Räume & Tags. `FloorPlanController::updateTable`
+  (permission:floorplan.update), Änderung erscheint sofort live im Plan.
+- **Tischkombinationen bearbeiten.** Bestehende Kombinationen (Tische, Name,
+  Min/Max) lassen sich jetzt über ✎ ändern statt löschen+neu.
+  `updateCombination`.
+- 4 Tests; Tisch-Edit live im Browser verifiziert.
+
 ## [1.61.0] – 2026-06-29
 
 ### Neu: Bearbeiten statt löschen+neu (Teil 1)
