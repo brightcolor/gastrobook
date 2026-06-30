@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.59.1] – 2026-06-29
+
+### Behoben
+- **Onboarding-Banner blieb dauerhaft hängen.** Das Dashboard zeigte
+  „Einrichtung nicht abgeschlossen – Öffnungszeiten und mindestens ein Tisch
+  fehlen noch" allein anhand des `onboarding_completed_at`-Zeitstempels – auch
+  wenn Öffnungszeiten und Tische längst existierten (z. B. bei manueller
+  Einrichtung ohne Wizard). Jetzt prüft das Dashboard den **echten Datenstand**
+  (Öffnungszeiten + Tische bzw. Salon: Mitarbeiter + Leistungen); ist alles da,
+  wird das Onboarding automatisch als erledigt markiert und das Banner
+  verschwindet.
+
 ## [1.59.0] – 2026-06-29
 
 ### Behoben/Neu: Gast-Tischwahl sichtbar gemacht
