@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.60.0] – 2026-06-29
+
+### Neu
+- **Stammdaten in Einstellungen → Allgemein.** Bisher waren Betriebsname und
+  Standort-Kontaktdaten (Adresse/Telefon/E-Mail/Zeitzone) nur auf der separaten
+  Seite „Standorte" editierbar – für Ein-Standort-Betriebe an unerwarteter
+  Stelle. Jetzt direkt im Allgemein-Tab: Betriebsname, Standortname, Telefon,
+  E-Mail, Adresse, Zeitzone und Begrüßungstext der Buchungsseite. Slug bleibt
+  beim Umbenennen stabil; bei mehreren Standorten Link zur Standortverwaltung.
+- 3 Tests.
+
 ## [1.59.2] – 2026-06-29
 
 ### Behoben

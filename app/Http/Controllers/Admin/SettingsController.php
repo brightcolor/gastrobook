@@ -621,6 +621,48 @@ class SettingsController extends Controller
         return $this->saved($request, __('Öffnungszeiten gespeichert.'));
     }
 
+    /**
+     * Core master data: business (tenant) name + this location's contact data.
+     * Lives in Settings → Allgemein so single-location operators find it where
+     * they expect (instead of only on the separate Standorte page).
+     */
+    public function updateGeneral(Request $request)
+    {
+        $location = $this->context->location();
+        abort_if($location === null, 404);
+        $tenant = $location->tenant;
+
+        $validated = $request->validate([
+            'business_name' => ['required', 'string', 'max:120'],
+            'location_name' => ['required', 'string', 'max:120'],
+            'timezone' => ['required', 'timezone'],
+            'phone' => ['nullable', 'string', 'max:40'],
+            'email' => ['nullable', 'email:rfc', 'max:200'],
+            'address_line1' => ['nullable', 'string', 'max:200'],
+            'postal_code' => ['nullable', 'string', 'max:20'],
+            'city' => ['nullable', 'string', 'max:100'],
+            'public_intro' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $tenant->update(['name' => $validated['business_name']]);
+
+        // Slug stays fixed on rename so existing booking links keep working.
+        $location->update([
+            'name' => $validated['location_name'],
+            'timezone' => $validated['timezone'],
+            'phone' => $validated['phone'] ?? null,
+            'email' => $validated['email'] ?? null,
+            'address_line1' => $validated['address_line1'] ?? null,
+            'postal_code' => $validated['postal_code'] ?? null,
+            'city' => $validated['city'] ?? null,
+            'public_intro' => $validated['public_intro'] ?? null,
+        ]);
+
+        $this->audit->log('location.general_updated', $location, null, $validated);
+
+        return $this->saved($request, __('Stammdaten gespeichert.'), reload: true);
+    }
+
     public function updateBranding(Request $request)
     {
         $tenant = $this->context->tenant();

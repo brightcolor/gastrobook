@@ -61,6 +61,56 @@
      ═══════════════════════════════════════════════════════════════════════ --}}
 <div id="tab-allgemein" class="settings-panel space-y-5">
 
+    {{-- Stammdaten --}}
+    @if($canManage)
+    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
+        <h2 class="mb-1 font-bold">Stammdaten</h2>
+        <p class="mb-3 text-sm text-stone-500">Name und Kontaktdaten – erscheinen auf der Buchungsseite.</p>
+        <form method="POST" action="{{ route('admin.settings.general') }}" class="grid gap-3 text-sm sm:grid-cols-2">
+            @csrf @method('PUT')
+            <label class="block">Betriebsname *
+                <input name="business_name" required value="{{ old('business_name', $tenant->name) }}" class="mt-1 w-full rounded-lg border-stone-200">
+            </label>
+            <label class="block">Standortname *
+                <input name="location_name" required value="{{ old('location_name', $location->name) }}" class="mt-1 w-full rounded-lg border-stone-200">
+            </label>
+            <label class="block">Telefon
+                <input name="phone" value="{{ old('phone', $location->phone) }}" class="mt-1 w-full rounded-lg border-stone-200">
+            </label>
+            <label class="block">E-Mail
+                <input type="email" name="email" value="{{ old('email', $location->email) }}" class="mt-1 w-full rounded-lg border-stone-200">
+            </label>
+            <label class="block sm:col-span-2">Straße & Nr.
+                <input name="address_line1" value="{{ old('address_line1', $location->address_line1) }}" class="mt-1 w-full rounded-lg border-stone-200">
+            </label>
+            <label class="block">PLZ
+                <input name="postal_code" value="{{ old('postal_code', $location->postal_code) }}" class="mt-1 w-full rounded-lg border-stone-200">
+            </label>
+            <label class="block">Stadt
+                <input name="city" value="{{ old('city', $location->city) }}" class="mt-1 w-full rounded-lg border-stone-200">
+            </label>
+            <label class="block sm:col-span-2">Zeitzone *
+                <select name="timezone" class="mt-1 w-full rounded-lg border-stone-200">
+                    @foreach(\DateTimeZone::listIdentifiers() as $tz)
+                        <option value="{{ $tz }}" @selected($location->timezone === $tz)>{{ $tz }}</option>
+                    @endforeach
+                </select>
+            </label>
+            <label class="block sm:col-span-2">Begrüßungstext auf der Buchungsseite (optional)
+                <textarea name="public_intro" rows="2" class="mt-1 w-full rounded-lg border-stone-200">{{ old('public_intro', $location->public_intro) }}</textarea>
+            </label>
+            @error('business_name')<p class="text-xs text-red-600 sm:col-span-2">{{ $message }}</p>@enderror
+            @error('email')<p class="text-xs text-red-600 sm:col-span-2">{{ $message }}</p>@enderror
+            <div class="sm:col-span-2">
+                <button class="rounded-xl bg-stone-900 px-5 py-2.5 font-bold text-white">Stammdaten speichern</button>
+                @if($bookableLocations > 1 || $location->tenant->locations()->count() > 1)
+                    <a href="{{ route('admin.locations.index') }}" class="ml-3 text-xs font-semibold text-teal-700 underline">Weitere Standorte verwalten</a>
+                @endif
+            </div>
+        </form>
+    </div>
+    @endif
+
     {{-- Betriebstyp --}}
     <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
         <h2 class="mb-1 font-bold">Betriebstyp <span class="tip" tabindex="0" data-tip="Legt fest, ob dein Betrieb als Restaurant mit Tischreservierungen oder als Salon mit Terminbuchungen pro Mitarbeiter arbeitet. Du kannst jederzeit umschalten – alles passt sich automatisch an.">?</span></h2>
