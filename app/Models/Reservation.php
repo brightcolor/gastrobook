@@ -37,7 +37,7 @@ class Reservation extends Model
     protected $fillable = [
         'tenant_id', 'location_id', 'guest_id', 'event_id', 'service_id', 'staff_member_id',
         'code', 'manage_token', 'party_size', 'reservation_date',
-        'start_at', 'end_at', 'timezone', 'status', 'source', 'occasion',
+        'start_at', 'end_at', 'timezone', 'status', 'source', 'table_chosen_by_guest', 'occasion',
         'guest_name_snapshot', 'guest_email_snapshot', 'guest_phone_snapshot',
         'guest_note', 'allergy_note', 'internal_note',
         'payment_status', 'payment_amount_minor', 'currency', 'payment_due_at',
@@ -52,6 +52,7 @@ class Reservation extends Model
             'start_at' => 'datetime',
             'end_at' => 'datetime',
             'status' => ReservationStatus::class,
+            'table_chosen_by_guest' => 'boolean',
             'payment_due_at' => 'datetime',
             'confirmed_at' => 'datetime',
             'seated_at' => 'datetime',

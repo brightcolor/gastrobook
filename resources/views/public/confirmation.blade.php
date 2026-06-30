@@ -115,6 +115,12 @@ if ($companions) {
                     <span class="text-stone-500">Personen</span>
                     <strong>{{ $reservation->party_size }}</strong>
                 </div>
+                @if($reservation->tables->isNotEmpty())
+                    <div class="flex items-center justify-between px-4 py-2.5">
+                        <span class="text-stone-500">{{ $reservation->table_chosen_by_guest ? 'Ihr Wunschtisch' : 'Tisch' }}</span>
+                        <strong>{{ $reservation->tables->pluck('name')->join(', ') }}</strong>
+                    </div>
+                @endif
                 <div class="flex items-center justify-between px-4 py-2.5">
                     <span class="text-stone-500">Reservierungsnr.</span>
                     <strong class="font-mono tracking-wide">{{ $reservation->code }}</strong>

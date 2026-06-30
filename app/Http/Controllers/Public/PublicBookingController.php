@@ -473,6 +473,7 @@ class PublicBookingController extends Controller
                 'allergy_note' => $validated['allergies'] ?? null,
                 'occasion' => $validated['occasion'] ?? null,
                 'table_ids' => $tableIds,
+                'table_chosen_by_guest' => $tableIds !== [],
                 'email_confirmation_required' => $needsConfirm,
                 'consents' => array_filter([
                     'privacy' => true,

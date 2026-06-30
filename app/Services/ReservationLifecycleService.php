@@ -8,6 +8,7 @@ use App\Models\Location;
 use App\Models\NotificationLog;
 use App\Models\Reservation;
 use App\Models\ReservationStatusHistory;
+use App\Models\RestaurantTable;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -140,6 +141,7 @@ class ReservationLifecycleService
                 'timezone' => $location->timezone,
                 'status' => $status,
                 'source' => $data['source'],
+                'table_chosen_by_guest' => $data['table_chosen_by_guest'] ?? false,
                 'occasion' => $data['occasion'] ?? null,
                 'guest_name_snapshot' => $data['guest_name'],
                 'guest_email_snapshot' => $data['guest_email'] ?? null,
@@ -330,6 +332,36 @@ class ReservationLifecycleService
             $actor,
             $reservation->tenant_id
         );
+
+        // Counter-proposal: the staff changed a table the guest had picked
+        // themselves. Inform the guest about the new table and drop the
+        // "guest wish" flag (it's now a staff assignment).
+        $oldSorted = array_map('intval', $old);
+        $newSorted = array_map('intval', $tableIds);
+        sort($oldSorted);
+        sort($newSorted);
+        $changed = $oldSorted !== $newSorted;
+
+        if ($reservation->table_chosen_by_guest && $changed && $reservation->guest_email_snapshot) {
+            $newNames = RestaurantTable::withoutGlobalScope('tenant')
+                ->whereIn('id', $tableIds)->pluck('name')->implode(', ');
+            $tenant = $reservation->tenant()->first();
+
+            Mail::to($reservation->guest_email_snapshot)->queue(new TemplatedMail(
+                __('Tischänderung zu Ihrer Reservierung :code – :loc', ['code' => $reservation->code, 'loc' => $location->name]),
+                __("Hallo :name,\n\nzu Ihrer Reservierung am :date um :time Uhr haben wir Ihnen statt Ihres Wunschtisches Tisch :tables zugewiesen, damit alles optimal passt. An Ihrer Reservierung ändert sich sonst nichts.\n\nBei Fragen melden Sie sich gerne.\n\n:loc", [
+                    'name' => $reservation->guest_name_snapshot,
+                    'date' => $reservation->localStart()->format('d.m.Y'),
+                    'time' => $reservation->localStart()->format('H:i'),
+                    'tables' => $newNames ?: '—',
+                    'loc' => $location->name,
+                ]),
+                $tenant?->mail_from_name,
+                $tenant?->mail_reply_to,
+            ));
+
+            $reservation->update(['table_chosen_by_guest' => false]);
+        }
     }
 
     /**

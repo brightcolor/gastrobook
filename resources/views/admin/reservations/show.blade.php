@@ -18,7 +18,9 @@
                 <div><div class="text-stone-500">Uhrzeit</div><div class="font-bold">{{ $reservation->localStart()->format('H:i') }}–{{ $reservation->localEnd()->format('H:i') }}</div></div>
                 <div><div class="text-stone-500">Personen</div><div class="font-bold">{{ $reservation->party_size }}</div></div>
                 <div><div class="text-stone-500">Quelle</div><div class="font-bold">{{ __('reservations.source.' . $reservation->source) }}</div></div>
-                <div><div class="text-stone-500">Tische</div><div class="font-bold">{{ $reservation->tables->map(fn ($t) => $t->name . ' (' . $t->room?->name . ')')->implode(', ') ?: '–' }}</div></div>
+                <div><div class="text-stone-500">Tische</div><div class="font-bold">{{ $reservation->tables->map(fn ($t) => $t->name . ' (' . $t->room?->name . ')')->implode(', ') ?: '–' }}
+                    @if($reservation->table_chosen_by_guest)<span class="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">Wunschtisch vom Gast</span>@endif
+                </div></div>
                 <div><div class="text-stone-500">E-Mail</div><div class="font-bold">{{ $reservation->guest_email_snapshot ?? '–' }}</div></div>
                 <div><div class="text-stone-500">Telefon</div><div class="font-bold">{{ $reservation->guest_phone_snapshot ?? '–' }}</div></div>
                 <div><div class="text-stone-500">Anlass</div><div class="font-bold">{{ $reservation->occasion ?? '–' }}</div></div>

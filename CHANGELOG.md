@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.59.0] – 2026-06-29
+
+### Behoben/Neu: Gast-Tischwahl sichtbar gemacht
+- **Gewählter Tisch war „unsichtbar".** Der vom Gast gewählte Tisch wurde zwar
+  korrekt angehängt **und** sperrte den Slot (auch bei Anfragen) – aber er wurde
+  dem Gast **nirgends angezeigt**, daher der Eindruck „kein Effekt". Jetzt steht
+  er auf der **Bestätigungsseite** („Ihr Wunschtisch: …") und im Admin-
+  Reservierungsdetail mit Badge **„Wunschtisch vom Gast"**.
+- Neues Flag `table_chosen_by_guest` (Migration) – trennt aktive Gast-Wahl von
+  automatischer Zuweisung.
+- **Gegenvorschlag:** Ändert das Personal einen vom Gast gewählten Tisch, erhält
+  der Gast automatisch eine Info-Mail über den neuen Tisch; das „Wunsch"-Flag
+  wird dabei entfernt.
+- 3 Tests.
+
 ## [1.58.0] – 2026-06-29
 
 ### Geändert: bessere Mail-Zustellbarkeit (weniger Spam)
