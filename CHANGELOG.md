@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.58.0] – 2026-06-29
+
+### Geändert: bessere Mail-Zustellbarkeit (weniger Spam)
+- **Absendername** zeigt jetzt den Betrieb statt des generischen globalen Namens.
+  Die `TemplatedMail`-Envelope ignorierte den `fromName`-Parameter komplett –
+  alle Mails gingen mit `MAIL_FROM_NAME` (Default „Laravel/Swayy") raus. Jetzt:
+  authentifizierte `MAIL_FROM_ADDRESS` (für SPF/DKIM-Alignment) + Anzeigename =
+  Betriebsname; Reply-To = Betriebs-E-Mail.
+- **Multipart-Mails (Text + HTML)** statt nur Text – ein schlichter, gebrandeter
+  HTML-Teil (Platzhalter ersetzt, Links klickbar, Inhalt escaped) verbessert die
+  Inbox-Platzierung; reine Text-/HTML-lose Mails werden von Consumer-Filtern
+  schlechter bewertet.
+- 3 Tests. **Hinweis:** Der Hauptgrund für Spam ist DNS-Authentifizierung
+  (SPF/DKIM/DMARC) der Absenderdomain – das ist Server-/DNS-Konfig, kein Code.
+
 ## [1.57.0] – 2026-06-29
 
 ### Geliefert: angekündigte Features, die keine UI hatten
