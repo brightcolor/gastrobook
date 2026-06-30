@@ -101,6 +101,8 @@
         .tbl .tn { font-weight: 800; font-size: 14px; line-height: 1.05; }
         .tbl .tg { font-size: 11px; font-weight: 600; line-height: 1.1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tbl .tt { font-size: 10px; opacity: .85; }
+        .tbl .td { font-size: 10px; font-weight: 800; line-height: 1.1; }
+        .chip.dur { background: var(--blue-bg); color: var(--blue); border: none; }
         .tbl.free { background: var(--green-bg); border-color: var(--green); color: var(--green); }
         .tbl.soon { background: var(--amber-bg); border-color: var(--amber); color: var(--amber); }
         .tbl.awaiting { background: var(--blue-bg); border-color: var(--blue); color: var(--blue); }
@@ -328,6 +330,20 @@
         if (min < 60) return 'vor ' + min + ' Min';
         return 'vor ' + Math.round(min / 60) + ' Std';
     }
+
+    // Live-ticking elapsed time since a unix timestamp, e.g. "1 Std 23 Min".
+    function fmtElapsed(ts) {
+        const min = Math.max(0, Math.floor(Date.now() / 1000 - ts) / 60 | 0);
+        if (min < 60) return min + ' Min';
+        return Math.floor(min / 60) + ' Std ' + (min % 60) + ' Min';
+    }
+    // Refresh every [data-since] element so durations tick without a data reload.
+    function tickDurations() {
+        document.querySelectorAll('[data-since]').forEach(el => {
+            el.textContent = fmtElapsed(+el.dataset.since);
+        });
+    }
+    setInterval(tickDurations, 30000);
     function startHint(r) {
         if (r.status === 'seated' || r.status === 'partially_arrived') return 'sitzt seit ' + (r.seated_since || r.time);
         const m = r.minutes_to_start;
@@ -354,6 +370,9 @@
         const when = isNew
             ? (r.is_today ? 'heute ' + r.time : r.date + ' ' + r.time) + ' · ' + relTime(r.created_ts)
             : startHint(r);
+        const durChip = (!isNew && r.seated_ts)
+            ? '<span class="chip dur" title="Verweildauer">⏱ <span data-since="' + r.seated_ts + '"></span></span>'
+            : '';
 
         const actions = (r.actions || []).map(a =>
             '<button class="act ' + a.style + '" data-id="' + r.id + '" data-status="' + a.status + '">' + esc(a.label) + '</button>'
@@ -365,7 +384,7 @@
             + '<span class="party">' + r.party + ' P</span>'
             + '<span class="spacer" style="flex:1"></span>'
             + '<span class="badge s-' + r.status + '">' + esc(r.status_label) + '</span></div>'
-            + '<div class="meta">' + (when ? '<span>' + esc(when) + '</span>' : '') + tables + staff + services + regular + allergy + risk + '</div>'
+            + '<div class="meta">' + (when ? '<span>' + esc(when) + '</span>' : '') + durChip + tables + staff + services + regular + allergy + risk + '</div>'
             + note
             + (actions ? '<div class="actions">' + actions + '</div>' : '')
             + '</div>';
@@ -491,6 +510,7 @@
         meta = { can_walkin: d.can_walkin, walkin_url: d.walkin_url, create_url: d.create_url };
         plan.update(d.floorplan);
         drawer.refresh();   // live-update the open table panel
+        tickDurations();    // fill in elapsed-time labels right after (re)render
     }
 
     // ---- Floor plan view ----
@@ -551,12 +571,13 @@
             const tables = r.tables.map(t => {
                 const guest = t.guest ? '<span class="tg">' + esc(t.guest) + (t.party ? ' · ' + t.party + 'P' : '') + '</span>' : '';
                 const time = t.time ? '<span class="tt">' + esc(t.time) + '</span>' : '';
+                const dur = t.seated_ts ? '<span class="td">⏱ <span data-since="' + t.seated_ts + '"></span></span>' : '';
                 const rot = t.rotation ? 'transform:rotate(' + t.rotation + 'deg);' : '';
                 return '<div class="tbl ' + t.status + (t.shape === 'round' ? ' round' : '')
                     + (t.id === selectedTableId ? ' sel' : '') + '" data-table="' + t.id + '" title="' + esc(t.name) + ' (' + esc(t.capacity) + ')'
                     + (t.guest ? ' — ' + esc(t.guest) : '') + '" style="left:' + t.pos_x + 'px;top:' + t.pos_y
                     + 'px;width:' + t.width + 'px;height:' + t.height + 'px;' + rot + '">'
-                    + '<span class="tn">' + esc(t.name) + '</span>' + guest + time + '</div>';
+                    + '<span class="tn">' + esc(t.name) + '</span>' + guest + time + dur + '</div>';
             }).join('');
             canvas.innerHTML = '<div class="roomname">' + esc(r.name) + '</div>' + tables;
         }
@@ -671,7 +692,9 @@
         function refresh() { if (selectedTableId !== null) render(); }
 
         function resCard(r, seats) {
-            const seated = r.seated_since ? '<span>🪑 sitzt seit ' + esc(r.seated_since) + '</span>' : '';
+            const seated = r.seated_since
+                ? '<span>🪑 sitzt seit ' + esc(r.seated_since) + (r.seated_ts ? ' · <b data-since="' + r.seated_ts + '"></b>' : '') + '</span>'
+                : '';
             const phone = r.phone ? '<a href="tel:' + esc(r.phone) + '">📞 ' + esc(r.phone) + '</a>' : '';
             const src = r.source === 'walk_in' ? '<span>🚶 Walk-in</span>' : '';
             const regular = r.regular ? '<span style="color:#a16207;font-weight:700">⭐ Stammgast</span>' : '';
@@ -771,6 +794,7 @@
             html += '<div class="dwr-sec"><a class="btn-ghost" href="' + meta.create_url + '?table_id=' + t.id + '">＋ Reservierung für diesen Tisch</a></div>';
 
             body.innerHTML = html;
+            tickDurations();
 
             // wire status actions (reuse the board transition action)
             body.querySelectorAll('.act').forEach(b =>

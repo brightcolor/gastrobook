@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.65.0] – 2026-06-30
+
+### Geändert: Belegte Tische zeigen „seit wann" + Live-Verweildauer
+- Im Live-Board zeigt ein **besetzter (eingetroffener) Tisch** jetzt **„seit
+  HH:MM"** (Check-in-Zeit) statt „bis HH:MM" – plus eine **live mitlaufende
+  Verweildauer** („⏱ 1 Std 15 Min"), die sich alle 30 Sekunden aktualisiert,
+  ohne Neuladen.
+- Gilt für Tischplan-Kacheln, das Tisch-Detail-Panel und die Timeline-Karten.
+  Wartende/kommende Tische zeigen weiterhin „bis"/„ab".
+- Backend liefert `seated_ts` (Unix-Zeitstempel) je belegtem Tisch; der Client
+  rechnet die Dauer live hoch.
+- 2 Tests; Board live verifiziert.
+
 ## [1.64.0] – 2026-06-30
 
 ### Neu: Datumsbereich im Reservierungsbuch + app-weiter Filter-Hinweis

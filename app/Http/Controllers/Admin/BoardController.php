@@ -196,6 +196,10 @@ class BoardController extends Controller
                 ReservationStatus::Seated->value,
                 ReservationStatus::PartiallyArrived->value,
             ], true) ? ($seatedSince ?? $start->format('H:i')) : null,
+            'seated_ts' => in_array($status, [
+                ReservationStatus::Seated->value,
+                ReservationStatus::PartiallyArrived->value,
+            ], true) ? ($r->seated_at?->getTimestamp() ?? $r->start_at->getTimestamp()) : null,
             'is_current' => $r->start_at->lte($nowLocal->utc()) && $r->end_at->gt($nowLocal->utc()),
             'actions' => $this->actionsFor($r->status),
         ];
@@ -264,6 +268,13 @@ class BoardController extends Controller
 
                 $info = $current ?? $upcoming;
 
+                $isSeated = $current !== null && in_array($current->status, [
+                    ReservationStatus::Seated, ReservationStatus::PartiallyArrived,
+                ], true);
+                $seatedSince = $isSeated
+                    ? $current->seated_at?->copy()->setTimezone($nowLocal->timezone)->format('H:i')
+                    : null;
+
                 // Full schedule of this table for today (for the detail panel).
                 $schedule = $reservations
                     ->filter(fn ($r) => $r->tables->contains('id', $t->id))
@@ -287,9 +298,16 @@ class BoardController extends Controller
                     'max_capacity' => (int) $t->max_capacity,
                     'guest' => $info?->guest_name_snapshot,
                     'party' => $info?->party_size,
-                    'time' => $current
-                        ? 'bis '.$current->localEnd()->format('H:i')
-                        : ($upcoming ? 'ab '.$upcoming->localStart()->format('H:i') : null),
+                    // An occupied (seated) table shows since when the guests are
+                    // here; the client adds a live-ticking elapsed time from
+                    // seated_ts. Awaiting/upcoming keep "bis"/"ab".
+                    'time' => $isSeated
+                        ? 'seit '.($seatedSince ?? $current->localStart()->format('H:i'))
+                        : ($current ? 'bis '.$current->localEnd()->format('H:i')
+                            : ($upcoming ? 'ab '.$upcoming->localStart()->format('H:i') : null)),
+                    'seated_ts' => $isSeated
+                        ? ($current->seated_at?->getTimestamp() ?? $current->start_at->getTimestamp())
+                        : null,
                     'current_id' => $current?->id,
                     'reservations' => $schedule,
                 ];
@@ -317,6 +335,10 @@ class BoardController extends Controller
                 ReservationStatus::Seated->value,
                 ReservationStatus::PartiallyArrived->value,
             ], true) ? ($seatedSince ?? $start->format('H:i')) : null,
+            'seated_ts' => in_array($status, [
+                ReservationStatus::Seated->value,
+                ReservationStatus::PartiallyArrived->value,
+            ], true) ? ($r->seated_at?->getTimestamp() ?? $r->start_at->getTimestamp()) : null,
             'until' => $r->localEnd()->format('H:i'),
             'date' => $r->reservation_date->format('d.m.'),
             'is_today' => $r->reservation_date->toDateString() === $nowLocal->toDateString(),
