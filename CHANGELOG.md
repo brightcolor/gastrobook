@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.59.2] – 2026-06-29
+
+### Behoben
+- **Tischplan zeigte dauerhaft „Bearbeiten aktiv" + „Speichern".** Die
+  Inline-`.fp-*`-Styles (`display:flex/inline-flex`) überschrieben Tailwinds
+  `.hidden` (gleiche Spezifität, spätere Quellreihenfolge) – dadurch waren
+  Bearbeiten-Hinweis, Speichern-Button und Raum-Edit-Steuerung **immer
+  sichtbar**, und der Ansicht/Bearbeiten-Umschalter hatte keine optische Wirkung.
+  `.hidden` gewinnt jetzt (`!important`); der Tischplan startet sauber im
+  Lese-/Betriebsmodus.
+
 ## [1.59.1] – 2026-06-29
 
 ### Behoben

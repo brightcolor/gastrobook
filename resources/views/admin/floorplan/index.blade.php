@@ -1289,6 +1289,12 @@
     .fp-btn-save { background:#0f766e; border-color:#0f766e; color:#fff; }
     .fp-btn-save:hover { background:#0d5f59; }
 
+    /* The .fp-* rules here set display and (same specificity, later source order)
+       would otherwise override Tailwind's .hidden — making toggled elements
+       (Bearbeiten-Hinweis, Speichern-Button, Raum-Edit, Modals) permanently
+       visible. Force .hidden to win so the view/edit toggle works. */
+    .hidden { display: none !important; }
+
     .fp-hint { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:14px; padding:9px 14px; border-radius:12px;
         background:linear-gradient(90deg,#fef3c7,#fffbeb); border:1px solid #fde68a; font-size:13px; font-weight:600; color:#92400e; }
     .fp-hint-tip { font-weight:500; color:#a16207; }
