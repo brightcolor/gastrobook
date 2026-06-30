@@ -660,18 +660,36 @@
         </form>
         <div class="mt-3 space-y-1 text-sm">
             @foreach($depositRules as $rule)
-                <div class="flex items-center justify-between rounded-lg bg-stone-50 px-3 py-2">
-                    <span>
-                        <strong>{{ $rule->name }}</strong>
-                        @if($rule->min_party_size) · ab {{ $rule->min_party_size }} P. @endif
-                        · {{ number_format($rule->amount_per_person_minor / 100, 2, ',', '.') }} € p. P.
-                        @if($rule->from_time) · ab {{ substr($rule->from_time, 0, 5) }} Uhr @endif
-                    </span>
-                    <form method="POST" action="{{ route('admin.settings.deposit-rules.delete', $rule) }}" onsubmit="return confirm('Regel löschen?')">
-                        @csrf @method('DELETE')
-                        <button class="text-red-500 hover:text-red-700">✕</button>
+                <details class="rounded-lg bg-stone-50 px-3 py-2">
+                    <summary class="flex cursor-pointer items-center justify-between gap-2">
+                        <span>
+                            <strong>{{ $rule->name }}</strong>
+                            @if($rule->min_party_size) · ab {{ $rule->min_party_size }} P. @endif
+                            · {{ number_format($rule->amount_per_person_minor / 100, 2, ',', '.') }} € p. P.
+                            @if($rule->from_time) · ab {{ substr($rule->from_time, 0, 5) }} Uhr @endif
+                        </span>
+                        <span class="flex items-center gap-2">
+                            <span class="text-xs font-semibold text-teal-700">Bearbeiten</span>
+                            <form method="POST" action="{{ route('admin.settings.deposit-rules.delete', $rule) }}" onsubmit="return confirm('Regel löschen?')">
+                                @csrf @method('DELETE')
+                                <button class="text-red-500 hover:text-red-700">✕</button>
+                            </form>
+                        </span>
+                    </summary>
+                    <form method="POST" action="{{ route('admin.settings.deposit-rules.update', $rule) }}" class="mt-3 grid grid-cols-2 gap-2 border-t border-stone-200 pt-3">
+                        @csrf @method('PUT')
+                        <input type="text" name="name" required value="{{ $rule->name }}" placeholder="Name *" class="col-span-2 rounded-lg border-stone-200">
+                        <div><label class="mb-1 block text-xs text-stone-500">Ab Personenzahl</label>
+                            <input type="number" name="min_party_size" min="1" value="{{ $rule->min_party_size }}" class="w-full rounded-lg border-stone-200"></div>
+                        <div><label class="mb-1 block text-xs text-stone-500">Betrag p. P. (€) *</label>
+                            <input type="number" name="amount_per_person" required step="0.01" min="0" value="{{ number_format($rule->amount_per_person_minor / 100, 2, '.', '') }}" class="w-full rounded-lg border-stone-200"></div>
+                        <div><label class="mb-1 block text-xs text-stone-500">Nur ab Uhrzeit</label>
+                            <input type="time" name="from_time" value="{{ $rule->from_time ? substr($rule->from_time, 0, 5) : '' }}" class="w-full rounded-lg border-stone-200"></div>
+                        <div><label class="mb-1 block text-xs text-stone-500">Zahlungsfrist (Min.)</label>
+                            <input type="number" name="payment_deadline_minutes" min="10" value="{{ $rule->payment_deadline_minutes }}" class="w-full rounded-lg border-stone-200"></div>
+                        <button class="col-span-2 rounded-lg bg-teal-600 px-4 py-2 font-semibold text-white hover:bg-teal-700">Änderungen speichern</button>
                     </form>
-                </div>
+                </details>
             @endforeach
         </div>
     </div>
@@ -994,6 +1012,7 @@ document.getElementById('addHour')?.addEventListener('click', () => {
     const indexUrl  = @json(route('admin.tags.index'));
     const storeUrl  = @json(route('admin.tags.store'));
     const deleteBase = @json(url('/admin/tags'));
+    const updateBase = @json(url('/admin/tags'));
     let tags = [];
 
     async function loadTags() {
@@ -1009,9 +1028,27 @@ document.getElementById('addHour')?.addEventListener('click', () => {
                 <span class="flex items-center gap-1.5 rounded-full px-3 py-1 font-semibold text-sm"
                       style="background:${t.color}22;color:${t.color}">
                     ${t.name}
+                    <button class="tag-edit opacity-60 hover:opacity-100" data-id="${t.id}" title="Umbenennen">✎</button>
                     <button class="tag-del opacity-60 hover:opacity-100" data-id="${t.id}" title="Löschen">✕</button>
                 </span>`).join('')
             : '<span class="text-sm text-stone-400">Noch keine Tags angelegt.</span>';
+
+        list.querySelectorAll('.tag-edit').forEach(btn => btn.addEventListener('click', async () => {
+            const tag = tags.find(t => t.id == btn.dataset.id);
+            if (!tag) return;
+            const name = prompt('Tag umbenennen:', tag.name);
+            if (name === null) return;
+            const trimmed = name.trim();
+            if (!trimmed || trimmed === tag.name) return;
+            btn.disabled = true;
+            const res = await fetch(`${updateBase}/${tag.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, Accept: 'application/json' },
+                body: JSON.stringify({ name: trimmed, color: tag.color }),
+            });
+            if (res.ok) { const u = await res.json(); tags = tags.map(t => t.id === u.id ? u : t); renderTags(); }
+            else { btn.disabled = false; alert('Umbenennen fehlgeschlagen.'); }
+        }));
 
         list.querySelectorAll('.tag-del').forEach(btn => btn.addEventListener('click', async () => {
             if (!confirm('Tag „' + tags.find(t => t.id == btn.dataset.id)?.name + '" löschen?')) return;

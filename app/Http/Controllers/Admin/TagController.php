@@ -48,6 +48,22 @@ class TagController extends Controller
         return response()->json(['id' => $tag->id, 'name' => $tag->name, 'color' => $tag->color], 201);
     }
 
+    public function update(Request $request, Tag $tag): JsonResponse
+    {
+        abort_if($tag->tenant_id !== $this->context->tenantId(), 404);
+        abort_if($tag->is_system, 403);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:40'],
+            'color' => ['required', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+        ]);
+
+        $tag->update(['name' => $validated['name'], 'color' => $validated['color']]);
+        $this->audit->log('tag.updated', $tag);
+
+        return response()->json(['id' => $tag->id, 'name' => $tag->name, 'color' => $tag->color]);
+    }
+
     public function destroy(Tag $tag): JsonResponse
     {
         abort_if($tag->tenant_id !== $this->context->tenantId(), 404);

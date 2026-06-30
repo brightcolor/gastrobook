@@ -420,6 +420,35 @@ class SettingsController extends Controller
         return $this->saved($request, __('Anzahlungsregel angelegt.'), true);
     }
 
+    public function updateDepositRule(Request $request, DepositRule $rule)
+    {
+        $location = $this->context->location();
+        abort_if($location === null, 404);
+        abort_if($rule->location_id !== $location->id, 404);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'min_party_size' => ['nullable', 'integer', 'min:1', 'max:200'],
+            'amount_per_person' => ['required', 'numeric', 'min:0', 'max:10000'],
+            'from_time' => ['nullable', 'date_format:H:i'],
+            'until_time' => ['nullable', 'date_format:H:i'],
+            'payment_deadline_minutes' => ['nullable', 'integer', 'min:10', 'max:10080'],
+        ]);
+
+        $rule->update([
+            'name' => $validated['name'],
+            'min_party_size' => $validated['min_party_size'] ?? null,
+            'from_time' => $validated['from_time'] ?? null,
+            'until_time' => $validated['until_time'] ?? null,
+            'amount_per_person_minor' => (int) round($validated['amount_per_person'] * 100),
+            'payment_deadline_minutes' => (int) ($validated['payment_deadline_minutes'] ?? 60),
+        ]);
+
+        $this->audit->log('deposit_rule.updated', $rule, null, $validated);
+
+        return $this->saved($request, __('Anzahlungsregel aktualisiert.'), true);
+    }
+
     public function deleteDepositRule(DepositRule $rule)
     {
         abort_if($rule->location_id !== $this->context->locationId(), 404);

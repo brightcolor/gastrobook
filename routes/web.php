@@ -193,6 +193,7 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
     Route::middleware('permission:reservations.update')->group(function () {
         Route::get('/tags', [TagController::class, 'index'])->name('tags.index');
         Route::post('/tags', [TagController::class, 'store'])->name('tags.store');
+        Route::put('/tags/{tag}', [TagController::class, 'update'])->name('tags.update');
         Route::delete('/tags/{tag}', [TagController::class, 'destroy'])->name('tags.destroy');
     });
 
@@ -325,6 +326,8 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
             ->middleware('permission:integrations.manage')->name('settings.sms');
         Route::post('/settings/deposit-rules', [SettingsController::class, 'storeDepositRule'])
             ->middleware('permission:payments.manage')->name('settings.deposit-rules.store');
+        Route::put('/settings/deposit-rules/{rule}', [SettingsController::class, 'updateDepositRule'])
+            ->middleware('permission:payments.manage')->name('settings.deposit-rules.update');
         Route::delete('/settings/deposit-rules/{rule}', [SettingsController::class, 'deleteDepositRule'])
             ->middleware('permission:payments.manage')->name('settings.deposit-rules.delete');
         Route::put('/settings/opening-hours', [SettingsController::class, 'updateOpeningHours'])

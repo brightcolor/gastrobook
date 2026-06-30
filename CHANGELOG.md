@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.61.0] – 2026-06-29
+
+### Neu: Bearbeiten statt löschen+neu (Teil 1)
+- **Anzahlungsregeln bearbeiten.** Bisher nur anlegen/löschen – jetzt aufklappbar
+  pro Regel mit vorausgefülltem Formular (Name, Personenzahl, Betrag, Uhrzeit,
+  Zahlungsfrist). `updateDepositRule` (permission:payments.manage).
+- **Reservierungs-Tags umbenennen.** „✎" am Tag in Einstellungen → Räume & Tags;
+  `tags.update` (System-Tags bleiben geschützt).
+- 4 Tests.
+
 ## [1.60.0] – 2026-06-29
 
 ### Neu
