@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.63.0] – 2026-06-30
+
+### Neu: Check-in-Zeit erfassen & anpassen
+- **„sitzt seit" zeigt die echte Check-in-Zeit** (Klick auf „Eingetroffen"),
+  nicht mehr die geplante Reservierungszeit. Im Board-Timeline-Eintrag wurde
+  bisher fälschlich die Planzeit angezeigt (`r.time` statt der tatsächlichen
+  `seated_at`).
+- **Check-in-Dialog:** Klick auf „Eingetroffen" öffnet ein touch-freundliches
+  Modal mit der aktuellen Uhrzeit. Sehr einfach anpassbar – große ▲▼-Buttons
+  für Stunde/Minute, Schnell-Chips (−15/−5/Jetzt/+5/+15) und direkte
+  Uhrzeiteingabe. Die gewählte Zeit wird als `seated_at` gespeichert.
+- Backend: `transition()` akzeptiert optionale Check-in-Zeit (in der Zeitzone
+  der Reservierung, korrekt nach UTC konvertiert); `BoardController::present()`
+  liefert `seated_since`.
+- 3 Tests; Modal-UI live verifiziert.
+
 ## [1.62.0] – 2026-06-29
 
 ### Neu: Bearbeiten direkt im Tischplan (Teil 2)

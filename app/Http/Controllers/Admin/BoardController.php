@@ -305,6 +305,7 @@ class BoardController extends Controller
         $start = $r->localStart();
         $minutesToStart = (int) round($nowLocal->diffInMinutes($start, false));
         $status = $r->status->value;
+        $seatedSince = $r->seated_at?->copy()->setTimezone($nowLocal->timezone)->format('H:i');
 
         return [
             'id' => $r->id,
@@ -312,6 +313,10 @@ class BoardController extends Controller
             'name' => $r->guest_name_snapshot,
             'party' => $r->party_size,
             'time' => $start->format('H:i'),
+            'seated_since' => in_array($status, [
+                ReservationStatus::Seated->value,
+                ReservationStatus::PartiallyArrived->value,
+            ], true) ? ($seatedSince ?? $start->format('H:i')) : null,
             'until' => $r->localEnd()->format('H:i'),
             'date' => $r->reservation_date->format('d.m.'),
             'is_today' => $r->reservation_date->toDateString() === $nowLocal->toDateString(),

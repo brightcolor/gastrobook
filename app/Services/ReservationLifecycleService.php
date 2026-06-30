@@ -11,6 +11,7 @@ use App\Models\ReservationStatusHistory;
 use App\Models\RestaurantTable;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
@@ -207,6 +208,7 @@ class ReservationLifecycleService
         string $actorType = 'user',
         ?string $reason = null,
         ?string $note = null,
+        ?CarbonInterface $seatedAt = null,
     ): Reservation {
         $from = $reservation->status;
 
@@ -218,12 +220,15 @@ class ReservationLifecycleService
             ]);
         }
 
-        return DB::transaction(function () use ($reservation, $from, $to, $actor, $actorType, $reason, $note) {
+        return DB::transaction(function () use ($reservation, $from, $to, $actor, $actorType, $reason, $note, $seatedAt) {
             $updates = ['status' => $to];
 
             match ($to) {
                 ReservationStatus::Confirmed => $updates['confirmed_at'] = now(),
-                ReservationStatus::Seated, ReservationStatus::PartiallyArrived => $updates['seated_at'] = $reservation->seated_at ?? now(),
+                // Actual check-in time: an explicitly chosen time (staff may
+                // correct it in the check-in dialog) wins over an earlier
+                // seated_at, which wins over "now".
+                ReservationStatus::Seated, ReservationStatus::PartiallyArrived => $updates['seated_at'] = $seatedAt ?? $reservation->seated_at ?? now(),
                 ReservationStatus::Completed => $updates['departed_at'] = now(),
                 ReservationStatus::CancelledByGuest,
                 ReservationStatus::CancelledByRestaurant,

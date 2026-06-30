@@ -116,6 +116,33 @@
         /* ---- Table detail modal ---- */
         .drawer-back { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 40; opacity: 0; pointer-events: none; transition: opacity .18s; backdrop-filter: blur(2px); }
         .drawer-back.open { opacity: 1; pointer-events: auto; }
+
+        /* Check-in time dialog (touch-friendly) */
+        .ci-back { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 60; display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity .15s; backdrop-filter: blur(2px); padding: 16px; }
+        .ci-back.open { opacity: 1; pointer-events: auto; }
+        .ci-modal { background: var(--panel); border: 1px solid var(--border); border-radius: 22px; padding: 22px; width: 360px; max-width: 96vw;
+            box-shadow: 0 24px 60px -12px rgba(0,0,0,.55); text-align: center; }
+        .ci-modal h3 { margin: 0 0 2px; font-size: 17px; }
+        .ci-guest { margin: 0 0 16px; font-size: 13px; color: var(--muted); }
+        .ci-stepper { display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .ci-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .ci-step { width: 76px; height: 56px; border: 1px solid var(--border); background: var(--bg); border-radius: 14px;
+            font-size: 22px; color: var(--text); cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+        .ci-step:active { background: var(--brand); color: #fff; transform: scale(.96); }
+        .ci-num { font-size: 44px; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 76px; line-height: 1.1; }
+        .ci-colon { font-size: 40px; font-weight: 800; padding-bottom: 4px; }
+        .ci-quick { display: flex; justify-content: center; gap: 6px; margin: 16px 0 12px; flex-wrap: wrap; }
+        .ci-chip { min-width: 52px; height: 44px; padding: 0 12px; border: 1px solid var(--border); background: var(--bg); border-radius: 12px;
+            font-size: 14px; font-weight: 700; color: var(--text); cursor: pointer; touch-action: manipulation; }
+        .ci-chip:active { background: var(--brand); color: #fff; }
+        .ci-chip.ci-now { background: var(--brand); color: #fff; border-color: var(--brand); }
+        .ci-input { width: 100%; height: 48px; border: 1px solid var(--border); background: var(--bg); border-radius: 12px;
+            font-size: 18px; text-align: center; color: var(--text); margin-bottom: 14px; }
+        .ci-foot { display: flex; gap: 10px; }
+        .ci-btn { flex: 1; height: 54px; border-radius: 14px; font-size: 16px; font-weight: 800; cursor: pointer; border: 1px solid var(--border); touch-action: manipulation; }
+        .ci-cancel { background: var(--bg); color: var(--text); }
+        .ci-ok { background: var(--brand); color: #fff; border-color: var(--brand); }
         .drawer { position: fixed; top: 50%; left: 50%; width: 460px; max-width: 94vw; max-height: 88vh; z-index: 41; background: var(--panel);
             border: 1px solid var(--border); border-radius: 18px; overflow: hidden;
             box-shadow: 0 24px 60px -12px rgba(0,0,0,.55); transform: translate(-50%, -48%) scale(.96); opacity: 0; pointer-events: none;
@@ -206,6 +233,38 @@
     </div>
 </section>
 
+<div class="ci-back" id="ciBack" aria-hidden="true">
+    <div class="ci-modal" role="dialog" aria-modal="true" aria-labelledby="ciTitle">
+        <h3 id="ciTitle">Eingetroffen um</h3>
+        <p class="ci-guest" id="ciGuest"></p>
+        <div class="ci-stepper">
+            <div class="ci-col">
+                <button type="button" class="ci-step" data-d="60" aria-label="Stunde +">▲</button>
+                <span class="ci-num" id="ciHH">00</span>
+                <button type="button" class="ci-step" data-d="-60" aria-label="Stunde −">▼</button>
+            </div>
+            <span class="ci-colon">:</span>
+            <div class="ci-col">
+                <button type="button" class="ci-step" data-d="1" aria-label="Minute +">▲</button>
+                <span class="ci-num" id="ciMM">00</span>
+                <button type="button" class="ci-step" data-d="-1" aria-label="Minute −">▼</button>
+            </div>
+        </div>
+        <div class="ci-quick">
+            <button type="button" class="ci-chip" data-d="-15">−15</button>
+            <button type="button" class="ci-chip" data-d="-5">−5</button>
+            <button type="button" class="ci-chip ci-now" id="ciNow">Jetzt</button>
+            <button type="button" class="ci-chip" data-d="5">+5</button>
+            <button type="button" class="ci-chip" data-d="15">+15</button>
+        </div>
+        <input type="time" id="ciInput" class="ci-input" aria-label="Uhrzeit direkt eingeben">
+        <div class="ci-foot">
+            <button type="button" class="ci-btn ci-cancel" id="ciCancel">Abbrechen</button>
+            <button type="button" class="ci-btn ci-ok" id="ciConfirm">Eingetroffen ✓</button>
+        </div>
+    </div>
+</div>
+
 <div class="drawer-back" id="drawerBack"></div>
 <aside class="drawer" id="drawer" aria-hidden="true">
     <div class="dwr-head" id="dwrHead">
@@ -239,6 +298,7 @@
     const csrf = document.querySelector('meta[name=csrf-token]').content;
     const root = document.getElementById('root');
     let seenIds = new Set();
+    let lastNow = @json(now()->format('H:i'));
     let firstLoad = true;
     let selectedTableId = null;   // currently opened table in the detail drawer
     let meta = {};                // can_walkin, walkin_url, create_url
@@ -269,7 +329,7 @@
         return 'vor ' + Math.round(min / 60) + ' Std';
     }
     function startHint(r) {
-        if (r.status === 'seated' || r.status === 'partially_arrived') return 'sitzt seit ' + r.time;
+        if (r.status === 'seated' || r.status === 'partially_arrived') return 'sitzt seit ' + (r.seated_since || r.time);
         const m = r.minutes_to_start;
         if (m === null) return '';
         if (m < -5) return '⚠ überfällig (' + r.time + ')';
@@ -322,15 +382,13 @@
         ).join('');
     }
 
-    async function act(id, status, btn) {
-        const danger = ['rejected', 'cancelled_by_restaurant', 'no_show'].includes(status);
-        if (danger && !confirm('Wirklich als „' + btn.textContent + '" markieren?')) return;
+    async function postTransition(id, status, btn, extra) {
         btn.disabled = true;
         try {
             const res = await fetch(transitionBase + '/' + id + '/transition', {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json', 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status }),
+                body: JSON.stringify(Object.assign({ status }, extra || {})),
             });
             if (!res.ok) throw new Error('http ' + res.status);
             await load();
@@ -340,10 +398,71 @@
         }
     }
 
+    async function act(id, status, btn) {
+        // Check-in: confirm/adjust the arrival time in a touch-friendly dialog.
+        if (status === 'seated' || status === 'partially_arrived') {
+            openCheckin(id, status, btn);
+            return;
+        }
+        const danger = ['rejected', 'cancelled_by_restaurant', 'no_show'].includes(status);
+        if (danger && !confirm('Wirklich als „' + btn.textContent + '" markieren?')) return;
+        await postTransition(id, status, btn);
+    }
+
     function wire(container) {
         container.querySelectorAll('.act').forEach(b =>
             b.addEventListener('click', () => act(b.dataset.id, b.dataset.status, b)));
     }
+
+    // ---- Check-in time dialog ----
+    const ci = (function () {
+        const back = document.getElementById('ciBack');
+        const hhEl = document.getElementById('ciHH');
+        const mmEl = document.getElementById('ciMM');
+        const input = document.getElementById('ciInput');
+        const guestEl = document.getElementById('ciGuest');
+        let mins = 0, id = null, status = null, btn = null;
+
+        const pad = n => String(n).padStart(2, '0');
+        function parse(str) {
+            const m = /^(\d{1,2}):(\d{2})$/.exec(str || '');
+            return m ? ((+m[1]) * 60 + (+m[2])) % 1440 : 0;
+        }
+        function render() {
+            hhEl.textContent = pad(Math.floor(mins / 60));
+            mmEl.textContent = pad(mins % 60);
+            input.value = pad(Math.floor(mins / 60)) + ':' + pad(mins % 60);
+        }
+        function adjust(delta) { mins = ((mins + delta) % 1440 + 1440) % 1440; render(); }
+
+        back.querySelectorAll('.ci-step, .ci-chip[data-d]').forEach(b =>
+            b.addEventListener('click', () => adjust(parseInt(b.dataset.d, 10))));
+        document.getElementById('ciNow').addEventListener('click', () => { mins = parse(lastNow); render(); });
+        input.addEventListener('change', () => { mins = parse(input.value); render(); });
+
+        function close() { back.classList.remove('open'); back.setAttribute('aria-hidden', 'true'); }
+        document.getElementById('ciCancel').addEventListener('click', close);
+        back.addEventListener('click', e => { if (e.target === back) close(); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+
+        document.getElementById('ciConfirm').addEventListener('click', () => {
+            const seated_at = pad(Math.floor(mins / 60)) + ':' + pad(mins % 60);
+            close();
+            if (id) postTransition(id, status, btn, { seated_at });
+        });
+
+        return {
+            open(rid, rstatus, rbtn) {
+                id = rid; status = rstatus; btn = rbtn;
+                mins = parse(lastNow);
+                guestEl.textContent = (rbtn.closest('.res, .dwr-res, .card')?.querySelector('.name, .res-name, strong')?.textContent || '').trim();
+                render();
+                back.classList.add('open');
+                back.setAttribute('aria-hidden', 'false');
+            },
+        };
+    })();
+    function openCheckin(id, status, btn) { ci.open(id, status, btn); }
 
     function setLive(ok) {
         document.getElementById('liveDot').classList.toggle('stale', !ok);
@@ -353,6 +472,7 @@
     }
 
     function applyData(d) {
+        lastNow = d.now || lastNow;
         document.getElementById('clock').textContent = d.now;
         document.getElementById('timelineTitle').textContent = d.is_salon ? 'Heute (Termine)' : 'Heute';
         renderKpis(d.kpis);

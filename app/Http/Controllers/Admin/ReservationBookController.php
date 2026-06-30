@@ -163,9 +163,20 @@ class ReservationBookController extends Controller
         $validated = $request->validate([
             'status' => ['required', 'string', Rule::enum(ReservationStatus::class)],
             'reason' => ['nullable', 'string', 'max:255'],
+            'seated_at' => ['nullable', 'date_format:H:i'],
         ]);
 
         $target = ReservationStatus::from($validated['status']);
+
+        // Check-in time chosen by staff in the seating dialog. Interpreted in
+        // the location timezone on the current day.
+        $seatedAt = null;
+        if (! empty($validated['seated_at'])
+            && in_array($target, [ReservationStatus::Seated, ReservationStatus::PartiallyArrived], true)) {
+            [$h, $m] = array_map('intval', explode(':', $validated['seated_at']));
+            $tz = $reservation->timezone ?: ($this->context->location()?->timezone ?? config('app.timezone'));
+            $seatedAt = CarbonImmutable::now($tz)->setTime($h, $m)->utc();
+        }
 
         $permissionMap = [
             ReservationStatus::Confirmed->value => 'reservations.update',
@@ -182,7 +193,7 @@ class ReservationBookController extends Controller
             abort(403);
         }
 
-        $this->lifecycle->transition($reservation, $target, $request->user(), 'user', $validated['reason'] ?? null);
+        $this->lifecycle->transition($reservation, $target, $request->user(), 'user', $validated['reason'] ?? null, null, $seatedAt);
 
         // Staff cancellation → request a deposit refund per the location's policy
         if (in_array($target, [
