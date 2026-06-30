@@ -96,8 +96,14 @@
         .l-blocked { background: var(--muted); }
         .stage { position: relative; overflow: auto; border: 1px solid var(--border); border-radius: 14px; background: var(--panel-2);
             background-image: radial-gradient(var(--border) 1px, transparent 1px); background-size: 26px 26px;
-            box-shadow: var(--shadow); max-height: calc(100vh - 230px); touch-action: pan-x pan-y; }
-        .canvas { position: relative; transform-origin: 0 0; }
+            box-shadow: var(--shadow);
+            /* Fixed height (not max-height): otherwise the stage collapses to the
+               scaled canvas, so each "Einpassen" measures a smaller viewport and
+               the plan shrinks step by step. A stable height keeps fit stable and
+               shows the plan as large as possible. */
+            height: calc(100vh - 230px); min-height: 360px; touch-action: pan-x pan-y; }
+        .canvas { position: relative; }
+        .canvas-inner { position: relative; transform-origin: 0 0; }
         .roomname { position: absolute; top: 14px; left: 18px; font-size: 38px; font-weight: 800; letter-spacing: .01em;
             color: var(--text); opacity: .12; pointer-events: none; user-select: none; white-space: nowrap; }
         .tbl { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -631,8 +637,6 @@
         function renderCanvas() {
             const r = room();
             if (!r) { canvas.innerHTML = '<div class="plan-empty">Kein Tischplan hinterlegt.</div>'; return; }
-            canvas.style.width = r.plan_width + 'px';
-            canvas.style.height = r.plan_height + 'px';
             const tables = r.tables.map(t => {
                 const guest = t.guest ? '<span class="tg">' + esc(t.guest) + (t.party ? ' · ' + t.party + 'P' : '') + '</span>' : '';
                 const time = t.time ? '<span class="tt">' + esc(t.time) + '</span>' : '';
@@ -644,7 +648,8 @@
                     + 'px;width:' + t.width + 'px;height:' + t.height + 'px;' + rot + '">'
                     + '<span class="tn">' + esc(t.name) + '</span>' + guest + time + dur + '</div>';
             }).join('');
-            canvas.innerHTML = '<div class="roomname">' + esc(r.name) + '</div>' + tables;
+            canvas.innerHTML = '<div class="canvas-inner" style="width:' + r.plan_width + 'px;height:' + r.plan_height + 'px">'
+                + '<div class="roomname">' + esc(r.name) + '</div>' + tables + '</div>';
         }
 
         canvas.addEventListener('click', e => {
@@ -660,11 +665,15 @@
         function applyZoom() {
             const r = room();
             if (!r) return;
-            // Box takes the scaled size so the scroll container measures correctly;
-            // children stay in logical coords and are scaled via the transform.
+            const inner = canvas.querySelector('.canvas-inner');
+            if (!inner) return;
+            // The outer box takes the *scaled* size so the scroll area matches the
+            // visible plan exactly. Only the inner (logical coords) is transformed,
+            // so there is no double-scaling and no scrollbar feedback loop that
+            // would otherwise shrink the plan on every "Einpassen".
             canvas.style.width = (r.plan_width * zoom) + 'px';
             canvas.style.height = (r.plan_height * zoom) + 'px';
-            canvas.style.transform = 'scale(' + zoom + ')';
+            inner.style.transform = 'scale(' + zoom + ')';
             zoomLabel.textContent = Math.round(zoom * 100) + ' %';
         }
 

@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.66.1] – 2026-06-30
+
+### Behoben: Tischplan im Live-Board wurde bei „Einpassen" immer kleiner
+- Jeder Klick auf **„Einpassen"** verkleinerte den Plan schrittweise. Zwei
+  Ursachen:
+  1. **Doppelte Skalierung** – die Canvas-Box wurde *und* per `transform`
+     skaliert. Jetzt trennt ein innerer Wrapper (`.canvas-inner`) die Skalierung
+     von der Box-Größe; die Box entspricht exakt der sichtbaren Größe.
+  2. **Stage ohne feste Höhe** – der Plan-Bereich schrumpfte auf die (kleinere)
+     skalierte Canvas, sodass das nächste „Einpassen" eine kleinere Fläche maß
+     (Rückkopplung). Der Bereich hat jetzt eine feste Höhe.
+- Ergebnis: „Einpassen" ist stabil und zeigt den Plan **so groß wie möglich**.
+
 ## [1.66.0] – 2026-06-30
 
 ### Neu: Checkout-Bestätigung + Walk-in-Dialog schließt automatisch
