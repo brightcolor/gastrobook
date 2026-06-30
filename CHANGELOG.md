@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.64.0] – 2026-06-30
+
+### Neu: Datumsbereich im Reservierungsbuch + app-weiter Filter-Hinweis
+- **Zeitbereich-Filter wie in Kimai.** Das Reservierungsbuch filtert jetzt über
+  einen Datumsbereich mit Schnellauswahl: Heute, Gestern, Diese Woche, Letzte
+  Woche, Dieser Monat, Letzter Monat, Letzte 7 Tage, Letzte 30 Tage, Alle – plus
+  frei wählbarer Von/Bis-Bereich. (Bisher nur ein einzelner Tag.)
+- **„Filter aktiv"-Hinweis app-weit.** Ist ein Filter gesetzt, erscheint ein gut
+  sichtbarer Banner mit den aktiven Filtern und einem **„Filter löschen"**-Button
+  – im Reservierungsbuch, in der Gästedatenbank und im Auditlog (wiederverwendbare
+  `<x-active-filters>`-Komponente).
+- 4 Tests.
+
 ## [1.63.0] – 2026-06-30
 
 ### Neu: Check-in-Zeit erfassen & anpassen

@@ -29,13 +29,15 @@ class ReservationBookController extends Controller
         $location = $this->context->location();
         abort_if($location === null, 404);
 
-        $date = $request->input('date', CarbonImmutable::now($location->timezone)->toDateString());
+        [$from, $to, $preset] = $this->resolveDateRange($request, $location->timezone);
 
         $query = Reservation::query()
             ->where('location_id', $location->id)
             ->with(['tables', 'guest', 'tags']);
 
         if ($search = $request->input('q')) {
+            // A free-text search spans all dates so staff can find a guest
+            // regardless of when they booked.
             $query->where(function ($q) use ($search) {
                 $q->where('guest_name_snapshot', 'like', "%{$search}%")
                     ->orWhere('guest_email_snapshot', 'like', "%{$search}%")
@@ -43,8 +45,11 @@ class ReservationBookController extends Controller
                     ->orWhere('code', 'like', "%{$search}%")
                     ->orWhere('guest_note', 'like', "%{$search}%");
             });
-        } else {
-            $query->whereDate('reservation_date', $date);
+        } elseif ($from !== null && $to !== null) {
+            // whereDate normalises the comparison so a stored time component on
+            // reservation_date doesn't push the last day out of range.
+            $query->whereDate('reservation_date', '>=', $from)
+                ->whereDate('reservation_date', '<=', $to);
         }
 
         if ($status = $request->input('status')) {
@@ -66,10 +71,76 @@ class ReservationBookController extends Controller
         return view('admin.reservations.index', [
             'location' => $location,
             'reservations' => $reservations,
-            'date' => $date,
+            'from' => $from,
+            'to' => $to,
+            'preset' => $preset,
+            'rangeLabel' => $this->rangeLabel($from, $to, $preset),
             'rooms' => $location->rooms()->orderBy('sort_order')->get(),
             'statuses' => ReservationStatus::cases(),
         ]);
+    }
+
+    /**
+     * Resolve the active date range from a Kimai-style preset
+     * (today/this_week/last_30_days/…) or an explicit from/to pair.
+     * Returns [fromDate|null, toDate|null, presetKey] – nulls mean "all dates".
+     *
+     * @return array{0: ?string, 1: ?string, 2: string}
+     */
+    private function resolveDateRange(Request $request, string $tz): array
+    {
+        $now = CarbonImmutable::now($tz);
+        $preset = $request->input('range');
+
+        $range = match ($preset) {
+            'today' => [$now, $now],
+            'yesterday' => [$now->subDay(), $now->subDay()],
+            'this_week' => [$now->startOfWeek(), $now->endOfWeek()],
+            'last_week' => [$now->subWeek()->startOfWeek(), $now->subWeek()->endOfWeek()],
+            'this_month' => [$now->startOfMonth(), $now->endOfMonth()],
+            'last_month' => [$now->subMonth()->startOfMonth(), $now->subMonth()->endOfMonth()],
+            'last_7_days' => [$now->subDays(6), $now],
+            'last_30_days' => [$now->subDays(29), $now],
+            'all' => [null, null],
+            default => null,
+        };
+
+        if ($range !== null) {
+            return [$range[0]?->toDateString(), $range[1]?->toDateString(), $preset];
+        }
+
+        // Custom range, or legacy single `date`, else default to today.
+        $from = $request->input('from') ?: $request->input('date');
+        $to = $request->input('to') ?: $from;
+        if ($from === null && $to === null) {
+            return [$now->toDateString(), $now->toDateString(), 'today'];
+        }
+        // Keep the pair ordered so a reversed selection still works.
+        if ($from && $to && $from > $to) {
+            [$from, $to] = [$to, $from];
+        }
+
+        return [$from, $to, 'custom'];
+    }
+
+    private function rangeLabel(?string $from, ?string $to, string $preset): string
+    {
+        $labels = [
+            'today' => 'Heute', 'yesterday' => 'Gestern', 'this_week' => 'Diese Woche',
+            'last_week' => 'Letzte Woche', 'this_month' => 'Dieser Monat',
+            'last_month' => 'Letzter Monat', 'last_7_days' => 'Letzte 7 Tage',
+            'last_30_days' => 'Letzte 30 Tage', 'all' => 'Alle Termine',
+        ];
+        if (isset($labels[$preset])) {
+            return $labels[$preset];
+        }
+        if ($from === null || $to === null) {
+            return 'Alle Termine';
+        }
+        $f = CarbonImmutable::parse($from)->format('d.m.Y');
+        $t = CarbonImmutable::parse($to)->format('d.m.Y');
+
+        return $f === $t ? $f : "$f – $t";
     }
 
     public function show(Reservation $reservation)

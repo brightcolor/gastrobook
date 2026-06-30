@@ -8,6 +8,12 @@
     @endif
 </div>
 
+<x-active-filters :reset="route('admin.guests.index')" :filters="[
+    'Suche' => request('q'),
+    'Tag'   => request('tag') ? optional($tags->firstWhere('id', request('tag')))->name : null,
+    'VIP'   => request('vip') ? 'Nur VIP' : null,
+]" />
+
 <form method="GET" class="mb-4 flex flex-wrap items-end gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-100">
     <div class="grow">
         <input type="search" name="q" value="{{ request('q') }}" placeholder="Name, Telefon oder E-Mail…" class="w-full rounded-lg border-stone-200 text-sm">

@@ -13,17 +13,17 @@
                 <div class="mb-3 grid grid-cols-2 gap-2">
                     <div>
                         <label class="mb-1 block text-xs text-stone-500">Von</label>
-                        <input type="date" id="exportFrom" value="{{ $date }}"
+                        <input type="date" id="exportFrom" value="{{ $from ?? now()->toDateString() }}"
                                class="w-full rounded-lg border-stone-200 text-sm">
                     </div>
                     <div>
                         <label class="mb-1 block text-xs text-stone-500">Bis</label>
-                        <input type="date" id="exportUntil" value="{{ $date }}"
+                        <input type="date" id="exportUntil" value="{{ $to ?? now()->toDateString() }}"
                                class="w-full rounded-lg border-stone-200 text-sm">
                     </div>
                 </div>
                 <a id="exportLink"
-                   href="{{ route('admin.reservations.export', ['from' => $date, 'until' => $date]) }}"
+                   href="{{ route('admin.reservations.export', ['from' => $from ?? now()->toDateString(), 'until' => $to ?? now()->toDateString()]) }}"
                    class="block w-full rounded-xl bg-stone-900 px-4 py-2 text-center text-sm font-semibold text-white hover:bg-stone-700">
                     CSV herunterladen
                 </a>
@@ -48,16 +48,59 @@
                 link.addEventListener('click', () => drop.classList.add('hidden'));
             })();
         </script>
-        <a href="{{ route('admin.reservations.create', ['date' => $date]) }}"
+        <a href="{{ route('admin.reservations.create', ['date' => $from ?? now()->toDateString()]) }}"
            class="rounded-xl bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-stone-700">+ Neu</a>
     </div>
 </div>
 
-<form method="GET" class="mb-4 flex flex-wrap items-end gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-100">
-    <div>
-        <label class="mb-1 block text-xs font-semibold text-stone-500">Datum</label>
-        <input type="date" name="date" value="{{ $date }}" class="rounded-lg border-stone-200 text-sm" onchange="this.form.submit()">
+@php
+    $presets = [
+        'today' => 'Heute', 'yesterday' => 'Gestern', 'this_week' => 'Diese Woche',
+        'last_week' => 'Letzte Woche', 'this_month' => 'Dieser Monat', 'last_month' => 'Letzter Monat',
+        'last_7_days' => 'Letzte 7 Tage', 'last_30_days' => 'Letzte 30 Tage', 'all' => 'Alle',
+    ];
+@endphp
+
+{{-- Aktiver-Filter-Banner + „Filter löschen" --}}
+<x-active-filters :reset="route('admin.reservations.index')" :filters="[
+    'Zeitraum' => request('q') ? null : ($preset === 'today' ? null : $rangeLabel),
+    'Status'   => request('status') ? __('reservations.status.' . request('status')) : null,
+    'Quelle'   => request('source') ? __('reservations.source.' . request('source')) : null,
+    'Raum'     => request('room_id') ? optional($rooms->firstWhere('id', request('room_id')))->name : null,
+    'Suche'    => request('q'),
+]" />
+
+<form method="GET" class="mb-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-100">
+    {{-- Kimai-style Zeitbereich --}}
+    <div class="mb-3">
+        <label class="mb-1.5 block text-xs font-semibold text-stone-500">Zeitraum</label>
+        <div class="flex flex-wrap items-end gap-2">
+            <div class="flex flex-wrap gap-1.5">
+                @foreach($presets as $key => $label)
+                    <button type="submit" name="range" value="{{ $key }}"
+                            class="rounded-full px-3 py-1.5 text-xs font-semibold ring-1 transition
+                                {{ $preset === $key ? 'bg-stone-900 text-white ring-stone-900' : 'bg-white text-stone-600 ring-stone-200 hover:ring-stone-400' }}">
+                        {{ $label }}
+                    </button>
+                @endforeach
+            </div>
+            <div class="flex items-end gap-1.5">
+                <div>
+                    <label class="mb-0.5 block text-[10px] text-stone-400">Von</label>
+                    <input type="date" name="from" value="{{ $from }}" class="rounded-lg border-stone-200 text-sm">
+                </div>
+                <span class="pb-2 text-stone-400">–</span>
+                <div>
+                    <label class="mb-0.5 block text-[10px] text-stone-400">Bis</label>
+                    <input type="date" name="to" value="{{ $to }}" class="rounded-lg border-stone-200 text-sm">
+                </div>
+                <button type="submit" name="range" value="custom"
+                        class="rounded-lg bg-stone-200 px-3 py-2 text-xs font-semibold hover:bg-stone-300">Anwenden</button>
+            </div>
+        </div>
     </div>
+
+    <div class="flex flex-wrap items-end gap-3">
     <div>
         <label class="mb-1 block text-xs font-semibold text-stone-500">Status</label>
         <select name="status" class="rounded-lg border-stone-200 text-sm" onchange="this.form.submit()">
@@ -90,6 +133,7 @@
         <input type="search" name="q" value="{{ request('q') }}" placeholder="Suchen…" class="w-full rounded-lg border-stone-200 text-sm">
     </div>
     <button class="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Filtern</button>
+    </div>
 </form>
 
 <div class="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-stone-100">
