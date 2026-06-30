@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.66.0] – 2026-06-30
+
+### Neu: Checkout-Bestätigung + Walk-in-Dialog schließt automatisch
+- **Walk-in platzieren schließt den Tisch-Dialog.** Nach dem Setzen einer
+  Walk-in-/Tisch-teilen-Gruppe wird das Detail-Panel im Live-Board automatisch
+  geschlossen.
+- **Auschecken fragt jetzt nach.** Überall, wo Gäste ausgecheckt werden (Live-
+  Board, Reservierungsbuch, Reservierungs-Detail), erscheint zuerst ein
+  Bestätigungsdialog. Der **„✓ Auschecken"-Button ist hervorgehoben** (grün) und
+  mit großen, touch-tauglichen Schaltflächen versehen.
+- Auch No-Show/Storno auf der Detailseite bestätigen jetzt über denselben Dialog.
+- Neue wiederverwendbare `data-confirm`-Mechanik im Admin-Layout + eigener
+  Bestätigungsdialog im Live-Board.
+
 ## [1.65.0] – 2026-06-30
 
 ### Geändert: Belegte Tische zeigen „seit wann" + Live-Verweildauer

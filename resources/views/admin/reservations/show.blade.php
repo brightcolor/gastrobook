@@ -52,16 +52,27 @@
                             'confirmed' => ['Bestätigen', 'bg-emerald-600 text-white'],
                             'seated' => ['Gast ist da', 'bg-emerald-600 text-white'],
                             'partially_arrived' => ['Teilweise da', 'bg-blue-100 text-blue-800'],
-                            'completed' => ['Gast gegangen', 'bg-stone-200'],
+                            'completed' => ['✓ Auschecken', 'bg-emerald-600 text-white shadow-sm'],
                             'no_show' => ['No-Show', 'bg-red-100 text-red-700'],
                             'rejected' => ['Ablehnen', 'bg-red-100 text-red-700'],
                             'cancelled_by_restaurant' => ['Stornieren (Restaurant)', 'bg-red-100 text-red-700'],
                             'cancelled_by_guest' => ['Stornieren (Gast)', 'bg-red-50 text-red-600'],
                             'waitlisted' => ['Auf Warteliste', 'bg-purple-100 text-purple-800'],
                         ];
+                        $confirm = [
+                            'completed' => ['Gäste auschecken?', 'Der Tisch wird freigegeben und die Reservierung abgeschlossen.', '✓ Auschecken', ''],
+                            'no_show' => ['Als No-Show markieren?', 'Der Gast wird als nicht erschienen markiert.', 'No-Show', 'danger'],
+                            'rejected' => ['Reservierung ablehnen?', 'Die Reservierung wird abgelehnt.', 'Ablehnen', 'danger'],
+                            'cancelled_by_restaurant' => ['Stornieren?', 'Die Reservierung wird storniert.', 'Stornieren', 'danger'],
+                            'cancelled_by_guest' => ['Stornieren?', 'Die Reservierung wird storniert.', 'Stornieren', 'danger'],
+                        ];
                     @endphp
                     @if(isset($labels[$target]))
-                        <form method="POST" action="{{ route('admin.reservations.transition', $reservation) }}">
+                        <form method="POST" action="{{ route('admin.reservations.transition', $reservation) }}"
+                            @isset($confirm[$target])
+                                data-confirm="{{ $confirm[$target][1] }}" data-confirm-title="{{ $confirm[$target][0] }}"
+                                data-confirm-ok="{{ $confirm[$target][2] }}" data-confirm-style="{{ $confirm[$target][3] }}"
+                            @endisset>
                             @csrf
                             <input type="hidden" name="status" value="{{ $target }}">
                             <button class="rounded-xl px-4 py-2.5 text-sm font-semibold {{ $labels[$target][1] }}">{{ $labels[$target][0] }}</button>

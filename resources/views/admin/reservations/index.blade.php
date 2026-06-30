@@ -184,9 +184,11 @@
                                     <button class="rounded-lg bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700">No-Show</button>
                                 </form>
                             @elseif($r->status->value === 'seated')
-                                <form method="POST" action="{{ route('admin.reservations.transition', $r) }}">@csrf
+                                <form method="POST" action="{{ route('admin.reservations.transition', $r) }}"
+                                      data-confirm="Der Tisch wird freigegeben und die Reservierung abgeschlossen."
+                                      data-confirm-title="Gäste auschecken?" data-confirm-ok="✓ Auschecken">@csrf
                                     <input type="hidden" name="status" value="completed">
-                                    <button class="rounded-lg bg-stone-200 px-2.5 py-1 text-xs font-semibold">Gegangen</button>
+                                    <button class="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700">✓ Auschecken</button>
                                 </form>
                             @endif
                         </div>

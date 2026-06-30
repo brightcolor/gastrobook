@@ -63,6 +63,10 @@
         .act.primary { background: var(--brand); color: #fff; }
         .act.warn { background: var(--amber-bg); color: var(--amber); }
         .act.danger { background: var(--red-bg); color: var(--red); }
+        /* Checkout is the key end-of-visit action → make it prominent + touch-sized. */
+        .act.checkout { background: var(--green); color: #fff; padding: 11px 18px; font-size: 14px; border-radius: 11px;
+            box-shadow: 0 2px 8px -1px color-mix(in srgb, var(--green) 55%, transparent); }
+        .act.checkout:hover { filter: brightness(1.05); }
         .act:disabled { opacity: .5; cursor: default; }
         .empty { color: var(--muted); font-size: 14px; padding: 20px; text-align: center; border: 1px dashed var(--border); border-radius: 14px; }
         .live { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
@@ -145,6 +149,8 @@
         .ci-btn { flex: 1; height: 54px; border-radius: 14px; font-size: 16px; font-weight: 800; cursor: pointer; border: 1px solid var(--border); touch-action: manipulation; }
         .ci-cancel { background: var(--bg); color: var(--text); }
         .ci-ok { background: var(--brand); color: #fff; border-color: var(--brand); }
+        .ci-ok.ok { background: var(--green); border-color: var(--green); }
+        .ci-ok.danger { background: var(--red); border-color: var(--red); }
         .drawer { position: fixed; top: 50%; left: 50%; width: 460px; max-width: 94vw; max-height: 88vh; z-index: 41; background: var(--panel);
             border: 1px solid var(--border); border-radius: 18px; overflow: hidden;
             box-shadow: 0 24px 60px -12px rgba(0,0,0,.55); transform: translate(-50%, -48%) scale(.96); opacity: 0; pointer-events: none;
@@ -234,6 +240,17 @@
         <div class="canvas" id="canvas"></div>
     </div>
 </section>
+
+<div class="ci-back" id="cfBack" aria-hidden="true">
+    <div class="ci-modal" role="dialog" aria-modal="true" aria-labelledby="cfTitle" style="width:380px">
+        <h3 id="cfTitle">Bestätigen</h3>
+        <p class="ci-guest" id="cfMsg" style="margin-bottom:18px"></p>
+        <div class="ci-foot">
+            <button type="button" class="ci-btn ci-cancel" id="cfCancel">Abbrechen</button>
+            <button type="button" class="ci-btn ci-ok" id="cfOk">OK</button>
+        </div>
+    </div>
+</div>
 
 <div class="ci-back" id="ciBack" aria-hidden="true">
     <div class="ci-modal" role="dialog" aria-modal="true" aria-labelledby="ciTitle">
@@ -423,8 +440,26 @@
             openCheckin(id, status, btn);
             return;
         }
+        // Checkout: always confirm before freeing the table.
+        if (status === 'completed') {
+            const ok = await confirmDialog({
+                title: 'Gäste auschecken?',
+                message: 'Der Tisch wird freigegeben und die Reservierung abgeschlossen.',
+                okLabel: '✓ Auschecken', okStyle: 'ok',
+            });
+            if (!ok) return;
+            await postTransition(id, status, btn);
+            return;
+        }
         const danger = ['rejected', 'cancelled_by_restaurant', 'no_show'].includes(status);
-        if (danger && !confirm('Wirklich als „' + btn.textContent + '" markieren?')) return;
+        if (danger) {
+            const ok = await confirmDialog({
+                title: 'Sicher?',
+                message: '„' + btn.textContent + '" – wirklich fortfahren?',
+                okLabel: btn.textContent, okStyle: 'danger',
+            });
+            if (!ok) return;
+        }
         await postTransition(id, status, btn);
     }
 
@@ -482,6 +517,36 @@
         };
     })();
     function openCheckin(id, status, btn) { ci.open(id, status, btn); }
+
+    // ---- Generic confirm dialog (touch-friendly, returns a Promise<bool>) ----
+    const confirmDialog = (function () {
+        const back = document.getElementById('cfBack');
+        const titleEl = document.getElementById('cfTitle');
+        const msgEl = document.getElementById('cfMsg');
+        const okBtn = document.getElementById('cfOk');
+        const cancelBtn = document.getElementById('cfCancel');
+        let resolver = null;
+
+        function settle(val) {
+            back.classList.remove('open');
+            back.setAttribute('aria-hidden', 'true');
+            if (resolver) { resolver(val); resolver = null; }
+        }
+        okBtn.addEventListener('click', () => settle(true));
+        cancelBtn.addEventListener('click', () => settle(false));
+        back.addEventListener('click', e => { if (e.target === back) settle(false); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape' && back.classList.contains('open')) settle(false); });
+
+        return ({ title = 'Bestätigen', message = '', okLabel = 'OK', okStyle = '' }) => {
+            titleEl.textContent = title;
+            msgEl.textContent = message;
+            okBtn.textContent = okLabel;
+            okBtn.className = 'ci-btn ci-ok' + (okStyle ? ' ' + okStyle : '');
+            back.classList.add('open');
+            back.setAttribute('aria-hidden', 'false');
+            return new Promise(res => { resolver = res; });
+        };
+    })();
 
     function setLive(ok) {
         document.getElementById('liveDot').classList.toggle('stale', !ok);
@@ -839,7 +904,8 @@
                     const j = await res.json().catch(() => ({}));
                     throw new Error(j.message || (j.errors ? Object.values(j.errors)[0][0] : 'Walk-in fehlgeschlagen.'));
                 }
-                await load();   // refresh board + drawer (table becomes occupied)
+                close();        // placed → close the table panel
+                await load();   // refresh board (table becomes occupied)
             } catch (err) {
                 btn.disabled = false;
                 errEl.textContent = err.message;

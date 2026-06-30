@@ -196,6 +196,53 @@
         document.body.style.overflow = m.classList.contains('hidden') ? '' : 'hidden';
     }
 </script>
+{{-- Global confirm dialog for forms/links with data-confirm (touch-friendly) --}}
+<div id="confirmModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+    <div class="w-[380px] max-w-[96vw] rounded-2xl bg-white p-6 text-center shadow-2xl">
+        <h3 id="confirmModalTitle" class="mb-1 text-lg font-bold">Bestätigen</h3>
+        <p id="confirmModalMsg" class="mb-5 text-sm text-stone-500"></p>
+        <div class="flex gap-3">
+            <button type="button" id="confirmModalCancel"
+                    class="h-13 flex-1 rounded-xl border border-stone-200 bg-stone-50 py-3.5 text-base font-bold text-stone-700">Abbrechen</button>
+            <button type="button" id="confirmModalOk"
+                    class="h-13 flex-1 rounded-xl bg-stone-900 py-3.5 text-base font-bold text-white">OK</button>
+        </div>
+    </div>
+</div>
+<script>
+// Any element with data-confirm intercepts its form submit (or click) and asks
+// first via a touch-friendly modal. Optional: data-confirm-ok, data-confirm-style="danger".
+(function () {
+    const modal = document.getElementById('confirmModal');
+    const titleEl = document.getElementById('confirmModalTitle');
+    const msgEl = document.getElementById('confirmModalMsg');
+    const okBtn = document.getElementById('confirmModalOk');
+    const cancelBtn = document.getElementById('confirmModalCancel');
+    let pending = null;
+
+    function openModal() { modal.classList.remove('hidden'); modal.classList.add('flex'); }
+    function closeModal() { modal.classList.add('hidden'); modal.classList.remove('flex'); pending = null; }
+
+    okBtn.addEventListener('click', () => { const fn = pending; closeModal(); if (fn) fn(); });
+    cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal(); });
+
+    document.addEventListener('submit', e => {
+        const el = e.target.querySelector('[data-confirm]') || (e.submitter && e.submitter.matches('[data-confirm]') ? e.submitter : null);
+        const trigger = e.target.matches('[data-confirm]') ? e.target : el;
+        if (!trigger) return;
+        e.preventDefault();
+        titleEl.textContent = trigger.dataset.confirmTitle || 'Bestätigen';
+        msgEl.textContent = trigger.dataset.confirm;
+        okBtn.textContent = trigger.dataset.confirmOk || 'OK';
+        okBtn.className = 'h-13 flex-1 rounded-xl py-3.5 text-base font-bold text-white '
+            + (trigger.dataset.confirmStyle === 'danger' ? 'bg-red-600' : 'bg-emerald-600');
+        pending = () => e.target.submit();
+        openModal();
+    });
+})();
+</script>
 @stack('scripts')
 </body>
 </html>
