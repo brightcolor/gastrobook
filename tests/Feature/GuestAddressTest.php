@@ -77,4 +77,23 @@ class GuestAddressTest extends TestCase
         $this->assertStringContainsString('deine Reservierung', $du['reservation_confirmed']['body']);
         $this->assertStringContainsString('Ihre Reservierung', $sie['reservation_confirmed']['body']);
     }
+
+    public function test_booking_page_is_formal_by_default(): void
+    {
+        $setup = $this->createTenantSetup();
+        $this->clearTenantContext();
+
+        $url = route('booking.show', [$setup['tenant']->slug, $setup['location']->slug]);
+        $this->get($url)->assertOk()->assertSee('Ihre Angaben')->assertDontSee('Deine Angaben');
+    }
+
+    public function test_booking_page_is_informal_when_du(): void
+    {
+        $setup = $this->createTenantSetup();
+        $setup['location']->settings->update(['guest_address' => 'du']);
+        $this->clearTenantContext();
+
+        $url = route('booking.show', [$setup['tenant']->slug, $setup['location']->slug]);
+        $this->get($url)->assertOk()->assertSee('Deine Angaben')->assertDontSee('Ihre Angaben');
+    }
 }

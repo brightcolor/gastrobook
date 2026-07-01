@@ -1,6 +1,7 @@
 @extends('layouts.public', ['tenant' => $tenant])
 @section('title', $isSalon ? 'Termin umbuchen' : 'Reservierung umbuchen')
 @section('content')
+@php($du = $location?->effectiveSettings()->du() ?? false)
 <div class="mx-auto max-w-md rounded-2xl bg-white p-6 shadow-sm">
     <h1 class="text-center text-2xl font-bold">{{ $isSalon ? 'Termin' : 'Reservierung' }} umbuchen</h1>
     <p class="mt-2 text-center text-sm text-stone-600">
@@ -11,7 +12,7 @@
 
     @if($tooLate)
         <div class="mt-6 rounded-xl bg-amber-50 p-4 text-center text-sm text-amber-800">
-            Die Online-Umbuchungsfrist ist leider abgelaufen – rufen Sie uns kurz an, wir helfen Ihnen gerne!
+            Die Online-Umbuchungsfrist ist leider abgelaufen – {{ $du ? 'ruf uns kurz an, wir helfen dir' : 'rufen Sie uns kurz an, wir helfen Ihnen' }} gerne!
             @if($location->phone)
                 <a href="tel:{{ preg_replace('/\s+/', '', $location->phone) }}" class="ml-1 font-bold underline">{{ $location->phone }}</a>
             @endif

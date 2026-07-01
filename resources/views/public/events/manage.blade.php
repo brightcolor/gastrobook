@@ -1,12 +1,13 @@
 @extends('layouts.public', ['tenant' => $location?->tenant])
-@section('title', 'Ihre Eventbuchung')
+@section('title', 'Eventbuchung')
 @section('content')
+@php($du = $location?->effectiveSettings()->du() ?? false)
 <div class="rounded-2xl bg-white p-6 shadow-sm">
     @if(session('just_booked'))
         <div class="text-center text-5xl">🎉</div>
         <h1 class="mt-3 text-center text-2xl font-bold">Buchung bestätigt!</h1>
     @else
-        <h1 class="text-xl font-bold">Ihre Eventbuchung</h1>
+        <h1 class="text-xl font-bold">{{ $du ? 'Deine' : 'Ihre' }} Eventbuchung</h1>
     @endif
 
     @if(session('success'))
@@ -40,7 +41,7 @@
             Jetzt bezahlen · {{ number_format($booking->amount_minor / 100, 2, ',', '.') }} {{ $event?->currency }}
         </a>
         <p class="mt-2 rounded-xl bg-stone-50 p-3 text-xs text-stone-600">
-            💶 Die Vorauszahlung wird bei Ihrem Besuch <strong>vollständig mit der Rechnung verrechnet</strong>.
+            💶 Die Vorauszahlung wird bei {{ $du ? 'deinem' : 'Ihrem' }} Besuch <strong>vollständig mit der Rechnung verrechnet</strong>.
             Bei Nichterscheinen (No-Show) erfolgt <strong>keine Rückerstattung</strong>.
         </p>
     @endif
@@ -55,7 +56,7 @@
             <p class="mt-2 text-xs text-stone-500">Stornierung möglich bis {{ $event->cancellation_deadline_at->setTimezone($location->timezone)->format('d.m.Y H:i') }} Uhr.</p>
         @endif
     @elseif($booking->status === 'confirmed')
-        <p class="mt-6 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Die Stornierungsfrist ist abgelaufen. Bitte kontaktieren Sie uns: {{ $location?->phone }}</p>
+        <p class="mt-6 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Die Stornierungsfrist ist abgelaufen. Bitte {{ $du ? 'kontaktiere' : 'kontaktieren Sie' }} uns: {{ $location?->phone }}</p>
     @endif
 </div>
 @endsection

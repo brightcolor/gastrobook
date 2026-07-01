@@ -1,6 +1,7 @@
 @extends('layouts.public')
 @section('title', 'Standort wählen – ' . $tenant->name)
 @section('content')
+@php($du = ($locations->first() ?? \App\Models\Location::where('tenant_id', $tenant->id)->first())?->effectiveSettings()->du() ?? false)
 <div class="overflow-hidden rounded-3xl bg-white shadow-xl shadow-stone-400/15 ring-1 ring-black/5">
     <div class="h-1.5 bg-brand"></div>
     <div class="p-6 sm:p-8">
@@ -9,7 +10,7 @@
     @endif
     <h1 class="text-center text-3xl font-extrabold tracking-tight">{{ $tenant->name }}</h1>
     <div class="mx-auto mt-3 h-1 w-12 rounded-full bg-brand/70"></div>
-    <p class="mt-3 text-center text-sm text-stone-600">Bitte wählen Sie einen Standort.</p>
+    <p class="mt-3 text-center text-sm text-stone-600">Bitte {{ $du ? 'wähle' : 'wählen Sie' }} einen Standort.</p>
 
     <div class="mt-6 space-y-3">
         @foreach($locations as $location)

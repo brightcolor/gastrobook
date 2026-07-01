@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.68.0] – 2026-06-30
+
+### Neu: Du/Sie-Anrede auf allen öffentlichen Gastseiten (Teil 2)
+- Nach den E-Mails/SMS (v1.67.0) respektieren jetzt auch **alle öffentlichen
+  Gastseiten** die Anrede-Einstellung: Buchungsseite, Bestätigung, Verwalten,
+  Umbuchen, Storno, Warteliste, Feedback, Kundenportal und Event-Seiten.
+- Damit ist die pro-Standort-Einstellung **Anrede (Sie/du)** durchgängig
+  wirksam (Web + E-Mail + SMS). Standard bleibt **Sie**; das Personal-/Admin-
+  Backend bleibt formell.
+- 2 zusätzliche Tests (Buchungsseite Du/Sie).
+
 ## [1.67.0] – 2026-06-30
 
 ### Neu: Du/Sie-Anrede in allen Gast-E-Mails & SMS (Teil 1)

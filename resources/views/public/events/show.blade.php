@@ -2,6 +2,7 @@
 @section('title', $event->title . ' – ' . $location->name)
 @section('content')
 @php($startLocal = $event->starts_at->copy()->setTimezone($location->timezone))
+@php($du = $location?->effectiveSettings()->du() ?? false)
 <div class="rounded-2xl bg-white p-6 shadow-sm">
     <p class="text-sm"><a href="{{ route('events.index', [$tenant->slug, $location->slug]) }}" class="text-stone-500 underline">← Alle Events</a></p>
     <h1 class="mt-2 text-2xl font-bold">{{ $event->title }}</h1>
@@ -63,7 +64,7 @@
             </div>
             @if($event->price_minor)
                 <p class="rounded-xl bg-stone-50 p-3 text-xs text-stone-600">
-                    💶 Die Vorauszahlung wird bei Ihrem Besuch <strong>vollständig mit der Rechnung verrechnet</strong>.
+                    💶 Die Vorauszahlung wird bei {{ $du ? 'deinem' : 'Ihrem' }} Besuch <strong>vollständig mit der Rechnung verrechnet</strong>.
                     Bei Nichterscheinen (No-Show) erfolgt <strong>keine Rückerstattung</strong>.
                 </p>
             @endif

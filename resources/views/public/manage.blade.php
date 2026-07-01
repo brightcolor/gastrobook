@@ -1,6 +1,7 @@
 @extends('layouts.public', ['tenant' => $location->tenant])
 @section('title', 'Reservierung verwalten')
 @section('content')
+@php($du = $location?->effectiveSettings()->du() ?? false)
 
 @php
 $isSalon = $location->tenant?->isSalon();
@@ -20,7 +21,7 @@ $statusBadge = match($sv) {
     <div class="h-1.5 bg-brand"></div>
     <div class="p-6 sm:p-8">
 
-    <h1 class="text-2xl font-extrabold tracking-tight">{{ $isSalon ? 'Ihr Termin' : 'Ihre Reservierung' }}</h1>
+    <h1 class="text-2xl font-extrabold tracking-tight">{{ $isSalon ? ($du ? 'Dein Termin' : 'Ihr Termin') : ($du ? 'Deine Reservierung' : 'Ihre Reservierung') }}</h1>
     <div class="mt-1 mb-5 h-0.5 w-8 rounded-full bg-brand/60"></div>
 
     {{-- Status-Badge --}}
@@ -77,12 +78,12 @@ $statusBadge = match($sv) {
             Jetzt Anzahlung bezahlen · {{ number_format($reservation->payment_amount_minor / 100, 2, ',', '.') }} {{ $reservation->currency }}
         </a>
         <p class="mt-2 rounded-xl bg-stone-50 p-3 text-xs text-stone-600">
-            💶 Die Anzahlung wird bei Ihrem Besuch <strong>vollständig mit der Rechnung verrechnet</strong>.
+            💶 Die Anzahlung wird bei {{ $du ? 'deinem' : 'Ihrem' }} Besuch <strong>vollständig mit der Rechnung verrechnet</strong>.
             Bei Nichterscheinen (No-Show) erfolgt <strong>keine Rückerstattung</strong>.
         </p>
         @if($reservation->payment_due_at)
             <p class="mt-1.5 text-xs text-stone-500">
-                Bitte zahlen Sie bis <strong>{{ $reservation->payment_due_at->setTimezone($location->timezone)->format('d.m.Y H:i') }} Uhr</strong>, sonst verfällt die Reservierung.
+                Bitte {{ $du ? 'zahle' : 'zahlen Sie' }} bis <strong>{{ $reservation->payment_due_at->setTimezone($location->timezone)->format('d.m.Y H:i') }} Uhr</strong>, sonst verfällt die Reservierung.
             </p>
         @endif
     @endif
@@ -112,7 +113,7 @@ $statusBadge = match($sv) {
             </p>
         @elseif($reservation->status->isActive())
             <div class="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
-                Die Online-Stornierungsfrist ist leider abgelaufen – rufen Sie uns kurz an, wir helfen Ihnen gerne!
+                Die Online-Stornierungsfrist ist leider abgelaufen – {{ $du ? 'ruf uns kurz an, wir helfen dir' : 'rufen Sie uns kurz an, wir helfen Ihnen' }} gerne!
                 @if($location->phone)
                     <a href="tel:{{ preg_replace('/\s+/', '', $location->phone) }}" class="ml-1 font-bold underline">{{ $location->phone }}</a>
                 @endif

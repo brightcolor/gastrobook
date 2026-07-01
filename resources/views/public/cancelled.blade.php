@@ -1,5 +1,5 @@
 @extends('layouts.public', ['tenant' => $location->tenant])
-@php $isSalon = $location->tenant?->isSalon(); @endphp
+@php $isSalon = $location->tenant?->isSalon(); $du = $location?->effectiveSettings()->du() ?? false; @endphp
 @section('title', $isSalon ? 'Termin storniert' : 'Reservierung storniert')
 @section('content')
 <div class="overflow-hidden rounded-3xl bg-white text-center shadow-xl shadow-stone-400/15 ring-1 ring-black/5">
@@ -8,18 +8,18 @@
         <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-stone-50 text-4xl">✓</div>
         <h1 class="mt-4 text-2xl font-extrabold tracking-tight">{{ $isSalon ? 'Termin' : 'Reservierung' }} storniert</h1>
         <p class="mt-2 text-sm leading-relaxed text-stone-600">
-            {{ $isSalon ? 'Ihr Termin' : 'Ihre Reservierung' }} wurde erfolgreich storniert.
-            Bis zum nächsten Mal – wir freuen uns, wenn Sie wiederkommen.
+            {{ $isSalon ? ($du ? 'Dein Termin' : 'Ihr Termin') : ($du ? 'Deine Reservierung' : 'Ihre Reservierung') }} wurde erfolgreich storniert.
+            Bis zum nächsten Mal – wir freuen uns, wenn {{ $du ? 'du wiederkommst' : 'Sie wiederkommen' }}.
         </p>
 
         @if(($refund ?? null) !== null)
             <div class="mt-5 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-900">
                 @if($refund->status === 'completed')
-                    💶 Ihre Anzahlung von <strong>{{ $refund->amountFormatted() }}</strong> wurde bereits zurückerstattet.
+                    💶 {{ $du ? 'Deine' : 'Ihre' }} Anzahlung von <strong>{{ $refund->amountFormatted() }}</strong> wurde bereits zurückerstattet.
                 @elseif(in_array($refund->status, ['approved', 'processing']))
-                    💶 Ihre Anzahlung von <strong>{{ $refund->amountFormatted() }}</strong> wird in Kürze auf Ihrem Konto gutgeschrieben.
+                    💶 {{ $du ? 'Deine' : 'Ihre' }} Anzahlung von <strong>{{ $refund->amountFormatted() }}</strong> wird in Kürze auf {{ $du ? 'deinem' : 'Ihrem' }} Konto gutgeschrieben.
                 @else
-                    💶 Ihre Rückerstattung von <strong>{{ $refund->amountFormatted() }}</strong> wird geprüft und schnellstmöglich bearbeitet.
+                    💶 {{ $du ? 'Deine' : 'Ihre' }} Rückerstattung von <strong>{{ $refund->amountFormatted() }}</strong> wird geprüft und schnellstmöglich bearbeitet.
                 @endif
             </div>
         @endif

@@ -1,6 +1,9 @@
 @extends('layouts.public')
 @section('title', ($tenant->isSalon() ? 'Termin buchen' : 'Tisch reservieren') . ' – ' . $location->name)
 @section('content')
+@php
+    $du = $settings->guest_address === 'du';
+@endphp
 
 <style>
 /* Akkordeon-Step-Panels */
@@ -63,7 +66,7 @@ details > summary::-webkit-details-marker { display: none; }
     {{-- ══ SALON ═══════════════════════════════════════════════════════════════ --}}
         @if(($services ?? collect())->isEmpty())
             <div class="m-6 rounded-xl bg-amber-50 p-4 text-center text-sm text-amber-800">
-                Es sind noch keine Leistungen konfiguriert. Bitte kontaktieren Sie uns direkt.
+                Es sind noch keine Leistungen konfiguriert. Bitte {{ $du ? 'kontaktiere' : 'kontaktieren Sie' }} uns direkt.
             </div>
         @else
         <form method="POST" action="{{ $storeUrl }}"
@@ -120,7 +123,7 @@ details > summary::-webkit-details-marker { display: none; }
                             <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-400">Mitarbeiter:in</p>
                             <div id="staffButtons" class="flex flex-wrap gap-2"></div>
                             <input type="hidden" name="staff_member_id" id="staffMemberId" value="0">
-                            <p id="noStaffHint" class="mt-2 hidden rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">Keine Person kann alle Ihre Leistungen alleine ausführen.</p>
+                            <p id="noStaffHint" class="mt-2 hidden rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">Keine Person kann alle {{ $du ? 'deine' : 'Ihre' }} Leistungen alleine ausführen.</p>
                         </div>
                         <div>
                             <label for="salonDate" class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-stone-400">Datum</label>
@@ -133,7 +136,7 @@ details > summary::-webkit-details-marker { display: none; }
                         <div>
                             <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-400">Uhrzeit</p>
                             <div id="salonSlotContainer" class="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                                <p class="col-span-full text-sm text-stone-400">Wählen Sie zuerst eine Leistung.</p>
+                                <p class="col-span-full text-sm text-stone-400">{{ $du ? 'Wähle' : 'Wählen Sie' }} zuerst eine Leistung.</p>
                             </div>
                             <input type="hidden" name="time" id="salonTimeInput" value="{{ old('time') }}" required>
                         </div>
@@ -144,7 +147,7 @@ details > summary::-webkit-details-marker { display: none; }
                 <div id="ss3" class="step-panel" data-state="locked">
                     <div class="sp-header flex items-center gap-3 px-5 py-4 sm:px-6">
                         <span class="sp-num">3</span>
-                        <span class="text-sm font-semibold">Ihre Angaben</span>
+                        <span class="text-sm font-semibold">{{ $du ? 'Deine' : 'Ihre' }} Angaben</span>
                     </div>
                     <div class="sp-body space-y-4 px-5 pb-6 sm:px-6">
                         <div>
@@ -431,7 +434,7 @@ details > summary::-webkit-details-marker { display: none; }
                     @error('date')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
 
                     <div id="slotContainer" class="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                        <p class="col-span-full text-sm text-stone-400">Wählen Sie zuerst Ihre Personenzahl.</p>
+                        <p class="col-span-full text-sm text-stone-400">{{ $du ? 'Wähle zuerst deine' : 'Wählen Sie zuerst Ihre' }} Personenzahl.</p>
                     </div>
                     <input type="hidden" name="time" id="timeInput" value="{{ old('time') }}" required>
                     <div id="alternatives" class="hidden rounded-xl bg-amber-50 p-3 text-sm text-amber-900"></div>
@@ -466,7 +469,7 @@ details > summary::-webkit-details-marker { display: none; }
                     </div>
                     <div id="roomTabs" class="mb-2 flex flex-wrap gap-2"></div>
                     <div id="floorplanCanvas" class="relative w-full overflow-hidden rounded-xl border-2 border-stone-100 bg-stone-50" style="height:280px"></div>
-                    <p class="mt-2 text-xs text-stone-500">Tippen Sie auf einen freien Tisch – oder leer lassen für automatische Zuteilung.</p>
+                    <p class="mt-2 text-xs text-stone-500">{{ $du ? 'Tippe' : 'Tippen Sie' }} auf einen freien Tisch – oder leer lassen für automatische Zuteilung.</p>
                 </div>
                 <input type="hidden" name="table_id" id="tableId" value="">
             </div>
@@ -476,7 +479,7 @@ details > summary::-webkit-details-marker { display: none; }
             <div id="sp3" class="step-panel" data-state="locked">
                 <div class="sp-header flex items-center gap-3 px-5 py-4 sm:px-6">
                     <span class="sp-num">3</span>
-                    <span class="text-sm font-semibold">Ihre Angaben</span>
+                    <span class="text-sm font-semibold">{{ $du ? 'Deine' : 'Ihre' }} Angaben</span>
                 </div>
                 <div class="sp-body space-y-4 px-5 pb-6 sm:px-6">
                     <div>
@@ -740,7 +743,7 @@ details > summary::-webkit-details-marker { display: none; }
                 if (!data.slots || !data.slots.length) {
                     if (data.oversized) {
                         slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm text-stone-600">Für Gruppen ab ' + (parseInt(data.max_party) + 1) + ' Personen nehmen wir Reservierungen gerne direkt entgegen.</p>';
-                        altBox.innerHTML = 'Kontaktieren Sie uns, wir finden eine Lösung für Sie' + (data.phone ? ': <a class="font-semibold underline" href="tel:' + data.phone.replace(/\s/g, '') + '">' + data.phone + '</a>' : '.');
+                        altBox.innerHTML = @js($du ? 'Kontaktiere uns, wir finden eine Lösung für dich' : 'Kontaktieren Sie uns, wir finden eine Lösung für Sie') + (data.phone ? ': <a class="font-semibold underline" href="tel:' + data.phone.replace(/\s/g, '') + '">' + data.phone + '</a>' : '.');
                         altBox.classList.remove('hidden'); return;
                     }
                     const head = document.createElement('p');
