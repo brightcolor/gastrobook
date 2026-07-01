@@ -154,16 +154,18 @@ class EventBookingService
         $startLocal = $event->starts_at->copy()->setTimezone($location?->timezone ?? 'Europe/Berlin');
         $manageLink = route('events.manage', ['code' => $booking->code, 'token' => $booking->manage_token]);
 
+        $du = $location?->effectiveSettings()->du() ?? false;
+
         $paymentBlock = '';
         if ($booking->amount_minor) {
             $payLink = route('pay.event', ['code' => $booking->code, 'token' => $booking->manage_token]);
             $paymentBlock = "\nBetrag: ".number_format($booking->amount_minor / 100, 2, ',', '.').' '.$event->currency
                 ."\nJetzt online bezahlen: ".$payLink
-                ."\n\nHinweis: Die Vorauszahlung wird bei Ihrem Besuch vollständig mit der Rechnung verrechnet."
+                ."\n\nHinweis: Die Vorauszahlung wird bei ".($du ? 'deinem' : 'Ihrem').' Besuch vollständig mit der Rechnung verrechnet.'
                 ."\nBei Nichterscheinen (No-Show) erfolgt keine Rückerstattung.\n";
         }
 
-        $body = __(":greeting\n\nIhre Buchung für \":event\" ist bestätigt:\n\nDatum: :date\nUhrzeit: :time Uhr\nTickets: :tickets\nBuchungsnummer: :code\n:payment\nStornieren: :link\n\nWir freuen uns auf Sie!\n:location", [
+        $vars = [
             'greeting' => 'Hallo '.$booking->guest_name.',',
             'event' => $event->title,
             'date' => $startLocal->format('d.m.Y'),
@@ -173,7 +175,10 @@ class EventBookingService
             'payment' => $paymentBlock,
             'link' => $manageLink,
             'location' => $location?->name ?? '',
-        ]);
+        ];
+        $body = $du
+            ? __(":greeting\n\ndeine Buchung für \":event\" ist bestätigt:\n\nDatum: :date\nUhrzeit: :time Uhr\nTickets: :tickets\nBuchungsnummer: :code\n:payment\nStornieren: :link\n\nWir freuen uns auf dich!\n:location", $vars)
+            : __(":greeting\n\nIhre Buchung für \":event\" ist bestätigt:\n\nDatum: :date\nUhrzeit: :time Uhr\nTickets: :tickets\nBuchungsnummer: :code\n:payment\nStornieren: :link\n\nWir freuen uns auf Sie!\n:location", $vars);
 
         Mail::to($booking->guest_email)->queue(new TemplatedMail(
             __('Buchungsbestätigung: :event', ['event' => $event->title]),

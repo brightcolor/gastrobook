@@ -84,6 +84,15 @@ class LocationSettings extends Model
     }
 
     /**
+     * Whether guests are addressed informally ("du"). False = formal ("Sie").
+     * Single source of truth for the guest-facing tone across web, e-mail and SMS.
+     */
+    public function du(): bool
+    {
+        return $this->guest_address === 'du';
+    }
+
+    /**
      * Duration in minutes for a given party size and local start time.
      * duration_rules: [{"min_party":1,"max_party":4,"duration":90}, ...]
      */

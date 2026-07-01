@@ -351,16 +351,24 @@ class ReservationLifecycleService
             $newNames = RestaurantTable::withoutGlobalScope('tenant')
                 ->whereIn('id', $tableIds)->pluck('name')->implode(', ');
             $tenant = $reservation->tenant()->first();
+            $du = $location->effectiveSettings()->du();
+
+            $vars = [
+                'name' => $reservation->guest_name_snapshot,
+                'date' => $reservation->localStart()->format('d.m.Y'),
+                'time' => $reservation->localStart()->format('H:i'),
+                'tables' => $newNames ?: '—',
+                'loc' => $location->name,
+                'code' => $reservation->code,
+            ];
 
             Mail::to($reservation->guest_email_snapshot)->queue(new TemplatedMail(
-                __('Tischänderung zu Ihrer Reservierung :code – :loc', ['code' => $reservation->code, 'loc' => $location->name]),
-                __("Hallo :name,\n\nzu Ihrer Reservierung am :date um :time Uhr haben wir Ihnen statt Ihres Wunschtisches Tisch :tables zugewiesen, damit alles optimal passt. An Ihrer Reservierung ändert sich sonst nichts.\n\nBei Fragen melden Sie sich gerne.\n\n:loc", [
-                    'name' => $reservation->guest_name_snapshot,
-                    'date' => $reservation->localStart()->format('d.m.Y'),
-                    'time' => $reservation->localStart()->format('H:i'),
-                    'tables' => $newNames ?: '—',
-                    'loc' => $location->name,
-                ]),
+                $du
+                    ? __('Tischänderung zu deiner Reservierung :code – :loc', $vars)
+                    : __('Tischänderung zu Ihrer Reservierung :code – :loc', $vars),
+                $du
+                    ? __("Hallo :name,\n\nzu deiner Reservierung am :date um :time Uhr haben wir dir statt deines Wunschtisches Tisch :tables zugewiesen, damit alles optimal passt. An deiner Reservierung ändert sich sonst nichts.\n\nBei Fragen melde dich gerne.\n\n:loc", $vars)
+                    : __("Hallo :name,\n\nzu Ihrer Reservierung am :date um :time Uhr haben wir Ihnen statt Ihres Wunschtisches Tisch :tables zugewiesen, damit alles optimal passt. An Ihrer Reservierung ändert sich sonst nichts.\n\nBei Fragen melden Sie sich gerne.\n\n:loc", $vars),
                 $tenant?->mail_from_name,
                 $tenant?->mail_reply_to,
             ));

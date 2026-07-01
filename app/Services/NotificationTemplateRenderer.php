@@ -15,7 +15,9 @@ class NotificationTemplateRenderer
      */
     public function render(string $key, Reservation $reservation, array $extra = []): array
     {
-        $template = $this->resolve($key, $reservation->tenant_id, $reservation->location_id, 'de');
+        $location = $reservation->location()->withoutGlobalScope('tenant')->first();
+        $address = $location?->effectiveSettings()->guest_address ?? 'Sie';
+        $template = $this->resolve($key, $reservation->tenant_id, $reservation->location_id, 'de', $address);
 
         $placeholders = $this->placeholders($reservation, $extra);
 
@@ -33,7 +35,7 @@ class NotificationTemplateRenderer
     /**
      * @return array{subject: string, body: string}
      */
-    public function resolve(string $key, int $tenantId, ?int $locationId, string $locale): array
+    public function resolve(string $key, int $tenantId, ?int $locationId, string $locale, string $address = 'Sie'): array
     {
         $template = NotificationTemplate::withoutGlobalScope('tenant')
             ->where('tenant_id', $tenantId)
@@ -48,7 +50,7 @@ class NotificationTemplateRenderer
             return ['subject' => $template->subject, 'body' => $template->body];
         }
 
-        return $this->builtIn($key);
+        return $this->builtIn($key, $address);
     }
 
     public function placeholders(Reservation $reservation, array $extra = []): array
@@ -91,9 +93,16 @@ class NotificationTemplateRenderer
     /**
      * @return array{subject: string, body: string}
      */
-    private function builtIn(string $key): array
+    private function builtIn(string $key, string $address = 'Sie'): array
     {
-        $defaults = self::defaults();
+        $defaults = self::defaults($address);
+
+        if ($address === 'du') {
+            return $defaults[$key] ?? [
+                'subject' => 'Deine Reservierung – {location_name}',
+                'body' => "Hallo {guest_name},\n\n{custom_message}\n\n{location_name}",
+            ];
+        }
 
         return $defaults[$key] ?? [
             'subject' => 'Ihre Reservierung – {location_name}',
@@ -107,8 +116,41 @@ class NotificationTemplateRenderer
      *
      * @return array<string, array{subject: string, body: string}>
      */
-    public static function defaults(): array
+    public static function defaults(string $address = 'Sie'): array
     {
+        if ($address === 'du') {
+            return [
+                'reservation_confirmed' => [
+                    'subject' => 'Reservierungsbestätigung – {location_name} am {reservation_date}',
+                    'body' => "Hallo {guest_name},\n\ndeine Reservierung ist bestätigt:\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nPersonen: {party_size}\nReservierungsnummer: {reservation_code}\n\nÄndern oder stornieren: {cancel_link}\n\nWir freuen uns auf deinen Besuch!\n{location_name}",
+                ],
+                'reservation_requested' => [
+                    'subject' => 'Reservierungsanfrage erhalten – {location_name}',
+                    'body' => "Hallo {guest_name},\n\nwir haben deine Anfrage für den {reservation_date} um {reservation_time} Uhr ({party_size} Personen) erhalten und melden uns schnellstmöglich.\n\nReservierungsnummer: {reservation_code}\n\n{location_name}",
+                ],
+                'reservation_cancelled' => [
+                    'subject' => 'Reservierung storniert – {location_name}',
+                    'body' => "Hallo {guest_name},\n\ndeine Reservierung am {reservation_date} um {reservation_time} Uhr wurde storniert.\n\nReservierungsnummer: {reservation_code}\n\n{location_name}",
+                ],
+                'reservation_rejected' => [
+                    'subject' => 'Reservierungsanfrage – {location_name}',
+                    'body' => "Hallo {guest_name},\n\nleider können wir deine Anfrage für den {reservation_date} um {reservation_time} Uhr nicht bestätigen.\n\n{custom_message}\n\n{location_name}",
+                ],
+                'reservation_reminder' => [
+                    'subject' => 'Erinnerung: deine Reservierung morgen – {location_name}',
+                    'body' => "Hallo {guest_name},\n\nwir erinnern dich an deine Reservierung:\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nPersonen: {party_size}\n\nÄndern oder stornieren: {cancel_link}\n\nBis bald!\n{location_name}",
+                ],
+                'feedback_request' => [
+                    'subject' => 'Wie war dein Besuch bei {location_name}?',
+                    'body' => "Hallo {guest_name},\n\nvielen Dank für deinen Besuch! Wir würden uns über dein Feedback freuen:\n\n{feedback_link}\n\n{location_name}",
+                ],
+                'waitlist_offer' => [
+                    'subject' => 'Ein Tisch ist frei geworden – {location_name}',
+                    'body' => "Hallo {guest_name},\n\nfür deinen Wartelisteneintrag ist ein Tisch frei geworden. Bitte bestätige zeitnah:\n\n{waitlist_link}\n\n{location_name}",
+                ],
+            ];
+        }
+
         return [
             'reservation_confirmed' => [
                 'subject' => 'Reservierungsbestätigung – {location_name} am {reservation_date}',

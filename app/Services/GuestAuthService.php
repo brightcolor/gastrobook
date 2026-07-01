@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Mail\GuestLinkMail;
 use App\Models\Guest;
 use App\Models\GuestAuthToken;
+use App\Models\Location;
 use App\Models\Reservation;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\Mail;
@@ -71,9 +72,14 @@ class GuestAuthService
         $token = $this->issue($guest, 'login', null, 60);
         $url = route('guest.portal.login', ['tenantSlug' => $tenant->slug, 'token' => $token]);
 
+        // Portal login is tenant-wide → use the tenant's first location's tone.
+        $du = Location::where('tenant_id', $tenant->id)->first()?->effectiveSettings()->du() ?? false;
+
         Mail::to($guest->email)->queue(new GuestLinkMail(
-            __('Ihr Anmeldelink für :name', ['name' => $tenant->name]),
-            __('Hier ist Ihr Anmeldelink für Ihr Kundenkonto bei :name.', ['name' => $tenant->name]),
+            $du ? __('Dein Anmeldelink für :name', ['name' => $tenant->name])
+                : __('Ihr Anmeldelink für :name', ['name' => $tenant->name]),
+            $du ? __('Hier ist dein Anmeldelink für dein Kundenkonto bei :name.', ['name' => $tenant->name])
+                : __('Hier ist Ihr Anmeldelink für Ihr Kundenkonto bei :name.', ['name' => $tenant->name]),
             $url,
             __('Jetzt anmelden'),
         ));
@@ -91,9 +97,13 @@ class GuestAuthService
         $token = $this->issue($guest, 'verify', $reservation->id, 1440);
         $url = route('guest.verify', ['token' => $token]);
 
+        $du = $reservation->location()->withoutGlobalScope('tenant')->first()?->effectiveSettings()->du() ?? false;
+
         Mail::to($guest->email)->queue(new GuestLinkMail(
-            __('Bitte bestätigen Sie Ihre E-Mail-Adresse'),
-            __('Bitte bestätigen Sie Ihre E-Mail-Adresse, um Ihre Buchung :code abzuschließen.', ['code' => $reservation->code]),
+            $du ? __('Bitte bestätige deine E-Mail-Adresse')
+                : __('Bitte bestätigen Sie Ihre E-Mail-Adresse'),
+            $du ? __('Bitte bestätige deine E-Mail-Adresse, um deine Buchung :code abzuschließen.', ['code' => $reservation->code])
+                : __('Bitte bestätigen Sie Ihre E-Mail-Adresse, um Ihre Buchung :code abzuschließen.', ['code' => $reservation->code]),
             $url,
             __('E-Mail bestätigen'),
         ));

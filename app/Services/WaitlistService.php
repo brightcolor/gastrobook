@@ -88,17 +88,21 @@ class WaitlistService
         if ($entry->guest_email && $location) {
             $link = route('waitlist.respond', ['entry' => $entry->id, 'token' => $entry->manage_token]);
             $startLocal = $startUtc->setTimezone($location->timezone);
+            $du = $location->effectiveSettings()->du();
+            $vars = [
+                'name' => $entry->guest_name,
+                'date' => $startLocal->format('d.m.Y'),
+                'time' => $startLocal->format('H:i'),
+                'party' => $entry->party_size,
+                'minutes' => $validMinutes,
+                'link' => $link,
+                'location' => $location->name,
+            ];
             Mail::to($entry->guest_email)->queue(new TemplatedMail(
                 __('Ein Tisch ist frei geworden – :location', ['location' => $location->name]),
-                __("Hallo :name,\n\nfür :date um :time Uhr ist ein Tisch für :party Personen frei geworden.\n\nBitte bestätigen Sie innerhalb von :minutes Minuten:\n:link\n\n:location", [
-                    'name' => $entry->guest_name,
-                    'date' => $startLocal->format('d.m.Y'),
-                    'time' => $startLocal->format('H:i'),
-                    'party' => $entry->party_size,
-                    'minutes' => $validMinutes,
-                    'link' => $link,
-                    'location' => $location->name,
-                ]),
+                $du
+                    ? __("Hallo :name,\n\nfür :date um :time Uhr ist ein Tisch für :party Personen frei geworden.\n\nBitte bestätige innerhalb von :minutes Minuten:\n:link\n\n:location", $vars)
+                    : __("Hallo :name,\n\nfür :date um :time Uhr ist ein Tisch für :party Personen frei geworden.\n\nBitte bestätigen Sie innerhalb von :minutes Minuten:\n:link\n\n:location", $vars),
             ));
         }
 

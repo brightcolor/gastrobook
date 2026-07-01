@@ -72,7 +72,10 @@ class SendReservationReminders implements ShouldQueue
         $location = $reservation->location;
         $localStart = $reservation->localStart();
         $isSalon = $location->tenant?->isSalon() ?? false;
-        $what = $isSalon ? 'Ihr Termin' : 'Ihre Reservierung';
+        $du = $location->effectiveSettings()->du();
+        $what = $isSalon
+            ? ($du ? 'Dein Termin' : 'Ihr Termin')
+            : ($du ? 'Deine Reservierung' : 'Ihre Reservierung');
 
         $text = sprintf(
             'Erinnerung: %s bei %s am %s um %s Uhr. Bis bald!',

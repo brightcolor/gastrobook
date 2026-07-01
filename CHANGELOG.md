@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.67.0] – 2026-06-30
+
+### Neu: Du/Sie-Anrede in allen Gast-E-Mails & SMS (Teil 1)
+- Die vorhandene Einstellung **Anrede (Sie/du)** pro Standort wirkt jetzt auch in
+  der Gast-Kommunikation. Bisher wurde sie nur auf der Bestätigungsseite beachtet.
+- **Gast-E-Mails**: Standardtexte (Bestätigung, Anfrage, Storno, Ablehnung,
+  Erinnerung, Feedback, Warteliste) gibt es nun in einer Du- und einer
+  Sie-Variante; ausgewählt nach Standort-Einstellung. Eigene Vorlagen
+  überschreiben weiterhin.
+- Auch Magic-Link-/E-Mail-Bestätigung, Gegenvorschlag (Tischänderung),
+  Warteliste-Angebot und Event-Buchungsbestätigung respektieren die Anrede.
+- **SMS-Erinnerung** nutzt ebenfalls Du bzw. Sie.
+- Standard bleibt **Sie**. Zentrale Hilfsmethode `LocationSettings::du()`.
+- 4 Tests.
+
 ## [1.66.1] – 2026-06-30
 
 ### Behoben: Tischplan im Live-Board wurde bei „Einpassen" immer kleiner
