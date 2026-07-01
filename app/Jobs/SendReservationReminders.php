@@ -12,6 +12,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Support\Facades\Log;
 
 class SendReservationReminders implements ShouldQueue
 {
@@ -89,9 +90,18 @@ class SendReservationReminders implements ShouldQueue
         try {
             if (! $provider->send($to, $text)) {
                 $status = 'failed';
+                Log::warning('SMS reminder failed to send', [
+                    'reservation_id' => $reservation->id,
+                    'provider' => $provider::class,
+                ]);
             }
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
             $status = 'failed';
+            Log::warning('SMS reminder threw an exception', [
+                'reservation_id' => $reservation->id,
+                'provider' => $provider::class,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         NotificationLog::withoutGlobalScopes()->create([

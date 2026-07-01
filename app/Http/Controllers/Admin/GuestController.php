@@ -65,6 +65,7 @@ class GuestController extends Controller
 
     public function show(Request $request, Guest $guest)
     {
+        $this->authorizeGuest($guest);
         $guest->load(['tags', 'consents']);
 
         $canSeeSensitive = $request->user()->canInTenant('guest_notes.sensitive.view', $this->context->tenant());
@@ -83,6 +84,8 @@ class GuestController extends Controller
 
     public function update(Request $request, Guest $guest)
     {
+        $this->authorizeGuest($guest);
+
         $validated = $request->validate([
             'first_name' => ['nullable', 'string', 'max:80'],
             'last_name' => ['required', 'string', 'max:80'],
@@ -105,6 +108,8 @@ class GuestController extends Controller
 
     public function addNote(Request $request, Guest $guest)
     {
+        $this->authorizeGuest($guest);
+
         $validated = $request->validate([
             'body' => ['required', 'string', 'max:2000'],
             'is_sensitive' => ['nullable', 'boolean'],
@@ -148,6 +153,7 @@ class GuestController extends Controller
 
     public function exportSingle(Guest $guest)
     {
+        $this->authorizeGuest($guest);
         $this->audit->log('guest.data_export', $guest);
 
         return response()->json($this->privacy->export($guest), 200, [
@@ -157,9 +163,19 @@ class GuestController extends Controller
 
     public function anonymize(Request $request, Guest $guest)
     {
+        $this->authorizeGuest($guest);
         $this->privacy->anonymize($guest);
 
         return redirect()->route('admin.guests.index')
             ->with('success', __('Gast wurde anonymisiert.'));
+    }
+
+    /**
+     * Defense in depth alongside the tenant global scope: guarantee a
+     * route-model-bound guest actually belongs to the active tenant.
+     */
+    private function authorizeGuest(Guest $guest): void
+    {
+        abort_if($guest->tenant_id !== $this->context->tenantId(), 404);
     }
 }

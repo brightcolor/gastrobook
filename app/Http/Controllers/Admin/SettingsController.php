@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\ReservationStatus;
 use App\Enums\TenantType;
 use App\Http\Controllers\Controller;
 use App\Models\BlackoutPeriod;
@@ -565,9 +566,22 @@ class SettingsController extends Controller
         return back()->with('success', __('Logo entfernt.'));
     }
 
-    public function deleteTable(RestaurantTable $table)
+    public function deleteTable(RestaurantTable $table, Request $request)
     {
         abort_if($table->location_id !== $this->context->locationId(), 404);
+
+        // Refuse deletion while the table still has upcoming active reservations —
+        // otherwise the reservation silently loses its table with no warning.
+        $hasUpcoming = $table->reservations()
+            ->where('start_at', '>=', now())
+            ->whereIn('status', ReservationStatus::activeStatuses())
+            ->exists();
+        if ($hasUpcoming) {
+            return back()->withErrors([
+                'table' => __('Dieser Tisch hat noch bevorstehende Reservierungen. Bitte diese zuerst umbelegen oder stornieren.'),
+            ]);
+        }
+
         $table->delete();
         $this->audit->log('table.deleted', $table);
 

@@ -9,7 +9,9 @@ use App\Models\BillingProfile;
 use App\Models\Tenant;
 use App\Services\AuditLogger;
 use App\Services\Payments\GoCardlessService;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 
 /**
@@ -38,12 +40,37 @@ class GoCardlessWebhookController extends Controller
         }
 
         foreach ($events['events'] as $event) {
-            if (is_array($event)) {
+            if (is_array($event) && $this->markSeen($event)) {
                 $this->handleEvent($event);
             }
         }
 
         return response()->json(['received' => true]);
+    }
+
+    /**
+     * Record the GoCardless event id so a redelivered/replayed webhook is not
+     * processed twice (duplicate notification mails, stale status overwrites).
+     * Returns false when the event was already seen.
+     *
+     * @param  array<string,mixed>  $event
+     */
+    private function markSeen(array $event): bool
+    {
+        $eventId = $event['id'] ?? null;
+        if (! is_string($eventId) || $eventId === '') {
+            // No id to dedupe on — process it (better than silently dropping).
+            return true;
+        }
+
+        try {
+            DB::table('gocardless_webhook_events')->insert(['event_id' => $eventId, 'created_at' => now()]);
+
+            return true;
+        } catch (QueryException) {
+            // Unique constraint violation = already processed.
+            return false;
+        }
     }
 
     /**

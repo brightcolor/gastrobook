@@ -240,13 +240,22 @@ class ReservationBookController extends Controller
         $target = ReservationStatus::from($validated['status']);
 
         // Check-in time chosen by staff in the seating dialog. Interpreted in
-        // the location timezone on the current day.
+        // the location timezone, normally on the current day.
         $seatedAt = null;
         if (! empty($validated['seated_at'])
             && in_array($target, [ReservationStatus::Seated, ReservationStatus::PartiallyArrived], true)) {
             [$h, $m] = array_map('intval', explode(':', $validated['seated_at']));
             $tz = $reservation->timezone ?: ($this->context->location()?->timezone ?? config('app.timezone'));
-            $seatedAt = CarbonImmutable::now($tz)->setTime($h, $m)->utc();
+            $nowLocal = CarbonImmutable::now($tz);
+            $candidate = $nowLocal->setTime($h, $m);
+            // Checking in shortly after midnight for a reservation from the previous
+            // evening (e.g. now=00:10, chosen time=23:30) would otherwise land ~24h
+            // in the future. If the chosen time is implausibly far ahead of "now",
+            // assume the staff meant the previous day.
+            if ($candidate->greaterThan($nowLocal->addHours(6))) {
+                $candidate = $candidate->subDay();
+            }
+            $seatedAt = $candidate->utc();
         }
 
         $permissionMap = [

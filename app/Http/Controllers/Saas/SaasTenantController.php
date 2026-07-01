@@ -181,7 +181,7 @@ class SaasTenantController extends Controller
      */
     public function impersonate(Request $request, Tenant $tenant)
     {
-        $this->authorizeSaas($request);
+        $this->authorizeSaas($request, write: true);
 
         $validated = $request->validate(['reason' => ['nullable', 'string', 'max:255']]);
 

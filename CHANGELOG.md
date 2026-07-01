@@ -1,5 +1,38 @@
 # Changelog
 
+## [1.68.1] – 2026-07-02
+
+### Behoben: Audit-Fixes (Security & Datenintegrität)
+Vollständiges Audit (Security, Funktion, CRUD, Edge-Cases) über den seit v1.53
+neu hinzugekommenen Funktionsumfang; alle bestätigten Befunde behoben.
+
+- **Tisch-Löschung ohne Prüfung**: Ein Tisch mit noch bevorstehenden aktiven
+  Reservierungen ließ sich löschen, sodass die Reservierung unbemerkt
+  tischlos wurde. Löschen ist jetzt blockiert, solange künftige aktive
+  Reservierungen an diesem Tisch hängen (analog zum bestehenden Schutz bei
+  Räumen).
+- **SaaS-Impersonation zu weit gefasst**: `readonly_admin`/`billing_admin`
+  konnten sich in fremde Betriebe einloggen und dort im vollen Admin-Kontext
+  agieren. Erfordert jetzt dieselbe Schreibrechte-Stufe wie andere
+  Tenant-Änderungen (nur super_admin/support_admin).
+- **GoCardless-Webhook ohne Replay-Schutz**: Ein erneut zugestelltes,
+  gültig signiertes Event konnte doppelt verarbeitet werden (doppelte Mails,
+  überschriebener Mandatsstatus). Verarbeitete Event-IDs werden jetzt
+  dedupliziert.
+- **SMS-Fehler unsichtbar**: Fehlgeschlagene Erinnerungs-SMS wurden nur in der
+  NotificationLog-Tabelle vermerkt, nicht geloggt. Jetzt zusätzlich per
+  `Log::warning` sichtbar für den Betrieb.
+- **Defense-in-Depth Gästeverwaltung**: Route-gebundene Gast-Aktionen prüfen
+  jetzt zusätzlich zum globalen Tenant-Scope explizit die Tenant-Zugehörigkeit
+  (konsistent zu Reservierung/Standort/Event).
+- **Check-in nach Mitternacht**: Eine gewählte Check-in-Zeit landete bei
+  Check-ins kurz nach Mitternacht für eine Reservierung vom Vorabend ~24h in
+  der Zukunft. Liegt die gewählte Zeit implausibel weit voraus, wird jetzt der
+  Vortag angenommen.
+- **Token-Routen ohne Rate-Limit**: Reservierungs-, Event-Buchungs-,
+  Warteliste- und Feedback-Token-Routen haben jetzt ein moderates Throttle.
+- 8 zusätzliche Tests. Vollständiger Audit-Bericht: `AUDIT-2026-07-02.md`.
+
 ## [1.68.0] – 2026-06-30
 
 ### Neu: Du/Sie-Anrede auf allen öffentlichen Gastseiten (Teil 2)

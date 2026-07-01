@@ -76,4 +76,40 @@ class CheckInTimeTest extends TestCase
 
         $this->assertSame(ReservationStatus::Confirmed, $r->fresh()->status);
     }
+
+    public function test_check_in_shortly_after_midnight_lands_on_previous_day(): void
+    {
+        $setup = $this->createTenantSetup();
+        $admin = $this->createMember($setup['tenant'], 'tenant_owner');
+        $tz = $setup['location']->timezone;
+
+        // Reservation started at 23:30 the previous evening.
+        $start = CarbonImmutable::now($tz)->subDay()->setTime(23, 30);
+        $r = Reservation::create([
+            'tenant_id' => $setup['tenant']->id, 'location_id' => $setup['location']->id, 'party_size' => 2,
+            'reservation_date' => $start->toDateString(), 'start_at' => $start->utc(), 'end_at' => $start->addHours(2)->utc(),
+            'timezone' => $tz, 'status' => ReservationStatus::Confirmed, 'source' => 'online',
+            'guest_name_snapshot' => 'Gast',
+        ]);
+        $this->clearTenantContext();
+
+        // Staff checks the guest in shortly after midnight, choosing the actual arrival time (23:30).
+        $now = CarbonImmutable::now($tz)->addDay()->setTime(0, 10);
+        CarbonImmutable::setTestNow($now);
+
+        try {
+            $this->actingAs($admin)->postJson("/admin/reservations/{$r->id}/transition", [
+                'status' => 'seated', 'seated_at' => '23:30',
+            ])->assertOk();
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
+
+        $r->refresh();
+        $seatedLocal = $r->seated_at->setTimezone($tz);
+        $this->assertSame('23:30', $seatedLocal->format('H:i'));
+        // Must be shortly before "now" (previous day), not ~24h in the future.
+        $this->assertTrue($seatedLocal->lessThan($now));
+        $this->assertTrue($now->diffInHours($seatedLocal) < 2);
+    }
 }

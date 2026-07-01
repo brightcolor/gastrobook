@@ -82,4 +82,31 @@ class SaasAdminTest extends TestCase
             'name' => 'X', 'email' => 'x@swayy.test', 'password' => 'supersecret123',
         ])->assertForbidden(); // but not create
     }
+
+    public function test_readonly_and_billing_admin_cannot_impersonate(): void
+    {
+        $setup = $this->createTenantSetup();
+        $this->clearTenantContext();
+
+        foreach (['readonly_admin', 'billing_admin'] as $role) {
+            $admin = User::factory()->create(['saas_role' => $role]);
+            $this->actingAs($admin)
+                ->post("/saas/tenants/{$setup['tenant']->id}/impersonate")
+                ->assertForbidden();
+            $this->assertNull($admin->fresh()->current_tenant_id);
+        }
+    }
+
+    public function test_support_admin_can_impersonate(): void
+    {
+        $setup = $this->createTenantSetup();
+        $this->clearTenantContext();
+
+        $admin = User::factory()->create(['saas_role' => 'support_admin']);
+        $this->actingAs($admin)
+            ->post("/saas/tenants/{$setup['tenant']->id}/impersonate")
+            ->assertRedirect();
+
+        $this->assertSame($setup['tenant']->id, $admin->fresh()->current_tenant_id);
+    }
 }

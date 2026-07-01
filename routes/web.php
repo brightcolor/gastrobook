@@ -82,8 +82,10 @@ Route::middleware('throttle:booking')->group(function () {
     Route::post('/book/{tenantSlug}/{locationSlug}/events/{eventSlug}', [PublicEventController::class, 'store'])->name('events.store');
 });
 
-Route::get('/event-booking/{code}/{token}', [PublicEventController::class, 'manage'])->name('events.manage');
-Route::post('/event-booking/{code}/{token}/cancel', [PublicEventController::class, 'cancel'])->name('events.cancel');
+Route::get('/event-booking/{code}/{token}', [PublicEventController::class, 'manage'])
+    ->middleware('throttle:booking-slots')->name('events.manage');
+Route::post('/event-booking/{code}/{token}/cancel', [PublicEventController::class, 'cancel'])
+    ->middleware('throttle:booking-slots')->name('events.cancel');
 
 // Payments (Stripe Checkout + Webhook)
 Route::get('/pay/event/{code}/{token}', [PaymentController::class, 'checkoutEventBooking'])
@@ -95,10 +97,14 @@ Route::get('/pay/paypal/return/{intent}', [PaymentController::class, 'paypalRetu
 Route::post('/webhooks/stripe', [PaymentController::class, 'stripeWebhook'])->name('webhooks.stripe');
 Route::post('/webhooks/gocardless', [GoCardlessWebhookController::class, 'handle'])->name('webhooks.gocardless');
 
-Route::get('/reservation/{code}/confirmed/{token}', [PublicBookingController::class, 'confirmation'])->name('booking.confirmation');
-Route::get('/reservation/{code}/manage/{token}', [PublicBookingController::class, 'manage'])->name('booking.manage');
-Route::post('/reservation/{code}/cancel/{token}', [PublicBookingController::class, 'cancel'])->name('booking.cancel');
-Route::get('/reservation/{code}/reschedule/{token}', [PublicBookingController::class, 'rescheduleShow'])->name('booking.reschedule');
+Route::get('/reservation/{code}/confirmed/{token}', [PublicBookingController::class, 'confirmation'])
+    ->middleware('throttle:booking-slots')->name('booking.confirmation');
+Route::get('/reservation/{code}/manage/{token}', [PublicBookingController::class, 'manage'])
+    ->middleware('throttle:booking-slots')->name('booking.manage');
+Route::post('/reservation/{code}/cancel/{token}', [PublicBookingController::class, 'cancel'])
+    ->middleware('throttle:booking-slots')->name('booking.cancel');
+Route::get('/reservation/{code}/reschedule/{token}', [PublicBookingController::class, 'rescheduleShow'])
+    ->middleware('throttle:booking-slots')->name('booking.reschedule');
 Route::post('/reservation/{code}/reschedule/{token}', [PublicBookingController::class, 'reschedule'])
     ->middleware('throttle:booking')->name('booking.reschedule.post');
 
@@ -111,11 +117,15 @@ Route::get('/konto/{tenantSlug}/login/{token}', [GuestPortalController::class, '
 Route::get('/konto/{tenantSlug}/start', [GuestPortalController::class, 'dashboard'])->name('guest.portal.dashboard');
 Route::post('/konto/{tenantSlug}/logout', [GuestPortalController::class, 'logout'])->name('guest.portal.logout');
 
-Route::get('/feedback/{token}', [FeedbackController::class, 'show'])->name('feedback.show');
-Route::post('/feedback/{token}', [FeedbackController::class, 'store'])->name('feedback.store');
+Route::get('/feedback/{token}', [FeedbackController::class, 'show'])
+    ->middleware('throttle:booking-slots')->name('feedback.show');
+Route::post('/feedback/{token}', [FeedbackController::class, 'store'])
+    ->middleware('throttle:booking-slots')->name('feedback.store');
 
-Route::get('/waitlist/{entry}/{token}', [WaitlistResponseController::class, 'show'])->name('waitlist.respond');
-Route::post('/waitlist/{entry}/{token}', [WaitlistResponseController::class, 'respond'])->name('waitlist.respond.post');
+Route::get('/waitlist/{entry}/{token}', [WaitlistResponseController::class, 'show'])
+    ->middleware('throttle:booking-slots')->name('waitlist.respond');
+Route::post('/waitlist/{entry}/{token}', [WaitlistResponseController::class, 'respond'])
+    ->middleware('throttle:booking-slots')->name('waitlist.respond.post');
 
 /*
 |--------------------------------------------------------------------------
