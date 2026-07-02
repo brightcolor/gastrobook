@@ -7,6 +7,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen bg-stone-100 text-stone-900 antialiased">
+<a href="#main-content" class="skip-link">Zum Inhalt springen</a>
 @php
     $ctx = app(\App\Support\TenantContext::class);
     $tenant = $ctx->tenant();
@@ -72,6 +73,7 @@
         <nav class="flex-1 space-y-0.5 px-3 text-sm">
             @foreach($visibleItems as $item)
                 <a href="{{ route($item['route']) }}"
+                   @if(request()->routeIs($item['route'])) aria-current="page" @endif
                    class="flex items-center gap-2 rounded-md px-3 py-2 {{ request()->routeIs($item['route']) ? 'bg-stone-700 font-semibold' : 'hover:bg-stone-800' }}">
                     {!! $item['icon'] !!} {{ $item['label'] }}
                 </a>
@@ -103,24 +105,26 @@
     <div class="flex min-w-0 flex-1 flex-col">
         {{-- Mobile top bar --}}
         <header class="flex items-center justify-between bg-stone-900 px-4 py-3 text-stone-100 md:hidden">
-            <button type="button" onclick="swayyToggleMenu(true)" aria-label="Menü öffnen" class="-ml-1 flex h-9 w-9 items-center justify-center rounded-md text-2xl leading-none hover:bg-stone-800">☰</button>
+            <button type="button" onclick="swayyToggleMenu(true)" aria-label="Menü öffnen" aria-controls="swayyMobileMenu" aria-expanded="false" id="swayyMenuBtn" class="-ml-1 flex h-9 w-9 items-center justify-center rounded-md text-2xl leading-none hover:bg-stone-800">☰</button>
             <span class="font-bold">Swayy</span>
             <span class="h-9 w-9"></span>
         </header>
 
-        <main class="flex-1 p-4 md:p-6">
+        <main id="main-content" class="flex-1 p-4 md:p-6">
             @include('admin.partials.license_banner')
             @if(session('success'))
-                <div class="mb-4 flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                <div data-flash role="status" class="mb-4 flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
                     <span class="mt-px font-bold">✓</span><span>{{ session('success') }}</span>
                 </div>
             @endif
             @if($errors->any())
-                <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
-                    <p class="mb-1 font-semibold">Bitte prüfen Sie Ihre Eingaben:</p>
-                    <ul class="list-disc space-y-0.5 pl-5">
-                        @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
-                    </ul>
+                <div data-flash="sticky" role="alert" class="mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+                    <div>
+                        <p class="mb-1 font-semibold">Bitte prüfen Sie Ihre Eingaben:</p>
+                        <ul class="list-disc space-y-0.5 pl-5">
+                            @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
+                        </ul>
+                    </div>
                 </div>
             @endif
             @yield('content')
@@ -159,6 +163,7 @@
         <nav class="flex-1 space-y-0.5 overflow-y-auto px-3 text-sm">
             @foreach($visibleItems as $item)
                 <a href="{{ route($item['route']) }}"
+                   @if(request()->routeIs($item['route'])) aria-current="page" @endif
                    class="flex items-center gap-2 rounded-md px-3 py-2.5 {{ request()->routeIs($item['route']) ? 'bg-stone-700 font-semibold' : 'hover:bg-stone-800' }}">
                     {!! $item['icon'] !!} {{ $item['label'] }}
                 </a>
@@ -193,11 +198,26 @@
         const m = document.getElementById('swayyMobileMenu');
         if (!m) return;
         m.classList.toggle('hidden', open === false);
-        document.body.style.overflow = m.classList.contains('hidden') ? '' : 'hidden';
+        const isOpen = !m.classList.contains('hidden');
+        document.body.style.overflow = isOpen ? 'hidden' : '';
+        const btn = document.getElementById('swayyMenuBtn');
+        if (btn) btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        if (isOpen) {
+            const first = m.querySelector('a, button');
+            if (first) first.focus();
+        } else if (btn) {
+            btn.focus();
+        }
     }
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const m = document.getElementById('swayyMobileMenu');
+            if (m && !m.classList.contains('hidden')) swayyToggleMenu(false);
+        }
+    });
 </script>
 {{-- Global confirm dialog for forms/links with data-confirm (touch-friendly) --}}
-<div id="confirmModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+<div id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
     <div class="w-[380px] max-w-[96vw] rounded-2xl bg-white p-6 text-center shadow-2xl">
         <h3 id="confirmModalTitle" class="mb-1 text-lg font-bold">Bestätigen</h3>
         <p id="confirmModalMsg" class="mb-5 text-sm text-stone-500"></p>
@@ -219,9 +239,17 @@
     const okBtn = document.getElementById('confirmModalOk');
     const cancelBtn = document.getElementById('confirmModalCancel');
     let pending = null;
+    let lastFocused = null;
 
-    function openModal() { modal.classList.remove('hidden'); modal.classList.add('flex'); }
-    function closeModal() { modal.classList.add('hidden'); modal.classList.remove('flex'); pending = null; }
+    function openModal() {
+        lastFocused = document.activeElement;
+        modal.classList.remove('hidden'); modal.classList.add('flex');
+        okBtn.focus();
+    }
+    function closeModal() {
+        modal.classList.add('hidden'); modal.classList.remove('flex'); pending = null;
+        if (lastFocused && lastFocused.focus) lastFocused.focus();
+    }
 
     okBtn.addEventListener('click', () => { const fn = pending; closeModal(); if (fn) fn(); });
     cancelBtn.addEventListener('click', closeModal);

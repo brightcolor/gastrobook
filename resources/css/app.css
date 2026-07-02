@@ -86,6 +86,19 @@
         transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease,
             box-shadow 0.15s ease, opacity 0.15s ease, transform 0.05s ease;
     }
+    /* Tailwind v4 preflight leaves buttons at cursor:default — restore the
+       affordance users expect. */
+    button:not(:disabled),
+    [role='button'],
+    label[for],
+    select:not(:disabled),
+    input[type='checkbox']:not(:disabled),
+    input[type='radio']:not(:disabled) {
+        cursor: pointer;
+    }
+    button:disabled {
+        cursor: not-allowed;
+    }
     button:not(:disabled):active {
         transform: translateY(0.5px);
     }
@@ -112,6 +125,16 @@
         background-clip: padding-box;
     }
     *::-webkit-scrollbar-thumb:hover { background: var(--color-stone-400); background-clip: padding-box; }
+
+    /* Respect the user's motion preference (WCAG 2.3.3) */
+    @media (prefers-reduced-motion: reduce) {
+        html { scroll-behavior: auto; }
+        *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }
+    }
 }
 
 @layer components {
@@ -139,6 +162,46 @@
     }
     .card-hover { transition: box-shadow 0.18s ease, transform 0.18s ease; }
     .card-hover:hover { box-shadow: 0 8px 24px rgb(0 0 0 / 0.08); transform: translateY(-2px); }
+
+    /* Skip-to-content link: visually hidden until focused (WCAG 2.4.1) */
+    .skip-link {
+        position: absolute;
+        left: -9999px;
+        top: 0;
+        z-index: 100;
+    }
+    .skip-link:focus {
+        left: 1rem;
+        top: 1rem;
+        border-radius: 0.5rem;
+        background: var(--color-stone-900);
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #fff;
+    }
+
+    /* Loading state applied by the global double-submit guard (app.js).
+       The spinner inherits currentColor, so it works on any button theme. */
+    .is-loading {
+        opacity: 0.75;
+        pointer-events: none;
+    }
+    .is-loading::after {
+        content: '';
+        display: inline-block;
+        width: 1em;
+        height: 1em;
+        margin-left: 0.5em;
+        vertical-align: -0.15em;
+        border-radius: 9999px;
+        border: 2px solid currentColor;
+        border-top-color: transparent;
+        animation: btn-spin 0.7s linear infinite;
+    }
+    @keyframes btn-spin {
+        to { transform: rotate(360deg); }
+    }
 }
 
 /* Long-form legal pages (Impressum, Datenschutz, AGB) */

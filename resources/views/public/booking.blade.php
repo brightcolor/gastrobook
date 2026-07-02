@@ -158,13 +158,13 @@ details > summary::-webkit-details-marker { display: none; }
                         </div>
                         <div>
                             <label for="salonEmail" class="mb-1.5 block text-sm font-semibold">E-Mail *</label>
-                            <input type="email" name="email" id="salonEmail" required value="{{ old('email') }}" autocomplete="email"
+                            <input type="email" name="email" id="salonEmail" required value="{{ old('email') }}" autocomplete="email" inputmode="email"
                                    class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
                             @error('email')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                         </div>
                         <div>
                             <label for="salonPhone" class="mb-1.5 block text-sm font-semibold">Telefon <span class="font-normal text-stone-400">(optional)</span></label>
-                            <input type="tel" name="phone" id="salonPhone" value="{{ old('phone') }}" autocomplete="tel"
+                            <input type="tel" name="phone" id="salonPhone" value="{{ old('phone') }}" autocomplete="tel" inputmode="tel"
                                    class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
                         </div>
                         @if($settings->fieldRule('note') !== 'hidden')
@@ -491,7 +491,7 @@ details > summary::-webkit-details-marker { display: none; }
                     @if($settings->fieldRule('email') !== 'hidden')
                     <div>
                         <label for="email" class="mb-1.5 block text-sm font-semibold">E-Mail {{ $settings->fieldRule('email') === 'required' ? '*' : '' }}</label>
-                        <input type="email" name="email" id="email" value="{{ old('email') }}" autocomplete="email"
+                        <input type="email" name="email" id="email" value="{{ old('email') }}" autocomplete="email" inputmode="email"
                                @if($settings->fieldRule('email') === 'required') required @endif
                                class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
                         @error('email')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
@@ -500,7 +500,7 @@ details > summary::-webkit-details-marker { display: none; }
                     @if($settings->fieldRule('phone') !== 'hidden')
                     <div>
                         <label for="phone" class="mb-1.5 block text-sm font-semibold">Telefon {{ $settings->fieldRule('phone') === 'required' ? '*' : '' }}</label>
-                        <input type="tel" name="phone" id="phone" value="{{ old('phone') }}" autocomplete="tel"
+                        <input type="tel" name="phone" id="phone" value="{{ old('phone') }}" autocomplete="tel" inputmode="tel"
                                @if($settings->fieldRule('phone') === 'required') required @endif
                                class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
                         @error('phone')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
@@ -574,9 +574,9 @@ details > summary::-webkit-details-marker { display: none; }
         <p class="mb-1 text-sm font-bold text-amber-900">Auf die Warteliste setzen</p>
         <p id="wlContext" class="mb-3 text-xs text-amber-800"></p>
         <div class="space-y-2">
-            <input type="text" id="wlName" required placeholder="Name *" class="w-full rounded-xl border-2 border-stone-200 px-4 py-2.5 text-sm">
-            <input type="email" id="wlEmail" required placeholder="E-Mail *" class="w-full rounded-xl border-2 border-stone-200 px-4 py-2.5 text-sm">
-            <input type="tel" id="wlPhone" placeholder="Telefon (optional)" class="w-full rounded-xl border-2 border-stone-200 px-4 py-2.5 text-sm">
+            <input type="text" id="wlName" required autocomplete="name" placeholder="Name *" class="w-full rounded-xl border-2 border-stone-200 px-4 py-2.5 text-sm">
+            <input type="email" id="wlEmail" required autocomplete="email" inputmode="email" placeholder="E-Mail *" class="w-full rounded-xl border-2 border-stone-200 px-4 py-2.5 text-sm">
+            <input type="tel" id="wlPhone" autocomplete="tel" inputmode="tel" placeholder="Telefon (optional)" class="w-full rounded-xl border-2 border-stone-200 px-4 py-2.5 text-sm">
             <input type="text" id="wlWebsite" tabindex="-1" autocomplete="off" class="hidden" aria-hidden="true">
             <label class="flex items-start gap-2 text-xs text-stone-600">
                 <input type="checkbox" id="wlPrivacy" class="mt-0.5">

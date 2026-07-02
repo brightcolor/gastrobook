@@ -29,28 +29,30 @@
             @csrf
             <input type="text" name="website" class="hidden" tabindex="-1" autocomplete="off" aria-hidden="true">
             <div>
-                <label class="mb-1 block text-sm font-semibold">Anzahl Tickets *</label>
-                <select name="ticket_count" required class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                <label for="evTickets" class="mb-1 block text-sm font-semibold">Anzahl Tickets *</label>
+                <select name="ticket_count" id="evTickets" required class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
                     @for($i = 1; $i <= min(10, $remaining); $i++)
                         <option value="{{ $i }}" @selected(old('ticket_count') == $i)>{{ $i }}</option>
                     @endfor
                 </select>
             </div>
             <div>
-                <label class="mb-1 block text-sm font-semibold">Name *</label>
-                <input type="text" name="name" required value="{{ old('name') }}" class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                <label for="evName" class="mb-1 block text-sm font-semibold">Name *</label>
+                <input type="text" name="name" id="evName" required value="{{ old('name') }}" autocomplete="name" class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                @error('name')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
             </div>
             <div>
-                <label class="mb-1 block text-sm font-semibold">E-Mail *</label>
-                <input type="email" name="email" required value="{{ old('email') }}" class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                <label for="evEmail" class="mb-1 block text-sm font-semibold">E-Mail *</label>
+                <input type="email" name="email" id="evEmail" required value="{{ old('email') }}" autocomplete="email" inputmode="email" class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                @error('email')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
             </div>
             <div>
-                <label class="mb-1 block text-sm font-semibold">Telefon (optional)</label>
-                <input type="tel" name="phone" value="{{ old('phone') }}" class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                <label for="evPhone" class="mb-1 block text-sm font-semibold">Telefon (optional)</label>
+                <input type="tel" name="phone" id="evPhone" value="{{ old('phone') }}" autocomplete="tel" inputmode="tel" class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
             </div>
             <div>
-                <label class="mb-1 block text-sm font-semibold">Anmerkung (optional)</label>
-                <textarea name="note" rows="2" class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">{{ old('note') }}</textarea>
+                <label for="evNote" class="mb-1 block text-sm font-semibold">Anmerkung (optional)</label>
+                <textarea name="note" id="evNote" rows="2" class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">{{ old('note') }}</textarea>
             </div>
             <div class="space-y-2 border-t border-stone-100 pt-4 text-sm">
                 <label class="flex items-start gap-2">

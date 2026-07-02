@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.69.0] – 2026-07-02
+
+### Verbessert: UI/UX-Feinschliff nach Best Practice (A11y, Formulare, Feedback)
+Gezielte, app-weite Verbesserungen ohne funktionale Änderung.
+
+- **Doppel-Absenden verhindert**: Jedes klassisch abgeschickte Formular sperrt
+  seine Buttons nach dem Submit und zeigt einen dezenten Ladespinner – kein
+  versehentliches doppeltes Absenden mehr (z. B. bei Zahlungen/Mails). Setzt
+  sich nach Rückkehr per Back-/Forward-Cache automatisch zurück.
+- **Barrierefreiheit**: „Zum Inhalt springen"-Link (Tastatur), `aria-current`
+  auf dem aktiven Navigationspunkt, `aria-expanded`/`aria-controls` +
+  Fokus-Management am mobilen Menü, Fokusführung im Bestätigungs-Dialog,
+  `role="status"`/`role="alert"` auf Erfolgs-/Fehlermeldungen.
+- **`prefers-reduced-motion`** wird respektiert (Animationen/Transitions aus).
+- **Formular-UX**: `inputmode` (E-Mail/Telefon) für passende Touch-Tastaturen,
+  `autocomplete` konsequent gesetzt, alle Event-Felder korrekt mit Labels
+  verknüpft (`for`/`id`) inkl. Inline-Fehlermeldungen.
+- **Flash-Meldungen**: schließbar (✕) und mit sanftem Auto-Ausblenden bei
+  Erfolg; Fehlermeldungen bleiben stehen.
+- **Zeigefinger-Cursor** auf allen Bedienelementen (Tailwind-v4-Preflight
+  korrigiert), einheitlicher Fokusring bereits vorhanden.
+
 ## [1.68.1] – 2026-07-02
 
 ### Behoben: Audit-Fixes (Security & Datenintegrität)
