@@ -11,6 +11,8 @@
 </head>
 <body class="min-h-screen bg-white text-stone-900 antialiased">
 
+    <div id="scrollProgress" class="fixed left-0 top-0 z-[70] h-[2.5px] w-0" style="background:linear-gradient(90deg,#14b8a6,#0f766e); transition:width .1s linear" aria-hidden="true"></div>
+
     <header id="mkt-header" class="sticky top-0 z-50 transition-all duration-300">
         <nav class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5">
             <a href="{{ route('home') }}" class="flex items-center gap-2.5 text-2xl tracking-tight" style="font-family:var(--font-display,'Fraunces Variable',serif); font-weight:500">
@@ -69,18 +71,25 @@
     </footer>
 
     <script>
-    // Nav becomes opaque on scroll
+    // Nav becomes opaque on scroll + thin brand scroll-progress bar
     (function () {
         const hdr = document.getElementById('mkt-header');
-        if (!hdr) return;
+        const bar = document.getElementById('scrollProgress');
         const update = () => {
             const scrolled = window.scrollY > 20;
-            hdr.style.background    = scrolled ? 'rgba(255,255,255,0.92)' : 'transparent';
-            hdr.style.backdropFilter = scrolled ? 'blur(14px)' : 'none';
-            hdr.style.borderBottom  = scrolled ? '1px solid rgba(0,0,0,.07)' : '1px solid transparent';
-            hdr.style.boxShadow     = scrolled ? '0 1px 16px rgba(0,0,0,.06)' : 'none';
+            if (hdr) {
+                hdr.style.background    = scrolled ? 'rgba(255,255,255,0.9)' : 'transparent';
+                hdr.style.backdropFilter = scrolled ? 'saturate(160%) blur(14px)' : 'none';
+                hdr.style.borderBottom  = scrolled ? '1px solid rgba(0,0,0,.07)' : '1px solid transparent';
+                hdr.style.boxShadow     = scrolled ? '0 1px 16px rgba(0,0,0,.06)' : 'none';
+            }
+            if (bar) {
+                const max = document.documentElement.scrollHeight - window.innerHeight;
+                bar.style.width = (max > 0 ? (window.scrollY / max) * 100 : 0) + '%';
+            }
         };
         window.addEventListener('scroll', update, { passive: true });
+        window.addEventListener('resize', update, { passive: true });
         update();
     })();
     </script>

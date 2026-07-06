@@ -21,6 +21,46 @@
     font-size:.72rem; font-weight:600; letter-spacing:.18em; text-transform:uppercase; color:var(--ac);
 }
 
+/* ── Grain overlay: tactile, premium film texture ──────────────── */
+.grain{
+    position:fixed; inset:0; z-index:56; pointer-events:none; opacity:.05;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+}
+
+/* ── Shimmer on accent words (graceful fallback: plain brand color) */
+.shimmer{ color:var(--ac); }
+@supports ((-webkit-background-clip:text) or (background-clip:text)){
+    .shimmer{
+        background:linear-gradient(100deg, var(--ac) 0%, #2dd4bf 30%, var(--ac) 60%, var(--ac2) 100%);
+        background-size:220% 100%;
+        -webkit-background-clip:text; background-clip:text;
+        color:transparent;
+        animation:shimmer 7s ease-in-out infinite;
+    }
+    @keyframes shimmer{ 0%,100%{background-position:0% 0} 50%{background-position:100% 0} }
+}
+
+/* ── Cursor spotlight on cards (pointer devices only) ──────────── */
+@media (hover:hover) and (pointer:fine){
+    .lift{ position:relative; }
+    .lift::after{
+        content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+        opacity:0; transition:opacity .35s ease;
+        background:radial-gradient(260px circle at var(--mx,50%) var(--my,50%),
+            color-mix(in oklab, var(--ac) 9%, transparent), transparent 70%);
+    }
+    .lift:hover::after{ opacity:1; }
+}
+
+/* ── Shine sweep on primary buttons ─────────────────────────────── */
+.shine{ position:relative; overflow:hidden; }
+.shine::before{
+    content:''; position:absolute; top:0; bottom:0; left:-45%; width:38%;
+    background:linear-gradient(100deg, transparent, rgba(255,255,255,.38), transparent);
+    transform:skewX(-18deg); transition:left .55s ease; pointer-events:none;
+}
+.shine:hover::before{ left:125%; }
+
 /* ── Parallax orbs ─────────────────────────────────────────────── */
 .orb{ position:absolute; border-radius:50%; filter:blur(70px); pointer-events:none; will-change:transform; }
 .orb-a{ width:46rem;height:46rem; top:-16rem; right:-14rem; background:radial-gradient(circle,#5eead4 0,transparent 68%); opacity:.45; }
@@ -29,9 +69,10 @@
 
 [data-par]{ will-change:transform; }
 
-/* ── Reveal ────────────────────────────────────────────────────── */
-.rv{ opacity:0; transform:translateY(26px); transition:opacity .9s cubic-bezier(.16,1,.3,1), transform .9s cubic-bezier(.16,1,.3,1); }
-.rv.on{ opacity:1; transform:none; }
+/* ── Reveal (with a soft blur-in for extra depth) ──────────────── */
+.rv{ opacity:0; transform:translateY(26px); filter:blur(7px);
+     transition:opacity .9s cubic-bezier(.16,1,.3,1), transform .9s cubic-bezier(.16,1,.3,1), filter .9s cubic-bezier(.16,1,.3,1); }
+.rv.on{ opacity:1; transform:none; filter:blur(0); }
 .d1{transition-delay:.07s}.d2{transition-delay:.14s}.d3{transition-delay:.21s}
 .d4{transition-delay:.28s}.d5{transition-delay:.35s}.d6{transition-delay:.42s}
 @media (prefers-reduced-motion:reduce){
@@ -152,23 +193,83 @@ details.faq[open] .fb{ grid-template-rows:1fr; }
 details.faq .fi{ transition:transform .35s cubic-bezier(.16,1,.3,1); }
 details.faq[open] .fi{ transform:rotate(45deg); }
 
-/* ── Marquee (value words, no vendors) ─────────────────────────── */
+/* ── Marquee (value words, no vendors) — tilted editorial band ─── */
+.marq-band{
+    transform:rotate(-1.1deg) scale(1.03);
+    background:#fff;
+    border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+    box-shadow:0 10px 30px -22px rgba(28,25,23,.25);
+}
 .marq{ display:flex; gap:3.5rem; width:max-content; animation:marq 38s linear infinite; }
 @keyframes marq{ to{ transform:translateX(-50%); } }
 .marq:hover{ animation-play-state:paused; }
 .marq span{ font-family:var(--font-display,serif); font-style:italic; font-size:1.35rem; color:var(--mu2); white-space:nowrap; }
 .marq b{ color:var(--ac); font-style:normal; font-weight:600; font-family:var(--font-sans); font-size:.8rem; letter-spacing:.04em; }
 
+/* ── Feature-grid chips ─────────────────────────────────────────── */
+.chip{
+    border-radius:14px;
+    transition:border-color .25s, box-shadow .25s, transform .25s;
+}
+.chip:hover{
+    transform:translateY(-2px);
+    border-color:#ded8cd;
+    box-shadow:0 12px 26px -18px rgba(28,25,23,.22);
+    transition-delay:0s !important; /* stagger is for the reveal, not the hover */
+}
+.chip .ic{
+    display:flex; align-items:center; justify-content:center; flex:none;
+    width:2.1rem; height:2.1rem; border-radius:10px;
+    background:linear-gradient(140deg, #f0fdfa, #f4f1ea);
+    border:1px solid var(--line2);
+    font-size:1rem;
+    transition:transform .25s cubic-bezier(.16,1,.3,1);
+}
+.chip:hover .ic{ transform:scale(1.12) rotate(-4deg); }
+
+/* ── Pricing: animated conic ring on the popular plan ───────────── */
+@property --pa{ syntax:'<angle>'; initial-value:0deg; inherits:false; }
+.plan-pop{ position:relative; }
+.plan-pop::before{
+    content:''; position:absolute; inset:-2.5px; border-radius:24px; padding:2.5px;
+    background:conic-gradient(from var(--pa), var(--ac), #5eead4, #fde68a, var(--ac2), var(--ac));
+    -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite:xor; mask-composite:exclude;
+    animation:plan-spin 7s linear infinite; pointer-events:none;
+}
+@keyframes plan-spin{ to{ --pa:360deg; } }
+
+/* ── Steps: number circles get a brand halo once revealed ───────── */
+.stepnum{ transition:box-shadow .8s cubic-bezier(.16,1,.3,1) .35s, color .4s; }
+.rv.on .stepnum{ box-shadow:0 8px 20px -12px rgba(28,25,23,.2), 0 0 0 5px var(--acl); }
+
 /* ── Section divider ───────────────────────────────────────────── */
 .rule{ height:1px; background:linear-gradient(90deg,transparent,var(--line),transparent); }
 
-/* ── CTA ───────────────────────────────────────────────────────── */
+/* ── CTA — living aurora backdrop ──────────────────────────────── */
 .cta-wrap{ background:linear-gradient(160deg,#0f766e,#115e59 55%,#134e4a); border-radius:36px; position:relative; overflow:hidden; }
+.cta-wrap::before{
+    content:''; position:absolute; inset:-45%; pointer-events:none;
+    background:
+        radial-gradient(620px 320px at 22% 30%, rgba(94,234,212,.28), transparent 62%),
+        radial-gradient(520px 280px at 78% 72%, rgba(253,230,138,.16), transparent 62%);
+    animation:aurora 16s ease-in-out infinite alternate;
+}
+@keyframes aurora{ to{ transform:translate3d(5%,-4%,0) rotate(7deg) scale(1.06); } }
 .cta-grid{ background-image:radial-gradient(rgba(255,255,255,.16) 1px,transparent 1px); background-size:26px 26px; }
+
+/* ── FAQ open state gets a brand accent ─────────────────────────── */
+details.faq{ transition:border-color .3s, box-shadow .3s; }
+details.faq[open]{
+    border-color:color-mix(in oklab, var(--ac) 38%, var(--line));
+    box-shadow:0 14px 34px -24px rgba(15,118,110,.35);
+}
 </style>
 @endpush
 
 @section('content')
+
+<div class="grain" aria-hidden="true"></div>
 
 {{-- ═══════════════════════════ HERO ═══════════════════════════ --}}
 <section class="relative overflow-hidden" style="background:var(--paper)">
@@ -187,7 +288,7 @@ details.faq[open] .fi{ transform:rotate(45deg); }
             <h1 class="display rv d1 mt-6" style="font-size:clamp(2.7rem,5.6vw,4.7rem)">
                 Deine Gäste<br>
                 buchen. Du bist<br>
-                einfach <span class="serif-i" style="color:var(--ac)">Gastgeber</span>.
+                einfach <span class="serif-i shimmer">Gastgeber</span>.
             </h1>
 
             <p class="rv d2 mt-7 leading-relaxed" style="font-size:1.15rem; color:var(--mu); max-width:30rem">
@@ -198,7 +299,7 @@ details.faq[open] .fi{ transform:rotate(45deg); }
             </p>
 
             <div class="rv d3 mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <a href="{{ route('register') }}" class="btn-ink group inline-flex items-center justify-center gap-2 px-7 py-3.5 text-[15px] font-semibold">
+                <a href="{{ route('register') }}" class="btn-ink shine group inline-flex items-center justify-center gap-2 px-7 py-3.5 text-[15px] font-semibold">
                     30 Tage kostenlos
                     <svg class="h-4 w-4 transition-transform group-hover:translate-x-1" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </a>
@@ -330,7 +431,7 @@ details.faq[open] .fi{ transform:rotate(45deg); }
                             <span class="font-semibold tracking-wide" style="color:var(--ac)">Code <span id="dDoneCode">DEMO-0000</span></span>
                         </div>
                         <p class="mx-auto mt-3 max-w-[16rem] text-[11px] leading-relaxed" style="color:var(--mu2)">Genau so fühlt es sich für deine Gäste an. Und nein — hier wurde nichts gespeichert. 😉</p>
-                        <a href="{{ route('register') }}" class="mt-4 inline-block w-full rounded-xl py-2.5 text-[13px] font-semibold text-white" style="background:var(--ink)">Das will ich für meinen Betrieb</a>
+                        <a href="{{ route('register') }}" class="shine mt-4 inline-block w-full rounded-xl py-2.5 text-[13px] font-semibold text-white" style="background:var(--ink)">Das will ich für meinen Betrieb</a>
                         <button type="button" id="dReset" class="mt-2 w-full py-1.5 text-[12px] font-medium" style="color:var(--mu2)">↻ Nochmal ausprobieren</button>
                     </div>
                 </div>
@@ -352,7 +453,7 @@ details.faq[open] .fi{ transform:rotate(45deg); }
     </div>
 
     {{-- value marquee --}}
-    <div class="relative z-10 overflow-hidden border-y py-5" style="border-color:var(--line2); background:rgba(255,255,255,.5)">
+    <div class="marq-band relative z-10 overflow-hidden py-5">
         <div class="marq">
             @php($words = ['Das Telefon bleibt still','Der Freitagabend läuft einfach','Gäste, die wiederkommen','Kein leerer Sechser-Tisch','Feierabend ohne Zettelchaos','Ruhiger Service'])
             @foreach(array_merge($words,$words) as $w)
@@ -544,10 +645,8 @@ details.faq[open] .fi{ transform:rotate(45deg); }
                 ['🔗','Tischkombinationen'],
                 ['🚶','Walk-ins in einem Klick'],
             ] as $i => [$icon,$text])
-                <div class="rv surf flex items-center gap-3 px-4 py-3.5" style="border-radius:14px; transition:border-color .25s,box-shadow .25s,transform .25s; transition-delay:{{ ($i%6)*.05 }}s"
-                     onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 12px 26px -18px rgba(28,25,23,.22)';this.style.borderColor='#ded8cd'"
-                     onmouseout="this.style.transform='';this.style.boxShadow='';this.style.borderColor='var(--line)'">
-                    <span class="text-base flex-none">{{ $icon }}</span>
+                <div class="rv surf chip flex items-center gap-3 px-4 py-3" style="transition-delay:{{ ($i%6)*.05 }}s">
+                    <span class="ic">{{ $icon }}</span>
                     <span class="text-[14px]" style="color:var(--ink2)">{!! $text !!}</span>
                 </div>
             @endforeach
@@ -571,7 +670,7 @@ details.faq[open] .fi{ transform:rotate(45deg); }
                 ['03','Link teilen','Deinen Buchungslink auf Website, Social oder Maps teilen — ab jetzt läuft alles von allein.'],
             ] as $i => [$n,$t,$d])
                 <div class="rv d{{ $i+1 }} relative text-center">
-                    <div class="serif mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-white text-xl" style="border:1px solid var(--line); color:var(--ac); box-shadow:0 8px 20px -12px rgba(28,25,23,.2)">{{ $n }}</div>
+                    <div class="serif stepnum mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-white text-xl" style="border:1px solid var(--line); color:var(--ac); box-shadow:0 8px 20px -12px rgba(28,25,23,.2)">{{ $n }}</div>
                     <h3 class="serif text-xl" style="color:var(--ink)">{{ $t }}</h3>
                     <p class="mx-auto mt-2.5 text-[15px] leading-relaxed" style="color:var(--mu); max-width:18rem">{{ $d }}</p>
                 </div>
@@ -594,7 +693,7 @@ details.faq[open] .fi{ transform:rotate(45deg); }
         <div class="mt-16 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
             @forelse($plans as $plan)
                 @php($popular = $plan->key === 'professional')
-                <div class="rv d{{ $loop->index+1 }} surf lift flex flex-col p-7" @style(['border-color:var(--ac); box-shadow:0 0 0 4px var(--acl), 0 30px 60px -30px rgba(15,118,110,.45)' => $popular])>
+                <div class="rv d{{ $loop->index+1 }} surf lift {{ $popular ? 'plan-pop' : '' }} flex flex-col p-7" @style(['border-color:var(--ac); box-shadow:0 0 0 4px var(--acl), 0 30px 60px -30px rgba(15,118,110,.45)' => $popular])>
                     @if($popular)
                         <span class="serif-i mb-3 -mt-9 self-center rounded-full px-4 py-1 text-sm text-white" style="background:var(--ac)">beliebt</span>
                     @endif
@@ -603,7 +702,7 @@ details.faq[open] .fi{ transform:rotate(45deg); }
                         @if($plan->key === 'enterprise')
                             <span class="serif text-3xl" style="color:var(--ink)">Auf Anfrage</span>
                         @else
-                            <span class="serif text-5xl leading-none" style="color:var(--ink)">{{ number_format($plan->price_monthly_minor/100,0,',','.') }}</span>
+                            <span class="serif text-5xl leading-none" style="color:var(--ink)" data-count="{{ (int) round($plan->price_monthly_minor/100) }}">{{ number_format($plan->price_monthly_minor/100,0,',','.') }}</span>
                             <span class="mb-1 text-sm" style="color:var(--mu2)">€ / Monat</span>
                         @endif
                     </p>
@@ -673,7 +772,7 @@ details.faq[open] .fi{ transform:rotate(45deg); }
                 <p class="eyebrow" style="color:rgba(204,251,241,.75)">Jetzt starten</p>
                 <h2 class="display mt-4 text-white" style="font-size:clamp(2.1rem,4.5vw,3.4rem)">Bereit für volle Tische —<br><span class="serif-i">ohne Telefonchaos?</span></h2>
                 <p class="mx-auto mt-5 text-lg leading-relaxed" style="color:rgba(240,253,250,.82); max-width:30rem">In ein paar Minuten eingerichtet. 30 Tage kostenlos — ohne Risiko, ohne Kreditkarte. Dein nächster Freitagabend kann kommen.</p>
-                <a href="{{ route('register') }}" class="group mt-9 inline-flex items-center gap-2.5 rounded-full bg-white px-9 py-4 text-base font-semibold transition hover:-translate-y-1" style="color:var(--ac); box-shadow:0 20px 50px -16px rgba(0,0,0,.4)">
+                <a href="{{ route('register') }}" class="shine group mt-9 inline-flex items-center gap-2.5 rounded-full bg-white px-9 py-4 text-base font-semibold transition hover:-translate-y-1" style="color:var(--ac); box-shadow:0 20px 50px -16px rgba(0,0,0,.4)">
                     Jetzt kostenlos starten
                     <svg class="h-5 w-5 transition-transform group-hover:translate-x-1" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </a>
@@ -694,6 +793,36 @@ details.faq[open] .fi{ transform:rotate(45deg); }
         es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('on'); io.unobserve(e.target); } });
     },{ threshold:.12, rootMargin:'0px 0px -8% 0px' });
     document.querySelectorAll('.rv').forEach(el=>io.observe(el));
+
+    /* Cursor spotlight on lifted cards (CSS reads --mx/--my) */
+    if (window.matchMedia('(hover:hover) and (pointer:fine)').matches) {
+        document.querySelectorAll('.lift').forEach(card => {
+            card.addEventListener('pointermove', (e) => {
+                const r = card.getBoundingClientRect();
+                card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+                card.style.setProperty('--my', (e.clientY - r.top) + 'px');
+            }, { passive: true });
+        });
+    }
+
+    /* Price count-up once the pricing section scrolls into view */
+    const fmt = new Intl.NumberFormat('de-DE');
+    const priceIo = new IntersectionObserver((es) => {
+        es.forEach(e => {
+            if (!e.isIntersecting) return;
+            priceIo.unobserve(e.target);
+            const el = e.target, target = parseInt(el.dataset.count, 10);
+            if (rm || !target) { el.textContent = fmt.format(target || 0); return; }
+            const t0 = performance.now(), dur = 900;
+            (function tick(t){
+                const p = Math.min(1, (t - t0) / dur);
+                const eased = 1 - Math.pow(1 - p, 3);
+                el.textContent = fmt.format(Math.round(target * eased));
+                if (p < 1) requestAnimationFrame(tick);
+            })(t0);
+        });
+    }, { threshold: .6 });
+    document.querySelectorAll('[data-count]').forEach(el => priceIo.observe(el));
 
     /* ── Interactive booking demo — mirrors the real accordion flow,
           front-end only, nothing is stored ─────────────────────────── */

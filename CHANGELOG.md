@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.75.0] – 2026-07-06
+
+### Verbessert: Startseiten-Polish — Premium-Feinschliff auf allen Ebenen
+- **Film-Grain-Textur** über der ganzen Seite (subtiles SVG-Rauschen) für den
+  hochwertigen, taktilen Look.
+- **Cursor-Spotlight** auf allen Karten (Branchen, Preise): ein sanfter
+  Marken-Glow folgt der Maus (nur auf Pointer-Geräten).
+- **Shine-Sweep** auf den Primär-Buttons (Hero, CTA, Demo-Abschluss) beim Hover.
+- **Schimmer-Animation** auf dem Akzentwort „Gastgeber" im Hero
+  (Verlaufstext, mit sauberem Fallback).
+- **Blur-in-Reveal**: Sektionen erscheinen mit weichem Tiefenschärfe-Effekt.
+- **Beliebtester Tarif** bekommt einen langsam rotierenden Conic-Farbring.
+- **Preis-Count-Up**: Preise zählen beim Einscrollen hoch.
+- **Geneigtes Marquee-Band** (editorialer −1,1°-Tilt mit Schattenwurf).
+- **Aurora-Animation** im CTA-Block (lebendige Farbnebel), Halo-Ringe an den
+  Schritt-Nummern, Marken-Akzent auf geöffneten FAQ-Einträgen, veredelte
+  Feature-Chips mit Icon-Kacheln.
+- **Scroll-Progress-Bar** in Markenfarbe am oberen Rand.
+- Alles abhängigkeitsfrei und `prefers-reduced-motion`-konform.
+
 ## [1.74.0] – 2026-07-06
 
 ### Neu: Logo als echtes SVG (Vektorgrafik aus den Fraunces-Konturen)
