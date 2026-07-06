@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.70.2] – 2026-07-06
+
+### Geändert: Schwebende „Anzahlung erhalten"-Karte im Hero entfernt
+- Die Karte überlagerte die spielbare Demo und störte dort; entfernt.
+  Die „Neue Buchung"-Karte (reagiert live auf die Demo) bleibt, ebenso die
+  Anzahlungs-Illustration im Zahlungen-Abschnitt.
+
 ## [1.70.1] – 2026-07-06
 
 ### Verbessert: Startseiten-Demo spiegelt jetzt die echte Buchungsseite

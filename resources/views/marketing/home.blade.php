@@ -309,16 +309,6 @@ details.faq[open] .fi{ transform:rotate(45deg); }
                 </div>
             </div>
 
-            {{-- floating notif: payment --}}
-            <div class="floaty absolute -left-3 bottom-6 z-20 sm:-left-8" data-par="0.16" style="animation-delay:-3s">
-                <div class="surf ring-soft flex items-center gap-3 px-4 py-3" style="min-width:11rem">
-                    <span class="flex h-8 w-8 items-center justify-center rounded-full text-sm" style="background:var(--acl); color:var(--ac)">✓</span>
-                    <div>
-                        <p class="text-[12.5px] font-semibold" style="color:var(--ink)">Anzahlung erhalten</p>
-                        <p class="text-[11px]" style="color:var(--mu2)">25,00 € gesichert</p>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
