@@ -68,7 +68,7 @@ class TagController extends Controller
     {
         abort_if($tag->tenant_id !== $this->context->tenantId(), 404);
         abort_if($tag->is_system, 403);
-        $this->audit->log('tag.deleted', null, $tag);
+        $this->audit->log('tag.deleted', $tag, ['name' => $tag->name, 'color' => $tag->color]);
         $tag->delete();
 
         return response()->json(['ok' => true]);

@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.69.1] – 2026-07-06
+
+### Behoben: Tag löschen warf einen Serverfehler (500)
+- Beim Löschen eines Reservierungs-Tags brach die Aktion mit einem 500er ab:
+  Der Audit-Log-Aufruf übergab das Tag-Modell im Feld für „alte Werte"
+  (Array erwartet). Das Tag wurde dadurch nicht gelöscht.
+- Korrigiert; Löschen protokolliert jetzt sauber Name + Farbe. Neuer
+  CRUD-Regressionstest (inkl. Schutz von System-Tags) deckt den Fall ab.
+- Gefunden bei einem vollständigen Klick-/CRUD-Durchlauf der Anwendung; alle
+  übrigen Admin-Seiten und CRUD-Flows (Reservierung anlegen→Check-in→Checkout,
+  Tisch/Raum/Waitlist, öffentliche Buchung) liefen fehlerfrei.
+
 ## [1.69.0] – 2026-07-02
 
 ### Verbessert: UI/UX-Feinschliff nach Best Practice (A11y, Formulare, Feedback)
