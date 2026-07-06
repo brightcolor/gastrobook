@@ -70,27 +70,41 @@
 .floaty{ animation:floaty 7s ease-in-out infinite; }
 .floaty.slow{ animation-duration:9s; }
 
-/* ── Interactive demo widget ───────────────────────────────────── */
-.dpill{
-    border:1.5px solid var(--line); border-radius:12px; background:#fff;
-    padding:8px 0; text-align:center; font-size:11px; font-weight:700; color:var(--mu2);
-    cursor:pointer; transition:border-color .15s, background .15s, color .15s, transform .1s;
+/* ── Interactive demo widget — faithful mini replica of the real
+      booking page (accordion with numbered steps) ─────────────────── */
+.demo-hero{
+    background:linear-gradient(155deg, var(--ac) 0%, #115e59 100%);
 }
-.dpill:hover{ border-color:#d6d1c7; }
-.dpill.on{ border-color:var(--ac); background:var(--acl); color:var(--ac); }
-.dslot{
-    border:1.5px solid var(--line); border-radius:11px; background:#fff;
-    padding:7px 0; text-align:center; font-size:12px; font-weight:600; color:var(--mu);
-    cursor:pointer; transition:border-color .15s, background .15s, color .15s;
-}
-.dslot:hover:not(:disabled){ border-color:#d6d1c7; }
-.dslot.on{ border-color:var(--ac); background:var(--acl); color:var(--ac); }
-.dslot:disabled{ opacity:.4; cursor:not-allowed; text-decoration:line-through; }
-.dstep-badge{
+.dstep[data-state="locked"]{ opacity:.38; pointer-events:none; user-select:none; }
+.dstep[data-state="locked"] .dsp-body,
+.dstep[data-state="done"]   .dsp-body{ display:none; }
+.dstep:not([data-state="done"]) .dsp-summary{ display:none; }
+.dstep:not([data-state="done"]) .dsp-edit{ display:none; }
+.dsp-num{
     display:inline-flex; align-items:center; justify-content:center;
-    width:1.25rem; height:1.25rem; border-radius:9999px;
-    background:var(--ac); color:#fff; font-size:.65rem; font-weight:700; flex-shrink:0;
+    width:1.4rem; height:1.4rem; border-radius:9999px;
+    font-size:.6rem; font-weight:700; flex-shrink:0;
+    transition:background .18s ease, color .18s ease;
 }
+.dstep[data-state="active"] .dsp-num{ background:var(--ac); color:#fff; }
+.dstep[data-state="done"]   .dsp-num{ background:var(--acl); color:var(--ac); }
+.dstep[data-state="locked"] .dsp-num{ background:#e7e5e4; color:#a8a29e; }
+.dstep[data-state="done"]   .dsp-head{ cursor:pointer; }
+.dparty{
+    border:2px solid #e7e5e4; border-radius:12px; background:#fff;
+    padding:8px 0; text-align:center; font-size:15px; font-weight:900; color:var(--ink);
+    cursor:pointer; transition:border-color .15s, background .15s, transform .1s;
+}
+.dparty:hover{ border-color:var(--ac); background:var(--acl); }
+.dparty:active{ transform:scale(.95); }
+.dslot{
+    border:2px solid #e7e5e4; border-radius:11px; background:#fff;
+    padding:8px 0; text-align:center; font-size:12px; font-weight:700; letter-spacing:.02em;
+    color:var(--ink); cursor:pointer; transition:border-color .15s, background .15s, color .15s;
+}
+.dslot:hover:not(:disabled){ border-color:var(--ac); background:var(--acl); }
+.dslot.on{ border-color:var(--ac); background:var(--ac); color:#fff; }
+.dslot:disabled{ opacity:.4; cursor:not-allowed; text-decoration:line-through; }
 .demo-sticker{
     font-family:var(--font-display,'Fraunces Variable',serif); font-style:italic;
     transform:rotate(-2deg);
@@ -180,67 +194,103 @@ details.faq[open] .fi{ transform:rotate(45deg); }
             {{-- soft platform glow --}}
             <div class="pointer-events-none absolute left-1/2 top-1/2 -z-0 h-[34rem] w-[34rem] -translate-x-1/2 -translate-y-1/2 rounded-full" style="background:radial-gradient(circle,rgba(94,234,212,.28),transparent 60%)"></div>
 
-            @php($demoDays = collect(range(1, 4))->map(fn ($i) => now('Europe/Berlin')->addDays($i)))
             @php($demoSlots = ['17:30' => true, '18:00' => true, '18:30' => true, '19:00' => false, '19:30' => true, '20:00' => true])
 
             <div class="relative z-10 mx-auto max-w-[22rem]">
                 <p class="demo-sticker mb-3 text-center text-[15px]" style="color:var(--ac)">Klick dich durch — es passiert nichts, versprochen ✌️</p>
-                <div id="demoCard" class="surf ring-soft overflow-hidden">
-                    <div class="flex items-center gap-2 border-b px-4 py-3" style="border-color:var(--line2); background:#fcfbf9">
+                <div id="demoCard" class="surf ring-soft overflow-hidden" style="border-radius:24px">
+                    <div class="flex items-center gap-2 border-b px-4 py-2.5" style="border-color:var(--line2); background:#fcfbf9">
                         <span class="flex gap-1.5">
                             <span class="h-2.5 w-2.5 rounded-full" style="background:var(--line)"></span>
                             <span class="h-2.5 w-2.5 rounded-full" style="background:var(--line)"></span>
                             <span class="h-2.5 w-2.5 rounded-full" style="background:var(--line)"></span>
                         </span>
-                        <span class="flex-1 text-center text-[11px] font-medium" style="color:var(--mu2)">swayy.app · reservieren</span>
+                        <span class="flex-1 text-center text-[11px] font-medium" style="color:var(--mu2)">swayy.app/book/trattoria-sonnenhof</span>
                         <span class="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider" style="background:var(--acl); color:var(--ac)">Demo</span>
                     </div>
 
-                    {{-- Step 1: Datum · Personen · Uhrzeit --}}
-                    <div id="dStep1" class="p-5">
-                        <p class="serif mb-1 text-lg" style="color:var(--ink)">Tisch reservieren</p>
-                        <p class="mb-4 text-xs" style="color:var(--mu2)">Trattoria Demo · Wann kommst du?</p>
-                        <div class="mb-3 grid grid-cols-4 gap-1.5">
-                            @foreach($demoDays as $i => $day)
-                                <button type="button" class="dpill {{ $i === 0 ? 'on' : '' }}" data-demo-date="{{ $day->locale('de')->isoFormat('dd DD.MM.') }}">
-                                    {{ $day->locale('de')->isoFormat('dd') }}<br>{{ $day->format('d.m.') }}
-                                </button>
-                            @endforeach
+                    {{-- Booking flow (mirrors the real page: hero + numbered accordion) --}}
+                    <div id="dFlow">
+                        <div class="demo-hero px-5 pb-5 pt-6 text-center">
+                            <div class="mx-auto mb-2.5 flex h-10 w-10 items-center justify-center rounded-xl text-lg" style="background:rgba(255,255,255,.2); box-shadow:0 0 0 2px rgba(255,255,255,.25)">🍽️</div>
+                            <p class="text-lg font-black tracking-tight text-white">Trattoria Sonnenhof</p>
+                            <p class="mt-0.5 text-[11px]" style="color:rgba(255,255,255,.7)">Schön, dass du da bist — wann dürfen wir dich erwarten?</p>
                         </div>
-                        <div class="mb-3 flex items-center justify-between rounded-xl px-4 py-2.5" style="border:1px solid var(--line)">
-                            <span class="text-xs" style="color:var(--mu)">Personen</span>
-                            <div class="flex items-center gap-3 text-xs">
-                                <button type="button" id="dPaxMinus" aria-label="Weniger Personen" class="flex h-6 w-6 items-center justify-center rounded-full" style="border:1px solid var(--line); color:var(--mu)">−</button>
-                                <strong id="dPax" style="color:var(--ink); min-width:1ch; text-align:center">2</strong>
-                                <button type="button" id="dPaxPlus" aria-label="Mehr Personen" class="flex h-6 w-6 items-center justify-center rounded-full" style="border:1px solid var(--line); color:var(--mu)">+</button>
+
+                        <div class="divide-y" style="border-color:var(--line2)">
+                            {{-- Step 1: Personen --}}
+                            <div id="dStep1" class="dstep" data-state="active">
+                                <div class="dsp-head flex items-center gap-2.5 px-4 py-3">
+                                    <span class="dsp-num">1</span>
+                                    <span class="flex-1 text-[12.5px] font-semibold" style="color:var(--ink)">Wie viele Personen?</span>
+                                    <span class="dsp-summary text-[11px]" style="color:var(--mu2)" id="dSum1"></span>
+                                    <button type="button" class="dsp-edit text-[10px] font-semibold" style="color:var(--ac)" data-demo-edit="1">Ändern</button>
+                                </div>
+                                <div class="dsp-body px-4 pb-4">
+                                    <div class="grid grid-cols-4 gap-1.5">
+                                        @foreach(range(1, 8) as $n)
+                                            <button type="button" class="dparty" data-demo-party="{{ $n }}">{{ $n }}</button>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Step 2: Wann? --}}
+                            <div id="dStep2" class="dstep" data-state="locked">
+                                <div class="dsp-head flex items-center gap-2.5 px-4 py-3">
+                                    <span class="dsp-num">2</span>
+                                    <span class="flex-1 text-[12.5px] font-semibold" style="color:var(--ink)">Wann?</span>
+                                    <span class="dsp-summary text-[11px]" style="color:var(--mu2)" id="dSum2"></span>
+                                    <button type="button" class="dsp-edit text-[10px] font-semibold" style="color:var(--ac)" data-demo-edit="2">Ändern</button>
+                                </div>
+                                <div class="dsp-body space-y-2.5 px-4 pb-4">
+                                    <input type="date" id="dDate"
+                                           min="{{ now('Europe/Berlin')->toDateString() }}"
+                                           value="{{ now('Europe/Berlin')->addDay()->toDateString() }}"
+                                           class="w-full rounded-xl px-3 py-2 text-sm" style="border:2px solid #e7e5e4">
+                                    <div class="grid grid-cols-3 gap-1.5">
+                                        @foreach($demoSlots as $time => $free)
+                                            <button type="button" class="dslot" data-demo-time="{{ $time }}" @disabled(! $free) @if(! $free) title="Ausgebucht" @endif>{{ $time }}</button>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Step 3: Deine Angaben --}}
+                            <div id="dStep3" class="dstep" data-state="locked">
+                                <div class="dsp-head flex items-center gap-2.5 px-4 py-3">
+                                    <span class="dsp-num">3</span>
+                                    <span class="flex-1 text-[12.5px] font-semibold" style="color:var(--ink)">Deine Angaben</span>
+                                </div>
+                                <div class="dsp-body space-y-3 px-4 pb-4">
+                                    <div>
+                                        <label for="dName" class="mb-1 block text-[11px] font-semibold" style="color:var(--ink2)">Name *</label>
+                                        <input type="text" id="dName" maxlength="40" placeholder="z. B. Alex" autocomplete="off"
+                                               class="w-full rounded-xl px-3 py-2 text-sm" style="border:2px solid #e7e5e4">
+                                    </div>
+                                    <label class="flex items-start gap-2 text-[10.5px]" style="color:var(--mu)">
+                                        <input type="checkbox" id="dPrivacy" class="mt-0.5 h-3.5 w-3.5 rounded" style="accent-color:var(--ac)">
+                                        <span>Ich akzeptiere die Datenschutzhinweise. <span style="color:var(--mu2)">(In der Demo natürlich folgenlos.)</span></span>
+                                    </label>
+                                    <button type="button" id="dConfirm" class="flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-[13px] font-bold text-white transition-all active:scale-[0.99]" style="background:var(--ac)">
+                                        Jetzt reservieren
+                                        <svg class="h-4 w-4 opacity-80" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                        <div class="mb-4 grid grid-cols-3 gap-1.5">
-                            @foreach($demoSlots as $time => $free)
-                                <button type="button" class="dslot" data-demo-time="{{ $time }}" @disabled(! $free) @if(! $free) title="Ausgebucht" @endif>{{ $time }}</button>
-                            @endforeach
-                        </div>
-                        <button type="button" id="dNext" disabled class="w-full rounded-xl py-2.5 text-[13px] font-semibold text-white transition-opacity disabled:opacity-40" style="background:var(--ink)">Weiter</button>
                     </div>
 
-                    {{-- Step 2: Name --}}
-                    <div id="dStep2" class="hidden p-5">
-                        <p class="serif mb-1 text-lg" style="color:var(--ink)">Fast geschafft</p>
-                        <p id="dSummary" class="mb-4 text-xs" style="color:var(--mu2)"></p>
-                        <label for="dName" class="mb-1.5 block text-xs font-semibold" style="color:var(--ink2)">Dein Name</label>
-                        <input type="text" id="dName" maxlength="40" placeholder="z. B. Alex" autocomplete="off"
-                               class="mb-4 w-full rounded-xl px-4 py-2.5 text-sm" style="border:1.5px solid var(--line)">
-                        <button type="button" id="dConfirm" class="w-full rounded-xl py-2.5 text-[13px] font-semibold text-white" style="background:var(--ac)">Jetzt reservieren</button>
-                        <button type="button" id="dBack" class="mt-2 w-full py-1.5 text-[12px] font-medium" style="color:var(--mu2)">← zurück</button>
-                    </div>
-
-                    {{-- Step 3: Bestätigung --}}
-                    <div id="dStep3" class="hidden p-5 text-center">
+                    {{-- Confirmation (mirrors the real confirmation page) --}}
+                    <div id="dDone" class="hidden p-5 text-center">
                         <div class="checkpop mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full text-2xl" style="background:var(--acl); color:var(--ac)">✓</div>
-                        <p class="serif text-lg" style="color:var(--ink)">Reserviert, <span id="dDoneName">Alex</span>!</p>
-                        <p id="dDoneSummary" class="mt-1 text-xs" style="color:var(--mu2)"></p>
-                        <p class="mt-2 text-[11px] font-semibold tracking-wide" style="color:var(--ac)">Code <span id="dDoneCode">DEMO-0000</span></p>
-                        <p class="mx-auto mt-4 max-w-[16rem] text-[11px] leading-relaxed" style="color:var(--mu2)">Genau so fühlt es sich für deine Gäste an. Und nein — hier wurde nichts gespeichert. 😉</p>
+                        <p class="serif text-lg" style="color:var(--ink)">Reservierung bestätigt</p>
+                        <p class="mt-0.5 text-xs" style="color:var(--mu)">Danke, <span id="dDoneName" class="font-semibold" style="color:var(--ink)">Alex</span> — wir freuen uns auf dich!</p>
+                        <div class="mx-auto mt-3 rounded-xl px-4 py-2.5 text-xs" style="background:#faf8f4; color:var(--ink2)">
+                            <span id="dDoneSummary"></span><br>
+                            <span class="font-semibold tracking-wide" style="color:var(--ac)">Code <span id="dDoneCode">DEMO-0000</span></span>
+                        </div>
+                        <p class="mx-auto mt-3 max-w-[16rem] text-[11px] leading-relaxed" style="color:var(--mu2)">Genau so fühlt es sich für deine Gäste an. Und nein — hier wurde nichts gespeichert. 😉</p>
                         <a href="{{ route('register') }}" class="mt-4 inline-block w-full rounded-xl py-2.5 text-[13px] font-semibold text-white" style="background:var(--ink)">Das will ich für meinen Betrieb</a>
                         <button type="button" id="dReset" class="mt-2 w-full py-1.5 text-[12px] font-medium" style="color:var(--mu2)">↻ Nochmal ausprobieren</button>
                     </div>
@@ -616,80 +666,91 @@ details.faq[open] .fi{ transform:rotate(45deg); }
     },{ threshold:.12, rootMargin:'0px 0px -8% 0px' });
     document.querySelectorAll('.rv').forEach(el=>io.observe(el));
 
-    /* ── Interactive booking demo (front-end only, nothing is stored) ── */
+    /* ── Interactive booking demo — mirrors the real accordion flow,
+          front-end only, nothing is stored ─────────────────────────── */
     (function(){
         const card = document.getElementById('demoCard');
         if(!card) return;
-        const steps = [document.getElementById('dStep1'), document.getElementById('dStep2'), document.getElementById('dStep3')];
-        const state = { date: null, time: null, pax: 2, name: '' };
+        const steps = { 1: document.getElementById('dStep1'), 2: document.getElementById('dStep2'), 3: document.getElementById('dStep3') };
+        const state = { pax: null, time: null };
+        const dateInput = document.getElementById('dDate');
+        const slots = [...card.querySelectorAll('.dslot')];
 
-        const paxEl = document.getElementById('dPax');
-        const nextBtn = document.getElementById('dNext');
+        function setState(n, s){ steps[n].dataset.state = s; }
 
-        // Date pills — first one preselected
-        const pills = [...card.querySelectorAll('.dpill')];
-        state.date = pills[0]?.dataset.demoDate || '';
-        pills.forEach(p => p.addEventListener('click', () => {
-            pills.forEach(x => x.classList.remove('on'));
-            p.classList.add('on');
-            state.date = p.dataset.demoDate;
+        function fmtDate(){
+            const [y, m, d] = (dateInput.value || '').split('-').map(Number);
+            if (!y) return '';
+            return new Date(y, m - 1, d).toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' }).replace(',', '');
+        }
+
+        // Step 1: party buttons (like the real page's big number grid)
+        card.querySelectorAll('.dparty').forEach(btn => btn.addEventListener('click', () => {
+            state.pax = parseInt(btn.dataset.demoParty, 10);
+            document.getElementById('dSum1').textContent = state.pax + (state.pax === 1 ? ' Person' : ' Personen');
+            setState(1, 'done');
+            setState(2, 'active');
         }));
 
-        // Party size 1–8
-        document.getElementById('dPaxMinus').addEventListener('click', () => {
-            state.pax = Math.max(1, state.pax - 1); paxEl.textContent = state.pax;
-        });
-        document.getElementById('dPaxPlus').addEventListener('click', () => {
-            state.pax = Math.min(8, state.pax + 1); paxEl.textContent = state.pax;
+        // Step 2: date change clears a chosen slot (real page reloads slots)
+        dateInput.addEventListener('change', () => {
+            state.time = null;
+            slots.forEach(x => x.classList.remove('on'));
+            if (steps[2].dataset.state === 'done') { setState(2, 'active'); setState(3, 'locked'); }
         });
 
-        // Time slots
-        const slots = [...card.querySelectorAll('.dslot')];
         slots.forEach(s => s.addEventListener('click', () => {
             if (s.disabled) return;
             slots.forEach(x => x.classList.remove('on'));
             s.classList.add('on');
             state.time = s.dataset.demoTime;
-            nextBtn.disabled = false;
+            document.getElementById('dSum2').textContent = fmtDate() + ' · ' + state.time + ' Uhr';
+            setState(2, 'done');
+            setState(3, 'active');
+            document.getElementById('dName').focus();
         }));
 
-        function show(i){
-            steps.forEach((el, idx) => el.classList.toggle('hidden', idx !== i));
-        }
-
-        nextBtn.addEventListener('click', () => {
-            document.getElementById('dSummary').textContent =
-                `${state.date} · ${state.time} Uhr · ${state.pax} ${state.pax === 1 ? 'Person' : 'Personen'}`;
-            show(1);
-            document.getElementById('dName').focus();
-        });
-
-        document.getElementById('dBack').addEventListener('click', () => show(0));
+        // "Ändern" reopens a step; later steps lock again
+        card.querySelectorAll('[data-demo-edit]').forEach(btn => btn.addEventListener('click', () => {
+            const n = parseInt(btn.dataset.demoEdit, 10);
+            setState(n, 'active');
+            for (let i = n + 1; i <= 3; i++) setState(i, 'locked');
+            if (n === 1) { state.time = null; slots.forEach(x => x.classList.remove('on')); }
+        }));
 
         function confirmDemo(){
-            state.name = document.getElementById('dName').value.trim() || 'Alex';
-            const first = state.name.split(' ')[0];
+            const privacy = document.getElementById('dPrivacy');
+            if (!privacy.checked) {
+                privacy.parentElement.style.color = '#dc2626';
+                setTimeout(() => privacy.parentElement.style.color = '', 1200);
+                return;
+            }
+            const name = document.getElementById('dName').value.trim() || 'Alex';
+            const first = name.split(' ')[0];
+            const summary = `${fmtDate()} · ${state.time} Uhr · ${state.pax} ${state.pax === 1 ? 'Person' : 'Personen'}`;
             document.getElementById('dDoneName').textContent = first;
-            document.getElementById('dDoneSummary').textContent =
-                `${state.date} · ${state.time} Uhr · ${state.pax} ${state.pax === 1 ? 'Person' : 'Personen'}`;
+            document.getElementById('dDoneSummary').textContent = summary;
             document.getElementById('dDoneCode').textContent =
                 'DEMO-' + Math.random().toString(36).slice(2, 6).toUpperCase();
             // The floating admin notification reacts — "so sieht das bei dir aus"
-            document.getElementById('dNotifLine').textContent =
-                `${first} · ${state.time} · ${state.pax} P.`;
-            show(2);
-            // retrigger the check pop
-            const check = steps[2].querySelector('.checkpop');
+            document.getElementById('dNotifLine').textContent = `${first} · ${state.time} · ${state.pax} P.`;
+            document.getElementById('dFlow').classList.add('hidden');
+            const done = document.getElementById('dDone');
+            done.classList.remove('hidden');
+            const check = done.querySelector('.checkpop');
             check.classList.remove('checkpop'); void check.offsetWidth; check.classList.add('checkpop');
         }
         document.getElementById('dConfirm').addEventListener('click', confirmDemo);
         document.getElementById('dName').addEventListener('keydown', e => { if (e.key === 'Enter') confirmDemo(); });
 
         document.getElementById('dReset').addEventListener('click', () => {
-            state.time = null; nextBtn.disabled = true;
+            state.pax = null; state.time = null;
             slots.forEach(x => x.classList.remove('on'));
             document.getElementById('dName').value = '';
-            show(0);
+            document.getElementById('dPrivacy').checked = false;
+            setState(1, 'active'); setState(2, 'locked'); setState(3, 'locked');
+            document.getElementById('dDone').classList.add('hidden');
+            document.getElementById('dFlow').classList.remove('hidden');
         });
 
         // "Erst mal ausprobieren" flashes the card so the eye lands on it

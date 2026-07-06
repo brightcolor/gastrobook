@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.70.1] – 2026-07-06
+
+### Verbessert: Startseiten-Demo spiegelt jetzt die echte Buchungsseite
+- Die spielbare Demo im Hero ist nun eine **originalgetreue Mini-Replik** der
+  echten Buchungsseite: Marken-Hero mit Restaurantname („Trattoria Sonnenhof"),
+  nummeriertes Akkordeon mit gesperrten/erledigten Schritten („Wie viele
+  Personen?" mit großen Zahl-Buttons → „Wann?" mit Datumsfeld + Slots →
+  „Deine Angaben"), „Ändern"-Links, Datenschutz-Häkchen und „Jetzt reservieren"
+  — exakt der Flow, den Gäste auf swayy.de/book/… erleben.
+- Ausgewählte Slots füllen sich in der Markenfarbe (wie echt), Datumswechsel
+  setzt die Slot-Auswahl zurück, spätere Schritte sperren sich beim Ändern.
+- Bestätigungsansicht wie die echte Confirmation-Seite (Häkchen, Danke-Zeile,
+  Zusammenfassung, Demo-Code) — inklusive des Buttons „Das will ich für meinen
+  Betrieb". Weiterhin rein clientseitig: nichts wird gespeichert.
+
 ## [1.70.0] – 2026-07-06
 
 ### Neu: Startseite mit spielbarer Buchungs-Demo & wärmerer Tonalität
