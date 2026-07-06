@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.71.2] – 2026-07-06
+
+### Behoben: Deployments brauchten manuelles `view:clear` auf dem Server
+- **Ursache:** `storage/` wird per Bind-Mount dauerhaft in den Container
+  eingehängt (siehe `docker-compose.yml`) – der kompilierte Blade-View-Cache
+  darin überlebt jeden Image-Update. Beim Start eines neuen Images verglich
+  Laravel nur Zeitstempel, um zu entscheiden, ob eine View neu kompiliert
+  werden muss; das ist über Image-Rebuilds hinweg nicht zuverlässig, sodass
+  gelegentlich der alte kompilierte Stand weiter ausgeliefert wurde – obwohl
+  Version und Code längst aktuell waren.
+- `docker/entrypoint.sh` räumt jetzt bei **jedem** Containerstart automatisch
+  `view:clear`, `config:clear` und `route:clear` auf, bevor Config/Routes neu
+  gecacht werden. Damit ist ein Deploy künftig ohne manuelles Eingreifen auf
+  dem Server sofort sichtbar.
+
 ## [1.71.1] – 2026-07-06
 
 ### Neu: Konfetti bei der Bestätigung der Startseiten-Demo
