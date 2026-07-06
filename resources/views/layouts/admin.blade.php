@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'Swayy') – Swayy</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('partials.favicons')
 </head>
 <body class="min-h-screen bg-stone-100 text-stone-900 antialiased">
 <a href="#main-content" class="skip-link">Zum Inhalt springen</a>

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'Reservierung')</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('partials.favicons')
     @php($primary = $tenant->brand_primary_color ?? '#0f766e')
     <style>
         :root { --brand: {{ $primary }}; --brand-strong: color-mix(in oklab, {{ $primary }} 82%, black); }

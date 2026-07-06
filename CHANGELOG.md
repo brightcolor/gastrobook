@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.72.0] – 2026-07-06
+
+### Neu: Favicon aus dem Logo-Symbol
+- Vollständiges Favicon-Set aus der Logo-Kachel: Teal-Verlauf
+  (wie das Markenzeichen) mit dem **„S" in Fraunces** — gerendert mit der
+  echten Schrift des Schriftzugs.
+- Formate: `favicon.ico` (16+32 als echtes ICO), PNG in 16/32/192/512 px,
+  `apple-touch-icon.png` (180 px) sowie `theme-color` (#0f766e) für
+  Mobile-Browserleisten.
+- Eingebunden über ein zentrales Partial (`partials/favicons`) in allen
+  Layouts (Marketing, Public, Admin, SaaS) und Auth-Seiten.
+
 ## [1.71.2] – 2026-07-06
 
 ### Behoben: Deployments brauchten manuelles `view:clear` auf dem Server

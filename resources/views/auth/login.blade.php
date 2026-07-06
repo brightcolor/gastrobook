@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Anmelden – Swayy</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('partials.favicons')
 </head>
 <body class="flex min-h-screen items-center justify-center bg-stone-900 px-4">
     <div class="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl">

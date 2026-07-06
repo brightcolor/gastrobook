@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'SaaS-Admin') – Swayy</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('partials.favicons')
 </head>
 <body class="min-h-screen bg-stone-100">
 @php

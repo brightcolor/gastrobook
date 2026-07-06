@@ -6,6 +6,7 @@
     <title>@yield('title', 'Swayy – Buchungssystem für Restaurants & Salons')</title>
     <meta name="description" content="@yield('description', 'Reservierungen & Termine, Live-Board, Tischplan, Zahlungen und No-Show-Schutz – die Buchungsplattform für Restaurants und Friseure. DSGVO-konform, EU-Hosting. 30 Tage kostenlos.')">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('partials.favicons')
     @stack('styles')
 </head>
 <body class="min-h-screen bg-white text-stone-900 antialiased">
