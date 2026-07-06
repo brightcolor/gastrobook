@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.74.0] – 2026-07-06
+
+### Neu: Logo als echtes SVG (Vektorgrafik aus den Fraunces-Konturen)
+- Das Logo ist jetzt eine **echte Vektorgrafik**: Die Glyphen-Konturen werden
+  direkt aus der Fraunces-Variable-Font extrahiert (S in Gewicht 600, Wortmarke
+  in 500) — gestochen scharf in jeder Größe, nur 1,7 KB (Mark) bzw. 7,8 KB
+  (Volllogo mit Schriftzug).
+- Dateien: `logo-mark.svg` (Kachel, ersetzt das PNG in Header/Footer/Auth/Trial),
+  `logo.svg` (Kachel + „Swayy"-Wortmarke, z. B. für externe Verwendung) und
+  `favicon.svg` (modernes SVG-Favicon, von Browsern bevorzugt; PNG/ICO bleiben
+  als Fallback).
+- Reproduzierbar über `node scripts/generate-logo-svg.mjs` (fontkit + wawoff2
+  als Dev-Dependencies).
+
 ## [1.73.0] – 2026-07-06
 
 ### Neu: Favicon-Kachel ist jetzt das offizielle Logo
