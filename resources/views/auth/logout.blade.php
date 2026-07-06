@@ -9,7 +9,7 @@
 </head>
 <body class="flex min-h-screen items-center justify-center bg-stone-900 px-4">
     <div class="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl">
-        <h1 class="text-center text-2xl font-bold">Swayy</h1>
+        <h1 class="flex items-center justify-center gap-2.5 text-2xl" style="font-family:var(--font-display,'Fraunces Variable',serif); font-weight:500"><img src="/logo-mark.png" alt="" class="h-9 w-9" style="border-radius:0.85rem"> Swayy</h1>
         <p class="mt-1 text-center text-sm text-stone-500">
             Angemeldet als <span class="font-semibold text-stone-700">{{ $user->email }}</span>
         </p>

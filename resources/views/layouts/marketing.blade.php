@@ -14,7 +14,7 @@
     <header id="mkt-header" class="sticky top-0 z-50 transition-all duration-300">
         <nav class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5">
             <a href="{{ route('home') }}" class="flex items-center gap-2.5 text-2xl tracking-tight" style="font-family:var(--font-display,'Fraunces Variable',serif); font-weight:500">
-                <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-teal-700 text-base font-semibold text-white shadow-sm" style="font-family:var(--font-display,serif)">S</span>
+                <img src="/logo-mark.png" alt="" class="h-8 w-8 shadow-sm" style="border-radius:0.75rem">
                 <span>Swayy</span>
             </a>
             <div class="hidden items-center gap-1 text-sm font-medium md:flex">
@@ -47,7 +47,7 @@
             <div class="flex flex-col items-start justify-between gap-8 md:flex-row">
                 <div>
                     <div class="flex items-center gap-2.5">
-                        <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-teal-700 text-base font-semibold text-white" style="font-family:var(--font-display,serif)">S</span>
+                        <img src="/logo-mark.png" alt="" class="h-8 w-8" style="border-radius:0.75rem">
                         <p class="text-xl" style="font-family:var(--font-display,'Fraunces Variable',serif); font-weight:500">Swayy</p>
                     </div>
                     <p class="mt-2 max-w-xs text-sm text-stone-500 leading-relaxed">Die Buchungsplattform für Restaurants, Cafés, Bars sowie Friseure und Dienstleister. Gehostet in der EU.</p>

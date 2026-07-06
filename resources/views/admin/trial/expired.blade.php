@@ -15,7 +15,7 @@
         <div class="mb-10 text-center">
             <a href="{{ route('home') }}" class="inline-flex items-center gap-2.5 text-2xl font-semibold"
                style="font-family:'Fraunces Variable',Georgia,serif">
-                <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-teal-700 text-lg font-semibold text-white">S</span>
+                <img src="/logo-mark.png" alt="" class="h-9 w-9" style="border-radius:0.85rem">
                 Swayy
             </a>
         </div>

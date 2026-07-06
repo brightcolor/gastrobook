@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.73.0] – 2026-07-06
+
+### Neu: Favicon-Kachel ist jetzt das offizielle Logo
+- Die aus dem Favicon bekannte Teal-Kachel mit dem Fraunces-„S" ist jetzt als
+  Grafik (`/logo-mark.png`) das Logo überall dort, wo bisher die CSS-gebaute
+  Kachel saß: Marketing-Header und -Footer sowie die Trial-abgelaufen-Seite.
+  Logo und Favicon sind damit pixelidentisch.
+- Auch die Auth-Seiten (Login, Registrierung, Passwort vergessen/zurücksetzen,
+  Abmelden) zeigen statt des reinen Schriftzugs jetzt Marke + Fraunces-Wortmarke.
+
 ## [1.72.0] – 2026-07-06
 
 ### Neu: Favicon aus dem Logo-Symbol
