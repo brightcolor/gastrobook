@@ -21,7 +21,6 @@
     font-size:.72rem; font-weight:600; letter-spacing:.18em; text-transform:uppercase; color:var(--ac);
 }
 
-/* ── Grain (tactile, premium) ──────────────────────────────────── */
 /* ── Parallax orbs ─────────────────────────────────────────────── */
 .orb{ position:absolute; border-radius:50%; filter:blur(70px); pointer-events:none; will-change:transform; }
 .orb-a{ width:46rem;height:46rem; top:-16rem; right:-14rem; background:radial-gradient(circle,#5eead4 0,transparent 68%); opacity:.45; }
@@ -71,7 +70,37 @@
 .floaty{ animation:floaty 7s ease-in-out infinite; }
 .floaty.slow{ animation-duration:9s; }
 
-/* ── Slot / date pills ─────────────────────────────────────────── */
+/* ── Interactive demo widget ───────────────────────────────────── */
+.dpill{
+    border:1.5px solid var(--line); border-radius:12px; background:#fff;
+    padding:8px 0; text-align:center; font-size:11px; font-weight:700; color:var(--mu2);
+    cursor:pointer; transition:border-color .15s, background .15s, color .15s, transform .1s;
+}
+.dpill:hover{ border-color:#d6d1c7; }
+.dpill.on{ border-color:var(--ac); background:var(--acl); color:var(--ac); }
+.dslot{
+    border:1.5px solid var(--line); border-radius:11px; background:#fff;
+    padding:7px 0; text-align:center; font-size:12px; font-weight:600; color:var(--mu);
+    cursor:pointer; transition:border-color .15s, background .15s, color .15s;
+}
+.dslot:hover:not(:disabled){ border-color:#d6d1c7; }
+.dslot.on{ border-color:var(--ac); background:var(--acl); color:var(--ac); }
+.dslot:disabled{ opacity:.4; cursor:not-allowed; text-decoration:line-through; }
+.dstep-badge{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:1.25rem; height:1.25rem; border-radius:9999px;
+    background:var(--ac); color:#fff; font-size:.65rem; font-weight:700; flex-shrink:0;
+}
+.demo-sticker{
+    font-family:var(--font-display,'Fraunces Variable',serif); font-style:italic;
+    transform:rotate(-2deg);
+}
+#demoCard.flash{ animation:demoflash 1s ease; }
+@keyframes demoflash{ 0%,100%{box-shadow:0 1px 0 rgba(255,255,255,.8) inset,0 24px 60px -30px rgba(28,25,23,.25)} 40%{box-shadow:0 0 0 4px var(--acl),0 0 0 6px var(--ac),0 24px 60px -30px rgba(28,25,23,.25)} }
+@keyframes checkpop{ 0%{transform:scale(.4);opacity:0} 70%{transform:scale(1.12)} 100%{transform:scale(1);opacity:1} }
+.checkpop{ animation:checkpop .45s cubic-bezier(.16,1,.3,1) both; }
+
+/* ── Slot / date pills (static mocks) ──────────────────────────── */
 .slot{ border:1.5px solid var(--line); border-radius:11px; padding:7px 0; text-align:center; font-size:12px; font-weight:600; color:var(--mu); background:#fff; }
 .slot.on{ border-color:var(--ac); background:var(--acl); color:var(--ac); }
 
@@ -117,15 +146,16 @@ details.faq[open] .fi{ transform:rotate(45deg); }
             </span>
 
             <h1 class="display rv d1 mt-6" style="font-size:clamp(2.7rem,5.6vw,4.7rem)">
-                Reservierungen<br>
-                &amp; Termine, die sich<br>
-                <span class="serif-i" style="color:var(--ac)">von selbst</span> füllen.
+                Deine Gäste<br>
+                buchen. Du bist<br>
+                einfach <span class="serif-i" style="color:var(--ac)">Gastgeber</span>.
             </h1>
 
             <p class="rv d2 mt-7 leading-relaxed" style="font-size:1.15rem; color:var(--mu); max-width:30rem">
-                Online-Buchung, ein Live-Board in Echtzeit, Tischplan, Zahlungen und
-                No-Show-Schutz — in einer ruhigen, durchdachten Plattform.
-                <span style="color:var(--ink2)">DSGVO-konform, in der EU gehostet, ohne Provision.</span>
+                Freitagabend, volles Haus — und das Telefon? Bleibt still.
+                Jede Buchung landet von allein bei dir: Live-Board, Tischplan,
+                Erinnerungen und No-Show-Schutz, alles an einem Ort.
+                <span style="color:var(--ink2)">DSGVO-konform, EU-Hosting, ohne Provision.</span>
             </p>
 
             <div class="rv d3 mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -133,8 +163,8 @@ details.faq[open] .fi{ transform:rotate(45deg); }
                     30 Tage kostenlos
                     <svg class="h-4 w-4 transition-transform group-hover:translate-x-1" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </a>
-                <a href="#funktionen" class="btn-ghost inline-flex items-center justify-center px-7 py-3.5 text-[15px] font-semibold">
-                    Funktionen ansehen
+                <a href="#demo" id="demoJump" class="btn-ghost inline-flex items-center justify-center px-7 py-3.5 text-[15px] font-semibold">
+                    Erst mal ausprobieren
                 </a>
             </div>
 
@@ -145,14 +175,17 @@ details.faq[open] .fi{ transform:rotate(45deg); }
             </div>
         </div>
 
-        {{-- Mockup --}}
-        <div class="relative" data-par="-0.06" style="min-height:30rem">
+        {{-- Interactive demo (mirrors the real booking flow, stores nothing) --}}
+        <div id="demo" class="relative" data-par="-0.06" style="min-height:32rem">
             {{-- soft platform glow --}}
             <div class="pointer-events-none absolute left-1/2 top-1/2 -z-0 h-[34rem] w-[34rem] -translate-x-1/2 -translate-y-1/2 rounded-full" style="background:radial-gradient(circle,rgba(94,234,212,.28),transparent 60%)"></div>
 
-            {{-- Main booking widget --}}
-            <div class="floaty relative z-10 mx-auto max-w-[22rem]">
-                <div class="surf ring-soft overflow-hidden">
+            @php($demoDays = collect(range(1, 4))->map(fn ($i) => now('Europe/Berlin')->addDays($i)))
+            @php($demoSlots = ['17:30' => true, '18:00' => true, '18:30' => true, '19:00' => false, '19:30' => true, '20:00' => true])
+
+            <div class="relative z-10 mx-auto max-w-[22rem]">
+                <p class="demo-sticker mb-3 text-center text-[15px]" style="color:var(--ac)">Klick dich durch — es passiert nichts, versprochen ✌️</p>
+                <div id="demoCard" class="surf ring-soft overflow-hidden">
                     <div class="flex items-center gap-2 border-b px-4 py-3" style="border-color:var(--line2); background:#fcfbf9">
                         <span class="flex gap-1.5">
                             <span class="h-2.5 w-2.5 rounded-full" style="background:var(--line)"></span>
@@ -160,41 +193,68 @@ details.faq[open] .fi{ transform:rotate(45deg); }
                             <span class="h-2.5 w-2.5 rounded-full" style="background:var(--line)"></span>
                         </span>
                         <span class="flex-1 text-center text-[11px] font-medium" style="color:var(--mu2)">swayy.app · reservieren</span>
+                        <span class="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider" style="background:var(--acl); color:var(--ac)">Demo</span>
                     </div>
-                    <div class="p-5">
+
+                    {{-- Step 1: Datum · Personen · Uhrzeit --}}
+                    <div id="dStep1" class="p-5">
                         <p class="serif mb-1 text-lg" style="color:var(--ink)">Tisch reservieren</p>
-                        <p class="mb-4 text-xs" style="color:var(--mu2)">Wählen Sie Datum &amp; Uhrzeit</p>
+                        <p class="mb-4 text-xs" style="color:var(--mu2)">Trattoria Demo · Wann kommst du?</p>
                         <div class="mb-3 grid grid-cols-4 gap-1.5">
-                            @foreach(['Mo 21'=>false,'Di 22'=>true,'Mi 23'=>false,'Do 24'=>false] as $d=>$on)
-                                <div class="rounded-xl py-2 text-center text-[11px] font-semibold" style="border:1.5px solid {{ $on?'var(--ac)':'var(--line)' }}; color:{{ $on?'var(--ac)':'var(--mu2)' }}; background:{{ $on?'var(--acl)':'#fff' }}">{{ $d }}</div>
+                            @foreach($demoDays as $i => $day)
+                                <button type="button" class="dpill {{ $i === 0 ? 'on' : '' }}" data-demo-date="{{ $day->locale('de')->isoFormat('dd DD.MM.') }}">
+                                    {{ $day->locale('de')->isoFormat('dd') }}<br>{{ $day->format('d.m.') }}
+                                </button>
                             @endforeach
                         </div>
                         <div class="mb-3 flex items-center justify-between rounded-xl px-4 py-2.5" style="border:1px solid var(--line)">
                             <span class="text-xs" style="color:var(--mu)">Personen</span>
                             <div class="flex items-center gap-3 text-xs">
-                                <span class="flex h-5 w-5 items-center justify-center rounded-full" style="border:1px solid var(--line); color:var(--mu)">−</span>
-                                <strong style="color:var(--ink)">2</strong>
-                                <span class="flex h-5 w-5 items-center justify-center rounded-full" style="border:1px solid var(--line); color:var(--mu)">+</span>
+                                <button type="button" id="dPaxMinus" aria-label="Weniger Personen" class="flex h-6 w-6 items-center justify-center rounded-full" style="border:1px solid var(--line); color:var(--mu)">−</button>
+                                <strong id="dPax" style="color:var(--ink); min-width:1ch; text-align:center">2</strong>
+                                <button type="button" id="dPaxPlus" aria-label="Mehr Personen" class="flex h-6 w-6 items-center justify-center rounded-full" style="border:1px solid var(--line); color:var(--mu)">+</button>
                             </div>
                         </div>
                         <div class="mb-4 grid grid-cols-3 gap-1.5">
-                            @foreach(['18:00'=>false,'18:30'=>true,'19:00'=>false,'19:30'=>false,'20:00'=>true,'20:30'=>false] as $t=>$on)
-                                <div class="slot {{ $on?'on':'' }}">{{ $t }}</div>
+                            @foreach($demoSlots as $time => $free)
+                                <button type="button" class="dslot" data-demo-time="{{ $time }}" @disabled(! $free) @if(! $free) title="Ausgebucht" @endif>{{ $time }}</button>
                             @endforeach
                         </div>
-                        <button class="w-full rounded-xl py-2.5 text-[13px] font-semibold text-white" style="background:var(--ink)">Reservierung bestätigen</button>
+                        <button type="button" id="dNext" disabled class="w-full rounded-xl py-2.5 text-[13px] font-semibold text-white transition-opacity disabled:opacity-40" style="background:var(--ink)">Weiter</button>
+                    </div>
+
+                    {{-- Step 2: Name --}}
+                    <div id="dStep2" class="hidden p-5">
+                        <p class="serif mb-1 text-lg" style="color:var(--ink)">Fast geschafft</p>
+                        <p id="dSummary" class="mb-4 text-xs" style="color:var(--mu2)"></p>
+                        <label for="dName" class="mb-1.5 block text-xs font-semibold" style="color:var(--ink2)">Dein Name</label>
+                        <input type="text" id="dName" maxlength="40" placeholder="z. B. Alex" autocomplete="off"
+                               class="mb-4 w-full rounded-xl px-4 py-2.5 text-sm" style="border:1.5px solid var(--line)">
+                        <button type="button" id="dConfirm" class="w-full rounded-xl py-2.5 text-[13px] font-semibold text-white" style="background:var(--ac)">Jetzt reservieren</button>
+                        <button type="button" id="dBack" class="mt-2 w-full py-1.5 text-[12px] font-medium" style="color:var(--mu2)">← zurück</button>
+                    </div>
+
+                    {{-- Step 3: Bestätigung --}}
+                    <div id="dStep3" class="hidden p-5 text-center">
+                        <div class="checkpop mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full text-2xl" style="background:var(--acl); color:var(--ac)">✓</div>
+                        <p class="serif text-lg" style="color:var(--ink)">Reserviert, <span id="dDoneName">Alex</span>!</p>
+                        <p id="dDoneSummary" class="mt-1 text-xs" style="color:var(--mu2)"></p>
+                        <p class="mt-2 text-[11px] font-semibold tracking-wide" style="color:var(--ac)">Code <span id="dDoneCode">DEMO-0000</span></p>
+                        <p class="mx-auto mt-4 max-w-[16rem] text-[11px] leading-relaxed" style="color:var(--mu2)">Genau so fühlt es sich für deine Gäste an. Und nein — hier wurde nichts gespeichert. 😉</p>
+                        <a href="{{ route('register') }}" class="mt-4 inline-block w-full rounded-xl py-2.5 text-[13px] font-semibold text-white" style="background:var(--ink)">Das will ich für meinen Betrieb</a>
+                        <button type="button" id="dReset" class="mt-2 w-full py-1.5 text-[12px] font-medium" style="color:var(--mu2)">↻ Nochmal ausprobieren</button>
                     </div>
                 </div>
             </div>
 
-            {{-- floating notif: new booking --}}
-            <div class="floaty slow absolute -right-2 top-2 z-20 sm:-right-6" data-par="0.10">
+            {{-- floating notif: new booking (updates live when the demo is played) --}}
+            <div class="floaty slow absolute -right-2 top-8 z-20 sm:-right-6" data-par="0.10">
                 <div class="surf ring-soft px-4 py-3" style="min-width:11.5rem">
                     <div class="mb-1.5 flex items-center gap-2">
                         <span class="ldot"></span>
                         <span class="text-[10px] font-bold uppercase tracking-wider" style="color:var(--mu2)">Neue Buchung</span>
                     </div>
-                    <p class="text-[12.5px] font-semibold" style="color:var(--ink)">Tisch 4 · 19:30 · 4 P.</p>
+                    <p class="text-[12.5px] font-semibold" style="color:var(--ink)"><span id="dNotifLine">Tisch 4 · 19:30 · 4 P.</span></p>
                     <p class="mt-0.5 text-[11px]" style="color:var(--mu2)">gerade eben</p>
                 </div>
             </div>
@@ -215,7 +275,7 @@ details.faq[open] .fi{ transform:rotate(45deg); }
     {{-- value marquee --}}
     <div class="relative z-10 overflow-hidden border-y py-5" style="border-color:var(--line2); background:rgba(255,255,255,.5)">
         <div class="marq">
-            @php($words = ['Weniger Telefonate','Volle Tische','Kein No-Show','Mehr Zeit fürs Wesentliche','Gäste, die wiederkommen','Ruhiger Service'])
+            @php($words = ['Das Telefon bleibt still','Der Freitagabend läuft einfach','Gäste, die wiederkommen','Kein leerer Sechser-Tisch','Feierabend ohne Zettelchaos','Ruhiger Service'])
             @foreach(array_merge($words,$words) as $w)
                 <span>{{ $w }} <b>·</b></span>
             @endforeach
@@ -231,14 +291,14 @@ details.faq[open] .fi{ transform:rotate(45deg); }
         <div class="mx-auto max-w-2xl text-center">
             <p class="eyebrow rv">Ein System, zwei Welten</p>
             <h2 class="display rv d1 mt-4" style="font-size:clamp(2rem,4vw,3rem)">Gemacht für Gastgeber<br>und <span class="serif-i" style="color:var(--ac)">Dienstleister</span></h2>
-            <p class="rv d2 mx-auto mt-5 leading-relaxed" style="color:var(--mu); max-width:34rem">Dieselbe Plattform — je nach Betrieb als Tischreservierung oder als Terminbuchung pro Mitarbeiter und Leistung.</p>
+            <p class="rv d2 mx-auto mt-5 leading-relaxed" style="color:var(--mu); max-width:34rem">Dieselbe Plattform — je nach Betrieb als Tischreservierung oder als Terminbuchung pro Mitarbeiter und Leistung. Du stellst es einfach um.</p>
         </div>
 
         <div class="mt-16 grid gap-6 md:grid-cols-2">
             <div class="surf lift rv d1 p-9">
                 <div class="flex h-14 w-14 items-center justify-center rounded-2xl text-2xl" style="background:linear-gradient(140deg,#f0fdfa,#ccfbf1)">🍽️</div>
                 <h3 class="serif mt-6 text-2xl" style="color:var(--ink)">Restaurants, Cafés &amp; Bars</h3>
-                <p class="mt-3 leading-relaxed" style="color:var(--mu)">Tischbasierte Reservierung mit grafischem Grundriss, Kombinationen und automatischer Zuweisung.</p>
+                <p class="mt-3 leading-relaxed" style="color:var(--mu)">Tischbasierte Reservierung mit grafischem Grundriss, Kombinationen und automatischer Zuweisung — damit der Samstagabend sich von selbst sortiert.</p>
                 <ul class="mt-6 space-y-3 text-[15px]" style="color:var(--ink2)">
                     @foreach(['Grafischer Tischplan mit Flächenzonen','Öffentlicher Grundriss zur Tischwahl','Events &amp; Ticketverkauf'] as $li)
                         <li class="flex items-start gap-3"><span class="mt-1.5 h-1.5 w-1.5 flex-none rounded-full" style="background:var(--ac)"></span>{!! $li !!}</li>
@@ -248,7 +308,7 @@ details.faq[open] .fi{ transform:rotate(45deg); }
             <div class="surf lift rv d2 p-9">
                 <div class="flex h-14 w-14 items-center justify-center rounded-2xl text-2xl" style="background:linear-gradient(140deg,#eef2ff,#e0e7ff)">✂️</div>
                 <h3 class="serif mt-6 text-2xl" style="color:var(--ink)">Friseure &amp; Dienstleister</h3>
-                <p class="mt-3 leading-relaxed" style="color:var(--mu)">Terminbuchung pro Mitarbeiter und Leistung — mit Dienstplan, Abwesenheiten und Lückenoptimierer.</p>
+                <p class="mt-3 leading-relaxed" style="color:var(--mu)">Terminbuchung pro Mitarbeiter und Leistung — mit Dienstplan, Abwesenheiten und einem Optimierer, der Lücken im Kalender gar nicht erst entstehen lässt.</p>
                 <ul class="mt-6 space-y-3 text-[15px]" style="color:var(--ink2)">
                     @foreach(['Leistungen mit Dauer &amp; Preis, kombinierbar','Mitarbeiter-Dienstplan &amp; Urlaubsverwaltung','Buchung bei beliebigem oder bestimmtem Mitarbeiter'] as $li)
                         <li class="flex items-start gap-3"><span class="mt-1.5 h-1.5 w-1.5 flex-none rounded-full" style="background:var(--ac)"></span>{!! $li !!}</li>
@@ -265,7 +325,7 @@ details.faq[open] .fi{ transform:rotate(45deg); }
 <div class="mx-auto max-w-6xl px-5 py-28">
     <div class="mx-auto max-w-2xl text-center">
         <p class="eyebrow rv">Hauptfunktionen</p>
-        <h2 class="display rv d1 mt-4" style="font-size:clamp(2rem,4vw,3rem)">Alles für volle Auslastung</h2>
+        <h2 class="display rv d1 mt-4" style="font-size:clamp(2rem,4vw,3rem)">Alles, was dir den<br><span class="serif-i" style="color:var(--ac)">Service leichter</span> macht</h2>
     </div>
 
     <div class="mt-24 space-y-28">
@@ -275,7 +335,7 @@ details.faq[open] .fi{ transform:rotate(45deg); }
             <div class="rv">
                 <p class="eyebrow">Online-Buchung</p>
                 <h3 class="serif mt-3" style="font-size:clamp(1.6rem,3vw,2.2rem); color:var(--ink); line-height:1.12">Ein Buchungserlebnis,<br>das Gäste lieben</h3>
-                <p class="mt-4 leading-relaxed" style="color:var(--mu)">Mobile-first Buchungsseite mit Live-Verfügbarkeit — als Link teilen oder mit zwei Zeilen Code einbetten. Optionale Tisch- und Mitarbeiterwahl.</p>
+                <p class="mt-4 leading-relaxed" style="color:var(--mu)">Deine Gäste buchen mobil in unter einer Minute — mit Live-Verfügbarkeit, optionaler Tisch- oder Mitarbeiterwahl und Bestätigung aufs Handy. Als Link geteilt oder mit zwei Zeilen Code in deine Website eingebettet.</p>
                 <ul class="mt-6 grid gap-3 sm:grid-cols-2 text-[15px]" style="color:var(--ink2)">
                     @foreach(['Direktlink für Social &amp; Maps','Einbettbares Widget','E-Mail- &amp; SMS-Erinnerungen','Konto per Magic-Link'] as $li)
                         <li class="flex items-start gap-2.5"><span class="mt-1.5 h-1.5 w-1.5 flex-none rounded-full" style="background:var(--ac)"></span>{!! $li !!}</li>
@@ -317,7 +377,7 @@ details.faq[open] .fi{ transform:rotate(45deg); }
                             ['#10b981','18:30','Müller · 2 P.','bestätigt'],
                             ['#f59e0b','19:00','Weber · 4 P.','Anfrage'],
                             ['#3b82f6','19:30','Schmidt · 6 P.','bestätigt'],
-                            ['#a8a29e','20:00','Becker · 2 P.','da'],
+                            ['#a8a29e','20:00','Becker · 2 P.','sitzt seit 20:04'],
                         ] as [$c,$time,$g,$st])
                             <div class="flex items-center gap-3 rounded-xl px-3 py-2.5" style="transition:background .15s" onmouseover="this.style.background='#faf8f4'" onmouseout="this.style.background='transparent'">
                                 <span class="h-2 w-2 flex-none rounded-full" style="background:{{ $c }}"></span>
@@ -332,9 +392,9 @@ details.faq[open] .fi{ transform:rotate(45deg); }
             <div class="rv d1">
                 <p class="eyebrow">Live-Board</p>
                 <h3 class="serif mt-3" style="font-size:clamp(1.6rem,3vw,2.2rem); color:var(--ink); line-height:1.12">Alle Buchungen,<br>in Echtzeit</h3>
-                <p class="mt-4 leading-relaxed" style="color:var(--mu)">Neue und anstehende Reservierungen erscheinen sofort — ohne Reload. Ideal für Tresen und Tablet, mit Dark Mode und Vollbild.</p>
+                <p class="mt-4 leading-relaxed" style="color:var(--mu)">Es ist 19:40, die Küche ruft, vorne warten drei Gruppen — ein Blick aufs Board und du weißt, was los ist. Neue Reservierungen erscheinen sofort, Check-in und Checkout sind einen Fingertipp entfernt. Ideal für Tresen und Tablet.</p>
                 <ul class="mt-6 grid gap-3 sm:grid-cols-2 text-[15px]" style="color:var(--ink2)">
-                    @foreach(['Live-Updates ohne Reload','Inline bestätigen &amp; umbuchen','Dark Mode &amp; Vollbild','Ansicht nach Tisch oder Zeit'] as $li)
+                    @foreach(['Live-Updates ohne Reload','Check-in mit einem Tipp','Verweildauer in Echtzeit','Ansicht nach Tisch oder Zeit'] as $li)
                         <li class="flex items-start gap-2.5"><span class="mt-1.5 h-1.5 w-1.5 flex-none rounded-full" style="background:var(--ac)"></span>{!! $li !!}</li>
                     @endforeach
                 </ul>
@@ -346,7 +406,7 @@ details.faq[open] .fi{ transform:rotate(45deg); }
             <div class="rv">
                 <p class="eyebrow">Zahlungen &amp; No-Show-Schutz</p>
                 <h3 class="serif mt-3" style="font-size:clamp(1.6rem,3vw,2.2rem); color:var(--ink); line-height:1.12">Anzahlungen &amp; Erstattungen,<br><span class="serif-i" style="color:var(--ac)">automatisch</span></h3>
-                <p class="mt-4 leading-relaxed" style="color:var(--mu)">Verlangen Sie eine Anzahlung bei der Buchung. Bei Nichterscheinen greift der Schutz automatisch, Rückerstattungen laufen mit einem Klick.</p>
+                <p class="mt-4 leading-relaxed" style="color:var(--mu)">Der Sechser-Tisch, der am Samstag einfach nicht auftaucht? Mit einer kleinen Anzahlung passiert das nicht mehr. Bei Nichterscheinen greift der Schutz von allein, Erstattungen laufen mit einem Klick.</p>
                 <ul class="mt-6 grid gap-3 sm:grid-cols-2 text-[15px]" style="color:var(--ink2)">
                     @foreach(['Flexible Anzahlungsregeln','Automatische Erstattung','Sichere Abwicklung','Erinnerung vor dem Termin'] as $li)
                         <li class="flex items-start gap-2.5"><span class="mt-1.5 h-1.5 w-1.5 flex-none rounded-full" style="background:var(--ac)"></span>{!! $li !!}</li>
@@ -400,7 +460,7 @@ details.faq[open] .fi{ transform:rotate(45deg); }
                 ['🔐','Audit-Log &amp; Rollenrechte'],
                 ['♻️','Automatische DSGVO-Löschung'],
                 ['💬','Feedback-Booster'],
-                ['📄','Rechtstexte direkt pflegbar'],
+                ['🗣️','Du oder Sie — deine Gäste, dein Ton'],
                 ['🔌','Einbettbares Widget'],
                 ['🔗','Tischkombinationen'],
                 ['🚶','Walk-ins in einem Klick'],
@@ -427,9 +487,9 @@ details.faq[open] .fi{ transform:rotate(45deg); }
         <div class="relative mt-20 grid gap-10 md:grid-cols-3">
             <div class="absolute left-[16%] right-[16%] top-7 hidden h-px md:block" style="background:linear-gradient(90deg,transparent,var(--line),var(--line),transparent)"></div>
             @foreach([
-                ['01','Konto erstellen','Betrieb registrieren — der Testzeitraum startet sofort, ganz ohne Zahlungsdaten.'],
-                ['02','Einrichten','Geführter Assistent führt durch Betriebstyp, Öffnungszeiten und erste Tische oder Mitarbeiter — fertig in Minuten.'],
-                ['03','Link teilen','Buchungslink auf Website, Social oder Maps — ab jetzt läuft alles digital.'],
+                ['01','Konto erstellen','Betrieb registrieren — dein Test startet sofort, ganz ohne Zahlungsdaten.'],
+                ['02','Einrichten','Der Assistent führt dich durch Betriebstyp, Öffnungszeiten und deine ersten Tische oder Mitarbeiter — fertig in Minuten.'],
+                ['03','Link teilen','Deinen Buchungslink auf Website, Social oder Maps teilen — ab jetzt läuft alles von allein.'],
             ] as $i => [$n,$t,$d])
                 <div class="rv d{{ $i+1 }} relative text-center">
                     <div class="serif mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-white text-xl" style="border:1px solid var(--line); color:var(--ac); box-shadow:0 8px 20px -12px rgba(28,25,23,.2)">{{ $n }}</div>
@@ -449,7 +509,7 @@ details.faq[open] .fi{ transform:rotate(45deg); }
         <div class="mx-auto max-w-2xl text-center">
             <p class="eyebrow rv">Preise</p>
             <h2 class="display rv d1 mt-4" style="font-size:clamp(2rem,4vw,3rem)">Fair &amp; monatlich kündbar</h2>
-            <p class="rv d2 mx-auto mt-5 leading-relaxed" style="color:var(--mu); max-width:34rem"><span style="color:var(--ink2)">Voller Funktionsumfang in jedem Tarif</span> — unbegrenzte Benutzer, API, Zahlungen und Berichte inklusive. Ohne Provision.</p>
+            <p class="rv d2 mx-auto mt-5 leading-relaxed" style="color:var(--mu); max-width:34rem"><span style="color:var(--ink2)">Voller Funktionsumfang in jedem Tarif</span> — unbegrenzte Benutzer, API, Zahlungen und Berichte inklusive. Ohne Provision, ohne Kleingedrucktes.</p>
         </div>
 
         <div class="mt-16 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
@@ -486,10 +546,10 @@ details.faq[open] .fi{ transform:rotate(45deg); }
                     @endif
                 </div>
             @empty
-                <p class="col-span-full text-center" style="color:var(--mu)">Preise auf Anfrage — <a href="{{ route('contact') }}" class="font-semibold" style="color:var(--ac)">kontaktieren Sie uns</a>.</p>
+                <p class="col-span-full text-center" style="color:var(--mu)">Preise auf Anfrage — <a href="{{ route('contact') }}" class="font-semibold" style="color:var(--ac)">schreib uns</a>.</p>
             @endforelse
         </div>
-        <p class="mx-auto mt-8 max-w-xl text-center text-sm" style="color:var(--mu2)">Mehr Tische oder Standorte nötig? Jederzeit upgraden — Sie zahlen nur, wenn Ihr Betrieb wächst.</p>
+        <p class="mx-auto mt-8 max-w-xl text-center text-sm" style="color:var(--mu2)">Mehr Tische oder Standorte nötig? Upgrade jederzeit — du zahlst nur, wenn dein Betrieb wächst.</p>
     </div>
 </section>
 
@@ -503,13 +563,13 @@ details.faq[open] .fi{ transform:rotate(45deg); }
         </div>
         <div class="mt-12 space-y-2.5">
             @foreach([
-                ['Für wen ist Swayy geeignet?','Für Restaurants, Cafés und Bars (tischbasiert) ebenso wie für Friseure und Dienstleister (terminbasiert pro Mitarbeiter und Leistung). Der Betriebstyp lässt sich pro Konto umstellen.'],
-                ['Brauche ich eine eigene Website?','Nein. Sie erhalten einen Buchungslink für Social und Maps. Wer eine Website hat, bettet das Widget mit zwei Zeilen Code ein.'],
-                ['Welche Zahlungsmöglichkeiten gibt es?','Gängige Zahlungsarten sind direkt integriert. Kreditkartendaten werden nie bei uns gespeichert — die Abwicklung erfolgt sicher beim Zahlungsdienstleister.'],
-                ['Was passiert nach dem Testzeitraum?','Sie wählen einen Tarif — oder nicht. Es gibt keine automatische Abbuchung, da im Test keine Zahlungsdaten erhoben werden.'],
-                ['Ist Swayy DSGVO-konform?','Ja. EU-Hosting, Einwilligungsverwaltung, Datenexport und Anonymisierung pro Gast sind eingebaut, IP-Adressen werden minimiert. Selbst die Schriften sind lokal eingebunden, ganz ohne externe CDN.'],
-                ['Kann ich mehrere Standorte verwalten?','Ja, ab dem Multi-Location-Tarif beliebig viele Standorte unter einem Konto — mit getrennten Plänen, Berichten und Teams.'],
-                ['Kann ich das Erscheinungsbild anpassen?','Vollständig. Eigenes Logo, Farben, Schriften und Rechtstexte lassen sich direkt im Admin-Bereich hinterlegen und sind sofort aktiv. Das Widget passt sich Ihrem Corporate Design an.'],
+                ['Für wen ist Swayy geeignet?','Für Restaurants, Cafés und Bars (tischbasiert) genauso wie für Friseure und Dienstleister (terminbasiert pro Mitarbeiter und Leistung). Den Betriebstyp stellst du pro Konto einfach um.'],
+                ['Brauche ich eine eigene Website?','Nein. Du bekommst einen Buchungslink für Social und Google Maps. Wenn du eine Website hast, bettest du das Widget mit zwei Zeilen Code ein.'],
+                ['Welche Zahlungsmöglichkeiten gibt es?','Gängige Zahlungsarten sind direkt integriert. Kreditkartendaten landen nie bei uns — die Abwicklung läuft sicher über den Zahlungsdienstleister.'],
+                ['Was passiert nach dem Testzeitraum?','Du entscheidest dich für einen Tarif — oder eben nicht. Abgebucht wird nichts, denn im Test fragen wir gar keine Zahlungsdaten ab.'],
+                ['Ist Swayy DSGVO-konform?','Ja. EU-Hosting, Einwilligungsverwaltung, Datenexport und Anonymisierung pro Gast sind eingebaut, IP-Adressen werden minimiert. Sogar die Schriften laden lokal — ganz ohne externes CDN.'],
+                ['Kann ich mehrere Standorte verwalten?','Ja, ab dem Multi-Location-Tarif verwaltest du beliebig viele Standorte unter einem Konto — mit getrennten Plänen, Berichten und Teams.'],
+                ['Kann ich das Erscheinungsbild anpassen?','Komplett. Logo, Farben und Rechtstexte hinterlegst du direkt im Admin-Bereich — sofort aktiv. Das Widget passt sich deinem Look an, und sogar die Anrede (du oder Sie) wählst du passend zu deinem Betrieb.'],
             ] as [$q,$a])
                 <details class="faq rv surf">
                     <summary class="flex items-center justify-between gap-4 px-6 py-5">
@@ -532,8 +592,8 @@ details.faq[open] .fi{ transform:rotate(45deg); }
             <div class="pointer-events-none absolute inset-x-0 -top-32 mx-auto h-64 w-[40rem] rounded-full" style="background:radial-gradient(circle,rgba(94,234,212,.35),transparent 60%)"></div>
             <div class="relative z-10 mx-auto max-w-2xl text-white">
                 <p class="eyebrow" style="color:rgba(204,251,241,.75)">Jetzt starten</p>
-                <h2 class="display mt-4 text-white" style="font-size:clamp(2.1rem,4.5vw,3.4rem)">Bereit für volle Auslastung,<br><span class="serif-i">ohne Telefonchaos?</span></h2>
-                <p class="mx-auto mt-5 text-lg leading-relaxed" style="color:rgba(240,253,250,.82); max-width:30rem">In wenigen Minuten eingerichtet. 30 Tage kostenlos — ohne Risiko, ohne Kreditkarte.</p>
+                <h2 class="display mt-4 text-white" style="font-size:clamp(2.1rem,4.5vw,3.4rem)">Bereit für volle Tische —<br><span class="serif-i">ohne Telefonchaos?</span></h2>
+                <p class="mx-auto mt-5 text-lg leading-relaxed" style="color:rgba(240,253,250,.82); max-width:30rem">In ein paar Minuten eingerichtet. 30 Tage kostenlos — ohne Risiko, ohne Kreditkarte. Dein nächster Freitagabend kann kommen.</p>
                 <a href="{{ route('register') }}" class="group mt-9 inline-flex items-center gap-2.5 rounded-full bg-white px-9 py-4 text-base font-semibold transition hover:-translate-y-1" style="color:var(--ac); box-shadow:0 20px 50px -16px rgba(0,0,0,.4)">
                     Jetzt kostenlos starten
                     <svg class="h-5 w-5 transition-transform group-hover:translate-x-1" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -555,6 +615,89 @@ details.faq[open] .fi{ transform:rotate(45deg); }
         es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('on'); io.unobserve(e.target); } });
     },{ threshold:.12, rootMargin:'0px 0px -8% 0px' });
     document.querySelectorAll('.rv').forEach(el=>io.observe(el));
+
+    /* ── Interactive booking demo (front-end only, nothing is stored) ── */
+    (function(){
+        const card = document.getElementById('demoCard');
+        if(!card) return;
+        const steps = [document.getElementById('dStep1'), document.getElementById('dStep2'), document.getElementById('dStep3')];
+        const state = { date: null, time: null, pax: 2, name: '' };
+
+        const paxEl = document.getElementById('dPax');
+        const nextBtn = document.getElementById('dNext');
+
+        // Date pills — first one preselected
+        const pills = [...card.querySelectorAll('.dpill')];
+        state.date = pills[0]?.dataset.demoDate || '';
+        pills.forEach(p => p.addEventListener('click', () => {
+            pills.forEach(x => x.classList.remove('on'));
+            p.classList.add('on');
+            state.date = p.dataset.demoDate;
+        }));
+
+        // Party size 1–8
+        document.getElementById('dPaxMinus').addEventListener('click', () => {
+            state.pax = Math.max(1, state.pax - 1); paxEl.textContent = state.pax;
+        });
+        document.getElementById('dPaxPlus').addEventListener('click', () => {
+            state.pax = Math.min(8, state.pax + 1); paxEl.textContent = state.pax;
+        });
+
+        // Time slots
+        const slots = [...card.querySelectorAll('.dslot')];
+        slots.forEach(s => s.addEventListener('click', () => {
+            if (s.disabled) return;
+            slots.forEach(x => x.classList.remove('on'));
+            s.classList.add('on');
+            state.time = s.dataset.demoTime;
+            nextBtn.disabled = false;
+        }));
+
+        function show(i){
+            steps.forEach((el, idx) => el.classList.toggle('hidden', idx !== i));
+        }
+
+        nextBtn.addEventListener('click', () => {
+            document.getElementById('dSummary').textContent =
+                `${state.date} · ${state.time} Uhr · ${state.pax} ${state.pax === 1 ? 'Person' : 'Personen'}`;
+            show(1);
+            document.getElementById('dName').focus();
+        });
+
+        document.getElementById('dBack').addEventListener('click', () => show(0));
+
+        function confirmDemo(){
+            state.name = document.getElementById('dName').value.trim() || 'Alex';
+            const first = state.name.split(' ')[0];
+            document.getElementById('dDoneName').textContent = first;
+            document.getElementById('dDoneSummary').textContent =
+                `${state.date} · ${state.time} Uhr · ${state.pax} ${state.pax === 1 ? 'Person' : 'Personen'}`;
+            document.getElementById('dDoneCode').textContent =
+                'DEMO-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+            // The floating admin notification reacts — "so sieht das bei dir aus"
+            document.getElementById('dNotifLine').textContent =
+                `${first} · ${state.time} · ${state.pax} P.`;
+            show(2);
+            // retrigger the check pop
+            const check = steps[2].querySelector('.checkpop');
+            check.classList.remove('checkpop'); void check.offsetWidth; check.classList.add('checkpop');
+        }
+        document.getElementById('dConfirm').addEventListener('click', confirmDemo);
+        document.getElementById('dName').addEventListener('keydown', e => { if (e.key === 'Enter') confirmDemo(); });
+
+        document.getElementById('dReset').addEventListener('click', () => {
+            state.time = null; nextBtn.disabled = true;
+            slots.forEach(x => x.classList.remove('on'));
+            document.getElementById('dName').value = '';
+            show(0);
+        });
+
+        // "Erst mal ausprobieren" flashes the card so the eye lands on it
+        const jump = document.getElementById('demoJump');
+        if (jump) jump.addEventListener('click', () => {
+            card.classList.remove('flash'); void card.offsetWidth; card.classList.add('flash');
+        });
+    })();
 
     /* Parallax — always-on rAF engine, relative to viewport centre.
        Visible on every browser, buttery via translate3d. */

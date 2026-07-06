@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.70.0] – 2026-07-06
+
+### Neu: Startseite mit spielbarer Buchungs-Demo & wärmerer Tonalität
+- **Interaktive Demo im Hero**: Die statische Buchungs-Attrappe ist jetzt eine
+  echte, durchspielbare Mini-Buchung (Datum → Personen → Uhrzeit → Name →
+  Bestätigung mit Demo-Code) — komplett im Browser, es wird nichts gespeichert.
+  Die schwebende „Neue Buchung"-Karte reagiert live auf die Demo-Eingaben,
+  Datumsangaben sind dynamisch (nächste 4 Tage). Angelehnt an den echten
+  Buchungsflow inkl. „sitzt seit"-Status im Live-Board-Mock.
+- **Neue Tonalität**: Komplette Marketing-Copy auf warmes, direktes Du mit
+  Alltagsszenen („Freitagabend, volles Haus — und das Telefon? Bleibt still.",
+  „Es ist 19:40, die Küche ruft…", „Der Sechser-Tisch, der samstags nicht
+  auftaucht") statt Feature-Prosa. Hero: „Deine Gäste buchen. Du bist einfach
+  Gastgeber."
+- Zweiter Hero-CTA „Erst mal ausprobieren" springt zur Demo und lässt sie kurz
+  aufleuchten. Feature-Grid um „Du oder Sie — deine Gäste, dein Ton" ergänzt.
+- Typografie unverändert: Fraunces Variable bleibt Logo- und Akzentschrift.
+
 ## [1.69.1] – 2026-07-06
 
 ### Behoben: Tag löschen warf einen Serverfehler (500)
