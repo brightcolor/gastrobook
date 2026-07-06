@@ -105,6 +105,18 @@
 .dslot:hover:not(:disabled){ border-color:var(--ac); background:var(--acl); }
 .dslot.on{ border-color:var(--ac); background:var(--ac); color:#fff; }
 .dslot:disabled{ opacity:.4; cursor:not-allowed; text-decoration:line-through; }
+.dtable{
+    position:absolute; display:flex; align-items:center; justify-content:center;
+    font-size:10px; font-weight:800; cursor:pointer; user-select:none;
+    border:2px solid #34d399; background:#d1fae5; color:#065f46;
+    transition:background .15s, border-color .15s, color .15s, transform .1s;
+}
+.dtable:hover{ transform:scale(1.06); }
+.dtable.busy{
+    border-color:#d6d3d1; background:#e7e5e4; color:#a8a29e;
+    cursor:not-allowed; transform:none;
+}
+.dtable.on{ border-color:var(--ac); background:var(--ac); color:#fff; }
 .demo-sticker{
     font-family:var(--font-display,'Fraunces Variable',serif); font-style:italic;
     transform:rotate(-2deg);
@@ -254,6 +266,19 @@ details.faq[open] .fi{ transform:rotate(45deg); }
                                         @endforeach
                                     </div>
                                 </div>
+                            </div>
+
+                            {{-- Tischplan (eigener Block wie auf der echten Seite, optional) --}}
+                            <div id="dPlanWrap" class="hidden px-4 pb-4 pt-3">
+                                <div class="mb-2 flex items-center justify-between">
+                                    <span class="text-[11.5px] font-semibold" style="color:var(--ink)">Tisch wählen <span class="font-normal" style="color:var(--mu2)">(optional)</span></span>
+                                    <span class="flex gap-2.5 text-[9.5px]" style="color:var(--mu2)">
+                                        <span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-sm" style="background:#34d399"></span>frei</span>
+                                        <span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-sm" style="background:#d6d3d1"></span>belegt</span>
+                                    </span>
+                                </div>
+                                <div id="dPlan" class="relative w-full overflow-hidden rounded-xl" style="height:130px; border:2px solid #f5f5f4; background:#fafaf9"></div>
+                                <p id="dPlanHint" class="mt-1.5 text-[10px]" style="color:var(--mu2)">Tippe auf einen freien Tisch — oder leer lassen für automatische Zuteilung.</p>
                             </div>
 
                             {{-- Step 3: Deine Angaben --}}
@@ -662,11 +687,67 @@ details.faq[open] .fi{ transform:rotate(45deg); }
         const card = document.getElementById('demoCard');
         if(!card) return;
         const steps = { 1: document.getElementById('dStep1'), 2: document.getElementById('dStep2'), 3: document.getElementById('dStep3') };
-        const state = { pax: null, time: null };
+        const state = { pax: null, time: null, table: null };
         const dateInput = document.getElementById('dDate');
         const slots = [...card.querySelectorAll('.dslot')];
 
         function setState(n, s){ steps[n].dataset.state = s; }
+
+        /* Mini floor plan — like the real public floor plan. 1–2 tables are
+           always occupied for the chosen slot (rotates per time), tables too
+           small for the party are unavailable too. */
+        const tables = [
+            { id: 'T1', cap: 2, shape: 'round', x: 6,  y: 10, w: 34, h: 34 },
+            { id: 'T2', cap: 4, shape: 'rect',  x: 32, y: 8,  w: 54, h: 36 },
+            { id: 'T3', cap: 4, shape: 'rect',  x: 65, y: 8,  w: 54, h: 36 },
+            { id: 'T4', cap: 2, shape: 'round', x: 7,  y: 58, w: 34, h: 34 },
+            { id: 'T5', cap: 6, shape: 'rect',  x: 30, y: 55, w: 62, h: 40 },
+            { id: 'T6', cap: 8, shape: 'rect',  x: 60, y: 53, w: 76, h: 44 },
+        ];
+        const busyBySlot = {
+            '17:30': ['T2', 'T4'],
+            '18:00': ['T1'],
+            '18:30': ['T3', 'T1'],
+            '19:30': ['T2'],
+            '20:00': ['T4', 'T3'],
+        };
+        const planWrap = document.getElementById('dPlanWrap');
+        const plan = document.getElementById('dPlan');
+        const planHint = document.getElementById('dPlanHint');
+
+        function renderPlan(){
+            plan.innerHTML = '';
+            state.table = null;
+            planHint.textContent = 'Tippe auf einen freien Tisch — oder leer lassen für automatische Zuteilung.';
+            const busy = busyBySlot[state.time] || ['T2'];
+            tables.forEach(t => {
+                const el = document.createElement('button');
+                el.type = 'button';
+                el.className = 'dtable' + (t.shape === 'round' ? '' : '');
+                el.style.cssText = `left:${t.x}%;top:${t.y}%;width:${t.w}px;height:${t.h}px;border-radius:${t.shape === 'round' ? '9999px' : '8px'}`;
+                el.textContent = t.id;
+                const isBusy = busy.includes(t.id) || t.cap < (state.pax || 1);
+                if (isBusy) {
+                    el.classList.add('busy');
+                    el.title = busy.includes(t.id) ? 'Belegt' : 'Zu klein für ' + state.pax + ' Personen';
+                } else {
+                    el.title = t.id + ' · bis ' + t.cap + ' Personen';
+                    el.addEventListener('click', () => {
+                        const wasOn = el.classList.contains('on');
+                        plan.querySelectorAll('.dtable').forEach(x => x.classList.remove('on'));
+                        if (wasOn) {
+                            state.table = null;
+                            planHint.textContent = 'Tippe auf einen freien Tisch — oder leer lassen für automatische Zuteilung.';
+                        } else {
+                            el.classList.add('on');
+                            state.table = t.id;
+                            planHint.textContent = 'Tisch ' + t.id + ' ausgewählt — gute Wahl! Nochmal tippen zum Abwählen.';
+                        }
+                    });
+                }
+                plan.appendChild(el);
+            });
+        }
 
         function fmtDate(){
             const [y, m, d] = (dateInput.value || '').split('-').map(Number);
@@ -684,8 +765,9 @@ details.faq[open] .fi{ transform:rotate(45deg); }
 
         // Step 2: date change clears a chosen slot (real page reloads slots)
         dateInput.addEventListener('change', () => {
-            state.time = null;
+            state.time = null; state.table = null;
             slots.forEach(x => x.classList.remove('on'));
+            planWrap.classList.add('hidden');
             if (steps[2].dataset.state === 'done') { setState(2, 'active'); setState(3, 'locked'); }
         });
 
@@ -696,6 +778,9 @@ details.faq[open] .fi{ transform:rotate(45deg); }
             state.time = s.dataset.demoTime;
             document.getElementById('dSum2').textContent = fmtDate() + ' · ' + state.time + ' Uhr';
             setState(2, 'done');
+            // Floor plan appears once the slot is known (occupancy depends on it)
+            planWrap.classList.remove('hidden');
+            renderPlan();
             setState(3, 'active');
             document.getElementById('dName').focus();
         }));
@@ -705,7 +790,9 @@ details.faq[open] .fi{ transform:rotate(45deg); }
             const n = parseInt(btn.dataset.demoEdit, 10);
             setState(n, 'active');
             for (let i = n + 1; i <= 3; i++) setState(i, 'locked');
-            if (n === 1) { state.time = null; slots.forEach(x => x.classList.remove('on')); }
+            state.time = null; state.table = null;
+            slots.forEach(x => x.classList.remove('on'));
+            planWrap.classList.add('hidden');
         }));
 
         function confirmDemo(){
@@ -717,13 +804,15 @@ details.faq[open] .fi{ transform:rotate(45deg); }
             }
             const name = document.getElementById('dName').value.trim() || 'Alex';
             const first = name.split(' ')[0];
-            const summary = `${fmtDate()} · ${state.time} Uhr · ${state.pax} ${state.pax === 1 ? 'Person' : 'Personen'}`;
+            const tableTxt = state.table ? ' · Tisch ' + state.table : '';
+            const summary = `${fmtDate()} · ${state.time} Uhr · ${state.pax} ${state.pax === 1 ? 'Person' : 'Personen'}${tableTxt}`;
             document.getElementById('dDoneName').textContent = first;
             document.getElementById('dDoneSummary').textContent = summary;
             document.getElementById('dDoneCode').textContent =
                 'DEMO-' + Math.random().toString(36).slice(2, 6).toUpperCase();
             // The floating admin notification reacts — "so sieht das bei dir aus"
-            document.getElementById('dNotifLine').textContent = `${first} · ${state.time} · ${state.pax} P.`;
+            document.getElementById('dNotifLine').textContent =
+                `${first} · ${state.time} · ${state.pax} P.${state.table ? ' · ' + state.table : ''}`;
             document.getElementById('dFlow').classList.add('hidden');
             const done = document.getElementById('dDone');
             done.classList.remove('hidden');
@@ -734,8 +823,9 @@ details.faq[open] .fi{ transform:rotate(45deg); }
         document.getElementById('dName').addEventListener('keydown', e => { if (e.key === 'Enter') confirmDemo(); });
 
         document.getElementById('dReset').addEventListener('click', () => {
-            state.pax = null; state.time = null;
+            state.pax = null; state.time = null; state.table = null;
             slots.forEach(x => x.classList.remove('on'));
+            planWrap.classList.add('hidden');
             document.getElementById('dName').value = '';
             document.getElementById('dPrivacy').checked = false;
             setState(1, 'active'); setState(2, 'locked'); setState(3, 'locked');

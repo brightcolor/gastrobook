@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.71.0] – 2026-07-06
+
+### Neu: Tischwahl in der Startseiten-Demo
+- Nach der Uhrzeitwahl erscheint — wie auf der echten Buchungsseite — ein
+  Mini-Tischplan „Tisch wählen (optional)" mit frei/belegt-Legende.
+- **1–2 Tische sind pro gewähltem Slot immer belegt** (wechseln je nach
+  Uhrzeit); Tische, die für die Personenzahl zu klein sind, sind ebenfalls
+  nicht wählbar (mit erklärendem Tooltip).
+- Gewählter Tisch färbt sich in der Markenfarbe, erneutes Tippen wählt ab.
+  Der Tisch erscheint in der Bestätigung („… · Tisch T6") und in der live
+  reagierenden „Neue Buchung"-Karte. Slot- oder Datumswechsel setzt die
+  Tischwahl zurück. Weiterhin rein clientseitig.
+
 ## [1.70.2] – 2026-07-06
 
 ### Geändert: Schwebende „Anzahlung erhalten"-Karte im Hero entfernt
