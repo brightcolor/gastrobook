@@ -126,6 +126,19 @@
 @keyframes checkpop{ 0%{transform:scale(.4);opacity:0} 70%{transform:scale(1.12)} 100%{transform:scale(1);opacity:1} }
 .checkpop{ animation:checkpop .45s cubic-bezier(.16,1,.3,1) both; }
 
+/* ── Confetti burst on demo confirmation ────────────────────────── */
+.confetti-piece{
+    position:absolute; top:-12px; left:50%; width:8px; height:8px;
+    opacity:0; animation:confetti-fall linear forwards;
+}
+@keyframes confetti-fall{
+    0%{ opacity:1; transform:translate(var(--cx,0),0) rotate(0deg); }
+    100%{ opacity:0; transform:translate(var(--cx,0),210px) rotate(var(--cr,540deg)); }
+}
+@media (prefers-reduced-motion:reduce){
+    .confetti-piece{ display:none; }
+}
+
 /* ── Slot / date pills (static mocks) ──────────────────────────── */
 .slot{ border:1.5px solid var(--line); border-radius:11px; padding:7px 0; text-align:center; font-size:12px; font-weight:600; color:var(--mu); background:#fff; }
 .slot.on{ border-color:var(--ac); background:var(--acl); color:var(--ac); }
@@ -210,7 +223,8 @@ details.faq[open] .fi{ transform:rotate(45deg); }
 
             <div class="relative z-10 mx-auto max-w-[22rem]">
                 <p class="demo-sticker mb-3 text-center text-[15px]" style="color:var(--ac)">Klick dich durch — es passiert nichts, versprochen ✌️</p>
-                <div id="demoCard" class="surf ring-soft overflow-hidden" style="border-radius:24px">
+                <div id="demoCard" class="surf ring-soft overflow-hidden" style="border-radius:24px; position:relative">
+                    <div id="confettiLayer" class="pointer-events-none absolute inset-0 z-20 overflow-hidden" style="border-radius:24px"></div>
                     <div class="flex items-center gap-2 border-b px-4 py-2.5" style="border-color:var(--line2); background:#fcfbf9">
                         <span class="flex gap-1.5">
                             <span class="h-2.5 w-2.5 rounded-full" style="background:var(--line)"></span>
@@ -818,6 +832,32 @@ details.faq[open] .fi{ transform:rotate(45deg); }
             done.classList.remove('hidden');
             const check = done.querySelector('.checkpop');
             check.classList.remove('checkpop'); void check.offsetWidth; check.classList.add('checkpop');
+            fireConfetti();
+        }
+
+        // Small, dependency-free confetti burst inside the demo card.
+        function fireConfetti(){
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            const layer = document.getElementById('confettiLayer');
+            const colors = ['#0f766e', '#5eead4', '#fde68a', '#f59e0b', '#a7f3d0', '#134e4a'];
+            for (let i = 0; i < 34; i++) {
+                const p = document.createElement('span');
+                p.className = 'confetti-piece';
+                const startX = 45 + Math.random() * 10; // near the checkmark, centre-ish
+                const drift = (Math.random() - 0.5) * 220;
+                const size = 5 + Math.random() * 5;
+                p.style.left = startX + '%';
+                p.style.width = size + 'px';
+                p.style.height = size * (Math.random() < 0.5 ? 1 : 2.2) + 'px';
+                p.style.background = colors[i % colors.length];
+                p.style.borderRadius = Math.random() < 0.5 ? '50%' : '2px';
+                p.style.setProperty('--cx', drift + 'px');
+                p.style.setProperty('--cr', (Math.random() < 0.5 ? -1 : 1) * (360 + Math.random() * 360) + 'deg');
+                p.style.animationDuration = (0.9 + Math.random() * 0.7) + 's';
+                p.style.animationDelay = (Math.random() * 0.15) + 's';
+                layer.appendChild(p);
+                setTimeout(() => p.remove(), 2000);
+            }
         }
         document.getElementById('dConfirm').addEventListener('click', confirmDemo);
         document.getElementById('dName').addEventListener('keydown', e => { if (e.key === 'Enter') confirmDemo(); });
@@ -828,6 +868,7 @@ details.faq[open] .fi{ transform:rotate(45deg); }
             planWrap.classList.add('hidden');
             document.getElementById('dName').value = '';
             document.getElementById('dPrivacy').checked = false;
+            document.getElementById('confettiLayer').innerHTML = '';
             setState(1, 'active'); setState(2, 'locked'); setState(3, 'locked');
             document.getElementById('dDone').classList.add('hidden');
             document.getElementById('dFlow').classList.remove('hidden');

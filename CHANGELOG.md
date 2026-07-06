@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.71.1] – 2026-07-06
+
+### Neu: Konfetti bei der Bestätigung der Startseiten-Demo
+- Beim erfolgreichen Abschluss der spielbaren Demo-Buchung platzt ein
+  kleiner, markenfarbener Konfetti-Schwall über der Karte (leichtgewichtig,
+  ohne Abhängigkeit, räumt sich nach ~2s selbst auf). Respektiert
+  `prefers-reduced-motion`. „Nochmal ausprobieren" setzt auch das
+  Konfetti-Layer zurück.
+
 ## [1.71.0] – 2026-07-06
 
 ### Neu: Tischwahl in der Startseiten-Demo
