@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.80.1] – 2026-07-06
+
+### Intern: Admin-Routen-Smoke-Test
+- Neuer Test hittet automatisch **jede** parameterfreie `admin.*`-GET-Route mit
+  einem Voll-Rechte-Owner und stellt sicher, dass keine einen Serverfehler
+  (500) wirft. Neue Routen werden automatisch mitgeprüft. Fängt Render-/
+  Controller-Regressionen (wie den Tag-Delete-500) sofort. SSE-Stream und
+  externe SEPA-Redirects sind ausgenommen.
+
 ## [1.80.0] – 2026-07-06
 
 ### Verbessert: Änderungsprotokoll in Klartext (für Gastro-Teams statt Techniker)
