@@ -375,6 +375,60 @@ class ReservationBookController extends Controller
     }
 
     /**
+     * Bulk status change from the reservation book: applies the transition to
+     * every selected reservation, silently skipping the ones where it is not
+     * allowed (wrong current status) and reporting a summary.
+     */
+    public function bulkTransition(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:100'],
+            'ids.*' => ['integer'],
+            'status' => ['required', Rule::in(['confirmed', 'cancelled_by_restaurant', 'no_show', 'completed'])],
+        ]);
+
+        $target = ReservationStatus::from($validated['status']);
+
+        $permissionMap = [
+            ReservationStatus::Confirmed->value => 'reservations.update',
+            ReservationStatus::CancelledByRestaurant->value => 'reservations.cancel',
+            ReservationStatus::NoShow->value => 'reservations.no_show',
+            ReservationStatus::Completed->value => 'reservations.depart',
+        ];
+        if (! $request->user()->canInTenant($permissionMap[$target->value], $this->context->tenant(), $this->context->location())) {
+            abort(403);
+        }
+
+        $reservations = Reservation::whereIn('id', $validated['ids'])->get();
+
+        $done = 0;
+        $skipped = 0;
+        foreach ($reservations as $reservation) {
+            $this->authorizeReservation($reservation);
+
+            if (! $reservation->status->canTransitionTo($target)) {
+                $skipped++;
+
+                continue;
+            }
+
+            $this->lifecycle->transition($reservation, $target, $request->user(), 'user', 'Sammelaktion');
+
+            if ($target === ReservationStatus::CancelledByRestaurant) {
+                $this->refunds->requestForReservation($reservation->fresh(), 'staff', $request->user());
+            }
+            $done++;
+        }
+
+        $msg = trans_choice('{1}:count Reservierung geändert.|[2,*]:count Reservierungen geändert.', $done, ['count' => $done]);
+        if ($skipped > 0) {
+            $msg .= ' '.trans_choice('{1}:count übersprungen (Statuswechsel nicht erlaubt).|[2,*]:count übersprungen (Statuswechsel nicht erlaubt).', $skipped, ['count' => $skipped]);
+        }
+
+        return back()->with('success', $msg);
+    }
+
+    /**
      * Adjust the party size of an existing reservation – e.g. a seated walk-in
      * grows when more guests join. Capped at the assigned table's seats
      * (incl. squeeze seats); beyond that a bigger/extra table is required.

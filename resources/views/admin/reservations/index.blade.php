@@ -136,10 +136,31 @@
     </div>
 </form>
 
+{{-- Bulk action bar: appears when rows are selected. The checkboxes live in
+     the table but belong to this form via the HTML form attribute (row action
+     forms would otherwise nest). --}}
+<form id="bulkForm" method="POST" action="{{ route('admin.reservations.bulk-transition') }}"
+      data-confirm="Die Aktion wird auf alle ausgewählten Reservierungen angewendet. Nicht erlaubte Statuswechsel werden übersprungen."
+      data-confirm-title="Sammelaktion ausführen?" data-confirm-ok="Ausführen">
+    @csrf
+    <div id="bulkBar" class="mb-4 hidden items-center gap-3 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm">
+        <span class="font-semibold text-teal-900"><span id="bulkCount">0</span> ausgewählt</span>
+        <select name="status" class="rounded-lg border-teal-200 text-sm">
+            <option value="confirmed">Bestätigen</option>
+            <option value="no_show">No-Show</option>
+            <option value="completed">Auschecken</option>
+            <option value="cancelled_by_restaurant">Stornieren (Restaurant)</option>
+        </select>
+        <button class="rounded-lg bg-stone-900 px-4 py-1.5 text-xs font-bold text-white">Anwenden</button>
+        <button type="button" id="bulkClear" class="text-xs font-semibold text-teal-700 hover:underline">Auswahl aufheben</button>
+    </div>
+</form>
+
 <div class="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-stone-100">
     <table class="w-full min-w-[42rem] text-sm">
         <thead class="border-b border-stone-100 text-left text-xs font-semibold uppercase tracking-wide text-stone-500">
             <tr>
+                <th class="w-8 px-3 py-3"><input type="checkbox" id="bulkAll" aria-label="Alle auswählen" class="rounded"></th>
                 <th class="px-4 py-3">Zeit</th>
                 <th class="px-4 py-3">Gast</th>
                 <th class="px-4 py-3">P.</th>
@@ -152,6 +173,7 @@
         <tbody class="divide-y divide-stone-50 [&>tr:hover]:bg-stone-50/70">
             @forelse($reservations as $r)
                 <tr class="hover:bg-stone-50">
+                    <td class="px-3 py-3"><input type="checkbox" form="bulkForm" name="ids[]" value="{{ $r->id }}" class="bulk-check rounded" aria-label="{{ $r->guest_name_snapshot }} auswählen"></td>
                     <td class="px-4 py-3 font-semibold">{{ $r->localStart()->format('H:i') }}<span class="font-normal text-stone-400">–{{ $r->localEnd()->format('H:i') }}</span></td>
                     <td class="px-4 py-3">
                         <a href="{{ route('admin.reservations.show', $r) }}" class="font-semibold hover:underline">{{ $r->guest_name_snapshot }}</a>
@@ -195,10 +217,33 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="7" class="px-4 py-8 text-center text-stone-500">Keine Reservierungen gefunden.</td></tr>
+                <tr><td colspan="8" class="px-4 py-8 text-center text-stone-500">Keine Reservierungen gefunden.</td></tr>
             @endforelse
         </tbody>
     </table>
 </div>
 <div class="mt-4">{{ $reservations->links() }}</div>
+
+<script>
+(function () {
+    const bar = document.getElementById('bulkBar');
+    const count = document.getElementById('bulkCount');
+    const all = document.getElementById('bulkAll');
+    const boxes = () => [...document.querySelectorAll('.bulk-check')];
+    if (!bar || !all) return;
+
+    function sync() {
+        const checked = boxes().filter(b => b.checked).length;
+        count.textContent = checked;
+        bar.classList.toggle('hidden', checked === 0);
+        bar.classList.toggle('flex', checked > 0);
+        all.checked = checked > 0 && checked === boxes().length;
+        all.indeterminate = checked > 0 && checked < boxes().length;
+    }
+
+    all.addEventListener('change', () => { boxes().forEach(b => b.checked = all.checked); sync(); });
+    boxes().forEach(b => b.addEventListener('change', sync));
+    document.getElementById('bulkClear').addEventListener('click', () => { boxes().forEach(b => b.checked = false); sync(); });
+})();
+</script>
 @endsection

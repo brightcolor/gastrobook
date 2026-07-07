@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.78.0] – 2026-07-06
+
+### Neu: Sammelaktionen im Reservierungsbuch
+- Checkbox-Spalte mit „Alle auswählen"; bei Auswahl erscheint eine Aktionsleiste:
+  **Bestätigen · No-Show · Auschecken · Stornieren (Restaurant)** für alle
+  markierten Reservierungen auf einmal (mit Bestätigungsdialog).
+- Nicht erlaubte Statuswechsel werden übersprungen und in der Erfolgsmeldung
+  ausgewiesen („3 geändert, 1 übersprungen"). Stornos stoßen wie gewohnt die
+  Anzahlungs-Erstattung an; Berechtigungen gelten je Aktion.
+- Check-in bleibt bewusst Einzelaktion (Check-in-Zeit-Dialog). 3 Tests.
+
 ## [1.77.0] – 2026-07-06
 
 ### Verbessert: Audit-Log zeigt lesbare Änderungen (wer · wann · was · von · auf)

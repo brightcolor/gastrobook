@@ -189,6 +189,8 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
             ->middleware('permission:reservations.create')->name('reservations.create');
         Route::get('/reservations/floorplan-availability', [ReservationBookController::class, 'floorplanAvailability'])
             ->middleware('permission:reservations.create')->name('reservations.floorplan-availability');
+        Route::post('/reservations/bulk-transition', [ReservationBookController::class, 'bulkTransition'])
+            ->name('reservations.bulk-transition');
         Route::post('/reservations', [ReservationBookController::class, 'store'])
             ->middleware('permission:reservations.create')->name('reservations.store');
         Route::get('/reservations/{reservation}', [ReservationBookController::class, 'show'])->name('reservations.show');
