@@ -37,8 +37,53 @@
                     </td>
                     <td class="px-4 py-2.5 font-mono text-xs">{{ $log->action }}</td>
                     <td class="px-4 py-2.5 text-stone-500">{{ class_basename($log->entity_type ?? '') }} {{ $log->entity_id ? '#' . $log->entity_id : '' }}</td>
-                    <td class="max-w-md truncate px-4 py-2.5 font-mono text-xs text-stone-400">
-                        {{ $log->new_values ? json_encode($log->new_values, JSON_UNESCAPED_UNICODE) : '' }}
+                    <td class="max-w-md px-4 py-2.5 text-xs">
+                        @php($changes = $log->fieldChanges())
+                        @if(empty($changes))
+                            <span class="text-stone-300">—</span>
+                        @else
+                            @php($visible = array_slice($changes, 0, 3))
+                            @php($rest = array_slice($changes, 3))
+                            <ul class="space-y-0.5">
+                                @foreach($visible as $c)
+                                    <li class="flex flex-wrap items-baseline gap-x-1.5">
+                                        <span class="font-mono text-[11px] text-stone-400">{{ $c['field'] }}:</span>
+                                        @if($c['from'] !== null && $c['to'] !== null)
+                                            <span class="text-stone-400 line-through decoration-stone-300">{{ $c['from'] }}</span>
+                                            <span class="text-stone-300">→</span>
+                                            <span class="font-semibold text-stone-700">{{ $c['to'] }}</span>
+                                        @elseif($c['to'] !== null)
+                                            <span class="font-semibold text-emerald-700">{{ $c['to'] }}</span>
+                                        @else
+                                            <span class="text-stone-400 line-through decoration-stone-300">{{ $c['from'] }}</span>
+                                            <span class="text-[10px] font-semibold uppercase text-red-400">entfernt</span>
+                                        @endif
+                                    </li>
+                                @endforeach
+                            </ul>
+                            @if($rest)
+                                <details class="mt-1">
+                                    <summary class="cursor-pointer text-[11px] font-semibold text-stone-400 hover:text-stone-600">+ {{ count($rest) }} weitere</summary>
+                                    <ul class="mt-1 space-y-0.5">
+                                        @foreach($rest as $c)
+                                            <li class="flex flex-wrap items-baseline gap-x-1.5">
+                                                <span class="font-mono text-[11px] text-stone-400">{{ $c['field'] }}:</span>
+                                                @if($c['from'] !== null && $c['to'] !== null)
+                                                    <span class="text-stone-400 line-through decoration-stone-300">{{ $c['from'] }}</span>
+                                                    <span class="text-stone-300">→</span>
+                                                    <span class="font-semibold text-stone-700">{{ $c['to'] }}</span>
+                                                @elseif($c['to'] !== null)
+                                                    <span class="font-semibold text-emerald-700">{{ $c['to'] }}</span>
+                                                @else
+                                                    <span class="text-stone-400 line-through decoration-stone-300">{{ $c['from'] }}</span>
+                                                    <span class="text-[10px] font-semibold uppercase text-red-400">entfernt</span>
+                                                @endif
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                </details>
+                            @endif
+                        @endif
                     </td>
                 </tr>
             @empty

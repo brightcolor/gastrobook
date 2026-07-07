@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.77.0] – 2026-07-06
+
+### Verbessert: Audit-Log zeigt lesbare Änderungen (wer · wann · was · von · auf)
+- Die Spalte „Änderungen" zeigt statt Roh-JSON jetzt aufgelöste Diff-Zeilen
+  pro Feld: alter Wert durchgestrichen → neuer Wert fett; neu gesetzte Werte
+  grün, entfernte rot markiert. Unveränderte Felder werden ausgeblendet,
+  Booleans als ja/nein formatiert, lange Werte gekürzt.
+- Bei mehr als 3 Änderungen klappt „+ n weitere" die Restliste auf.
+- Neue Helper-Methode `AuditLog::fieldChanges()`; 2 Tests.
+
 ## [1.76.0] – 2026-07-06
 
 ### Neu: Visueller Tischplan beim internen „Reservierung anlegen"
