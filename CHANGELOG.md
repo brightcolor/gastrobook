@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.76.0] – 2026-07-06
+
+### Neu: Visueller Tischplan beim internen „Reservierung anlegen"
+- Das Personal sieht jetzt denselben grafischen Tischplan wie der Gast online:
+  Raum-Tabs, Tische mit Live-Status (frei / belegt / Größe passt nicht /
+  Raum gesperrt) für das gewählte Zeitfenster — statt des bisherigen
+  Multi-Select-Dropdowns.
+- **Mehrfachauswahl** per Klick (Gruppen über mehrere Tische), Auswahl wird
+  unten als Text angezeigt; leer lassen = automatische Zuweisung wie bisher.
+- Belegte Tische sind erst wählbar, wenn die Überbuchungs-Checkbox aktiv ist
+  (mit Hinweis). Datum/Uhrzeit/Personen/Dauer ändern lädt den Plan neu.
+- Neuer Endpoint `reservations/floorplan-availability`
+  (permission `reservations.create`), berücksichtigt Puffer, Blackouts und
+  bestehende Reservierungen. 3 neue Tests.
+
 ## [1.75.0] – 2026-07-06
 
 ### Verbessert: Startseiten-Polish — Premium-Feinschliff auf allen Ebenen

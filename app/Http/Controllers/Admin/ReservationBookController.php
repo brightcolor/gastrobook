@@ -9,8 +9,10 @@ use App\Services\AuditLogger;
 use App\Services\RefundService;
 use App\Services\ReservationAvailabilityService;
 use App\Services\ReservationLifecycleService;
+use App\Services\TableAssignmentService;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -22,6 +24,7 @@ class ReservationBookController extends Controller
         private readonly ReservationLifecycleService $lifecycle,
         private readonly ReservationAvailabilityService $availability,
         private readonly RefundService $refunds,
+        private readonly TableAssignmentService $tableAssignment,
     ) {}
 
     public function index(Request $request)
@@ -170,6 +173,83 @@ class ReservationBookController extends Controller
                 'table_id' => $request->filled('table_id') ? (int) $request->input('table_id') : null,
             ],
         ]);
+    }
+
+    /**
+     * Floor plan availability for the internal "new reservation" form —
+     * same idea as the public floor plan, but for staff: all active tables
+     * (not just online-bookable ones), occupied/unsuitable are flagged but
+     * the final say stays with the staff member.
+     */
+    public function floorplanAvailability(Request $request): JsonResponse
+    {
+        $location = $this->context->location();
+        abort_if($location === null, 404);
+
+        $validated = $request->validate([
+            'date' => ['required', 'date_format:Y-m-d'],
+            'time' => ['required', 'date_format:H:i'],
+            'party_size' => ['required', 'integer', 'min:1', 'max:100'],
+            'duration_minutes' => ['nullable', 'integer', 'min:30', 'max:600'],
+        ]);
+
+        $settings = $location->effectiveSettings();
+        $partySize = (int) $validated['party_size'];
+        $duration = (int) ($validated['duration_minutes'] ?? $settings->durationFor($partySize));
+        $buffer = (int) $settings->buffer_minutes;
+
+        $startUtc = CarbonImmutable::parse($validated['date'].' '.$validated['time'], $location->timezone)->utc();
+        $windowStart = $startUtc->subMinutes($buffer);
+        $windowEnd = $startUtc->addMinutes($duration + $buffer);
+
+        $busy = $this->tableAssignment->busyTableIds($location, $windowStart, $windowEnd, null);
+
+        $blockedRooms = $location->blackoutPeriods()
+            ->whereNotNull('room_id')
+            ->whereNull('reduce_covers_to')
+            ->where('starts_at', '<', $windowEnd)
+            ->where('ends_at', '>', $windowStart)
+            ->pluck('room_id')
+            ->all();
+
+        $rooms = $location->rooms()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->with(['tables' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order')])
+            ->get()
+            ->map(fn ($room) => [
+                'id' => $room->id,
+                'name' => $room->name,
+                'plan_width' => (int) $room->plan_width,
+                'plan_height' => (int) $room->plan_height,
+                'tables' => $room->tables->map(function ($t) use ($busy, $blockedRooms, $partySize) {
+                    $status = 'available';
+                    if (in_array($t->room_id, $blockedRooms, true)) {
+                        $status = 'blocked';
+                    } elseif (in_array($t->id, $busy, true)) {
+                        $status = 'occupied';
+                    } elseif ($partySize < $t->min_capacity || $partySize > $t->max_capacity) {
+                        $status = 'unsuitable';
+                    }
+
+                    return [
+                        'id' => $t->id,
+                        'name' => $t->name,
+                        'status' => $status,
+                        'capacity' => $t->min_capacity.'–'.$t->max_capacity,
+                        'pos_x' => (int) $t->pos_x,
+                        'pos_y' => (int) $t->pos_y,
+                        'width' => (int) ($t->width ?: 60),
+                        'height' => (int) ($t->height ?: 60),
+                        'rotation' => (int) $t->rotation,
+                        'shape' => $t->shape ?: 'rect',
+                    ];
+                })->values(),
+            ])
+            ->filter(fn ($room) => $room['tables']->isNotEmpty())
+            ->values();
+
+        return response()->json(['rooms' => $rooms]);
     }
 
     public function store(Request $request)
