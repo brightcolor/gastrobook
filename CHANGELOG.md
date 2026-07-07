@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.79.0] – 2026-07-06
+
+### Neu: Timeline-Ansicht im Reservierungsbuch (Tische × Uhrzeit)
+- Umschalter **Liste | Timeline** oben im Reservierungsbuch. Die Timeline zeigt
+  ein Tagesraster: Tische (nach Raum gruppiert) auf der Y-Achse, die
+  Öffnungszeiten des Tages auf der X-Achse, jede Reservierung als farbigen
+  Balken (Position/Breite = Start/Dauer).
+- Farbcodierung nach Status (Anfrage/bestätigt/sitzt/abgeschlossen), Klick öffnet
+  die Reservierung, „Jetzt"-Linie markiert die aktuelle Uhrzeit, Stundengitter
+  und Legende. Reservierungen ohne feste Tischzuweisung stehen in einer eigenen
+  Zeile.
+- Der gewählte Datumsbereich bestimmt den Tag (erster Tag der Range). 2 Tests.
+
 ## [1.78.0] – 2026-07-06
 
 ### Neu: Sammelaktionen im Reservierungsbuch

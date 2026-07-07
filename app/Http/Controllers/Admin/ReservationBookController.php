@@ -80,7 +80,103 @@ class ReservationBookController extends Controller
             'rangeLabel' => $this->rangeLabel($from, $to, $preset),
             'rooms' => $location->rooms()->orderBy('sort_order')->get(),
             'statuses' => ReservationStatus::cases(),
+            'timeline' => $request->input('view') === 'timeline' ? $this->timelineData($location, $from) : null,
         ]);
+    }
+
+    /**
+     * Day grid data for the timeline view: tables (grouped by room) on the
+     * y-axis, the location's opening window on the x-axis, every active or
+     * completed reservation of the day as a positioned bar.
+     *
+     * @return array{day: CarbonImmutable, dayStart: CarbonImmutable, dayEnd: CarbonImmutable, hours: array<int, CarbonImmutable>, rooms: mixed, unassigned: mixed, nowPct: ?float}
+     */
+    private function timelineData($location, ?string $from): array
+    {
+        $tz = $location->timezone;
+        $day = CarbonImmutable::parse($from ?? 'today', $tz)->startOfDay();
+
+        // Opening window for that weekday; sensible fallback when unset.
+        $hoursRows = $location->openingHours()->where('weekday', $day->dayOfWeek)->get();
+        $opens = $hoursRows->min('opens_at') ?: '11:00';
+        $closes = $hoursRows->max('closes_at') ?: '23:00';
+        $dayStart = $day->setTimeFromTimeString(substr((string) $opens, 0, 5))->subHour();
+        $dayEnd = $day->setTimeFromTimeString(substr((string) $closes, 0, 5))->addHour();
+        if ($dayEnd->lessThanOrEqualTo($dayStart)) {
+            $dayEnd = $dayEnd->addDay(); // over-midnight closing
+        }
+        $span = max(1, $dayEnd->diffInMinutes($dayStart));
+
+        $reservations = Reservation::query()
+            ->where('location_id', $location->id)
+            ->whereDate('reservation_date', $day->toDateString())
+            ->whereIn('status', array_merge(ReservationStatus::activeStatuses(), [ReservationStatus::Completed->value]))
+            ->with(['tables:id,name'])
+            ->orderBy('start_at')
+            ->get();
+
+        $bar = function (Reservation $r) use ($dayStart, $span, $tz) {
+            $start = $r->start_at->copy()->setTimezone($tz);
+            $end = $r->end_at->copy()->setTimezone($tz);
+            $left = max(0, $dayStart->diffInMinutes($start, false)) / $span * 100;
+            $right = min($span, max(0, $dayStart->diffInMinutes($end, false))) / $span * 100;
+
+            return [
+                'reservation' => $r,
+                'left' => round($left, 2),
+                'width' => round(max(1.5, $right - $left), 2),
+                'label' => $start->format('H:i').' '.$r->guest_name_snapshot.' · '.$r->party_size.' P.',
+            ];
+        };
+
+        $byTable = [];
+        $unassigned = [];
+        foreach ($reservations as $r) {
+            if ($r->tables->isEmpty()) {
+                $unassigned[] = $bar($r);
+
+                continue;
+            }
+            foreach ($r->tables as $t) {
+                $byTable[$t->id][] = $bar($r);
+            }
+        }
+
+        $rooms = $location->rooms()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->with(['tables' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order')])
+            ->get()
+            ->map(fn ($room) => [
+                'name' => $room->name,
+                'tables' => $room->tables->map(fn ($t) => [
+                    'name' => $t->name,
+                    'capacity' => $t->min_capacity.'–'.$t->max_capacity,
+                    'bars' => $byTable[$t->id] ?? [],
+                ]),
+            ]);
+
+        $now = CarbonImmutable::now($tz);
+        $nowPct = ($now->between($dayStart, $dayEnd))
+            ? round($dayStart->diffInMinutes($now) / $span * 100, 2)
+            : null;
+
+        // Hour ticks for the header row
+        $hours = [];
+        for ($h = $dayStart->copy()->startOfHour()->addHour(); $h < $dayEnd; $h = $h->addHour()) {
+            $hours[] = $h;
+        }
+
+        return [
+            'day' => $day,
+            'dayStart' => $dayStart,
+            'dayEnd' => $dayEnd,
+            'span' => $span,
+            'hours' => $hours,
+            'rooms' => $rooms,
+            'unassigned' => $unassigned,
+            'nowPct' => $nowPct,
+        ];
     }
 
     /**

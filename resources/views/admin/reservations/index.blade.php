@@ -4,6 +4,13 @@
 <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
     <h1 class="text-2xl font-bold">Reservierungsbuch</h1>
     <div class="flex gap-2">
+        {{-- Ansicht: Liste | Timeline --}}
+        <div class="flex rounded-xl bg-stone-200 p-1 text-sm font-semibold">
+            <a href="{{ request()->fullUrlWithQuery(['view' => null]) }}"
+               class="rounded-lg px-3 py-1.5 {{ $timeline ? 'text-stone-500 hover:text-stone-800' : 'bg-white shadow-sm' }}">Liste</a>
+            <a href="{{ request()->fullUrlWithQuery(['view' => 'timeline']) }}"
+               class="rounded-lg px-3 py-1.5 {{ $timeline ? 'bg-white shadow-sm' : 'text-stone-500 hover:text-stone-800' }}">Timeline</a>
+        </div>
         <div class="relative">
             <button id="exportBtn"
                     class="rounded-xl bg-stone-200 px-4 py-2.5 text-sm font-semibold hover:bg-stone-300">↓ Export</button>
@@ -136,6 +143,10 @@
     </div>
 </form>
 
+@if($timeline)
+    @include('admin.reservations._timeline')
+@else
+
 {{-- Bulk action bar: appears when rows are selected. The checkboxes live in
      the table but belong to this form via the HTML form attribute (row action
      forms would otherwise nest). --}}
@@ -246,4 +257,6 @@
     document.getElementById('bulkClear').addEventListener('click', () => { boxes().forEach(b => b.checked = false); sync(); });
 })();
 </script>
+
+@endif {{-- /list view --}}
 @endsection
