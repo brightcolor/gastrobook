@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.80.0] – 2026-07-06
+
+### Verbessert: Änderungsprotokoll in Klartext (für Gastro-Teams statt Techniker)
+- Aus „Auditlog" wird das **Änderungsprotokoll** mit klarer Struktur: pro
+  Eintrag eine Karte „**Aktion · Wer · Wann**" und darunter eine kleine Tabelle
+  **Feld · Vorher → Nachher**.
+- **Technische Codes sind weg**: `reservation.status_changed` → „Reservierung:
+  Status geändert", `table.deleted` → „Tisch gelöscht" usw. Feldnamen sprechend
+  (`party_size` → „Personenzahl", `last_name` → „Nachname").
+- **Werte werden übersetzt**: Status `confirmed`→„Bestätigt", `seated`→„Am Tisch";
+  Ja/Nein statt true/false; Beträge als „25,00 €"; Datumswerte als „TT.MM.JJJJ
+  HH:MM"; Anrede „Du/Sie". Leere Vorher-Werte als „leer", gelöschte Felder klar
+  markiert.
+- Immer deutsche Werte-Übersetzung (unabhängig von APP_LOCALE). 3 Tests.
+
 ## [1.79.0] – 2026-07-06
 
 ### Neu: Timeline-Ansicht im Reservierungsbuch (Tische × Uhrzeit)
