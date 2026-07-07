@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.81.0] – 2026-07-06
+
+### Neu: Aufräum-Job für alte Feedback-Anfragen
+- Nie beantwortete Feedback-Anfragen älter als 6 Monate werden täglich (03:45)
+  automatisch entfernt, damit die Tabelle nicht unbegrenzt wächst.
+  Beantwortete Anfragen bleiben unangetastet — ihre Bewertung/Kommentar wird
+  für Berichte gebraucht. `FeedbackRequest::pruneUnanswered()`, 1 Test.
+
+### Intern: CI-Deprecation behoben (Node 20 → 24)
+- `actions/checkout` und `actions/setup-node` von v4 auf **v5** gehoben. Die
+  GitHub-Runner laufen inzwischen auf Node 24; die v4-Actions lösten eine
+  Node-20-Deprecation-Warnung aus. Läufe sind jetzt warnungsfrei.
+
 ## [1.80.1] – 2026-07-06
 
 ### Intern: Admin-Routen-Smoke-Test

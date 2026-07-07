@@ -31,6 +31,21 @@ class FeedbackRequest extends Model
         });
     }
 
+    /**
+     * Delete old, never-answered feedback requests so the table doesn't grow
+     * unbounded. Requests WITH a response are kept — the response
+     * (score/comment) cascades on delete and holds the valuable feedback for
+     * reports, so we never touch answered ones.
+     */
+    public static function pruneUnanswered(int $months = 6): int
+    {
+        return static::withoutGlobalScopes()
+            ->whereNull('responded_at')
+            ->whereDoesntHave('response')
+            ->where('created_at', '<', now()->subMonths($months))
+            ->delete();
+    }
+
     /** @return BelongsTo<Reservation, $this> */
     public function reservation(): BelongsTo
     {
