@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.82.0] – 2026-07-06
+
+### Neu: Umbuchungsfrist einstellbar + kritische Mails garantiert zugestellt
+- **Umbuchungsfrist (Min.)** ist jetzt in den Buchungsregeln editierbar. Sie
+  steuert, bis wie viele Minuten vor dem Termin ein Gast online umbuchen darf –
+  war bisher fest auf 120 Minuten, obwohl die Logik das Feld längst nutzte.
+- **Magic-Link- und Billing-Mails gehen synchron raus** (nicht mehr über die
+  Queue): Anmelde-/Bestätigungslinks fürs Kundenkonto sowie SEPA-Bestätigungen
+  und Zahlungs-/Mandats-Benachrichtigungen werden sofort zugestellt, auch wenn
+  der Queue-Worker oder Redis gerade steht. (`->send()` bzw. `->sendNow()`).
+- Settings-Tiefe geprüft: alle übrigen Buchungs-Einstellungen sind bereits
+  einstellbar. 4 neue Tests.
+
 ## [1.81.0] – 2026-07-06
 
 ### Neu: Aufräum-Job für alte Feedback-Anfragen

@@ -8,11 +8,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\CreatesTenants;
 use Tests\TestCase;
 
-class FeedbackSettingsTest extends TestCase
+class BookingRuleModificationDeadlineTest extends TestCase
 {
     use CreatesTenants, RefreshDatabase;
 
-    /** Full valid booking-rules payload + the given overrides. */
     private function payload(array $overrides = []): array
     {
         return array_merge([
@@ -31,40 +30,36 @@ class FeedbackSettingsTest extends TestCase
             'refund_mode' => 'off',
             'refund_percent' => 0,
             'refund_processing' => 'immediate',
-            'guest_address' => 'du',
+            'guest_address' => 'Sie',
             'feedback_hours_after' => 18,
             'feedback_redirect_min_score' => 4,
         ], $overrides);
     }
 
-    public function test_feedback_settings_can_be_saved(): void
+    public function test_modification_deadline_is_editable(): void
     {
         $setup = $this->createTenantSetup();
         $admin = $this->createMember($setup['tenant'], 'tenant_admin');
         $this->clearTenantContext();
 
-        $this->actingAs($admin)->put('/admin/settings/booking-rules', $this->payload([
-            'feedback_enabled' => '1',
-            'feedback_hours_after' => 24,
-            'feedback_redirect_min_score' => 5,
-            'feedback_external_url' => 'https://g.page/r/abc/review',
-        ]))->assertRedirect();
+        $this->actingAs($admin)
+            ->put('/admin/settings/booking-rules', $this->payload(['modification_deadline_minutes' => 360]))
+            ->assertRedirect();
 
-        $settings = $setup['location']->settings()->first();
-        $this->assertTrue((bool) $settings->feedback_enabled);
-        $this->assertSame(24, (int) $settings->feedback_hours_after);
-        $this->assertSame(5, (int) $settings->feedback_redirect_min_score);
-        $this->assertSame('https://g.page/r/abc/review', $settings->feedback_external_url);
+        $this->assertSame(360, (int) $setup['location']->settings()->first()->modification_deadline_minutes);
     }
 
-    public function test_external_url_must_be_valid_https(): void
+    public function test_modification_deadline_is_required(): void
     {
         $setup = $this->createTenantSetup();
         $admin = $this->createMember($setup['tenant'], 'tenant_admin');
         $this->clearTenantContext();
 
-        $this->actingAs($admin)->put('/admin/settings/booking-rules', $this->payload([
-            'feedback_external_url' => 'not-a-url',
-        ]))->assertSessionHasErrors('feedback_external_url');
+        $payload = $this->payload();
+        unset($payload['modification_deadline_minutes']);
+
+        $this->actingAs($admin)
+            ->put('/admin/settings/booking-rules', $payload)
+            ->assertSessionHasErrors('modification_deadline_minutes');
     }
 }

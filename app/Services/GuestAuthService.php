@@ -75,7 +75,9 @@ class GuestAuthService
         // Portal login is tenant-wide → use the tenant's first location's tone.
         $du = Location::where('tenant_id', $tenant->id)->first()?->effectiveSettings()->du() ?? false;
 
-        Mail::to($guest->email)->queue(new GuestLinkMail(
+        // Send synchronously (like the password-reset mail): a magic link is
+        // useless if it sits in a stuck queue when Redis/worker is down.
+        Mail::to($guest->email)->send(new GuestLinkMail(
             $du ? __('Dein Anmeldelink für :name', ['name' => $tenant->name])
                 : __('Ihr Anmeldelink für :name', ['name' => $tenant->name]),
             $du ? __('Hier ist dein Anmeldelink für dein Kundenkonto bei :name.', ['name' => $tenant->name])
@@ -99,7 +101,8 @@ class GuestAuthService
 
         $du = $reservation->location()->withoutGlobalScope('tenant')->first()?->effectiveSettings()->du() ?? false;
 
-        Mail::to($guest->email)->queue(new GuestLinkMail(
+        // Synchronous: the guest is waiting on this link to finish booking.
+        Mail::to($guest->email)->send(new GuestLinkMail(
             $du ? __('Bitte bestätige deine E-Mail-Adresse')
                 : __('Bitte bestätigen Sie Ihre E-Mail-Adresse'),
             $du ? __('Bitte bestätige deine E-Mail-Adresse, um deine Buchung :code abzuschließen.', ['code' => $reservation->code])

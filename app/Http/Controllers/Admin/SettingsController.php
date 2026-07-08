@@ -103,6 +103,7 @@ class SettingsController extends Controller
             'waitlist_enabled' => ['nullable', 'boolean'],
             'walkins_enabled' => ['nullable', 'boolean'],
             'cancellation_deadline_minutes' => ['required', 'integer', 'min:0', 'max:20160'],
+            'modification_deadline_minutes' => ['required', 'integer', 'min:0', 'max:20160'],
             'reminder_enabled' => ['nullable', 'boolean'],
             'reminder_hours_before' => ['required', 'integer', 'min:1', 'max:168'],
             'sms_reminder_enabled' => ['nullable', 'boolean'],

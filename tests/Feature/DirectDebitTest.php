@@ -84,7 +84,7 @@ class DirectDebitTest extends TestCase
         $this->assertSame('active', $setup['tenant']->fresh()->status);
 
         // Mail to both the customer and the platform owner.
-        Mail::assertQueued(TemplatedMail::class, 2);
+        Mail::assertSent(TemplatedMail::class, 2);
     }
 
     public function test_complete_is_idempotent_no_second_subscription(): void
@@ -120,7 +120,7 @@ class DirectDebitTest extends TestCase
         $profile = BillingProfile::where('tenant_id', $setup['tenant']->id)->first();
         $this->assertSame('cancelled', $profile->gocardless_status);
         $this->assertNull($profile->gocardless_subscription_id);
-        Mail::assertQueued(TemplatedMail::class, 2);
+        Mail::assertSent(TemplatedMail::class, 2);
     }
 
     public function test_staff_cannot_access_billing(): void
@@ -160,6 +160,6 @@ class DirectDebitTest extends TestCase
         ], $payload)->assertOk();
 
         $this->assertSame('cancelled', BillingProfile::where('tenant_id', $setup['tenant']->id)->first()->gocardless_status);
-        Mail::assertQueued(TemplatedMail::class);
+        Mail::assertSent(TemplatedMail::class);
     }
 }

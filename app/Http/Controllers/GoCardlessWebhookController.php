@@ -135,7 +135,10 @@ class GoCardlessWebhookController extends Controller
             ?: config('mail.from.address');
 
         foreach (array_unique(array_filter([$profile->billing_email, $owner])) as $to) {
-            Mail::to($to)->queue(new TemplatedMail($subject, $body));
+            // sendNow bypasses the queue even though TemplatedMail is ShouldQueue:
+            // billing notifications (payment failed / mandate cancelled) must
+            // not silently rot in a stuck queue when Redis/worker is down.
+            Mail::to($to)->sendNow(new TemplatedMail($subject, $body));
         }
     }
 }
