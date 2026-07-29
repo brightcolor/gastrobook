@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.91.0] – 2026-07-29
+
+### Neu: Tischzeit je Gruppengröße einstellbar
+Ein Paar sitzt selten so lange wie eine Zehnergruppe. Unter **Einstellungen →
+Buchungsregeln** lässt sich jetzt pro Gruppengröße festlegen, wie lange ein
+Tisch belegt wird – z. B. 1–2 Personen 75 Min., 3–5 Personen 105 Min.,
+6–20 Personen 150 Min. Für alle Gruppengrößen ohne eigene Regel gilt weiterhin
+die Standarddauer.
+
+- Die Regeln wirken überall, wo Zeiten berechnet werden: öffentliche
+  Buchungsseite, interne Reservierung, Walk-ins und Wartelisten-Angebote.
+- Neue Zeilen schließen automatisch an die größte bisherige Gruppe an.
+- **Überschneidungen werden abgewiesen** („Die Gruppengrößen überschneiden
+  sich: 1–2 und 2–5"). Sonst hätte eine Regel weiter unten stillschweigend nie
+  gegriffen – die Auswertung nimmt den ersten Treffer.
+- Die Reihenfolge wird beim Speichern nach Gruppengröße sortiert, damit das
+  Ergebnis nicht von der Eingabereihenfolge abhängt.
+- 7 Tests (Speichern und Wirkung auf die Dauer, Sortierung, Überschneidung,
+  vertauschte Grenzen, halb ausgefüllte Zeile, Leeren, UI sichtbar).
+
+Damit ist der letzte offene Punkt aus der Settings-Tiefenprüfung erledigt: die
+Auswertung (`durationFor()`) gab es schon lange, nur einstellen ließ sie sich
+bisher nicht.
+
 ## [1.90.0] – 2026-07-29
 
 ### Account-Import: Zahlungen und Historie ziehen jetzt mit um

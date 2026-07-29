@@ -150,6 +150,7 @@ Fertige Docker-Images baut die CI automatisch: `ghcr.io/brightcolor/gastrobook:l
 | Salon: Kombi-Leistungen frei wählbar (Pills, Dauer/Preis summiert, ein Termin) | ✅ |
 | Salon: Lückenoptimierer (packt „Beliebig"-Termine eng, reduziert Leerlauf) | ✅ |
 | Puffer zwischen Terminen (Aufräumzeit) in der Slot-Berechnung | ✅ |
+| Tischzeit je Gruppengröße (z. B. 1–2 Pers. 75 Min., 6–20 Pers. 150 Min.) | ✅ |
 | SMS-Erinnerungen via seven.io (deutscher Anbieter, DSGVO, verschlüsselte Credentials) | ✅ |
 | WhatsApp, Telefon-/AI-Assistent (Quelle, ConversationLog, Adapterpunkte) | 🔶 vorbereitet |
 | Stripe/Mollie-Billing für Tenants | 🔶 vorbereitet |

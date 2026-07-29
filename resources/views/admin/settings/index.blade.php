@@ -270,6 +270,53 @@
                 <input type="number" name="max_covers_per_slot" value="{{ $settings->max_covers_per_slot }}" class="w-full rounded-lg border-stone-200"></div>
         </div>
 
+        {{-- Tischzeit je Gruppengröße: überschreibt die Standarddauer gezielt --}}
+        @php($durationRules = old('duration_rules', $settings->duration_rules ?? []))
+        <div class="mt-4 border-t border-stone-100 pt-4">
+            <h3 class="mb-1 text-xs font-bold uppercase tracking-wide text-stone-400">
+                Tischzeit je Gruppengröße
+                <span class="tip" tabindex="0" data-tip="Große Runden bleiben länger als Paare. Hier legst du fest, wie lange ein Tisch je nach Personenzahl belegt wird – die Standarddauer oben gilt dann nur noch für Gruppengrößen ohne eigene Regel.">?</span>
+            </h3>
+            <p class="mb-3 text-xs text-stone-500">
+                Optional. Ohne Eintrag gilt für jede Buchung die Standarddauer von
+                <strong>{{ $settings->default_duration_minutes }} Minuten</strong>.
+            </p>
+
+            @error('duration_rules')
+                <p class="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{{ $message }}</p>
+            @enderror
+
+            <div id="durationRules" class="space-y-2">
+                @forelse($durationRules as $i => $rule)
+                    <div class="duration-rule flex flex-wrap items-center gap-2 text-sm">
+                        <span class="text-stone-500">Von</span>
+                        <input type="number" name="duration_rules[{{ $i }}][min_party]" value="{{ $rule['min_party'] ?? '' }}"
+                               min="1" max="200" class="w-20 rounded-lg border-stone-200 text-sm" aria-label="Von Personen">
+                        <span class="text-stone-500">bis</span>
+                        <input type="number" name="duration_rules[{{ $i }}][max_party]" value="{{ $rule['max_party'] ?? '' }}"
+                               min="1" max="200" class="w-20 rounded-lg border-stone-200 text-sm" aria-label="Bis Personen">
+                        <span class="text-stone-500">Personen →</span>
+                        <input type="number" name="duration_rules[{{ $i }}][duration]" value="{{ $rule['duration'] ?? '' }}"
+                               min="15" max="600" step="15" class="w-24 rounded-lg border-stone-200 text-sm" aria-label="Minuten">
+                        <span class="text-stone-500">Minuten</span>
+                        <button type="button" onclick="this.closest('.duration-rule').remove()"
+                                class="rounded-lg px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50" aria-label="Regel entfernen">Entfernen</button>
+                    </div>
+                @empty
+                @endforelse
+            </div>
+
+            <button type="button" id="addDurationRule"
+                    class="mt-2 rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-semibold text-stone-600 hover:bg-stone-50">
+                + Tischzeit hinzufügen
+            </button>
+
+            <p class="mt-2 text-xs text-stone-400">
+                Beispiel: 1–2 Personen → 75 Min., 3–5 Personen → 105 Min., 6–20 Personen → 150 Min.
+                Jede Gruppengröße darf nur in einer Regel vorkommen.
+            </p>
+        </div>
+
         <div class="mt-4 border-t border-stone-100 pt-4">
             <h3 class="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">Online-Buchung</h3>
             <div class="space-y-1.5 text-sm">
@@ -908,6 +955,28 @@ document.getElementById('addHour')?.addEventListener('click', () => {
         <input type="time" name="hours[${i}][closes_at]" value="22:00" class="rounded-lg border-stone-200">
         <input type="text" name="hours[${i}][service_name]" placeholder="Service (optional)" class="w-28 rounded-lg border-stone-200">
         <button type="button" onclick="this.closest('.hour-row').remove()" class="shrink-0 text-red-500 hover:text-red-700">✕</button>`;
+    container.appendChild(div);
+});
+
+// ── Tischzeit je Gruppengröße: Zeile hinzufügen ───────────────────────────
+document.getElementById('addDurationRule')?.addEventListener('click', () => {
+    const container = document.getElementById('durationRules');
+    const i = Date.now();
+    // Direkt an die größte bisherige Gruppe anschließen – spart Tipparbeit.
+    const maxima = [...container.querySelectorAll('input[name$="[max_party]"]')]
+        .map(el => parseInt(el.value, 10)).filter(n => !isNaN(n));
+    const from = maxima.length ? Math.max(...maxima) + 1 : 1;
+    const div = document.createElement('div');
+    div.className = 'duration-rule flex flex-wrap items-center gap-2 text-sm';
+    div.innerHTML = `
+        <span class="text-stone-500">Von</span>
+        <input type="number" name="duration_rules[${i}][min_party]" value="${from}" min="1" max="200" class="w-20 rounded-lg border-stone-200 text-sm" aria-label="Von Personen">
+        <span class="text-stone-500">bis</span>
+        <input type="number" name="duration_rules[${i}][max_party]" value="${from + 1}" min="1" max="200" class="w-20 rounded-lg border-stone-200 text-sm" aria-label="Bis Personen">
+        <span class="text-stone-500">Personen →</span>
+        <input type="number" name="duration_rules[${i}][duration]" value="90" min="15" max="600" step="15" class="w-24 rounded-lg border-stone-200 text-sm" aria-label="Minuten">
+        <span class="text-stone-500">Minuten</span>
+        <button type="button" onclick="this.closest('.duration-rule').remove()" class="rounded-lg px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50" aria-label="Regel entfernen">Entfernen</button>`;
     container.appendChild(div);
 });
 </script>
