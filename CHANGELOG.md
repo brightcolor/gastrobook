@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.93.0] – 2026-07-29
+
+### Erklär-Tooltips in der ganzen Verwaltung
+Bisher gab es die kleinen Fragezeichen nur in den Einstellungen. Jetzt sind sie
+app-weit verfügbar und erklären in normaler Sprache, **was ein Feld bewirkt** –
+nicht nur, wie es heißt.
+
+- Neu erklärt: Reservierungsbuch (Filter, Zeitraum, Status, Sammelaktionen),
+  Reservierung anlegen (Dauer, Tischwahl, Überbuchung, interne Notiz), Gäste
+  und Gästeprofil, Warteliste, Walk-ins, Events, Leistungen, Mitarbeiter,
+  Standorte, Benutzer & Rollen, API-Zugriff, E-Mail-Vorlagen, Berichte,
+  Änderungsprotokoll, Rückerstattungen, Tischplan und Konto.
+- Die Texte nennen jeweils die Folge, nicht die Technik – etwa beim
+  Anonymisieren: „Die Buchungen bleiben anonym erhalten, damit eure Statistiken
+  stimmen. Rückgängig machen geht nicht.“
+- **In Tabellen** steht die Erklärung an der Spaltenüberschrift statt an jeder
+  einzelnen Zeile – ein Fragezeichen pro Zeile wäre unlesbar geworden.
+- **Im Live-Board** bewusst keine Fragezeichen: Das ist der Bildschirm fürs
+  laufende Geschäft. Dort wurden stattdessen die Hover-Texte der Schaltflächen
+  aussagekräftig gemacht.
+- Die Tooltip-Gestaltung liegt jetzt in der gemeinsamen Stildatei statt inline
+  in einer einzelnen Seite. Per Tastatur erreichbar; am Bildschirmrand kippt der
+  Kasten nach innen, damit er nicht abgeschnitten wird.
+
+Insgesamt 156 Erklärungen.
+
 ## [1.92.0] – 2026-07-29
 
 ### Fünf halbfertige Funktionen zu Ende gebaut

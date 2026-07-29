@@ -8,7 +8,7 @@
         <h2 class="font-bold">Gast platzieren</h2>
         <form method="GET" class="mt-3 flex items-end gap-2">
             <div>
-                <label class="mb-1 block text-xs font-semibold text-stone-500">Personen</label>
+                <label class="mb-1 block text-xs font-semibold text-stone-500">Personen<span class="tip" tabindex="0" data-tip="Für wie viele Gäste du gerade einen Tisch suchst. Darunter erscheinen nur Tische, die groß genug und jetzt frei sind – samt Angabe, bis wann sie frei bleiben.">?</span></label>
                 <input type="number" name="party_size" min="1" max="50" value="{{ $partySize }}" class="w-24 rounded-lg border-stone-200">
             </div>
             <button class="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Freie Tische zeigen</button>
@@ -54,7 +54,7 @@
                         <form method="POST" action="{{ route('admin.reservations.transition', $w) }}">
                             @csrf
                             <input type="hidden" name="status" value="completed">
-                            <button class="rounded-lg bg-stone-200 px-3 py-1.5 text-xs font-semibold">Gegangen</button>
+                            <button class="rounded-lg bg-stone-200 px-3 py-1.5 text-xs font-semibold">Gegangen</button><span class="tip" tabindex="0" data-tip="Gibt den Tisch sofort wieder frei, damit er für die nächsten Gäste zur Verfügung steht.">?</span>
                         </form>
                     @else
                         <x-status-badge :status="$w->status" />

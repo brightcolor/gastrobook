@@ -62,7 +62,7 @@
 
 <div class="mt-6 grid gap-6 lg:grid-cols-2">
     <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
-        <h2 class="flex items-center gap-2 font-bold"><span>⏭️</span> Nächste Ankünfte</h2>
+        <h2 class="flex items-center gap-2 font-bold"><span>⏭️</span> Nächste Ankünfte<span class="tip" tabindex="0" data-tip="Wer in den nächsten Stunden erwartet wird – nach Uhrzeit sortiert. So weiß das Team, worauf es sich einstellen muss.">?</span></h2>
         <div class="mt-3 divide-y divide-stone-100">
             @forelse($upcoming as $r)
                 <a href="{{ route('admin.reservations.show', $r) }}" class="flex items-center justify-between py-2.5 hover:bg-stone-50">
@@ -80,7 +80,7 @@
     </div>
 
     <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
-        <h2 class="flex items-center gap-2 font-bold"><span>⏰</span> Überfällige Gäste</h2>
+        <h2 class="flex items-center gap-2 font-bold"><span>⏰</span> Überfällige Gäste<span class="tip" tabindex="0" data-tip="Bestätigte Buchungen, deren Uhrzeit vorbei ist, ohne dass jemand als angekommen markiert wurde. Kurz prüfen: sitzt die Gruppe schon (dann „Da!“) oder ist sie nicht erschienen (dann „No-Show“) – sonst bleibt der Tisch unnötig blockiert.">?</span></h2>
         <div class="mt-3 divide-y divide-stone-100">
             @forelse($overdue as $r)
                 <div class="flex items-center justify-between py-2.5">
@@ -110,7 +110,7 @@
 </div>
 
 <div class="mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
-    <h2 class="flex items-center gap-2 font-bold"><span>📊</span> Reservierungsquellen (30 Tage)</h2>
+    <h2 class="flex items-center gap-2 font-bold"><span>📊</span> Reservierungsquellen (30 Tage)<span class="tip" tabindex="0" data-tip="Woher eure Buchungen der letzten 30 Tage kamen. Ein hoher Online-Anteil bedeutet weniger Telefonarbeit – lohnt sich, den Buchungslink gut sichtbar zu platzieren.">?</span></h2>
     <div class="mt-3 flex flex-wrap gap-4 text-sm">
         @forelse($sources as $source => $count)
             <span class="rounded-full bg-stone-100 px-4 py-1.5">{{ __('reservations.source.' . $source) }}: <strong>{{ $count }}</strong></span>

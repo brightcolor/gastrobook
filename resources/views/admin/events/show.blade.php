@@ -43,10 +43,10 @@
                 <input type="time" name="end_time" required value="{{ old('end_time', $endLocal->format('H:i')) }}" class="mt-1 w-full rounded-lg border-stone-200">
             </label>
         </div>
-        <label class="block">Kapazität *
+        <label class="block">Kapazität *<span class="tip" tabindex="0" data-tip="Lässt sich nachträglich erhöhen, aber nicht unter die Zahl der bereits verkauften Tickets senken.">?</span>
             <input type="number" name="capacity" required min="1" max="5000" value="{{ old('capacity', $event->capacity) }}" class="mt-1 w-full rounded-lg border-stone-200">
         </label>
-        <label class="block">Preis (€)
+        <label class="block">Preis (€)<span class="tip" tabindex="0" data-tip="Gilt ab sofort für neue Buchungen. Bereits gebuchte Tickets behalten den Preis, zu dem sie gekauft wurden.">?</span>
             <input type="number" step="0.01" min="0" name="price" value="{{ old('price', $event->price_minor !== null ? number_format($event->price_minor / 100, 2, '.', '') : '') }}" class="mt-1 w-full rounded-lg border-stone-200">
         </label>
         <label class="flex items-center gap-2 sm:col-span-2">

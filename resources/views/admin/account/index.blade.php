@@ -19,7 +19,7 @@
     {{-- Daten mitnehmen (nur für Inhaber) --}}
     @if($isOwner && $tenant !== null)
         <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
-            <h2 class="mb-1 font-bold">Alle Daten exportieren</h2>
+            <h2 class="mb-1 font-bold">Alle Daten exportieren<span class="tip" tabindex="0" data-tip="Speichert deinen kompletten Betrieb in einer Datei – als Sicherung oder um zu einem anderen Anbieter umzuziehen. Es wird nichts gelöscht oder verändert, du bekommst nur eine Kopie.">?</span></h2>
             <p class="mb-4 text-sm text-stone-500">
                 Lädt den kompletten Betrieb <strong>„{{ $tenant->name }}"</strong> als Datei herunter:
                 Standorte, Räume und Tische, Öffnungs- und Sperrzeiten, alle Reservierungen,
@@ -39,7 +39,7 @@
 
         {{-- Daten einspielen --}}
         <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
-            <h2 class="mb-1 font-bold">Daten einspielen</h2>
+            <h2 class="mb-1 font-bold">Daten einspielen<span class="tip" tabindex="0" data-tip="Liest eine zuvor exportierte Datei wieder ein. Die Daten kommen zu den bestehenden dazu, nichts wird überschrieben. Stimmt etwas mit der Datei nicht, wird der ganze Vorgang abgebrochen und dein Betrieb bleibt unverändert.">?</span></h2>
             <p class="mb-4 text-sm text-stone-500">
                 Spielt eine zuvor exportierte Datei in <strong>„{{ $tenant->name }}"</strong> ein –
                 zum Beispiel beim Umzug von einem anderen Swayy-System.
@@ -78,7 +78,7 @@
     {{-- Betrieb löschen (nur für Inhaber) --}}
     @if($isLastOwner && $tenant !== null)
         <div class="rounded-2xl border-2 border-red-200 bg-red-50 p-5">
-            <h2 class="mb-1 font-bold text-red-700">Betrieb löschen</h2>
+            <h2 class="mb-1 font-bold text-red-700">Betrieb löschen<span class="tip" tabindex="0" data-tip="Löscht den kompletten Betrieb mit allen Reservierungen, Gästen und Einstellungen – endgültig und ohne Wiederherstellung. Vorher unbedingt oben die Daten exportieren.">?</span></h2>
             <p class="mb-4 text-sm text-red-600">
                 Löscht <strong>„{{ $tenant->name }}"</strong> vollständig — alle Standorte, Reservierungen,
                 Gästedaten, Mitarbeiter und Einstellungen werden unwiderruflich entfernt.
@@ -121,7 +121,7 @@
 
     {{-- Konto löschen --}}
     <div class="rounded-2xl border-2 border-red-200 bg-red-50 p-5">
-        <h2 class="mb-1 font-bold text-red-700">Konto löschen</h2>
+        <h2 class="mb-1 font-bold text-red-700">Konto löschen<span class="tip" tabindex="0" data-tip="Entfernt nur deinen persönlichen Zugang, nicht den Betrieb. Buchungen und Gästedaten bleiben erhalten. Du kannst dich danach nicht mehr anmelden.">?</span></h2>
         <p class="mb-4 text-sm text-red-600">
             Das Löschen deines Kontos ist <strong>unwiderruflich</strong>. Alle deine Zugangsdaten werden entfernt.
             Buchungen und andere Betriebsdaten bleiben aus DSGVO-Gründen anonymisiert erhalten.

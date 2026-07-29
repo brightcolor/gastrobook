@@ -20,13 +20,7 @@
     $weekdays = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
 @endphp
 
-{{-- Tooltip-Styles --}}
-<style>
-.tip{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:#d6d3d1;color:#78716c;font-size:9px;font-weight:800;cursor:help;position:relative;vertical-align:middle;margin-left:4px;flex-shrink:0;line-height:1;}
-.tip::before{content:attr(data-tip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1c1917;color:#fafaf9;border-radius:10px;padding:8px 12px;font-size:12px;line-height:1.5;width:max-content;max-width:280px;white-space:normal;font-weight:400;font-style:normal;opacity:0;pointer-events:none;transition:opacity .12s;z-index:9999;text-align:left;box-shadow:0 4px 16px rgba(0,0,0,.3);}
-.tip::after{content:'';position:absolute;bottom:calc(100% + 2px);left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#1c1917;opacity:0;transition:opacity .12s;z-index:9999;}
-.tip:hover::before,.tip:focus::before,.tip:hover::after,.tip:focus::after{opacity:1;}
-</style>
+{{-- Tooltip-Styles („.tip") liegen in resources/css/app.css, damit sie überall gelten. --}}
 
 {{-- Toast --}}
 <div id="settingsToast"

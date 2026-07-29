@@ -17,13 +17,13 @@
                        class="w-full rounded-lg border-stone-200 text-sm" placeholder="z.B. Haarschnitt Herren">
             </div>
             <div>
-                <label class="mb-1 block text-xs font-semibold text-stone-500">Dauer (Min.) *</label>
+                <label class="mb-1 block text-xs font-semibold text-stone-500">Dauer (Min.) *<span class="tip" tabindex="0" data-tip="Wie lange die Leistung dauert. Daraus errechnet das System die buchbaren Uhrzeiten – ein 30-Minuten-Termin passt öfter in den Tag als einer über 90 Minuten.">?</span></label>
                 <input type="number" name="duration_minutes" required min="5" max="480"
                        value="{{ old('duration_minutes', 30) }}"
                        class="w-full rounded-lg border-stone-200 text-sm">
             </div>
             <div>
-                <label class="mb-1 block text-xs font-semibold text-stone-500">Preis (Cent, 0 = auf Anfrage)</label>
+                <label class="mb-1 block text-xs font-semibold text-stone-500">Preis (Cent, 0 = auf Anfrage)<span class="tip" tabindex="0" data-tip="In Cent eintragen: 2500 sind 25,00 €. Bei 0 steht auf der Buchungsseite „auf Anfrage“ statt eines Preises.">?</span></label>
                 <input type="number" name="price_minor" required min="0" max="100000"
                        value="{{ old('price_minor', 0) }}"
                        class="w-full rounded-lg border-stone-200 text-sm">
@@ -36,7 +36,7 @@
                        class="w-full rounded-lg border-stone-200 text-sm" placeholder="Kurze Beschreibung (optional)">
             </div>
             <div>
-                <label class="mb-1 block text-xs font-semibold text-stone-500">Mitarbeiter (kann diese Leistung)</label>
+                <label class="mb-1 block text-xs font-semibold text-stone-500">Mitarbeiter (kann diese Leistung)<span class="tip" tabindex="0" data-tip="Nur die hier angehakten Personen werden für diese Leistung als buchbar angeboten. Wer nicht angehakt ist, taucht bei der Terminwahl nicht auf.">?</span></label>
                 <div class="flex flex-wrap gap-2">
                     @foreach($staff as $member)
                         <label class="flex items-center gap-1 text-sm">
@@ -55,6 +55,7 @@
             <label class="flex items-center gap-2 text-sm">
                 <input type="checkbox" name="is_active" value="1" @checked(old('is_active', true))>
                 Aktiv (online buchbar)
+                <span class="tip" tabindex="0" data-tip="Ohne Haken bleibt die Leistung erhalten, wird aber online nicht mehr angeboten – gut für Saisonales, das später wiederkommt. Bestehende Termine bleiben davon unberührt.">?</span>
             </label>
             <button type="submit" class="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700">
                 Leistung anlegen

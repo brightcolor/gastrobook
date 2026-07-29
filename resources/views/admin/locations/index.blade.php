@@ -31,7 +31,7 @@
                             <label class="block">Name *
                                 <input name="name" required value="{{ $loc->name }}" class="mt-1 w-full rounded-lg border-stone-200">
                             </label>
-                            <label class="block">Zeitzone *
+                            <label class="block">Zeitzone *<span class="tip" tabindex="0" data-tip="Bestimmt, welche Uhrzeit für diesen Standort gilt – wichtig für Öffnungszeiten, Erinnerungen und alle Uhrzeiten in den Buchungen. Nur ändern, wenn der Standort wirklich in einer anderen Zeitzone liegt.">?</span>
                                 <select name="timezone" class="mt-1 w-full rounded-lg border-stone-200">
                                     @foreach($timezones as $tz)
                                         <option value="{{ $tz }}" @selected($loc->timezone === $tz)>{{ $tz }}</option>
@@ -44,7 +44,7 @@
                             <label class="block">E-Mail
                                 <input type="email" name="email" value="{{ $loc->email }}" class="mt-1 w-full rounded-lg border-stone-200">
                             </label>
-                            <label class="block sm:col-span-2">Straße & Nr.
+                            <label class="block sm:col-span-2">Straße & Nr.<span class="tip" tabindex="0" data-tip="Erscheint auf der öffentlichen Buchungsseite und in den Bestätigungs-E-Mails, damit Gäste euch finden.">?</span>
                                 <input name="address_line1" value="{{ $loc->address_line1 }}" class="mt-1 w-full rounded-lg border-stone-200">
                             </label>
                             <label class="block">PLZ

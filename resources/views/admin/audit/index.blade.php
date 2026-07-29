@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Auditlog')
 @section('content')
-<h1 class="mb-1 text-2xl font-bold">Änderungsprotokoll</h1>
+<h1 class="mb-1 text-2xl font-bold">Änderungsprotokoll<span class="tip" tabindex="0" data-tip="Hält fest, wer wann was geändert hat – von der Reservierung bis zu den Einstellungen, jeweils mit altem und neuem Wert. Nützlich bei Rückfragen im Team. Einträge lassen sich nicht nachträglich ändern.">?</span></h1>
 <p class="mb-5 text-sm text-stone-500">Wer hat wann was geändert – vom alten auf den neuen Wert.</p>
 
 <x-active-filters :reset="route('admin.audit.index')" :filters="[

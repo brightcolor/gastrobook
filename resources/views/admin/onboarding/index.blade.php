@@ -80,7 +80,7 @@
                 {{-- ════════════════════════════════════════════════════ --}}
                 <div class="ob-step" data-step="0">
                     <h1 class="mb-1 text-2xl font-black">Willkommen bei Swayy!</h1>
-                    <p class="mb-8 text-stone-500">Lass uns deinen Betrieb in wenigen Minuten einrichten. Zuerst: Welchen Betrieb führst du?</p>
+                    <p class="mb-8 text-stone-500">Lass uns deinen Betrieb in wenigen Minuten einrichten. Zuerst: Welchen Betrieb führst du?<span class="tip" tabindex="0" data-tip="Restaurant heißt: Gäste reservieren einen Tisch. Salon heißt: Gäste buchen einen Termin bei einer bestimmten Person für eine bestimmte Leistung. Danach richtet sich die ganze Oberfläche – du kannst es später in den Einstellungen aber jederzeit umstellen.">?</span></p>
 
                     <div class="grid gap-4 sm:grid-cols-2" id="typeCards">
                         @foreach(\App\Enums\TenantType::cases() as $type)

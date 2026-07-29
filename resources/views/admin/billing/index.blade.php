@@ -8,7 +8,7 @@
 
     {{-- Tarif --}}
     <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
-        <h2 class="mb-3 font-bold">Tarif</h2>
+        <h2 class="mb-3 font-bold">Tarif<span class="tip" tabindex="0" data-tip="Euer aktuelles Paket und was darin enthalten ist – etwa wie viele Standorte, Tische und Events möglich sind. Ist eine Grenze erreicht, meldet sich das System beim Anlegen.">?</span></h2>
         <div class="space-y-1 text-sm text-stone-700">
             <p><span class="font-semibold text-stone-500">Tarif:</span> {{ $plan?->name ?? '—' }}</p>
             @if($plan && (int) $plan->price_monthly_minor > 0)
@@ -20,7 +20,7 @@
 
     {{-- SEPA-Lastschrift --}}
     <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
-        <h2 class="mb-1 font-bold">SEPA-Lastschrift</h2>
+        <h2 class="mb-1 font-bold">SEPA-Lastschrift<span class="tip" tabindex="0" data-tip="Erteilt die Erlaubnis, die monatliche Gebühr von eurem Konto einzuziehen – dann müsst ihr an keine Überweisung mehr denken. Jederzeit widerrufbar.">?</span></h2>
 
         @if($errors->has('billing'))
             <p class="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{{ $errors->first('billing') }}</p>

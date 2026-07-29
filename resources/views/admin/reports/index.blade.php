@@ -2,7 +2,7 @@
 @section('title', 'Berichte')
 @section('content')
 <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-    <h1 class="text-2xl font-bold">Berichte – {{ $location->name }}</h1>
+    <h1 class="text-2xl font-bold">Berichte – {{ $location->name }}<span class="tip" tabindex="0" data-tip="Zahlen zu Auslastung, Gästeaufkommen, No-Show-Quote und Herkunft der Buchungen. Zeigt, wann wirklich etwas los ist – gute Grundlage für Personal- und Einkaufsplanung.">?</span></h1>
     <form method="GET" class="flex items-end gap-2">
         <input type="date" name="from" value="{{ $from }}" class="rounded-lg border-stone-200 text-sm">
         <input type="date" name="until" value="{{ $until }}" class="rounded-lg border-stone-200 text-sm">

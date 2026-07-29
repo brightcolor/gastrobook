@@ -12,12 +12,12 @@
             <div class="fp-when">
                 <input type="date" id="planDate" value="{{ $date }}">
                 <span class="fp-when-sep">·</span>
-                <input type="time" id="planTime" value="{{ now($location->timezone)->format('H:i') }}">
+                <input type="time" id="planTime" value="{{ now($location->timezone)->format('H:i') }}" title="Zeigt den Plan zu dieser Uhrzeit – so siehst du im Voraus, welche Tische am Abend belegt sein werden">
             </div>
-            <button id="comboToggle" class="fp-btn" title="Tischkombinationen verwalten">🔗 <span>Kombinationen</span></button>
+            <button id="comboToggle" class="fp-btn" title="Tische festlegen, die für größere Gruppen zusammengeschoben werden – etwa zwei Vierer zu einem Achter. Das System schlägt sie dann automatisch vor">🔗 <span>Kombinationen</span></button>
             @if($canEdit)
-                <button id="editToggle" class="fp-btn">✏️ <span>Bearbeiten</span></button>
-                <button id="saveLayout" class="fp-btn fp-btn-save hidden">💾 <span>Speichern</span></button>
+                <button id="editToggle" class="fp-btn" title="Schaltet den Bearbeiten-Modus ein: Tische verschieben, drehen, anlegen und ändern. Solange er aus ist, kann nichts versehentlich verrutschen">✏️ <span>Bearbeiten</span></button>
+                <button id="saveLayout" class="fp-btn fp-btn-save hidden" title="Übernimmt die neue Anordnung. Ohne Speichern gehen die Verschiebungen beim Verlassen der Seite verloren">💾 <span>Speichern</span></button>
             @endif
         </div>
     </div>
@@ -180,9 +180,9 @@
             </div>
             <div class="fp-grid2">
                 <label class="fp-field"><span>Plätze min.</span>
-                    <input name="min_capacity" type="number" min="1" max="50" value="2" required></label>
+                    <input name="min_capacity" type="number" min="1" max="50" value="2" required><span class="tip" tabindex="0" data-tip="Ab wie vielen Personen dieser Tisch überhaupt vergeben wird. Verhindert, dass ein Paar am großen Achtertisch sitzt, während die Sechsergruppe keinen Platz findet.">?</span></label>
                 <label class="fp-field"><span>Plätze max.</span>
-                    <input name="max_capacity" type="number" min="1" max="50" value="4" required></label>
+                    <input name="max_capacity" type="number" min="1" max="50" value="4" required><span class="tip" tabindex="0" data-tip="Wie viele Personen höchstens an den Tisch passen. Bestimmt zugleich, wie viele Stühle im Plan gezeichnet werden.">?</span></label>
             </div>
             <p id="newTableErr" class="fp-err hidden"></p>
             <div class="fp-modal-foot">
@@ -214,12 +214,12 @@
             <div class="fp-field">
                 <span>Eigenschaften</span>
                 <div class="space-y-1.5 text-sm">
-                    <label class="flex items-center gap-2"><input type="checkbox" name="online_bookable" class="rounded"> Online buchbar</label>
-                    <label class="flex items-center gap-2"><input type="checkbox" name="joinable" class="rounded"> Kombinierbar</label>
-                    <label class="flex items-center gap-2"><input type="checkbox" name="outdoor" class="rounded"> Außenbereich</label>
-                    <label class="flex items-center gap-2"><input type="checkbox" name="accessible" class="rounded"> Barrierefrei</label>
-                    <label class="flex items-center gap-2"><input type="checkbox" name="high_chair_possible" class="rounded"> Kinderstuhl möglich</label>
-                    <label class="flex items-center gap-2"><input type="checkbox" name="head_seats_enabled" class="rounded"> Stühle an den Stirnseiten</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" name="online_bookable" class="rounded"> Online buchbar<span class="tip" tabindex="0" data-tip="Ohne Haken kann dieser Tisch nur von euch vergeben werden – Gäste sehen ihn online gar nicht. Praktisch für den Stammtisch oder einen schlecht gelegenen Platz.">?</span></label>
+                    <label class="flex items-center gap-2"><input type="checkbox" name="joinable" class="rounded"> Kombinierbar<span class="tip" tabindex="0" data-tip="Erlaubt, diesen Tisch für größere Gruppen mit einem Nachbartisch zusammenzuschieben. Bei fest verbauten Tischen den Haken weglassen.">?</span></label>
+                    <label class="flex items-center gap-2"><input type="checkbox" name="outdoor" class="rounded"> Außenbereich<span class="tip" tabindex="0" data-tip="Terrasse, Garten oder Vorgarten. Bei schlechtem Wetter könnt ihr solche Tische gezielt sperren.">?</span></label>
+                    <label class="flex items-center gap-2"><input type="checkbox" name="accessible" class="rounded"> Barrierefrei<span class="tip" tabindex="0" data-tip="Gut erreichbar mit Rollstuhl oder Gehhilfe – etwa ebenerdig und mit genug Platz drumherum.">?</span></label>
+                    <label class="flex items-center gap-2"><input type="checkbox" name="high_chair_possible" class="rounded"> Kinderstuhl möglich<span class="tip" tabindex="0" data-tip="An diesem Tisch passt ein Kinderhochstuhl dazu. Hilft bei Buchungen von Familien.">?</span></label>
+                    <label class="flex items-center gap-2"><input type="checkbox" name="head_seats_enabled" class="rounded"> Stühle an den Stirnseiten<span class="tip" tabindex="0" data-tip="Ob an den beiden Kopfenden Stühle stehen. Abschalten, wenn der Tisch dort an der Wand oder an einem Durchgang steht – die Plätze zählen dann nicht mit.">?</span></label>
                 </div>
                 <p class="mt-1 text-xs text-stone-400">Abschalten, wenn an den Kopfenden des Tisches niemand sitzt (z. B. Wand oder Durchgang).</p>
             </div>

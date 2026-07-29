@@ -61,37 +61,37 @@
                 <input type="time" name="end_time" required value="23:00" class="rounded-lg border-stone-200">
             </div>
             <div class="grid grid-cols-2 gap-2">
-                <div><label class="mb-1 block text-xs text-stone-500">Kapazität *</label>
+                <div><label class="mb-1 block text-xs text-stone-500">Kapazität *<span class="tip" tabindex="0" data-tip="Wie viele Plätze es insgesamt gibt. Ist die Zahl erreicht, zeigt die Seite „ausgebucht“ und es kann niemand mehr buchen. Nachträglich kannst du sie nicht unter die schon verkauften Tickets senken.">?</span></label>
                     <input type="number" name="capacity" required min="1" value="30" class="w-full rounded-lg border-stone-200"></div>
-                <div><label class="mb-1 block text-xs text-stone-500">Preis p. P. (€)</label>
+                <div><label class="mb-1 block text-xs text-stone-500">Preis p. P. (€)<span class="tip" tabindex="0" data-tip="Der Gesamtpreis je Person. Leer lassen, wenn das Event kostenlos ist oder vor Ort abgerechnet wird.">?</span></label>
                     <input type="number" name="price" step="0.01" min="0" class="w-full rounded-lg border-stone-200"></div>
             </div>
             <div>
-                <label class="mb-1 block text-xs text-stone-500">Anzahlung p. P. (€, optional)</label>
+                <label class="mb-1 block text-xs text-stone-500">Anzahlung p. P. (€, optional)<span class="tip" tabindex="0" data-tip="Statt des vollen Preises wird online nur dieser Teilbetrag eingezogen, der Rest beim Event bezahlt. Senkt die Hemmschwelle zu buchen und schützt trotzdem vor Absagen in letzter Minute.">?</span></label>
                 <input type="number" name="deposit" step="0.01" min="0" class="w-full rounded-lg border-stone-200"
                        title="Wird online eingezogen; der Rest wird beim Event bezahlt. Leer lassen, wenn der volle Preis sofort fällig ist.">
                 <p class="mt-1 text-xs text-stone-400">Leer = voller Preis wird sofort fällig. Mit Anzahlung zahlt der Gast online nur diesen Teil, den Rest beim Event.</p>
             </div>
             <div>
-                <label class="mb-1 block text-xs text-stone-500">Bild (optional)</label>
+                <label class="mb-1 block text-xs text-stone-500">Bild (optional)<span class="tip" tabindex="0" data-tip="Ein einladendes Foto oben auf der öffentlichen Event-Seite. Querformat wirkt am besten. Ein neues Bild ersetzt das bisherige.">?</span></label>
                 <input type="file" name="image" accept="image/jpeg,image/png,image/webp"
                        class="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-stone-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold hover:file:bg-stone-200">
                 <p class="mt-1 text-xs text-stone-400">Erscheint auf der öffentlichen Event-Seite. JPG, PNG oder WebP, max. 4 MB.</p>
             </div>
             <div>
-                <label class="mb-1 block text-xs text-stone-500">Raum (optional)</label>
+                <label class="mb-1 block text-xs text-stone-500">Raum (optional)<span class="tip" tabindex="0" data-tip="Wenn das Event in einem bestimmten Raum stattfindet, kannst du ihn hier hinterlegen – dann ist für alle sichtbar, wo es läuft.">?</span></label>
                 <select name="room_id" class="w-full rounded-lg border-stone-200">
                     <option value="">–</option>
                     @foreach($rooms as $room)<option value="{{ $room->id }}">{{ $room->name }}</option>@endforeach
                 </select>
             </div>
             <div class="grid grid-cols-2 gap-2">
-                <div><label class="mb-1 block text-xs text-stone-500">Buchbar bis (Std. vorher)</label>
+                <div><label class="mb-1 block text-xs text-stone-500">Buchbar bis (Std. vorher)<span class="tip" tabindex="0" data-tip="Wie viele Stunden vor Beginn die letzte Buchung möglich ist. Bei 24 ist am Vortag Schluss – so hast du Planungssicherheit für Einkauf und Personal.">?</span></label>
                     <input type="number" name="booking_deadline_hours" min="0" placeholder="z. B. 24" class="w-full rounded-lg border-stone-200"></div>
-                <div><label class="mb-1 block text-xs text-stone-500">Storno bis (Std. vorher)</label>
+                <div><label class="mb-1 block text-xs text-stone-500">Storno bis (Std. vorher)<span class="tip" tabindex="0" data-tip="Bis wann Gäste selbst absagen dürfen. Danach ist der Storno-Link inaktiv und sie müssen sich bei euch melden.">?</span></label>
                     <input type="number" name="cancellation_deadline_hours" min="0" placeholder="z. B. 48" class="w-full rounded-lg border-stone-200"></div>
             </div>
-            <label class="flex items-center gap-2"><input type="checkbox" name="is_public" value="1" checked> Öffentlich sichtbar</label>
+            <label class="flex items-center gap-2"><input type="checkbox" name="is_public" value="1" checked> Öffentlich sichtbar<span class="tip" tabindex="0" data-tip="Angehakt erscheint das Event auf eurer öffentlichen Event-Seite und kann von jedem gebucht werden. Ohne Haken bleibt es intern – ihr könnt Gäste dann selbst eintragen.">?</span></label>
             <button class="w-full rounded-xl bg-stone-900 py-2.5 font-bold text-white">Event anlegen</button>
         </form>
     </div>

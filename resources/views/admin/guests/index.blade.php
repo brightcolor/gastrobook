@@ -24,7 +24,7 @@
             <option value="{{ $tag->id }}" @selected(request('tag') == $tag->id)>{{ $tag->name }}</option>
         @endforeach
     </select>
-    <label class="flex items-center gap-1.5 text-sm"><input type="checkbox" name="vip" value="1" @checked(request('vip'))> Nur VIP</label>
+    <label class="flex items-center gap-1.5 text-sm"><input type="checkbox" name="vip" value="1" @checked(request('vip'))> Nur VIP<span class="tip" tabindex="0" data-tip="Zeigt ausschließlich Gäste, die ihr als Stammgäste markiert habt. Die erscheinen im Reservierungsbuch mit einem Stern.">?</span></label>
     <button class="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Suchen</button>
 </form>
 
@@ -34,10 +34,10 @@
             <tr>
                 <th class="px-4 py-3">Name</th>
                 <th class="px-4 py-3">Kontakt</th>
-                <th class="px-4 py-3">Besuche</th>
-                <th class="px-4 py-3">No-Shows</th>
+                <th class="px-4 py-3">Besuche<span class="tip" tabindex="0" data-tip="Wie oft dieser Gast tatsächlich da war. Zählt hoch, sobald eine Reservierung abgeschlossen wurde – daraus entsteht die automatische Stammgast-Erkennung.">?</span></th>
+                <th class="px-4 py-3">No-Shows<span class="tip" tabindex="0" data-tip="Wie oft der Gast trotz Reservierung nicht erschienen ist. Eine hohe Zahl ist ein Hinweis – bei solchen Gästen lohnt sich eine Anzahlung oder ein Anruf zur Bestätigung.">?</span></th>
                 <th class="px-4 py-3">Letzter Besuch</th>
-                <th class="px-4 py-3">Tags</th>
+                <th class="px-4 py-3">Tags<span class="tip" tabindex="0" data-tip="Frei vergebbare Schlagworte wie „Weinliebhaber" oder „Firmenkunde". Helfen beim Filtern und beim persönlichen Empfang.">?</span></th>
             </tr>
         </thead>
         <tbody class="divide-y divide-stone-50 [&>tr:hover]:bg-stone-50/70">

@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Rückerstattungen')
 @section('content')
-<h1 class="mb-5 text-2xl font-bold">Rückerstattungen</h1>
+<h1 class="mb-5 text-2xl font-bold">Rückerstattungen<span class="tip" tabindex="0" data-tip="Anzahlungen, die an Gäste zurückgehen sollen. Je nach Einstellung laufen sie automatisch oder erst nach deiner Freigabe. Das Geld geht denselben Weg zurück, den es gekommen ist.">?</span></h1>
 
 @php
     $badges = [

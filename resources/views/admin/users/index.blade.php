@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Benutzer')
 @section('content')
-<h1 class="mb-5 text-2xl font-bold">Benutzer & Rollen</h1>
+<h1 class="mb-5 text-2xl font-bold">Benutzer & Rollen<span class="tip" tabindex="0" data-tip="Wer darf sich anmelden und was darf er tun. Jede Person bekommt eine eigene Anmeldung – bitte keine gemeinsamen Zugänge, sonst steht im Änderungsprotokoll später nicht, wer etwas gemacht hat.">?</span></h1>
 
 <div class="grid gap-6 lg:grid-cols-3">
     <div class="lg:col-span-2">
@@ -71,7 +71,7 @@
             <select name="role" required class="w-full rounded-lg border-stone-200">
                 @foreach($roles as $role)<option value="{{ $role }}">{{ $role }}</option>@endforeach
             </select>
-            <label class="flex items-center gap-2"><input type="checkbox" name="all_locations" value="1" checked id="allLoc"> Zugriff auf alle Standorte</label>
+            <label class="flex items-center gap-2"><input type="checkbox" name="all_locations" value="1" checked id="allLoc"> Zugriff auf alle Standorte<span class="tip" tabindex="0" data-tip="Ohne Haken kannst du die Person auf einzelne Standorte beschränken – sie sieht dann auch nur deren Reservierungen und Gäste. Sinnvoll für Personal, das nur in einem Haus arbeitet.">?</span></label>
             <select name="location_ids[]" multiple class="w-full rounded-lg border-stone-200">
                 @foreach($locations as $loc)<option value="{{ $loc->id }}">{{ $loc->name }}</option>@endforeach
             </select>

@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'API & Webhooks')
 @section('content')
-<h1 class="mb-5 text-2xl font-bold">API-Zugriff</h1>
+<h1 class="mb-5 text-2xl font-bold">API-Zugriff<span class="tip" tabindex="0" data-tip="Erlaubt anderen Programmen – etwa eurer Website oder dem Kassensystem – auf Reservierungen zuzugreifen. Nur anlegen, wenn ein Dienstleister ausdrücklich danach fragt. Den Schlüssel bekommst du nur einmal zu sehen.">?</span></h1>
 
 @if(session('new_token'))
     <div class="mb-4 rounded-2xl bg-emerald-50 p-4 text-sm">
@@ -43,7 +43,7 @@
             <input type="text" name="name" required placeholder="Bezeichnung (z. B. Website-Widget)" class="w-full rounded-lg border-stone-200">
             <div class="grid grid-cols-2 gap-1.5">
                 @foreach($scopes as $scope)
-                    <label class="flex items-center gap-1.5"><input type="checkbox" name="scopes[]" value="{{ $scope }}"> <code class="text-xs">{{ $scope }}</code></label>
+                    <label class="flex items-center gap-1.5"><input type="checkbox" name="scopes[]" value="{{ $scope }}"> <code class="text-xs">{{ $scope }}</code><span class="tip" tabindex="0" data-tip="Begrenzt, was mit diesem Zugang möglich ist. Nur das anhaken, was das andere Programm wirklich braucht – „lesen“ allein reicht meist und ist deutlich sicherer.">?</span></label>
                 @endforeach
             </div>
             <button class="w-full rounded-xl bg-stone-900 py-2.5 font-bold text-white" @unless($apiEnabled) disabled style="opacity:.5" @endunless>Token erstellen</button>

@@ -159,6 +159,7 @@ Fertige Docker-Images baut die CI automatisch: `ghcr.io/brightcolor/gastrobook:l
 | SaaS-Website (Landingpage, Preise, FAQ, Kontaktformular, Impressum/Datenschutz/AGB) | ✅ |
 | Self-Service-Registrierung (Trial-Tenant inkl. Standort, ohne Zahlungsdaten) | ✅ |
 | Geführter Onboarding-Wizard nach Registrierung (Betriebstyp → Öffnungszeiten → Räume/Tische oder Mitarbeiter/Leistungen → Buchungsregeln → Branding → Fertig) | ✅ |
+| Erklär-Tooltips (Fragezeichen) an Feldern und Aktionen in der ganzen Verwaltung | ✅ |
 | Einstellungsseite mit Tab-Navigation (7 Bereiche: Allgemein, Buchungsregeln, Zeiten, Räume & Tags, Zahlungen, Integrationen, Widget; Tab-State per URL-Hash) | ✅ |
 | Markenfarbe (brand_primary_color) im Admin speicherbar, Live-Vorschau, synchronisiert Widget-Farbpicker | ✅ |
 

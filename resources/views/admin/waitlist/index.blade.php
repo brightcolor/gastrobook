@@ -35,7 +35,7 @@
                                 <form method="POST" action="{{ route('admin.waitlist.offer', $entry) }}" class="flex items-end gap-2">
                                     @csrf
                                     <div>
-                                        <label class="mb-1 block text-xs text-stone-500">Zeit anbieten</label>
+                                        <label class="mb-1 block text-xs text-stone-500">Zeit anbieten<span class="tip" tabindex="0" data-tip="Die Uhrzeit, die du dem wartenden Gast vorschlagen möchtest. Er bekommt eine E-Mail mit einem Annehmen-Link; nimmt er nicht rechtzeitig an, verfällt das Angebot automatisch und der Platz ist wieder frei.">?</span></label>
                                         <input type="time" name="time" required class="rounded-lg border-stone-200 text-sm">
                                     </div>
                                     <button class="rounded-lg bg-purple-600 px-3 py-2 text-xs font-semibold text-white">Per Mail anbieten</button>
@@ -43,7 +43,7 @@
                             @endif
                             <form method="POST" action="{{ route('admin.waitlist.seat', $entry) }}">
                                 @csrf
-                                <button class="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">Sofort platzieren</button>
+                                <button class="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">Sofort platzieren</button><span class="tip" tabindex="0" data-tip="Macht aus dem Wartelisten-Eintrag direkt eine feste Reservierung – ohne den Umweg über eine E-Mail. Sinnvoll, wenn der Gast gerade vor dir steht oder am Telefon ist.">?</span>
                             </form>
                             <form method="POST" action="{{ route('admin.waitlist.cancel', $entry) }}">
                                 @csrf
@@ -68,7 +68,7 @@
                 <input type="number" name="party_size" required min="1" placeholder="Personen *" class="rounded-lg border-stone-200">
                 <input type="time" name="time" class="rounded-lg border-stone-200">
             </div>
-            <input type="email" name="email" placeholder="E-Mail (für Angebote)" class="w-full rounded-lg border-stone-200">
+            <input type="email" name="email" placeholder="E-Mail (für Angebote)" class="w-full rounded-lg border-stone-200"><span class="tip" tabindex="0" data-tip="Ohne E-Mail-Adresse kann das System dem Gast keinen frei gewordenen Tisch anbieten – ihr müsstet dann selbst anrufen.">?</span>
             <input type="tel" name="phone" placeholder="Telefon" class="w-full rounded-lg border-stone-200">
             <input type="text" name="note" placeholder="Notiz" class="w-full rounded-lg border-stone-200">
             <button class="w-full rounded-xl bg-stone-900 py-2.5 font-bold text-white">Hinzufügen</button>

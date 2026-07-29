@@ -212,14 +212,14 @@
     <span class="loc">{{ $location->name }}</span>
     <span class="clock" id="clock">–:–</span>
     <span class="seg" id="viewSeg" hidden>
-        <button data-view="list" class="on">📋 Liste</button>
-        <button data-view="plan">🍽 Tischplan</button>
+        <button data-view="list" class="on" title="Alle Buchungen des Tages als Liste – nach Uhrzeit sortiert, mit Aktionen direkt in der Zeile">📋 Liste</button>
+        <button data-view="plan" title="Euer Raum von oben: Welcher Tisch ist frei, gleich belegt oder besetzt. Tisch antippen für Details und Aktionen">🍽 Tischplan</button>
     </span>
     <span class="spacer"></span>
-    <span class="live"><span class="dot" id="liveDot"></span><span id="liveText">aktualisiere…</span></span>
-    <a class="btn btn-brand" href="{{ route('admin.reservations.create') }}">+ Neue Buchung</a>
-    <button class="btn" id="darkBtn" title="Dark Mode">🌙</button>
-    <button class="btn" id="fsBtn" title="Vollbild">⛶</button>
+    <span class="live" title="Die Anzeige aktualisiert sich von selbst. Leuchtet der Punkt, ist die Verbindung in Ordnung – neue Buchungen erscheinen sofort, ohne die Seite neu zu laden"><span class="dot" id="liveDot"></span><span id="liveText">aktualisiere…</span></span>
+    <a class="btn btn-brand" href="{{ route('admin.reservations.create') }}" title="Reservierung von Hand eintragen – etwa wenn jemand anruft">+ Neue Buchung</a>
+    <button class="btn" id="darkBtn" title="Dunkle Darstellung – angenehmer bei gedämpftem Licht am Abend">🌙</button>
+    <button class="btn" id="fsBtn" title="Vollbild – blendet alles andere aus. Ideal für einen fest montierten Bildschirm im Service">⛶</button>
     <a class="btn" href="{{ route('admin.dashboard') }}">← Admin</a>
 </header>
 
@@ -232,7 +232,7 @@
             <button id="zoomOut" title="Verkleinern">−</button>
             <span class="zlabel" id="zoomLabel">100 %</span>
             <button id="zoomIn" title="Vergrößern">+</button>
-            <button id="zoomFit" title="Einpassen" style="width:auto;padding:0 12px;font-size:14px;">Einpassen</button>
+            <button id="zoomFit" title="Passt den ganzen Raum auf den Bildschirm ein" style="width:auto;padding:0 12px;font-size:14px;">Einpassen</button>
         </div>
     </div>
     <div class="legend">

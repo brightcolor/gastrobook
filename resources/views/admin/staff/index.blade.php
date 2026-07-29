@@ -17,19 +17,19 @@
                        class="w-full rounded-lg border-stone-200 text-sm" placeholder="z.B. Anna Müller">
             </div>
             <div>
-                <label class="mb-1 block text-xs font-semibold text-stone-500">Kurzbiografie (optional)</label>
+                <label class="mb-1 block text-xs font-semibold text-stone-500">Kurzbiografie (optional)<span class="tip" tabindex="0" data-tip="Ein bis zwei Sätze, die Gästen bei der Mitarbeiterwahl auf der Buchungsseite angezeigt werden – etwa Spezialgebiet oder Erfahrung.">?</span></label>
                 <input type="text" name="bio" maxlength="500" value="{{ old('bio') }}"
                        class="w-full rounded-lg border-stone-200 text-sm" placeholder="z.B. Spezialistin für Colorationen">
             </div>
             <div>
-                <label class="mb-1 block text-xs font-semibold text-stone-500">Farbe (Kalender)</label>
+                <label class="mb-1 block text-xs font-semibold text-stone-500">Farbe (Kalender)<span class="tip" tabindex="0" data-tip="Nur für euch intern: In der Tagesübersicht sind die Termine dieser Person in dieser Farbe eingefärbt – so erkennt man auf einen Blick, wer wann dran ist.">?</span></label>
                 <input type="color" name="color" value="{{ old('color', '#0d9488') }}"
                        class="h-9 w-12 rounded border-stone-200">
             </div>
         </div>
         @if($services->isNotEmpty())
             <div>
-                <label class="mb-1 block text-xs font-semibold text-stone-500">Angebotene Leistungen</label>
+                <label class="mb-1 block text-xs font-semibold text-stone-500">Angebotene Leistungen<span class="tip" tabindex="0" data-tip="Was diese Person macht. Gäste bekommen sie nur bei genau diesen Leistungen zur Auswahl angeboten.">?</span></label>
                 <div class="flex flex-wrap gap-3">
                     @foreach($services as $svc)
                         <label class="flex items-center gap-1 text-sm">
@@ -45,6 +45,7 @@
             <label class="flex items-center gap-2 text-sm">
                 <input type="checkbox" name="is_active" value="1" @checked(old('is_active', true))>
                 Aktiv (buchbar)
+                <span class="tip" tabindex="0" data-tip="Ohne Haken ist die Person online nicht mehr buchbar – etwa bei längerer Abwesenheit oder nach dem Ausscheiden. Bereits gebuchte Termine bleiben bestehen.">?</span>
             </label>
             <button type="submit" class="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700">
                 Anlegen
@@ -174,7 +175,7 @@
                         <form method="POST" action="{{ route('admin.staff.absences.store', $member) }}"
                               class="grid grid-cols-2 gap-2 text-sm sm:grid-cols-5">
                             @csrf
-                            <div><label class="mb-1 block text-xs text-stone-500">Von Datum</label>
+                            <div><label class="mb-1 block text-xs text-stone-500">Von Datum<span class="tip" tabindex="0" data-tip="Beginn der Abwesenheit – Urlaub, Krankheit, Fortbildung. In diesem Zeitraum ist die Person nicht buchbar und bekommt keine neuen Termine.">?</span></label>
                                 <input type="date" name="starts_on" required class="w-full rounded-lg border-stone-200"></div>
                             <div><label class="mb-1 block text-xs text-stone-500">Uhrzeit (opt.)</label>
                                 <input type="time" name="starts_time" class="w-full rounded-lg border-stone-200"></div>

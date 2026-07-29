@@ -19,7 +19,7 @@
             <input type="number" name="party_size" required min="1" max="100" value="{{ old('party_size', $prefill['party_size']) }}" class="w-full rounded-xl border-stone-200">
         </div>
         <div>
-            <label class="mb-1 block text-sm font-semibold">Dauer (Min.)</label>
+            <label class="mb-1 block text-sm font-semibold">Dauer (Min.)<span class="tip" tabindex="0" data-tip="Wie lange der Tisch belegt bleibt. Leer lassen heißt: es gilt eure übliche Dauer aus den Einstellungen. Eintragen lohnt sich bei Ausnahmen – etwa einer langen Feier oder einem kurzen Mittagstisch.">?</span></label>
             <input type="number" name="duration_minutes" min="30" max="600" step="15" placeholder="Standard" value="{{ old('duration_minutes') }}" class="w-full rounded-xl border-stone-200">
         </div>
     </div>
@@ -32,32 +32,32 @@
 
     <div class="grid gap-4 sm:grid-cols-2">
         <div>
-            <label class="mb-1 block text-sm font-semibold">E-Mail</label>
+            <label class="mb-1 block text-sm font-semibold">E-Mail<span class="tip" tabindex="0" data-tip="Ohne E-Mail bekommt der Gast weder Bestätigung noch Erinnerung und kann nicht selbst umbuchen oder stornieren. Bei Telefonbuchungen deshalb möglichst miterfassen.">?</span></label>
             <input type="email" name="email" id="guestEmail" value="{{ old('email') }}" class="w-full rounded-xl border-stone-200">
         </div>
         <div>
-            <label class="mb-1 block text-sm font-semibold">Telefon</label>
+            <label class="mb-1 block text-sm font-semibold">Telefon<span class="tip" tabindex="0" data-tip="Nötig, um kurzfristig durchzurufen – und Voraussetzung für Erinnerungen per SMS, falls ihr die nutzt.">?</span></label>
             <input type="tel" name="phone" id="guestPhone" value="{{ old('phone') }}" class="w-full rounded-xl border-stone-200">
         </div>
     </div>
 
     <div class="grid gap-4 sm:grid-cols-2">
         <div>
-            <label class="mb-1 block text-sm font-semibold">Quelle</label>
+            <label class="mb-1 block text-sm font-semibold">Quelle<span class="tip" tabindex="0" data-tip="Wie die Buchung zustande kam. Erscheint später in den Berichten – so siehst du, wie viel übers Telefon und wie viel online reinkommt.">?</span></label>
             <select name="source" class="w-full rounded-xl border-stone-200">
                 <option value="manual">Manuell / vor Ort</option>
                 <option value="phone">Telefon</option>
             </select>
         </div>
         <div>
-            <label class="mb-1 block text-sm font-semibold">Anlass</label>
+            <label class="mb-1 block text-sm font-semibold">Anlass<span class="tip" tabindex="0" data-tip="Zum Beispiel Geburtstag oder Jahrestag. Steht später gut sichtbar bei der Reservierung – damit das Team den Gast passend empfangen kann.">?</span></label>
             <input type="text" name="occasion" value="{{ old('occasion') }}" class="w-full rounded-xl border-stone-200">
         </div>
     </div>
 
     <div>
         <div class="mb-1 flex items-center justify-between">
-            <label class="block text-sm font-semibold">Tische <span class="font-normal text-stone-400">(leer = automatische Zuweisung)</span></label>
+            <label class="block text-sm font-semibold">Tische <span class="font-normal text-stone-400">(leer = automatische Zuweisung)</span><span class="tip" tabindex="0" data-tip="Ohne Auswahl sucht das System selbst den kleinsten passenden freien Tisch. Wähle nur dann selbst, wenn der Gast einen bestimmten Platz möchte – dann wird deine Wahl nicht überstimmt.">?</span></label>
             <span class="flex gap-3 text-xs text-stone-400">
                 <span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-sm bg-emerald-400"></span>frei</span>
                 <span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-sm bg-stone-300"></span>belegt</span>
@@ -78,22 +78,22 @@
 
     <div class="grid gap-4 sm:grid-cols-2">
         <div>
-            <label class="mb-1 block text-sm font-semibold">Allergien</label>
+            <label class="mb-1 block text-sm font-semibold">Allergien<span class="tip" tabindex="0" data-tip="Wird in der Liste und am Tisch mit einem Warnzeichen hervorgehoben, damit die Küche es rechtzeitig sieht. Gesundheitsangaben nur mit Einverständnis des Gastes eintragen.">?</span></label>
             <input type="text" name="allergies" value="{{ old('allergies') }}" class="w-full rounded-xl border-stone-200">
         </div>
         <div>
-            <label class="mb-1 block text-sm font-semibold">Gastnotiz</label>
+            <label class="mb-1 block text-sm font-semibold">Gastnotiz<span class="tip" tabindex="0" data-tip="Wünsche des Gastes, z. B. „Tisch am Fenster" oder „Kinderstuhl nötig". Diese Notiz gehört zu dieser einen Reservierung.">?</span></label>
             <input type="text" name="note" value="{{ old('note') }}" class="w-full rounded-xl border-stone-200">
         </div>
     </div>
 
     <div>
-        <label class="mb-1 block text-sm font-semibold">Interne Notiz</label>
+        <label class="mb-1 block text-sm font-semibold">Interne Notiz<span class="tip" tabindex="0" data-tip="Nur für euch im Team sichtbar – der Gast bekommt sie nie zu sehen. Zum Beispiel Hinweise zur Abrechnung oder zum letzten Besuch.">?</span></label>
         <input type="text" name="internal_note" value="{{ old('internal_note') }}" class="w-full rounded-xl border-stone-200">
     </div>
 
     <label class="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="force" value="1"> Verfügbarkeitsprüfung übergehen (Überbuchung – wird protokolliert)
+        <input type="checkbox" name="force" value="1"> Verfügbarkeitsprüfung übergehen (Überbuchung – wird protokolliert)<span class="tip" tabindex="0" data-tip="Legt die Reservierung auch dann an, wenn eigentlich nichts mehr frei ist – etwa weil ihr noch einen Tisch dazustellt. Der Vorgang wird mit deinem Namen protokolliert. Im Zweifel lieber nicht anhaken.">?</span>
     </label>
 
     <button class="w-full rounded-xl bg-stone-900 py-3.5 font-bold text-white hover:bg-stone-700 sm:w-auto sm:px-8">Reservierung anlegen</button>

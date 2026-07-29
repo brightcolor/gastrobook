@@ -14,6 +14,7 @@
         <div class="relative">
             <button id="exportBtn"
                     class="rounded-xl bg-stone-200 px-4 py-2.5 text-sm font-semibold hover:bg-stone-300">↓ Export</button>
+            <span class="tip tip-left" tabindex="0" data-tip="Lädt die Reservierungen des gewählten Zeitraums als Tabelle herunter (CSV) – zum Weiterarbeiten in Excel, für die Buchhaltung oder fürs Archiv. Es wird nichts verändert.">?</span>
             <div id="exportDrop"
                  class="absolute right-0 top-full z-20 mt-1 hidden w-72 rounded-2xl bg-white p-4 shadow-xl ring-1 ring-stone-100">
                 <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-stone-500">Zeitraum wählen</p>
@@ -80,7 +81,8 @@
 <form method="GET" class="mb-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-100">
     {{-- Kimai-style Zeitbereich --}}
     <div class="mb-3">
-        <label class="mb-1.5 block text-xs font-semibold text-stone-500">Zeitraum</label>
+        <label class="mb-1.5 block text-xs font-semibold text-stone-500">Zeitraum
+            <span class="tip" tabindex="0" data-tip="Bestimmt, welche Tage in der Liste erscheinen. Die Schnellauswahl deckt die üblichen Fälle ab; mit „Von/Bis" wählst du einen beliebigen Bereich. Die Auswahl gilt auch für den Export.">?</span></label>
         <div class="flex flex-wrap items-end gap-2">
             <div class="flex flex-wrap gap-1.5">
                 @foreach($presets as $key => $label)
@@ -109,7 +111,8 @@
 
     <div class="flex flex-wrap items-end gap-3">
     <div>
-        <label class="mb-1 block text-xs font-semibold text-stone-500">Status</label>
+        <label class="mb-1 block text-xs font-semibold text-stone-500">Status
+            <span class="tip" tabindex="0" data-tip="Zeigt nur Reservierungen mit dem gewählten Bearbeitungsstand – z. B. nur offene Anfragen, die noch auf deine Bestätigung warten, oder nur No-Shows.">?</span></label>
         <select name="status" class="rounded-lg border-stone-200 text-sm" onchange="this.form.submit()">
             <option value="">Alle</option>
             @foreach($statuses as $s)
@@ -118,7 +121,8 @@
         </select>
     </div>
     <div>
-        <label class="mb-1 block text-xs font-semibold text-stone-500">Quelle</label>
+        <label class="mb-1 block text-xs font-semibold text-stone-500">Quelle
+            <span class="tip" tabindex="0" data-tip="Woher die Buchung kam: über deine Buchungsseite (online), telefonisch von euch eingetragen, als Laufgast oder über die Warteliste.">?</span></label>
         <select name="source" class="rounded-lg border-stone-200 text-sm" onchange="this.form.submit()">
             <option value="">Alle</option>
             @foreach(['online', 'manual', 'phone', 'walk_in', 'api'] as $src)
@@ -127,7 +131,8 @@
         </select>
     </div>
     <div>
-        <label class="mb-1 block text-xs font-semibold text-stone-500">Raum</label>
+        <label class="mb-1 block text-xs font-semibold text-stone-500">Raum
+            <span class="tip" tabindex="0" data-tip="Zeigt nur Reservierungen an Tischen im gewählten Raum – praktisch, wenn Terrasse und Innenbereich getrennt betreut werden.">?</span></label>
         <select name="room_id" class="rounded-lg border-stone-200 text-sm" onchange="this.form.submit()">
             <option value="">Alle</option>
             @foreach($rooms as $room)
@@ -136,7 +141,8 @@
         </select>
     </div>
     <div class="grow">
-        <label class="mb-1 block text-xs font-semibold text-stone-500">Suche (Name, Tel., E-Mail, Nr.)</label>
+        <label class="mb-1 block text-xs font-semibold text-stone-500">Suche (Name, Tel., E-Mail, Nr.)
+            <span class="tip" tabindex="0" data-tip="Findet einen Gast über Namen, Telefonnummer, E-Mail-Adresse oder die Buchungsnummer. Ideal, wenn jemand anruft: einfach Name oder Nummer eintippen.">?</span></label>
         <input type="search" name="q" value="{{ request('q') }}" placeholder="Suchen…" class="w-full rounded-lg border-stone-200 text-sm">
     </div>
     <button class="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Filtern</button>
@@ -156,6 +162,7 @@
     @csrf
     <div id="bulkBar" class="mb-4 hidden items-center gap-3 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm">
         <span class="font-semibold text-teal-900"><span id="bulkCount">0</span> ausgewählt</span>
+        <span class="tip tip-right" tabindex="0" data-tip="Wendet denselben Schritt auf alle angehakten Reservierungen an – spart das einzelne Durchklicken. Schritte, die bei einer Buchung gerade nicht möglich sind, werden dabei übersprungen.">?</span>
         <select name="status" class="rounded-lg border-teal-200 text-sm">
             <option value="confirmed">Bestätigen</option>
             <option value="no_show">No-Show</option>
@@ -171,14 +178,14 @@
     <table class="w-full min-w-[42rem] text-sm">
         <thead class="border-b border-stone-100 text-left text-xs font-semibold uppercase tracking-wide text-stone-500">
             <tr>
-                <th class="w-8 px-3 py-3"><input type="checkbox" id="bulkAll" aria-label="Alle auswählen" class="rounded"></th>
+                <th class="w-8 px-3 py-3"><input type="checkbox" id="bulkAll" aria-label="Alle auswählen" class="rounded"><span class="tip" tabindex="0" data-tip="Hakt alle Reservierungen der Liste an. Oben erscheint dann eine Leiste, mit der du für alle zusammen denselben Schritt ausführen kannst.">?</span></th>
                 <th class="px-4 py-3">Zeit</th>
                 <th class="px-4 py-3">Gast</th>
-                <th class="px-4 py-3">P.</th>
+                <th class="px-4 py-3">P.<span class="tip" tabindex="0" data-tip="Personen – für wie viele Gäste der Tisch reserviert ist.">?</span></th>
                 <th class="px-4 py-3">Tisch</th>
-                <th class="px-4 py-3">Status</th>
-                <th class="px-4 py-3">Quelle</th>
-                <th class="px-4 py-3">Aktionen</th>
+                <th class="px-4 py-3">Status<span class="tip" tabindex="0" data-tip="Der Bearbeitungsstand: Anfrage wartet auf deine Bestätigung · Bestätigt ist zugesagt · Da sitzt gerade am Tisch · Abgeschlossen ist gegangen · No-Show ist nicht erschienen.">?</span></th>
+                <th class="px-4 py-3">Quelle<span class="tip" tabindex="0" data-tip="Woher die Buchung kam – über deine Buchungsseite, von euch selbst eingetragen, als Laufgast oder aus der Warteliste.">?</span></th>
+                <th class="px-4 py-3">Aktionen<span class="tip tip-left" tabindex="0" data-tip="Bringt die Reservierung einen Schritt weiter. „Bestätigen" sagt dem Gast per E-Mail zu, „Ablehnen" sagt ab. „Angekommen" markiert, dass die Gäste da sind. „No-Show" hält fest, dass niemand kam – das zählt beim Gast mit und kann eine Anzahlung einbehalten. „Auschecken" gibt den Tisch wieder frei.">?</span></th>
             </tr>
         </thead>
         <tbody class="divide-y divide-stone-50 [&>tr:hover]:bg-stone-50/70">

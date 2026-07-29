@@ -23,12 +23,12 @@
                     <input type="tel" name="phone" value="{{ $guest->phone }}" class="w-full rounded-lg border-stone-200"></div>
                 <div><label class="mb-1 block text-xs font-semibold text-stone-500">Geburtstag</label>
                     <input type="date" name="birthday" value="{{ $guest->birthday?->toDateString() }}" class="w-full rounded-lg border-stone-200"></div>
-                <div class="flex items-end"><label class="flex items-center gap-2 text-sm"><input type="checkbox" name="is_vip" value="1" @checked($guest->is_vip)> VIP-Gast</label></div>
-                <div class="sm:col-span-2"><label class="mb-1 block text-xs font-semibold text-stone-500">Präferenzen</label>
+                <div class="flex items-end"><label class="flex items-center gap-2 text-sm"><input type="checkbox" name="is_vip" value="1" @checked($guest->is_vip)> VIP-Gast<span class="tip" tabindex="0" data-tip="Markiert den Gast dauerhaft als Stammgast. Bei jeder Reservierung erscheint dann ein Stern, damit das Team ihn sofort erkennt.">?</span></label></div>
+                <div class="sm:col-span-2"><label class="mb-1 block text-xs font-semibold text-stone-500">Präferenzen<span class="tip" tabindex="0" data-tip="Was dieser Gast immer wieder möchte – etwa „lieber Terrasse" oder „ruhige Ecke". Gilt dauerhaft, anders als eine Notiz zu einer einzelnen Buchung.">?</span></label>
                     <input type="text" name="preferences" value="{{ $guest->preferences }}" placeholder="z. B. Fensterplatz, Terrasse" class="w-full rounded-lg border-stone-200"></div>
-                <div><label class="mb-1 block text-xs font-semibold text-stone-500">Allergien</label>
+                <div><label class="mb-1 block text-xs font-semibold text-stone-500">Allergien<span class="tip" tabindex="0" data-tip="Dauerhafte Unverträglichkeiten dieses Gastes. Werden bei jeder neuen Reservierung sichtbar. Gesundheitsangaben nur mit seinem Einverständnis speichern.">?</span></label>
                     <input type="text" name="allergies" value="{{ $guest->allergies }}" class="w-full rounded-lg border-stone-200"></div>
-                <div><label class="mb-1 block text-xs font-semibold text-stone-500">Barrierefreiheit</label>
+                <div><label class="mb-1 block text-xs font-semibold text-stone-500">Barrierefreiheit<span class="tip" tabindex="0" data-tip="Hinweise wie Rollstuhl oder Gehhilfe. So könnt ihr rechtzeitig einen gut erreichbaren Tisch einplanen.">?</span></label>
                     <input type="text" name="accessibility_notes" value="{{ $guest->accessibility_notes }}" class="w-full rounded-lg border-stone-200"></div>
             </div>
             <button class="mt-4 rounded-xl bg-stone-900 px-5 py-2.5 text-sm font-bold text-white">Speichern</button>
@@ -72,7 +72,7 @@
                 @csrf
                 <textarea name="body" rows="2" required placeholder="Neue Notiz…" class="w-full rounded-lg border-stone-200 text-sm"></textarea>
                 @if(auth()->user()->canInTenant('guest_notes.sensitive.view', app(\App\Support\TenantContext::class)->tenant()))
-                    <label class="flex items-center gap-1.5 text-xs"><input type="checkbox" name="is_sensitive" value="1"> Sensibel (eingeschränkte Sicht)</label>
+                    <label class="flex items-center gap-1.5 text-xs"><input type="checkbox" name="is_sensitive" value="1"> Sensibel (eingeschränkte Sicht)<span class="tip" tabindex="0" data-tip="Für heikle Notizen. Nur Teammitglieder mit entsprechender Berechtigung sehen sie – der normale Service nicht.">?</span></label>
                 @endif
                 <button class="rounded-lg bg-stone-900 px-3 py-1.5 text-xs font-bold text-white">Speichern</button>
             </form>
@@ -98,7 +98,7 @@
                     <form method="POST" action="{{ route('admin.guests.anonymize', $guest) }}"
                           onsubmit="return confirm('Gast unwiderruflich anonymisieren? Alle persönlichen Daten werden entfernt.')">
                         @csrf
-                        <button class="w-full rounded-xl bg-red-100 px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-200">Anonymisieren (Art. 17)</button>
+                        <button class="w-full rounded-xl bg-red-100 px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-200">Anonymisieren (Art. 17)</button><span class="tip tip-left" tabindex="0" data-tip="Löscht Name und Kontaktdaten unwiderruflich, wenn der Gast das verlangt. Die Buchungen selbst bleiben anonym erhalten, damit eure Statistiken stimmen. Rückgängig machen geht nicht.">?</span>
                     </form>
                 @endif
             </div>

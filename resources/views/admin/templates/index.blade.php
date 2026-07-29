@@ -2,7 +2,7 @@
 @section('title', 'E-Mail-Vorlagen')
 @section('content')
 
-<h1 class="mb-1 text-2xl font-bold">E-Mail-Vorlagen</h1>
+<h1 class="mb-1 text-2xl font-bold">E-Mail-Vorlagen<span class="tip" tabindex="0" data-tip="Hier änderst du den Wortlaut der automatischen E-Mails an Gäste – Bestätigung, Erinnerung, Absage. Ohne eigene Fassung wird der Standardtext verschickt.">?</span></h1>
 <p class="mb-5 text-sm text-stone-500">Passe Betreff und Text der automatischen E-Mails an. Leer/Standard = die eingebaute Vorlage wird verwendet.</p>
 
 <div class="mb-5 rounded-2xl bg-stone-50 p-4 text-sm ring-1 ring-stone-100">
@@ -33,10 +33,10 @@
 
                 <form method="POST" action="{{ route('admin.templates.update', $t['key']) }}" class="mt-4 space-y-3 text-sm">
                     @csrf @method('PUT')
-                    <label class="block">Betreff
+                    <label class="block">Betreff<span class="tip" tabindex="0" data-tip="Die Betreffzeile der E-Mail. Kurz und konkret wirkt am besten, damit Gäste die Nachricht im Postfach wiederfinden.">?</span>
                         <input name="subject" required value="{{ $t['subject'] }}" class="mt-1 w-full rounded-lg border-stone-200">
                     </label>
-                    <label class="block">Text
+                    <label class="block">Text<span class="tip" tabindex="0" data-tip="Der Nachrichtentext. Die Platzhalter in geschweiften Klammern werden beim Versand automatisch durch die echten Angaben ersetzt – Name, Datum, Uhrzeit. Am besten unverändert stehen lassen.">?</span>
                         <textarea name="body" required rows="9" class="mt-1 w-full rounded-lg border-stone-200 font-mono text-xs leading-relaxed">{{ $t['body'] }}</textarea>
                     </label>
                     <button class="rounded-xl bg-stone-900 px-5 py-2 font-bold text-white">Speichern</button>
