@@ -18,6 +18,15 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BoardController extends Controller
 {
+    /**
+     * How far ahead a booking counts as "arriving soon".
+     *
+     * Drives both the amber table colour and the "Ankunft bald" counter – those
+     * used to run on different windows (45 vs. 60 minutes), so a table could
+     * still look free while already being counted.
+     */
+    private const SOON_MINUTES = 45;
+
     public function __construct(private readonly TenantContext $context) {}
 
     public function index()
@@ -144,7 +153,8 @@ class BoardController extends Controller
             'open_requests' => $timeline->where('needs_action', true)->count()
                 + $new->where('needs_action', true)->count(),
             'arrivals_soon' => $timeline->filter(fn ($r) => $r['status'] === ReservationStatus::Confirmed->value
-                && $r['minutes_to_start'] !== null && $r['minutes_to_start'] >= 0 && $r['minutes_to_start'] <= 60)->count(),
+                && $r['minutes_to_start'] !== null && $r['minutes_to_start'] >= 0
+                && $r['minutes_to_start'] <= self::SOON_MINUTES)->count(),
             'waitlist' => WaitlistEntry::where('location_id', $location->id)
                 ->whereIn('status', ['waiting', 'offered'])
                 ->whereDate('desired_date', '>=', $today)
@@ -225,7 +235,7 @@ class BoardController extends Controller
         }
 
         $atUtc = $nowLocal->utc();
-        $soonUtc = $atUtc->addMinutes(45);
+        $soonUtc = $atUtc->addMinutes(self::SOON_MINUTES);
 
         $reservations = Reservation::query()
             ->where('location_id', $location->id)

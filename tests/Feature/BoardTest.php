@@ -188,4 +188,37 @@ class BoardTest extends TestCase
 
         $this->assertSame(ReservationStatus::Seated, $reservation->fresh()->status);
     }
+
+    /**
+     * Table colour and the "Ankunft bald" counter must use the same window.
+     * They used to differ (45 vs. 60 minutes), so a table could still show as
+     * free while already being counted as an imminent arrival.
+     */
+    public function test_soon_window_is_the_same_for_table_colour_and_counter(): void
+    {
+        $setup = $this->createTenantSetup();
+        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
+
+        // 30 minutes out: inside the window.
+        $near = $this->todayReservation($setup['location']->id, $setup['tenant']->id);
+        $nearStart = CarbonImmutable::now('Europe/Berlin')->addMinutes(30);
+        $near->update(['start_at' => $nearStart->utc(), 'end_at' => $nearStart->addHours(2)->utc()]);
+        $near->tables()->attach($setup['tables'][0]->id);
+
+        // 55 minutes out: outside the 45-minute window – but inside the old 60.
+        $far = $this->todayReservation($setup['location']->id, $setup['tenant']->id);
+        $farStart = CarbonImmutable::now('Europe/Berlin')->addMinutes(55);
+        $far->update(['start_at' => $farStart->utc(), 'end_at' => $farStart->addHours(2)->utc()]);
+        $far->tables()->attach($setup['tables'][1]->id);
+
+        $this->clearTenantContext();
+        $response = $this->actingAs($admin)->getJson('/admin/board/data')->assertOk();
+
+        $tables = collect($response->json('floorplan')[0]['tables']);
+        $this->assertSame('soon', $tables->firstWhere('id', $setup['tables'][0]->id)['status']);
+        $this->assertSame('free', $tables->firstWhere('id', $setup['tables'][1]->id)['status']);
+
+        // Exactly the table that is coloured amber is the one being counted.
+        $this->assertSame(1, $response->json('kpis.arrivals_soon'));
+    }
 }

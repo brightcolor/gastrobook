@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.94.0] – 2026-07-29
+
+### Live-Board: ruhigere Verbindung, einheitliches Zeitfenster
+Das Board wird typischerweise den ganzen Tag offen gelassen – dabei fielen zwei
+Dinge auf.
+
+- **Keine falschen „offline"-Meldungen mehr.** Die Verbindung wird alle paar
+  Minuten planmäßig neu aufgebaut, damit sie von Zwischenstationen im Netz nicht
+  gekappt wird. Das wurde bisher als Störung gewertet: Die Anzeige sprang kurz
+  auf „offline – versuche erneut", obwohl alles lief – über einen Arbeitstag
+  rund 300-mal. Jetzt wird erst nach 15 Sekunden ohne Verbindung gewarnt.
+- **Keine doppelte Abfrage im Hintergrund.** Beim Neuaufbau sprang zusätzlich
+  die Ersatz-Abfrage alle 20 Sekunden an und lief danach dauerhaft neben der
+  Live-Verbindung weiter – rund 3 überflüssige Anfragen je Minute und offenem
+  Board. Sie wird jetzt beendet, sobald die Live-Verbindung wieder steht.
+- **„Ankunft bald" meint überall dasselbe.** Die Tischfarbe wechselte 45 Minuten
+  vor der Buchung auf Gelb, die Kennzahl oben zählte aber schon ab 60 Minuten.
+  Ein Tisch konnte also grün aussehen und trotzdem mitgezählt werden. Beides
+  läuft jetzt auf 45 Minuten; die Kennzahl heißt entsprechend „Ankunft bald".
+
 ## [1.93.1] – 2026-07-29
 
 ### Behoben: Im Tischplan fehlte die komplette Navigation

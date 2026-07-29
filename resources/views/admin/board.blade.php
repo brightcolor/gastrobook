@@ -416,7 +416,7 @@
     function renderKpis(k) {
         const items = [
             ['today', 'Heute', false], ['covers', 'Gäste', false],
-            ['seated', 'Anwesend', false], ['arrivals_soon', 'Ankunft <1h', false],
+            ['seated', 'Anwesend', false], ['arrivals_soon', 'Ankunft bald', false],
             ['open_requests', 'Offen', true], ['waitlist', 'Warteliste', false],
         ];
         document.getElementById('kpis').innerHTML = items.map(([key, label, alert]) =>
@@ -946,15 +946,43 @@
         document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
     }
 
+    function stopPolling() {
+        if (!pollTimer) return;
+        clearInterval(pollTimer);
+        pollTimer = null;
+    }
+
     function startStream() {
         if (!useSse || !('EventSource' in window)) { startPolling(); return; }
         let es;
         try { es = new EventSource(streamUrl); } catch (e) { startPolling(); return; }
-        es.onmessage = (e) => { try { applyData(JSON.parse(e.data)); } catch (_) {} };
+
+        // The server closes the stream every ~280 s so proxies don't kill it;
+        // the browser reconnects on its own. That is normal operation, not an
+        // outage – so don't cry "offline" and don't leave the polling backup
+        // running forever alongside the stream (a board is open all day).
+        let offlineTimer = null;
+
+        es.onopen = () => {
+            clearTimeout(offlineTimer);
+            offlineTimer = null;
+            stopPolling();
+        };
+
+        es.onmessage = (e) => {
+            clearTimeout(offlineTimer);
+            offlineTimer = null;
+            stopPolling();
+            try { applyData(JSON.parse(e.data)); } catch (_) {}
+        };
+
         es.onerror = () => {
-            // Browser auto-reconnects EventSource; show stale + ensure polling backup
-            setLive(false);
-            startPolling();
+            // Give the automatic reconnect a moment before alarming anyone.
+            if (offlineTimer) return;
+            offlineTimer = setTimeout(() => {
+                setLive(false);
+                startPolling();
+            }, 15000);
         };
     }
 
