@@ -132,4 +132,30 @@ class FloorPlanEditorTest extends TestCase
         Storage::disk('public')->assertMissing($path);
         $this->assertNull($room->fresh()->background_path);
     }
+
+    /**
+     * The page ships its own <style> block that forces .hidden to win over the
+     * .fp-* display rules. That override must stay scoped to this page's own
+     * elements: the admin sidebar shows itself with "hidden md:flex", and a
+     * blanket ".hidden { display: none !important }" beat it – the whole
+     * navigation disappeared and the plan looked like a fullscreen view.
+     */
+    public function test_hidden_override_stays_scoped_so_the_sidebar_survives(): void
+    {
+        $setup = $this->createTenantSetup();
+        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
+        $this->clearTenantContext();
+
+        $html = $this->actingAs($admin)->get('/admin/floorplan')->assertOk()->getContent();
+
+        // No unscoped override: a rule whose selector is a bare ".hidden".
+        // (Matching on the declaration alone would also hit the scoped rule,
+        // which legitimately ends in the same characters.)
+        $this->assertDoesNotMatchRegularExpression('/(^|[\s,{;])\.hidden\s*\{/m', $html);
+        // But the scoped one is still there, so the edit toggle keeps working.
+        $this->assertStringContainsString('[class*="fp-"].hidden', $html);
+        // And the navigation is on the page, including its own entry.
+        $this->assertStringContainsString('hidden w-60', $html);
+        $this->assertStringContainsString('Tischplan', $html);
+    }
 }

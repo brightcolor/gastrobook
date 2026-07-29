@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.93.1] – 2026-07-29
+
+### Behoben: Im Tischplan fehlte die komplette Navigation
+Auf der Tischplan-Seite war die linke Menüleiste verschwunden – die Seite sah
+aus wie eine Vollbildansicht, und man kam nur über den Zurück-Knopf des Browsers
+wieder heraus.
+
+Ursache war eine Hilfsregel aus v1.59.2: Um das Ein- und Ausblenden im
+Bearbeiten-Modus zuverlässig zu machen, wurde dort „versteckt“ generell für die
+ganze Seite erzwungen. Die Menüleiste blendet sich aber nach demselben Muster
+je nach Bildschirmbreite ein – gegen die erzwungene Regel konnte sie nie
+gewinnen und blieb auf jedem Gerät unsichtbar.
+
+Die Regel gilt jetzt nur noch für die Elemente des Tischplans selbst. Das
+Bearbeiten-Umschalten und die Dialoge funktionieren unverändert, die Navigation
+ist zurück. Ein Test hält den Fall künftig fest.
+
 ## [1.93.0] – 2026-07-29
 
 ### Erklär-Tooltips in der ganzen Verwaltung
