@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.86.0] – 2026-07-07
+
+### Neu: Automatisches Zusammenstellen von Tischen für größere Gruppen
+- Passt eine Gruppe auf keinen Einzeltisch und ist auch **keine passende
+  Tischkombination angelegt**, stellt Swayy jetzt selbst eine Kombination aus
+  freien, kombinierbaren Tischen desselben Raums zusammen – statt die Buchung
+  abzulehnen.
+- Beispiel: 16 Personen, größter Tisch fasst 8 → es werden automatisch die
+  wenigsten nötigen Tische belegt (größte zuerst).
+- Vorrang bleibt: **einzelner passender Tisch** → **vordefinierte Kombination**
+  → erst dann die automatische Zusammenstellung. Es werden nur als
+  „kombinierbar" markierte Tische genutzt; online zusätzlich nur
+  online-buchbare. Reicht die Platzsumme im Raum nicht, bleibt es bei einer
+  Absage. 5 Tests.
+
 ## [1.85.0] – 2026-07-07
 
 ### Neu: Stühle im Tischplan – auch für Gäste – und Stirnseiten pro Tisch abschaltbar

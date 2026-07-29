@@ -61,6 +61,57 @@ class TableAssignmentService
             return $combo;
         }
 
+        // 3. Ad-hoc combination of joinable tables — large groups should not be
+        //    turned away just because nobody defined a matching combination.
+        return $this->adHocCombination($tables, $partySize, $online);
+    }
+
+    /**
+     * Build a combination on the fly from free, joinable tables in the same
+     * room. Picks the largest tables first so as few tables as possible are
+     * used, and stops as soon as the party fits.
+     *
+     * @param  Collection<int, RestaurantTable>  $freeTables
+     * @return ?array{table_ids: array<int>, names: array<string>, reason: string}
+     */
+    private function adHocCombination(Collection $freeTables, int $partySize, bool $online): ?array
+    {
+        $candidates = $freeTables
+            ->filter(fn (RestaurantTable $t) => $t->joinable)
+            ->when($online, fn ($c) => $c->filter(fn (RestaurantTable $t) => $t->online_bookable));
+
+        // Joining tables only makes sense within one room.
+        foreach ($candidates->groupBy('room_id') as $roomTables) {
+            $sorted = $roomTables->sortByDesc('max_capacity')->values();
+            if ($sorted->sum('max_capacity') < $partySize) {
+                continue;
+            }
+
+            $picked = [];
+            $seats = 0;
+            foreach ($sorted as $table) {
+                $picked[] = $table;
+                $seats += (int) $table->max_capacity;
+                if ($seats >= $partySize) {
+                    break;
+                }
+            }
+
+            // A single table would have been found earlier, so require ≥ 2.
+            if ($seats >= $partySize && count($picked) >= 2) {
+                $names = array_map(fn (RestaurantTable $t) => $t->name, $picked);
+
+                return [
+                    'table_ids' => array_map(fn (RestaurantTable $t) => $t->id, $picked),
+                    'names' => $names,
+                    'reason' => sprintf(
+                        'ad_hoc_combination: %s (%d seats) for party of %d',
+                        implode('+', $names), $seats, $partySize
+                    ),
+                ];
+            }
+        }
+
         return null;
     }
 
