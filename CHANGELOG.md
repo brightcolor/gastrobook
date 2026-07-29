@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.95.0] – 2026-07-29
+
+### Live-Board: Eskalation vor der Ankunft
+Statt einer einzigen Vorwarnstufe zeigt der Tischplan jetzt zwei:
+
+- **Gelb ab einer Stunde** vor der Buchung.
+- **Orange in der letzten halben Stunde** – der Tisch sollte jetzt bereit sein.
+
+Die Kennzahlen oben zeigen beides getrennt („Ankunft < 1 Std." und
+„Ankunft < 30 Min."), wobei die dringende Stufe hervorgehoben wird. Legende und
+Tisch-Detailfenster benennen die Stufen ausdrücklich, damit niemand raten muss,
+was Gelb gegenüber Orange bedeutet.
+
+### Verlässliche Zustellung
+Bisher konnte das Board unbemerkt einfrieren: Hielt eine Zwischenstation im Netz
+die Verbindung offen, lieferte aber nichts mehr, sah das für die Seite genauso
+aus wie ein ruhiger Abend – das Personal hätte weiter auf einen veralteten Stand
+geschaut, ohne es zu merken.
+
+- Der Server sendet jetzt mindestens alle 20 Sekunden ein echtes Lebenszeichen
+  (bisher nur einen technischen Kommentar, den der Browser der Seite gar nicht
+  weitergibt).
+- Das Board überwacht das: Bleibt es länger als eine Minute still, wird das
+  deutlich angezeigt **und** sofort direkt beim Server nachgefragt – lieber
+  einmal zu viel gemeldet als stillschweigend veraltete Daten zeigen.
+
 ## [1.94.0] – 2026-07-29
 
 ### Live-Board: ruhigere Verbindung, einheitliches Zeitfenster

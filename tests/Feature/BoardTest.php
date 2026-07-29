@@ -190,35 +190,66 @@ class BoardTest extends TestCase
     }
 
     /**
-     * Table colour and the "Ankunft bald" counter must use the same window.
-     * They used to differ (45 vs. 60 minutes), so a table could still show as
-     * free while already being counted as an imminent arrival.
+     * Two-stage escalation before arrival: amber from an hour out, orange in
+     * the last half hour. Table colour and counters must agree – they used to
+     * run on different windows, so a table could look free while already being
+     * counted.
      */
-    public function test_soon_window_is_the_same_for_table_colour_and_counter(): void
+    public function test_arrival_escalates_from_amber_to_orange(): void
     {
         $setup = $this->createTenantSetup();
         $admin = $this->createMember($setup['tenant'], 'tenant_admin');
 
-        // 30 minutes out: inside the window.
-        $near = $this->todayReservation($setup['location']->id, $setup['tenant']->id);
-        $nearStart = CarbonImmutable::now('Europe/Berlin')->addMinutes(30);
-        $near->update(['start_at' => $nearStart->utc(), 'end_at' => $nearStart->addHours(2)->utc()]);
-        $near->tables()->attach($setup['tables'][0]->id);
+        // 20 minutes out → orange.
+        $urgent = $this->todayReservation($setup['location']->id, $setup['tenant']->id);
+        $urgentStart = CarbonImmutable::now('Europe/Berlin')->addMinutes(20);
+        $urgent->update(['start_at' => $urgentStart->utc(), 'end_at' => $urgentStart->addHours(2)->utc()]);
+        $urgent->tables()->attach($setup['tables'][0]->id);
 
-        // 55 minutes out: outside the 45-minute window – but inside the old 60.
-        $far = $this->todayReservation($setup['location']->id, $setup['tenant']->id);
-        $farStart = CarbonImmutable::now('Europe/Berlin')->addMinutes(55);
-        $far->update(['start_at' => $farStart->utc(), 'end_at' => $farStart->addHours(2)->utc()]);
-        $far->tables()->attach($setup['tables'][1]->id);
+        // 50 minutes out → amber.
+        $soon = $this->todayReservation($setup['location']->id, $setup['tenant']->id);
+        $soonStart = CarbonImmutable::now('Europe/Berlin')->addMinutes(50);
+        $soon->update(['start_at' => $soonStart->utc(), 'end_at' => $soonStart->addHours(2)->utc()]);
+        $soon->tables()->attach($setup['tables'][1]->id);
+
+        // 90 minutes out → still free.
+        $later = $this->todayReservation($setup['location']->id, $setup['tenant']->id);
+        $laterStart = CarbonImmutable::now('Europe/Berlin')->addMinutes(90);
+        $later->update(['start_at' => $laterStart->utc(), 'end_at' => $laterStart->addHours(2)->utc()]);
+        $later->tables()->attach($setup['tables'][2]->id);
 
         $this->clearTenantContext();
         $response = $this->actingAs($admin)->getJson('/admin/board/data')->assertOk();
 
         $tables = collect($response->json('floorplan')[0]['tables']);
-        $this->assertSame('soon', $tables->firstWhere('id', $setup['tables'][0]->id)['status']);
-        $this->assertSame('free', $tables->firstWhere('id', $setup['tables'][1]->id)['status']);
+        $this->assertSame('urgent', $tables->firstWhere('id', $setup['tables'][0]->id)['status']);
+        $this->assertSame('soon', $tables->firstWhere('id', $setup['tables'][1]->id)['status']);
+        $this->assertSame('free', $tables->firstWhere('id', $setup['tables'][2]->id)['status']);
 
-        // Exactly the table that is coloured amber is the one being counted.
-        $this->assertSame(1, $response->json('kpis.arrivals_soon'));
+        // Counters match the colours: two within the hour, one of them urgent.
+        $this->assertSame(2, $response->json('kpis.arrivals_soon'));
+        $this->assertSame(1, $response->json('kpis.arrivals_urgent'));
+    }
+
+    /**
+     * The stream must emit a real "ping" event, not just an SSE comment: the
+     * browser never surfaces comments, so a connection that a proxy keeps open
+     * but no longer feeds would be indistinguishable from a quiet evening.
+     */
+    public function test_stream_sends_a_heartbeat_the_board_can_observe(): void
+    {
+        $setup = $this->createTenantSetup();
+        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
+        $this->clearTenantContext();
+
+        $source = file_get_contents(app_path('Http/Controllers/Admin/BoardController.php'));
+
+        $this->assertStringContainsString('event: ping', $source);
+        $this->assertStringContainsString('$lastPingAt', $source);
+
+        // And the board actually listens for it.
+        $board = $this->actingAs($admin)->get('/admin/board')->assertOk()->getContent();
+        $this->assertStringContainsString("addEventListener('ping'", $board);
+        $this->assertStringContainsString('lastSignalAt', $board);
     }
 }

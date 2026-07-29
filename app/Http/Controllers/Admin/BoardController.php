@@ -19,13 +19,13 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class BoardController extends Controller
 {
     /**
-     * How far ahead a booking counts as "arriving soon".
-     *
-     * Drives both the amber table colour and the "Ankunft bald" counter – those
-     * used to run on different windows (45 vs. 60 minutes), so a table could
-     * still look free while already being counted.
+     * Two-stage warning before a booking starts, so the team can see at a
+     * glance how urgent a table is: amber from an hour out, orange in the last
+     * half hour. Both the table colour and the counters use these windows.
      */
-    private const SOON_MINUTES = 45;
+    private const SOON_MINUTES = 60;
+
+    private const URGENT_MINUTES = 30;
 
     public function __construct(private readonly TenantContext $context) {}
 
@@ -69,6 +69,7 @@ class BoardController extends Controller
         $response = new StreamedResponse(function () use ($location) {
             @set_time_limit(0);
             $lastHash = null;
+            $lastPingAt = 0;
             $startedAt = time();
 
             while (! connection_aborted() && (time() - $startedAt) < 280) {
@@ -80,7 +81,17 @@ class BoardController extends Controller
                     echo 'data: '.$json."\n\n";
                     $lastHash = $hash;
                 } else {
-                    echo ": ping\n\n"; // heartbeat keeps proxies from closing the connection
+                    // A bare comment keeps proxies from closing the connection, but the
+                    // browser never surfaces it to the page — so a silently dead link
+                    // would look exactly like "nothing changed". Every 20 s we send a
+                    // real event the board can watch for.
+                    echo ": keep-alive\n\n";
+
+                    if (time() - $lastPingAt >= 20) {
+                        echo "event: ping\n";
+                        echo 'data: '.json_encode(['at' => now()->toIso8601String()])."\n\n";
+                        $lastPingAt = time();
+                    }
                 }
 
                 if (ob_get_level() > 0) {
@@ -155,6 +166,9 @@ class BoardController extends Controller
             'arrivals_soon' => $timeline->filter(fn ($r) => $r['status'] === ReservationStatus::Confirmed->value
                 && $r['minutes_to_start'] !== null && $r['minutes_to_start'] >= 0
                 && $r['minutes_to_start'] <= self::SOON_MINUTES)->count(),
+            'arrivals_urgent' => $timeline->filter(fn ($r) => $r['status'] === ReservationStatus::Confirmed->value
+                && $r['minutes_to_start'] !== null && $r['minutes_to_start'] >= 0
+                && $r['minutes_to_start'] <= self::URGENT_MINUTES)->count(),
             'waitlist' => WaitlistEntry::where('location_id', $location->id)
                 ->whereIn('status', ['waiting', 'offered'])
                 ->whereDate('desired_date', '>=', $today)
@@ -236,6 +250,7 @@ class BoardController extends Controller
 
         $atUtc = $nowLocal->utc();
         $soonUtc = $atUtc->addMinutes(self::SOON_MINUTES);
+        $urgentUtc = $atUtc->addMinutes(self::URGENT_MINUTES);
 
         $reservations = Reservation::query()
             ->where('location_id', $location->id)
@@ -258,7 +273,7 @@ class BoardController extends Controller
             'is_outdoor' => (bool) $room->is_outdoor,
             'plan_width' => (int) ($room->plan_width ?: 1000),
             'plan_height' => (int) ($room->plan_height ?: 700),
-            'tables' => $room->tables->map(function ($t) use ($reservations, $atUtc, $soonUtc, $blockedIds, $nowLocal) {
+            'tables' => $room->tables->map(function ($t) use ($reservations, $atUtc, $soonUtc, $urgentUtc, $blockedIds, $nowLocal) {
                 $current = $reservations->first(fn ($r) => $r->tables->contains('id', $t->id)
                     && $r->start_at->lte($atUtc) && $r->end_at->gt($atUtc));
                 $upcoming = $reservations->first(fn ($r) => $r->tables->contains('id', $t->id)
@@ -273,7 +288,8 @@ class BoardController extends Controller
                         $status = 'no_show_risk';
                     }
                 } elseif ($upcoming !== null) {
-                    $status = 'soon';
+                    // Last half hour before arrival: orange instead of amber.
+                    $status = $upcoming->start_at->lte($urgentUtc) ? 'urgent' : 'soon';
                 }
 
                 $info = $current ?? $upcoming;

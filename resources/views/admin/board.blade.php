@@ -10,12 +10,14 @@
             --bg: #f5f5f4; --panel: #ffffff; --panel-2: #fafaf9; --text: #1c1917;
             --muted: #78716c; --border: #e7e5e4; --brand: #0f766e; --shadow: 0 1px 3px rgba(0,0,0,.08);
             --green: #059669; --green-bg: #d1fae5; --amber: #b45309; --amber-bg: #fef3c7;
+            --orange: #c2410c; --orange-bg: #ffedd5;
             --red: #dc2626; --red-bg: #fee2e2; --blue: #2563eb; --blue-bg: #dbeafe;
         }
         html.dark {
             --bg: #0c0a09; --panel: #1c1917; --panel-2: #292524; --text: #f5f5f4;
             --muted: #a8a29e; --border: #44403c; --brand: #2dd4bf; --shadow: 0 1px 3px rgba(0,0,0,.5);
             --green: #34d399; --green-bg: #064e3b; --amber: #fbbf24; --amber-bg: #4a2e05;
+            --orange: #fb923c; --orange-bg: #4a2109;
             --red: #f87171; --red-bg: #4c1414; --blue: #60a5fa; --blue-bg: #14315e;
         }
         * { box-sizing: border-box; }
@@ -92,6 +94,7 @@
         .legend span { display: inline-flex; align-items: center; gap: 5px; }
         .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
         .l-free { background: var(--green); } .l-soon { background: var(--amber); }
+        .l-urgent { background: var(--orange); }
         .l-awaiting { background: var(--blue); } .l-occupied { background: var(--red); }
         .l-blocked { background: var(--muted); }
         .stage { position: relative; overflow: auto; border: 1px solid var(--border); border-radius: 14px; background: var(--panel-2);
@@ -115,6 +118,7 @@
         .chip.dur { background: var(--blue-bg); color: var(--blue); border: none; }
         .tbl.free { background: var(--green-bg); border-color: var(--green); color: var(--green); }
         .tbl.soon { background: var(--amber-bg); border-color: var(--amber); color: var(--amber); }
+        .tbl.urgent { background: var(--orange-bg); border-color: var(--orange); color: var(--orange); }
         .tbl.awaiting { background: var(--blue-bg); border-color: var(--blue); color: var(--blue); }
         .tbl.no_show_risk { background: var(--amber-bg); border-color: var(--red); color: var(--red); }
         .tbl.occupied { background: var(--red-bg); border-color: var(--red); color: var(--red); }
@@ -164,9 +168,11 @@
         .drawer.open { transform: translate(-50%, -50%) scale(1); opacity: 1; pointer-events: auto; }
         .dwr-head { padding: 16px 18px; border-bottom: 1px solid var(--border); }
         .dwr-head.st-free { background: var(--green-bg); } .dwr-head.st-soon { background: var(--amber-bg); }
+        .dwr-head.st-urgent { background: var(--orange-bg); }
         .dwr-head.st-awaiting { background: var(--blue-bg); } .dwr-head.st-occupied { background: var(--red-bg); }
         .dwr-head.st-no_show_risk { background: var(--amber-bg); } .dwr-head.st-blocked { background: var(--panel-2); }
         .bs-free { background: var(--green); color: #fff; } .bs-soon { background: var(--amber); color: #fff; }
+        .bs-urgent { background: var(--orange); color: #fff; }
         .bs-awaiting { background: var(--blue); color: #fff; } .bs-occupied { background: var(--red); color: #fff; }
         .bs-no_show_risk { background: var(--red); color: #fff; } .bs-blocked { background: var(--muted); color: #fff; }
         .dwr-top { display: flex; align-items: center; gap: 10px; }
@@ -237,7 +243,8 @@
     </div>
     <div class="legend">
         <span><i class="l-free"></i> frei</span>
-        <span><i class="l-soon"></i> Ankunft bald</span>
+        <span><i class="l-soon"></i> Ankunft &lt; 1 Std.</span>
+        <span><i class="l-urgent"></i> Ankunft &lt; 30 Min.</span>
         <span><i class="l-awaiting"></i> erwartet</span>
         <span><i class="l-occupied"></i> belegt</span>
         <span><i class="l-blocked"></i> gesperrt</span>
@@ -416,7 +423,8 @@
     function renderKpis(k) {
         const items = [
             ['today', 'Heute', false], ['covers', 'Gäste', false],
-            ['seated', 'Anwesend', false], ['arrivals_soon', 'Ankunft bald', false],
+            ['seated', 'Anwesend', false], ['arrivals_soon', 'Ankunft < 1 Std.', false],
+            ['arrivals_urgent', 'Ankunft < 30 Min.', true],
             ['open_requests', 'Offen', true], ['waitlist', 'Warteliste', false],
         ];
         document.getElementById('kpis').innerHTML = items.map(([key, label, alert]) =>
@@ -576,6 +584,7 @@
         d.new.forEach(r => seenIds.add(r.id));
         d.timeline.forEach(r => seenIds.add(r.id));
         firstLoad = false;
+        lastSignalAt = Date.now();
         setLive(true);
 
         meta = { can_walkin: d.can_walkin, walkin_url: d.walkin_url, create_url: d.create_url };
@@ -745,7 +754,7 @@
         const sub = document.getElementById('dwrSub');
         const body = document.getElementById('dwrBody');
 
-        const LABEL = { free: 'Frei', soon: 'Ankunft bald', awaiting: 'Erwartet',
+        const LABEL = { free: 'Frei', soon: 'Ankunft in unter 1 Std.', urgent: 'Ankunft in unter 30 Min.', awaiting: 'Erwartet',
             occupied: 'Belegt', no_show_risk: 'No-Show-Risiko', blocked: 'Gesperrt' };
 
         function open(id) {
@@ -940,6 +949,7 @@
 
     // Realtime via SSE with automatic fallback to polling
     let pollTimer = null;
+    let lastSignalAt = Date.now();   // last time the server was heard from
     function startPolling() {
         if (pollTimer) return;
         pollTimer = setInterval(() => { if (!document.hidden) load(); }, 20000);
@@ -963,18 +973,24 @@
         // running forever alongside the stream (a board is open all day).
         let offlineTimer = null;
 
-        es.onopen = () => {
+        function alive() {
+            lastSignalAt = Date.now();
             clearTimeout(offlineTimer);
             offlineTimer = null;
             stopPolling();
-        };
+        }
+
+        es.onopen = alive;
 
         es.onmessage = (e) => {
-            clearTimeout(offlineTimer);
-            offlineTimer = null;
-            stopPolling();
+            alive();
             try { applyData(JSON.parse(e.data)); } catch (_) {}
         };
+
+        // Heartbeat: proves the line is alive even when nothing changed for a
+        // while. Without it a connection that a proxy keeps open but no longer
+        // feeds would look exactly like a quiet evening.
+        es.addEventListener('ping', alive);
 
         es.onerror = () => {
             // Give the automatic reconnect a moment before alarming anyone.
@@ -986,8 +1002,24 @@
         };
     }
 
+    // Watchdog: the browser does not always report a broken connection – a
+    // proxy can hold the socket open and simply stop delivering. The server
+    // signals at least every 20 s, so a minute of silence means something is
+    // wrong: say so and fall back to asking directly, rather than quietly
+    // showing yesterday's board to the team.
+    function startWatchdog() {
+        setInterval(() => {
+            if (document.hidden) return;
+            if (Date.now() - lastSignalAt < 60000) return;
+            setLive(false);
+            startPolling();
+            load();
+        }, 10000);
+    }
+
     load();          // instant first paint
     startStream();   // then live updates (SSE → fallback polling)
+    startWatchdog(); // and notice if the line goes quiet
 })();
 </script>
 </body>
