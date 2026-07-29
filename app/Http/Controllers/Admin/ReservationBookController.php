@@ -461,14 +461,28 @@ class ReservationBookController extends Controller
             $this->refunds->requestForReservation($reservation->fresh(), 'staff', $request->user());
         }
 
+        // No-show → the deposit stays with the restaurant (no-show protection)
+        $forfeited = null;
+        if ($target === ReservationStatus::NoShow) {
+            $forfeited = $this->refunds->forfeitForNoShow($reservation->fresh(), $request->user());
+        }
+
         if ($request->wantsJson()) {
             return response()->json([
                 'ok' => true,
                 'status' => $reservation->fresh()->status->value,
+                'forfeited_minor' => $forfeited,
             ]);
         }
 
-        return back()->with('success', __('Status geändert.'));
+        $message = __('Status geändert.');
+        if ($forfeited !== null) {
+            $message .= ' '.__('Die Anzahlung von :amount wurde einbehalten.', [
+                'amount' => number_format($forfeited / 100, 2, ',', '.').' '.($reservation->currency ?: 'EUR'),
+            ]);
+        }
+
+        return back()->with('success', $message);
     }
 
     /**
@@ -513,6 +527,9 @@ class ReservationBookController extends Controller
 
             if ($target === ReservationStatus::CancelledByRestaurant) {
                 $this->refunds->requestForReservation($reservation->fresh(), 'staff', $request->user());
+            } elseif ($target === ReservationStatus::NoShow) {
+                // No-show protection also applies to bulk actions.
+                $this->refunds->forfeitForNoShow($reservation->fresh(), $request->user());
             }
             $done++;
         }

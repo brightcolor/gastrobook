@@ -35,9 +35,23 @@
                 <div class="mt-2 rounded-xl bg-blue-50 p-3 text-sm text-blue-900"><strong>Intern:</strong> {{ $reservation->internal_note }}</div>
             @endif
             @if($reservation->payment_status !== 'not_required')
-                <div class="mt-2 rounded-xl bg-orange-50 p-3 text-sm text-orange-900">
-                    <strong>Zahlung:</strong> {{ $reservation->payment_status }}
+                @php
+                    $payLabels = [
+                        'required' => 'Anzahlung erforderlich',
+                        'pending' => 'Zahlung ausstehend',
+                        'paid' => 'Anzahlung bezahlt',
+                        'refunded' => 'Anzahlung erstattet',
+                        'forfeited' => 'Anzahlung einbehalten (No-Show)',
+                        'failed' => 'Zahlung fehlgeschlagen',
+                    ];
+                    $isForfeited = $reservation->payment_status === 'forfeited';
+                @endphp
+                <div class="mt-2 rounded-xl p-3 text-sm {{ $isForfeited ? 'bg-red-50 text-red-900' : 'bg-orange-50 text-orange-900' }}">
+                    <strong>Zahlung:</strong> {{ $payLabels[$reservation->payment_status] ?? $reservation->payment_status }}
                     @if($reservation->payment_amount_minor) – {{ number_format($reservation->payment_amount_minor / 100, 2, ',', '.') }} {{ $reservation->currency }} @endif
+                    @if($isForfeited)
+                        <span class="mt-1 block text-xs">Der Betrag verbleibt beim Betrieb und wird nicht erstattet.</span>
+                    @endif
                 </div>
             @endif
         </div>

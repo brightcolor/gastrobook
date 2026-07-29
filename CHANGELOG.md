@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.87.0] – 2026-07-07
+
+### Neu: No-Show-Schutz – Anzahlung wird einbehalten
+- Wird eine Reservierung als **No-Show** markiert, bleibt eine bereits bezahlte
+  Anzahlung (z. B. über PayPal) jetzt beim Betrieb, statt in der Schwebe zu
+  hängen. Vorher passierte mit dem Geld schlicht nichts.
+- Eine noch offene oder freigegebene **Erstattung wird dabei automatisch
+  gestoppt**, damit das Geld nicht doch noch zurückgeht (z. B. wenn der Gast
+  vorher storniert hatte).
+- Der Vorgang wird im Änderungsprotokoll festgehalten
+  (`Zahlung einbehalten`, mit Betrag). Die Reservierung zeigt den Zustand
+  klar an: „Anzahlung einbehalten (No-Show)" mit Hinweistext.
+- Gilt auch für die **Sammelaktion** „No-Show" im Reservierungsbuch. Ohne
+  bezahlte Anzahlung ändert sich nichts. 4 Tests.
+
 ## [1.86.0] – 2026-07-07
 
 ### Neu: Automatisches Zusammenstellen von Tischen für größere Gruppen

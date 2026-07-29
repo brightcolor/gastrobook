@@ -25,6 +25,55 @@ class RefundService
     ) {}
 
     /**
+     * No-show protection: the paid deposit is kept by the restaurant instead of
+     * being refunded. Marks the reservation's payment as forfeited, records it
+     * in the audit log and cancels a still-pending refund request (e.g. from an
+     * earlier cancellation attempt) so no money goes back by accident.
+     *
+     * Returns the forfeited amount in minor units, or null when there was no
+     * paid deposit to keep.
+     */
+    public function forfeitForNoShow(Reservation $reservation, ?User $actor = null): ?int
+    {
+        $intent = PaymentIntent::withoutGlobalScopes()
+            ->where('reservation_id', $reservation->id)
+            ->where('status', 'paid')
+            ->latest()
+            ->first();
+
+        if ($intent === null) {
+            return null;
+        }
+
+        return DB::transaction(function () use ($reservation, $intent, $actor) {
+            // A refund that has not been paid out yet must not be processed
+            // anymore — the deposit is being kept instead.
+            $pending = Refund::withoutGlobalScopes()
+                ->where('reservation_id', $reservation->id)
+                ->whereIn('status', ['pending', 'approved'])
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($pending as $refund) {
+                $refund->update(['status' => 'rejected', 'error' => 'no_show_forfeit']);
+                $this->audit->log('refund.rejected', $refund, null, [
+                    'reason' => 'no_show_forfeit',
+                ], null, $actor, $reservation->tenant_id);
+            }
+
+            $reservation->update(['payment_status' => 'forfeited']);
+
+            $this->audit->log('payment.forfeited', $reservation, null, [
+                'amount_minor' => (int) $intent->amount_minor,
+                'currency' => $intent->currency,
+                'reason' => 'no_show',
+            ], null, $actor, $reservation->tenant_id);
+
+            return (int) $intent->amount_minor;
+        });
+    }
+
+    /**
      * Create a refund request for a cancelled reservation according to the
      * location's refund policy. Returns null when refunds are off or there is
      * nothing refundable.
