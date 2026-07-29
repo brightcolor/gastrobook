@@ -10,6 +10,7 @@ use App\Models\Tenant;
 use App\Services\EventBookingService;
 use App\Services\Payments\PaymentProviderManager;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class PublicEventController extends Controller
 {
@@ -29,6 +30,23 @@ class PublicEventController extends Controller
             ->get();
 
         return view('public.events.index', compact('tenant', 'location', 'events'));
+    }
+
+    /**
+     * Serve the event image through the app – the container has no
+     * public/storage symlink, so a direct asset URL would 404.
+     */
+    public function image(string $tenantSlug, string $locationSlug, string $eventSlug)
+    {
+        [$tenant, $location] = $this->resolve($tenantSlug, $locationSlug);
+        $event = $this->findEvent($tenant, $location, $eventSlug);
+
+        abort_if(! $event->image_path || ! Storage::disk('public')->exists($event->image_path), 404);
+
+        return Storage::disk('public')->response($event->image_path, null, [
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'public, max-age=86400',
+        ]);
     }
 
     public function show(string $tenantSlug, string $locationSlug, string $eventSlug)

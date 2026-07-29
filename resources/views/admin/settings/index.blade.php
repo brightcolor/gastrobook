@@ -597,6 +597,7 @@
                     <label class="flex items-center gap-1 pb-2 text-xs"><input type="checkbox" name="online_bookable" value="1" @checked($t->online_bookable)> Online</label>
                     <label class="flex items-center gap-1 pb-2 text-xs"><input type="checkbox" name="joinable" value="1" @checked($t->joinable)> Komb.</label>
                     <label class="flex items-center gap-1 pb-2 text-xs"><input type="checkbox" name="accessible" value="1" @checked($t->accessible)> Barrierefrei</label>
+                    <label class="flex items-center gap-1 pb-2 text-xs"><input type="checkbox" name="high_chair_possible" value="1" @checked($t->high_chair_possible)> Kinderstuhl</label>
                     <button class="rounded-lg bg-stone-800 px-3 py-2 text-xs font-semibold text-white hover:bg-stone-700">Speichern</button>
                 </form>
             @endforeach
@@ -713,8 +714,15 @@
                 <input type="number" name="amount_per_person" required step="0.01" min="0" class="w-full rounded-lg border-stone-200"></div>
             <div><label class="mb-1 block text-xs text-stone-500">Nur ab Uhrzeit <span class="tip" tabindex="0" data-tip="Die Regel gilt erst ab dieser Uhrzeit – z. B. 18:00 für Abendtische. Leer lassen wenn sie ganztags gelten soll.">?</span></label>
                 <input type="time" name="from_time" class="w-full rounded-lg border-stone-200"></div>
-            <div><label class="mb-1 block text-xs text-stone-500">Zahlungsfrist (Min.) <span class="tip" tabindex="0" data-tip="Wie lange hat der Gast nach der Buchung Zeit zu zahlen? Nach Ablauf wird die Buchung automatisch storniert und der Platz wieder freigegeben.">?</span></label>
+            <div><label class="mb-1 block text-xs text-stone-500">Grundbetrag (€) <span class="tip" tabindex="0" data-tip="Ein fester Betrag, der zusätzlich zum Betrag pro Person fällig wird – unabhängig von der Gruppengröße. Beispiel: 20 € Grundbetrag + 5 € p. P. ergibt bei 4 Personen 40 €. Leer lassen, wenn du nur pro Person abrechnest.">?</span></label>
+                <input type="number" name="flat_amount" step="0.01" min="0" placeholder="0,00" class="w-full rounded-lg border-stone-200"></div>
+            <div><label class="mb-1 block text-xs text-stone-500">Zahlungsfrist (Min.) <span class="tip" tabindex="0" data-tip="Wie lange hat der Gast nach der Buchung Zeit zu zahlen? Nach Ablauf kann die Buchung automatisch storniert werden – siehe Häkchen darunter.">?</span></label>
                 <input type="number" name="payment_deadline_minutes" min="10" placeholder="60" class="w-full rounded-lg border-stone-200"></div>
+            <label class="col-span-2 flex items-center gap-2 text-xs text-stone-600">
+                <input type="checkbox" name="cancel_unpaid_automatically" value="1" checked class="rounded">
+                Unbezahlte Buchungen nach Fristablauf automatisch stornieren
+                <span class="tip" tabindex="0" data-tip="Angehakt: Der Platz wird nach Ablauf der Zahlungsfrist automatisch wieder freigegeben. Ohne Haken bleibt die Buchung offen stehen und du entscheidest selbst – gut, wenn du lieber noch einmal nachfasst.">?</span>
+            </label>
             <button class="col-span-2 rounded-lg bg-stone-900 px-4 py-2 font-semibold text-white">Regel anlegen</button>
         </form>
         <div class="mt-3 space-y-1 text-sm">
@@ -724,8 +732,10 @@
                         <span>
                             <strong>{{ $rule->name }}</strong>
                             @if($rule->min_party_size) · ab {{ $rule->min_party_size }} P. @endif
+                            @if($rule->flat_amount_minor > 0) · {{ number_format($rule->flat_amount_minor / 100, 2, ',', '.') }} € Grundbetrag @endif
                             · {{ number_format($rule->amount_per_person_minor / 100, 2, ',', '.') }} € p. P.
                             @if($rule->from_time) · ab {{ substr($rule->from_time, 0, 5) }} Uhr @endif
+                            @unless($rule->cancel_unpaid_automatically) · <span class="text-amber-700">kein Auto-Storno</span> @endunless
                         </span>
                         <span class="flex items-center gap-2">
                             <span class="text-xs font-semibold text-teal-700">Bearbeiten</span>
@@ -744,8 +754,14 @@
                             <input type="number" name="amount_per_person" required step="0.01" min="0" value="{{ number_format($rule->amount_per_person_minor / 100, 2, '.', '') }}" class="w-full rounded-lg border-stone-200"></div>
                         <div><label class="mb-1 block text-xs text-stone-500">Nur ab Uhrzeit</label>
                             <input type="time" name="from_time" value="{{ $rule->from_time ? substr($rule->from_time, 0, 5) : '' }}" class="w-full rounded-lg border-stone-200"></div>
+                        <div><label class="mb-1 block text-xs text-stone-500">Grundbetrag (€)</label>
+                            <input type="number" name="flat_amount" step="0.01" min="0" value="{{ number_format($rule->flat_amount_minor / 100, 2, '.', '') }}" class="w-full rounded-lg border-stone-200"></div>
                         <div><label class="mb-1 block text-xs text-stone-500">Zahlungsfrist (Min.)</label>
                             <input type="number" name="payment_deadline_minutes" min="10" value="{{ $rule->payment_deadline_minutes }}" class="w-full rounded-lg border-stone-200"></div>
+                        <label class="col-span-2 flex items-center gap-2 text-xs text-stone-600">
+                            <input type="checkbox" name="cancel_unpaid_automatically" value="1" @checked($rule->cancel_unpaid_automatically) class="rounded">
+                            Unbezahlte Buchungen nach Fristablauf automatisch stornieren
+                        </label>
                         <button class="col-span-2 rounded-lg bg-teal-600 px-4 py-2 font-semibold text-white hover:bg-teal-700">Änderungen speichern</button>
                     </form>
                 </details>

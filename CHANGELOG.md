@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.92.0] – 2026-07-29
+
+### Fünf halbfertige Funktionen zu Ende gebaut
+Ein systematischer Durchlauf hat Felder gefunden, die es in der Datenbank (und
+teils in der Logik) längst gab, an die man aber nicht herankam. Alle fünf sind
+jetzt vollständig verdrahtet:
+
+- **Anzahlung mit Grundbetrag:** Die Berechnung konnte immer schon
+  „Grundbetrag + Betrag pro Person", es gab nur kein Eingabefeld – der
+  Grundbetrag war damit stets 0. Jetzt einstellbar, z. B. 20 € Grundbetrag plus
+  5 € pro Person = 40 € bei vier Gästen.
+- **Auto-Storno pro Regel abwählbar:** Das Häkchen „Unbezahlte Buchungen nach
+  Fristablauf automatisch stornieren" gab es im Datenmodell, der Scheduler hat
+  es aber **nie gelesen** und immer storniert. Wer lieber selbst nachfasst, kann
+  das jetzt pro Anzahlungsregel abschalten.
+- **Event-Anzahlung:** Statt des vollen Preises lässt sich ein Teilbetrag
+  festlegen, der online eingezogen wird – der Rest wird beim Event bezahlt.
+  Buchungsseite und Button weisen beides getrennt aus.
+- **Event-Bild:** Upload im Admin, Anzeige auf der öffentlichen Event-Seite.
+- **„Kinderstuhl möglich" am Tisch:** Das Flag existierte, fehlte aber im
+  Tisch-Bearbeiten-Dialog – jetzt neben Außenbereich und Barrierefrei.
+
+### Technisch
+- Reservierungen merken sich die Anzahlungsregel (`deposit_rule_id`), sonst
+  könnte der Scheduler das Auto-Storno-Häkchen gar nicht auswerten. Die Abfrage
+  umgeht bewusst den Tenant-Scope – im Scheduler gibt es keinen Mandanten-
+  Kontext, sonst hätte sie nichts mehr gefunden.
+- Event-Bilder werden über eine Route ausgeliefert statt über `public/storage`;
+  im Container gibt es diesen Symlink nicht.
+- Der Account-Import mappt die neue Regel-Verknüpfung mit um.
+- 11 Tests über alle fünf Punkte, jeweils inklusive Gegenprobe.
+
 ## [1.91.0] – 2026-07-29
 
 ### Neu: Tischzeit je Gruppengröße einstellbar

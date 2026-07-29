@@ -466,9 +466,11 @@ class SettingsController extends Controller
             'name' => ['required', 'string', 'max:120'],
             'min_party_size' => ['nullable', 'integer', 'min:1', 'max:200'],
             'amount_per_person' => ['required', 'numeric', 'min:0', 'max:10000'],
+            'flat_amount' => ['nullable', 'numeric', 'min:0', 'max:10000'],
             'from_time' => ['nullable', 'date_format:H:i'],
             'until_time' => ['nullable', 'date_format:H:i'],
             'payment_deadline_minutes' => ['nullable', 'integer', 'min:10', 'max:10080'],
+            'cancel_unpaid_automatically' => ['nullable', 'boolean'],
         ]);
 
         $rule = DepositRule::create([
@@ -480,8 +482,10 @@ class SettingsController extends Controller
             'from_time' => $validated['from_time'] ?? null,
             'until_time' => $validated['until_time'] ?? null,
             'amount_per_person_minor' => (int) round($validated['amount_per_person'] * 100),
+            'flat_amount_minor' => (int) round(($validated['flat_amount'] ?? 0) * 100),
             'currency' => $location->currency,
             'payment_deadline_minutes' => (int) ($validated['payment_deadline_minutes'] ?? 60),
+            'cancel_unpaid_automatically' => $request->boolean('cancel_unpaid_automatically'),
         ]);
 
         $this->audit->log('deposit_rule.created', $rule, null, $validated);
@@ -499,9 +503,11 @@ class SettingsController extends Controller
             'name' => ['required', 'string', 'max:120'],
             'min_party_size' => ['nullable', 'integer', 'min:1', 'max:200'],
             'amount_per_person' => ['required', 'numeric', 'min:0', 'max:10000'],
+            'flat_amount' => ['nullable', 'numeric', 'min:0', 'max:10000'],
             'from_time' => ['nullable', 'date_format:H:i'],
             'until_time' => ['nullable', 'date_format:H:i'],
             'payment_deadline_minutes' => ['nullable', 'integer', 'min:10', 'max:10080'],
+            'cancel_unpaid_automatically' => ['nullable', 'boolean'],
         ]);
 
         $rule->update([
@@ -510,7 +516,9 @@ class SettingsController extends Controller
             'from_time' => $validated['from_time'] ?? null,
             'until_time' => $validated['until_time'] ?? null,
             'amount_per_person_minor' => (int) round($validated['amount_per_person'] * 100),
+            'flat_amount_minor' => (int) round(($validated['flat_amount'] ?? 0) * 100),
             'payment_deadline_minutes' => (int) ($validated['payment_deadline_minutes'] ?? 60),
+            'cancel_unpaid_automatically' => $request->boolean('cancel_unpaid_automatically'),
         ]);
 
         $this->audit->log('deposit_rule.updated', $rule, null, $validated);
@@ -564,6 +572,7 @@ class SettingsController extends Controller
             'max_capacity' => ['required', 'integer', 'min:1', 'max:50', 'gte:min_capacity'],
             'outdoor' => ['nullable', 'boolean'],
             'accessible' => ['nullable', 'boolean'],
+            'high_chair_possible' => ['nullable', 'boolean'],
             'joinable' => ['nullable', 'boolean'],
             'online_bookable' => ['nullable', 'boolean'],
         ]);
@@ -580,6 +589,7 @@ class SettingsController extends Controller
             'max_capacity' => (int) $validated['max_capacity'],
             'outdoor' => $request->boolean('outdoor'),
             'accessible' => $request->boolean('accessible'),
+            'high_chair_possible' => $request->boolean('high_chair_possible'),
             'joinable' => $request->boolean('joinable', true),
             'online_bookable' => $request->boolean('online_bookable', true),
             'width' => $width, 'height' => $height,

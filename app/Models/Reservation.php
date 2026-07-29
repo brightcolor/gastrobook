@@ -40,7 +40,7 @@ class Reservation extends Model
         'start_at', 'end_at', 'timezone', 'status', 'source', 'table_chosen_by_guest', 'occasion',
         'guest_name_snapshot', 'guest_email_snapshot', 'guest_phone_snapshot',
         'guest_note', 'allergy_note', 'internal_note',
-        'payment_status', 'payment_amount_minor', 'currency', 'payment_due_at',
+        'payment_status', 'payment_amount_minor', 'currency', 'payment_due_at', 'deposit_rule_id',
         'confirmed_at', 'seated_at', 'departed_at', 'cancelled_at',
         'reminder_sent_at', 'feedback_requested_at', 'no_show_risk', 'created_by',
     ];

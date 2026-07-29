@@ -73,6 +73,8 @@ Route::middleware('throttle:booking-slots')->group(function () {
     Route::get('/widget/{tenantSlug}/popup.js', [PublicBookingController::class, 'popupScriptSingle'])->name('booking.widget.popup.single');
     Route::get('/book/{tenantSlug}/{locationSlug}/events', [PublicEventController::class, 'index'])->name('events.index');
     Route::get('/book/{tenantSlug}/{locationSlug}/events/{eventSlug}', [PublicEventController::class, 'show'])->name('events.show');
+    // Served through the app: there is no public/storage symlink in the container.
+    Route::get('/book/{tenantSlug}/{locationSlug}/events/{eventSlug}/image', [PublicEventController::class, 'image'])->name('events.image');
 });
 
 Route::middleware('throttle:booking')->group(function () {

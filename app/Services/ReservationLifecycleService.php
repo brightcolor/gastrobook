@@ -168,6 +168,7 @@ class ReservationLifecycleService
                 'payment_amount_minor' => $paymentAmount,
                 'currency' => $paymentAmount !== null ? $location->currency : null,
                 'payment_due_at' => $paymentDueAt,
+                'deposit_rule_id' => $rule?->id,
                 'confirmed_at' => $status === ReservationStatus::Confirmed ? now() : null,
                 'seated_at' => $status === ReservationStatus::Seated ? now() : null,
                 'no_show_risk' => $this->noShowRisk->score($guest, $data['party_size']),

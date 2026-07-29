@@ -51,7 +51,7 @@
 
     <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
         <h2 class="font-bold">Event anlegen</h2>
-        <form method="POST" action="{{ route('admin.events.store') }}" class="mt-3 space-y-3 text-sm">
+        <form method="POST" action="{{ route('admin.events.store') }}" enctype="multipart/form-data" class="mt-3 space-y-3 text-sm">
             @csrf
             <input type="text" name="title" required placeholder="Titel *" class="w-full rounded-lg border-stone-200">
             <textarea name="description" rows="3" placeholder="Beschreibung" class="w-full rounded-lg border-stone-200"></textarea>
@@ -65,6 +65,18 @@
                     <input type="number" name="capacity" required min="1" value="30" class="w-full rounded-lg border-stone-200"></div>
                 <div><label class="mb-1 block text-xs text-stone-500">Preis p. P. (€)</label>
                     <input type="number" name="price" step="0.01" min="0" class="w-full rounded-lg border-stone-200"></div>
+            </div>
+            <div>
+                <label class="mb-1 block text-xs text-stone-500">Anzahlung p. P. (€, optional)</label>
+                <input type="number" name="deposit" step="0.01" min="0" class="w-full rounded-lg border-stone-200"
+                       title="Wird online eingezogen; der Rest wird beim Event bezahlt. Leer lassen, wenn der volle Preis sofort fällig ist.">
+                <p class="mt-1 text-xs text-stone-400">Leer = voller Preis wird sofort fällig. Mit Anzahlung zahlt der Gast online nur diesen Teil, den Rest beim Event.</p>
+            </div>
+            <div>
+                <label class="mb-1 block text-xs text-stone-500">Bild (optional)</label>
+                <input type="file" name="image" accept="image/jpeg,image/png,image/webp"
+                       class="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-stone-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold hover:file:bg-stone-200">
+                <p class="mt-1 text-xs text-stone-400">Erscheint auf der öffentlichen Event-Seite. JPG, PNG oder WebP, max. 4 MB.</p>
             </div>
             <div>
                 <label class="mb-1 block text-xs text-stone-500">Raum (optional)</label>

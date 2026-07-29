@@ -275,6 +275,7 @@ class AccountImportService
             $attrs['event_id'] = $this->mapped('events', $row['event_id'] ?? null);
             $attrs['service_id'] = $this->mapped('services', $row['service_id'] ?? null);
             $attrs['staff_member_id'] = $this->mapped('staff_members', $row['staff_member_id'] ?? null);
+            $attrs['deposit_rule_id'] = $this->mapped('deposit_rules', $row['deposit_rule_id'] ?? null);
 
             $reservation = new Reservation($attrs);
             $reservation->tenant_id = $tenant->id;

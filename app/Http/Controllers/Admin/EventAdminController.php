@@ -11,6 +11,7 @@ use App\Services\PlanLimitService;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -57,6 +58,8 @@ class EventAdminController extends Controller
             'end_time' => ['required', 'date_format:H:i'],
             'capacity' => ['required', 'integer', 'min:1', 'max:5000'],
             'price' => ['nullable', 'numeric', 'min:0', 'max:100000'],
+            'deposit' => ['nullable', 'numeric', 'min:0', 'max:100000', 'lte:price'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'room_id' => ['nullable', 'integer'],
             'booking_deadline_hours' => ['nullable', 'integer', 'min:0', 'max:720'],
             'cancellation_deadline_hours' => ['nullable', 'integer', 'min:0', 'max:720'],
@@ -95,6 +98,9 @@ class EventAdminController extends Controller
             'price_minor' => isset($validated['price']) && $validated['price'] !== null
                 ? (int) round($validated['price'] * 100)
                 : null,
+            'deposit_minor' => isset($validated['deposit']) && $validated['deposit'] !== null
+                ? (int) round($validated['deposit'] * 100)
+                : null,
             'currency' => $location->currency,
             'booking_deadline_at' => isset($validated['booking_deadline_hours'])
                 ? $startLocal->subHours((int) $validated['booking_deadline_hours'])->utc()
@@ -105,6 +111,8 @@ class EventAdminController extends Controller
             'is_public' => $request->boolean('is_public', true),
             'status' => 'published',
         ]);
+
+        $this->storeImage($request, $event);
 
         $this->audit->log('event.created', $event, null, ['title' => $event->title]);
 
@@ -139,6 +147,8 @@ class EventAdminController extends Controller
             'end_time' => ['required', 'date_format:H:i'],
             'capacity' => ['required', 'integer', 'min:1', 'max:5000'],
             'price' => ['nullable', 'numeric', 'min:0', 'max:100000'],
+            'deposit' => ['nullable', 'numeric', 'min:0', 'max:100000', 'lte:price'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'room_id' => ['nullable', 'integer'],
             'booking_deadline_hours' => ['nullable', 'integer', 'min:0', 'max:720'],
             'cancellation_deadline_hours' => ['nullable', 'integer', 'min:0', 'max:720'],
@@ -177,6 +187,9 @@ class EventAdminController extends Controller
             'price_minor' => isset($validated['price']) && $validated['price'] !== null
                 ? (int) round($validated['price'] * 100)
                 : null,
+            'deposit_minor' => isset($validated['deposit']) && $validated['deposit'] !== null
+                ? (int) round($validated['deposit'] * 100)
+                : null,
             'booking_deadline_at' => isset($validated['booking_deadline_hours'])
                 ? $startLocal->subHours((int) $validated['booking_deadline_hours'])->utc()
                 : null,
@@ -186,9 +199,30 @@ class EventAdminController extends Controller
             'is_public' => $request->boolean('is_public', true),
         ]);
 
+        $this->storeImage($request, $event);
+
         $this->audit->log('event.updated', $event, $old, ['title' => $event->title]);
 
         return back()->with('success', __('Event aktualisiert.'));
+    }
+
+    /**
+     * Store an uploaded event image, replacing any previous one so we don't
+     * orphan files in storage.
+     */
+    private function storeImage(Request $request, Event $event): void
+    {
+        if (! $request->hasFile('image')) {
+            return;
+        }
+
+        if ($event->image_path) {
+            Storage::disk('public')->delete($event->image_path);
+        }
+
+        $event->update([
+            'image_path' => $request->file('image')->store('events/'.$event->location_id, 'public'),
+        ]);
     }
 
     public function updateStatus(Request $request, Event $event)

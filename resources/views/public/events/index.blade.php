@@ -23,6 +23,9 @@
                     <div class="shrink-0 text-right">
                         @if($event->price_minor)
                             <div class="font-bold">{{ number_format($event->price_minor / 100, 2, ',', '.') }} €</div>
+                            @if($event->deposit_minor)
+                                <div class="text-xs text-stone-500">{{ number_format($event->deposit_minor / 100, 2, ',', '.') }} € Anzahlung</div>
+                            @endif
                         @endif
                         @if($event->remainingCapacity() <= 0)
                             <span class="mt-1 inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">Ausgebucht</span>

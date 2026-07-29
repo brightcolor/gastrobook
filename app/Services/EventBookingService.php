@@ -62,8 +62,11 @@ class EventBookingService
                 }
             }
 
-            $amount = $event->price_minor !== null
-                ? $event->price_minor * (int) $data['ticket_count']
+            // With a deposit set, only that part is collected online – the rest
+            // is settled at the event. Without one, the full price is due.
+            $perTicket = $event->deposit_minor ?? $event->price_minor;
+            $amount = $perTicket !== null
+                ? $perTicket * (int) $data['ticket_count']
                 : null;
 
             $booking = EventBooking::create([

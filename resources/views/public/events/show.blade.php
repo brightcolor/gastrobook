@@ -5,10 +5,20 @@
 @php($du = $location?->effectiveSettings()->du() ?? false)
 <div class="rounded-2xl bg-white p-6 shadow-sm">
     <p class="text-sm"><a href="{{ route('events.index', [$tenant->slug, $location->slug]) }}" class="text-stone-500 underline">← Alle Events</a></p>
+    @if($event->image_path)
+        <img src="{{ route('events.image', [$tenant->slug, $location->slug, $event->slug]) }}" alt="{{ $event->title }}"
+             class="mt-3 max-h-80 w-full rounded-xl object-cover">
+    @endif
     <h1 class="mt-2 text-2xl font-bold">{{ $event->title }}</h1>
     <p class="mt-1 text-stone-600">{{ $startLocal->format('d.m.Y') }} · {{ $startLocal->format('H:i') }} Uhr · {{ $location->name }}</p>
     @if($event->price_minor)
         <p class="mt-1 text-lg font-bold">{{ number_format($event->price_minor / 100, 2, ',', '.') }} € <span class="text-sm font-normal text-stone-500">pro Person</span></p>
+        @if($event->deposit_minor)
+            <p class="mt-1 text-sm text-stone-600">
+                Davon {{ number_format($event->deposit_minor / 100, 2, ',', '.') }} € pro Person als Anzahlung bei der Buchung –
+                der Rest wird beim Event bezahlt.
+            </p>
+        @endif
     @endif
     @if($event->description)
         <p class="mt-4 whitespace-pre-line text-sm text-stone-700">{{ $event->description }}</p>
@@ -71,7 +81,8 @@
                 </p>
             @endif
             <button class="btn-brand w-full rounded-xl py-4 text-lg font-bold text-white shadow hover:opacity-90">
-                Jetzt buchen{{ $event->price_minor ? ' · ' . number_format($event->price_minor / 100, 2, ',', '.') . ' € p. P.' : '' }}
+                @php($dueNow = $event->deposit_minor ?? $event->price_minor)
+                Jetzt buchen{{ $dueNow ? ' · ' . number_format($dueNow / 100, 2, ',', '.') . ' € p. P.' . ($event->deposit_minor ? ' Anzahlung' : '') : '' }}
             </button>
         </form>
     @endif
