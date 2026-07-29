@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.96.0] – 2026-07-29
+
+### Behoben: Sperrzeiten galten beim Umbuchen nicht
+Beim **Verschieben** einer Reservierung wurde nur geprüft, ob ein Tisch frei
+ist – nicht, ob der Betrieb zu der Zeit überhaupt geöffnet hat. Ein Gast konnte
+seine Buchung damit über den Ändern-Link mitten in eine Sperrzeit legen oder auf
+eine Uhrzeit außerhalb der Öffnungszeiten. Ein freier Tisch sagt eben nichts
+darüber aus, ob jemand da ist.
+
+Das Umbuchen prüft jetzt dasselbe wie das Anlegen: Öffnungszeiten,
+Sonderöffnungszeiten, Schließtage sowie standort- und raumbezogene Sperrzeiten.
+Wird abgelehnt, bleibt die ursprüngliche Buchung unverändert stehen.
+
+*(Das Anlegen neuer Reservierungen war bereits abgesichert – über die
+Buchungsseite ebenso wie intern.)*
+
+### Live-Board: Aktualisieren-Knopf und Zeitstempel
+- Neben der Statusanzeige steht jetzt, **wann das letzte Lebenszeichen vom
+  Server kam** – sekundengenau, statt nur „aktualisiert".
+- Bleibt es länger als **5 Minuten** still, erscheint ein auffälliger Knopf
+  **„⟳ Jetzt aktualisieren"**, der den Stand sofort neu lädt. Die Anzeige nennt
+  dann auch, wie lange nichts mehr kam („kein Signal seit 20:10:17 (7 Min.)").
+- Sobald wieder Daten ankommen, verschwindet der Knopf von selbst.
+
 ## [1.95.0] – 2026-07-29
 
 ### Live-Board: Eskalation vor der Ankunft

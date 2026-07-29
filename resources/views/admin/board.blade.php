@@ -74,6 +74,8 @@
         .live { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
         .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
         .dot.stale { background: var(--amber); }
+        .btn-refresh { background: var(--amber-bg); color: var(--amber); border-color: var(--amber); font-weight: 700; }
+        .btn-refresh:hover { filter: brightness(0.97); }
 
         /* ---- View switcher ---- */
         .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
@@ -223,6 +225,8 @@
     </span>
     <span class="spacer"></span>
     <span class="live" title="Die Anzeige aktualisiert sich von selbst. Leuchtet der Punkt, ist die Verbindung in Ordnung – neue Buchungen erscheinen sofort, ohne die Seite neu zu laden"><span class="dot" id="liveDot"></span><span id="liveText">aktualisiere…</span></span>
+    <button class="btn btn-refresh" id="refreshBtn" hidden
+            title="Holt den aktuellen Stand sofort vom Server">⟳ Jetzt aktualisieren</button>
     <a class="btn btn-brand" href="{{ route('admin.reservations.create') }}" title="Reservierung von Hand eintragen – etwa wenn jemand anruft">+ Neue Buchung</a>
     <button class="btn" id="darkBtn" title="Dunkle Darstellung – angenehmer bei gedämpftem Licht am Abend">🌙</button>
     <button class="btn" id="fsBtn" title="Vollbild – blendet alles andere aus. Ideal für einen fest montierten Bildschirm im Service">⛶</button>
@@ -562,11 +566,26 @@
         };
     })();
 
+    function uhrzeit(ts) {
+        return new Date(ts).toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+    }
+
     function setLive(ok) {
         document.getElementById('liveDot').classList.toggle('stale', !ok);
         document.getElementById('liveText').textContent = ok
-            ? 'aktualisiert ' + new Date().toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit'})
-            : 'offline – versuche erneut';
+            ? 'aktualisiert ' + uhrzeit(lastSignalAt)
+            : 'kein Signal seit ' + uhrzeit(lastSignalAt);
+        document.getElementById('refreshBtn').hidden = ok;
+    }
+
+    // Läuft mit, damit "kein Signal seit …" nicht selbst veraltet und der Knopf
+    // auch dann erscheint, wenn die Leitung ohne Fehlermeldung verstummt.
+    function tickLiveLabel() {
+        const still = Date.now() - lastSignalAt;
+        if (still < STILLE_WARNUNG_MS) return;
+        setLive(false);
+        document.getElementById('liveText').textContent =
+            'kein Signal seit ' + uhrzeit(lastSignalAt) + ' (' + Math.floor(still / 60000) + ' Min.)';
     }
 
     function applyData(d) {
@@ -950,6 +969,8 @@
     // Realtime via SSE with automatic fallback to polling
     let pollTimer = null;
     let lastSignalAt = Date.now();   // last time the server was heard from
+    // After this much silence the board says so and offers a manual refresh.
+    const STILLE_WARNUNG_MS = 5 * 60 * 1000;
     function startPolling() {
         if (pollTimer) return;
         pollTimer = setInterval(() => { if (!document.hidden) load(); }, 20000);
@@ -1010,12 +1031,24 @@
     function startWatchdog() {
         setInterval(() => {
             if (document.hidden) return;
-            if (Date.now() - lastSignalAt < 60000) return;
+            if (Date.now() - lastSignalAt < STILLE_WARNUNG_MS) return;
             setLive(false);
             startPolling();
             load();
         }, 10000);
     }
+
+    document.getElementById('refreshBtn').addEventListener('click', () => {
+        const btn = document.getElementById('refreshBtn');
+        btn.disabled = true;
+        btn.textContent = '⟳ lädt …';
+        load().finally(() => {
+            btn.disabled = false;
+            btn.textContent = '⟳ Jetzt aktualisieren';
+        });
+    });
+
+    setInterval(tickLiveLabel, 15000);
 
     load();          // instant first paint
     startStream();   // then live updates (SSE → fallback polling)

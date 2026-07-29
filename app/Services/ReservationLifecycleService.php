@@ -407,6 +407,17 @@ class ReservationLifecycleService
         return DB::transaction(function () use ($reservation, $location, $newStartLocal, $startUtc, $endUtc, $partySize, $actor, $actorType) {
             $tableIds = null;
 
+            // Moving a booking has to respect opening hours, special hours and
+            // blackouts just like creating one. Without this a guest could
+            // reschedule straight into a closed day – finding a free table says
+            // nothing about whether the business is open at all.
+            $blockReason = $this->availability->bookingBlockReason($location, $newStartLocal, $startUtc, $endUtc);
+            if ($blockReason !== null) {
+                throw ValidationException::withMessages([
+                    'time' => $this->availabilityMessage($blockReason),
+                ]);
+            }
+
             if ($reservation->staff_member_id) {
                 // Salon: the assigned staff member must be free at the new slot
                 $conflict = Reservation::withoutGlobalScope('tenant')
@@ -429,6 +440,15 @@ class ReservationLifecycleService
                     throw ValidationException::withMessages(['time' => __('Zu diesem Zeitpunkt ist leider kein passender Tisch mehr frei – bitte wählen Sie eine andere Zeit oder Personenzahl.')]);
                 }
                 $tableIds = $assignment['table_ids'];
+
+                // The picked table may sit in a room that is blocked for this
+                // window even though the location as a whole is open.
+                $roomBlock = $this->availability->bookingBlockReason($location, $newStartLocal, $startUtc, $endUtc, $tableIds);
+                if ($roomBlock !== null) {
+                    throw ValidationException::withMessages([
+                        'time' => $this->availabilityMessage($roomBlock),
+                    ]);
+                }
             }
 
             $old = [

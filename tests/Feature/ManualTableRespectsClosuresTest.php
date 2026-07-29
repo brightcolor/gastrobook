@@ -91,4 +91,74 @@ class ManualTableRespectsClosuresTest extends TestCase
         $this->assertNotNull($reservation->id);
         $this->assertTrue($reservation->tables->contains($setup['tables'][0]->id));
     }
+
+    /**
+     * Same rule when MOVING a booking: reschedule() only looked for a free
+     * table, so a guest could shift a booking straight into a blackout or into
+     * the middle of the night – a free table says nothing about whether the
+     * business is open.
+     */
+    public function test_reschedule_is_blocked_by_a_blackout(): void
+    {
+        $setup = $this->createTenantSetup();
+        $tz = $setup['location']->timezone;
+        $open = CarbonImmutable::now($tz)->addDay()->setTime(13, 0);
+        $blocked = CarbonImmutable::now($tz)->addDay()->setTime(19, 0);
+
+        $reservation = $this->book($setup, $open, $setup['tables'][0]->id);
+
+        BlackoutPeriod::create([
+            'tenant_id' => $setup['tenant']->id, 'location_id' => $setup['location']->id,
+            'room_id' => null, 'reduce_covers_to' => null,
+            'starts_at' => $blocked->copy()->subHour()->utc(),
+            'ends_at' => $blocked->copy()->addHours(3)->utc(),
+            'reason' => 'Betriebsfeier',
+        ]);
+        $this->clearTenantContext();
+
+        try {
+            app(ReservationLifecycleService::class)->reschedule($reservation->fresh(), $blocked);
+            $this->fail('Eine Umbuchung in die Sperrzeit hätte abgelehnt werden müssen.');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('geschlossen', collect($e->errors())->flatten()->first());
+        }
+
+        // Unchanged: the booking still sits at its original time.
+        $this->assertSame(
+            $open->utc()->toDateTimeString(),
+            $reservation->fresh()->start_at->toDateTimeString()
+        );
+    }
+
+    public function test_reschedule_outside_opening_hours_is_blocked(): void
+    {
+        $setup = $this->createTenantSetup();
+        $tz = $setup['location']->timezone;
+        $open = CarbonImmutable::now($tz)->addDay()->setTime(13, 0);
+
+        $reservation = $this->book($setup, $open, $setup['tables'][0]->id);
+        $this->clearTenantContext();
+
+        $this->expectException(ValidationException::class);
+        app(ReservationLifecycleService::class)
+            ->reschedule($reservation->fresh(), CarbonImmutable::now($tz)->addDay()->setTime(3, 0));
+    }
+
+    public function test_reschedule_into_an_open_slot_still_works(): void
+    {
+        $setup = $this->createTenantSetup();
+        $tz = $setup['location']->timezone;
+        $open = CarbonImmutable::now($tz)->addDay()->setTime(13, 0);
+        $target = CarbonImmutable::now($tz)->addDay()->setTime(15, 0);
+
+        $reservation = $this->book($setup, $open, $setup['tables'][0]->id);
+        $this->clearTenantContext();
+
+        app(ReservationLifecycleService::class)->reschedule($reservation->fresh(), $target);
+
+        $this->assertSame(
+            $target->utc()->toDateTimeString(),
+            $reservation->fresh()->start_at->toDateTimeString()
+        );
+    }
 }
