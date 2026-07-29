@@ -114,6 +114,8 @@ class SettingsController extends Controller
             'refund_processing' => ['required', 'in:immediate,scheduled'],
             'require_email_confirmation' => ['nullable', 'boolean'],
             'confetti_on_booking' => ['nullable', 'boolean'],
+            'owner_notification_enabled' => ['nullable', 'boolean'],
+            'owner_notification_email' => ['nullable', 'email:rfc', 'max:200'],
             'guest_address' => ['required', 'in:du,Sie'],
             'feedback_enabled' => ['nullable', 'boolean'],
             'feedback_hours_after' => ['required', 'integer', 'min:1', 'max:336'],
@@ -137,6 +139,7 @@ class SettingsController extends Controller
             'require_email_confirmation' => $request->boolean('require_email_confirmation'),
             'confetti_on_booking' => $request->boolean('confetti_on_booking'),
             'feedback_enabled' => $request->boolean('feedback_enabled'),
+            'owner_notification_enabled' => $request->boolean('owner_notification_enabled'),
         ]);
 
         $this->audit->log('location.settings_updated', $settings, $old, $validated);

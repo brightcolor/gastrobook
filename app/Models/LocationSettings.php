@@ -23,6 +23,7 @@ class LocationSettings extends Model
         'gap_optimization_enabled', 'public_floorplan_enabled',
         'refund_mode', 'refund_percent', 'refund_processing', 'require_email_confirmation',
         'confetti_on_booking', 'guest_address',
+        'owner_notification_enabled', 'owner_notification_email',
         'feedback_enabled', 'feedback_hours_after', 'feedback_external_url',
         'feedback_redirect_min_score', 'settings',
     ];
@@ -75,6 +76,7 @@ class LocationSettings extends Model
             'require_email_confirmation' => 'boolean',
             'confetti_on_booking' => 'boolean',
             'feedback_enabled' => 'boolean',
+            'owner_notification_enabled' => 'boolean',
         ];
     }
 

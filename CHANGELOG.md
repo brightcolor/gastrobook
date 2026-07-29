@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.84.0] – 2026-07-07
+
+### Neu: Optionale Benachrichtigung an den Betrieb bei neuer Reservierung
+- In den Buchungsregeln aktivierbar: Sobald eine neue Reservierung eingeht,
+  geht sofort eine E-Mail an den Betrieb – mit **allen relevanten Details**:
+  Code, Datum, Uhrzeit, Personenzahl, Status, Tisch, Gast mit E-Mail und
+  Telefon, Quelle sowie Anlass, Allergien und Gastnotiz (sofern vorhanden).
+- Betreff ist auf einen Blick lesbar: „Neue Reservierung – 08.07. 19:00 ·
+  Erika Musterfrau (4 P.)".
+- Eigene Empfängeradresse konfigurierbar; ohne Angabe geht die Mail an die
+  Kontakt-E-Mail des Standorts. Standardmäßig deaktiviert. 3 Tests.
+
 ## [1.83.0] – 2026-07-06
 
 ### Behoben: Sperrzeiten, Sonderzeiten & Öffnungszeiten wirkten nicht bei manuell gewähltem Tisch

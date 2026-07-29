@@ -204,6 +204,7 @@ class ReservationLifecycleService
                         $this->sendGuestMail($reservation, $templateKey);
                     }
                 }
+                $this->sendOwnerNotification($reservation, $location);
             });
 
             return $reservation;
@@ -469,6 +470,76 @@ class ReservationLifecycleService
 
             return $reservation->refresh();
         });
+    }
+
+    /**
+     * Optional heads-up to the operator when a new reservation comes in, with
+     * all relevant details. Off by default; recipient falls back to the
+     * location's contact e-mail when no explicit address is configured.
+     */
+    public function sendOwnerNotification(Reservation $reservation, Location $location): void
+    {
+        $settings = $location->effectiveSettings();
+        if (! $settings->owner_notification_enabled) {
+            return;
+        }
+
+        $to = $settings->owner_notification_email ?: $location->email;
+        if (! $to) {
+            return;
+        }
+
+        $localStart = $reservation->start_at->copy()->setTimezone($reservation->timezone ?: $location->timezone);
+        $tables = $reservation->tables->pluck('name')->implode(', ');
+        $sourceLabel = trans()->has('reservations.source.'.$reservation->source, 'de')
+            ? __('reservations.source.'.$reservation->source, [], 'de')
+            : $reservation->source;
+
+        $lines = [
+            'Neue Reservierung: '.$reservation->code,
+            '',
+            'Datum:    '.$localStart->format('d.m.Y'),
+            'Uhrzeit:  '.$localStart->format('H:i').' Uhr',
+            'Personen: '.$reservation->party_size,
+            'Status:   '.__('reservations.status.'.$reservation->status->value, [], 'de'),
+            'Tisch:    '.($tables !== '' ? $tables : 'automatisch/offen'),
+            '',
+            'Gast:     '.$reservation->guest_name_snapshot,
+            'E-Mail:   '.($reservation->guest_email_snapshot ?: '—'),
+            'Telefon:  '.($reservation->guest_phone_snapshot ?: '—'),
+            'Quelle:   '.$sourceLabel,
+        ];
+        if ($reservation->occasion) {
+            $lines[] = 'Anlass:   '.$reservation->occasion;
+        }
+        if ($reservation->allergy_note) {
+            $lines[] = 'Allergien: '.$reservation->allergy_note;
+        }
+        if ($reservation->guest_note) {
+            $lines[] = 'Gastnotiz: '.$reservation->guest_note;
+        }
+
+        $tenant = $reservation->tenant()->first();
+        $subject = 'Neue Reservierung – '.$localStart->format('d.m.').' '.$localStart->format('H:i').' · '
+            .$reservation->guest_name_snapshot.' ('.$reservation->party_size.' P.)';
+
+        Mail::to($to)->queue(new TemplatedMail(
+            $subject,
+            implode("\n", $lines),
+            $tenant?->mail_from_name,
+            $tenant?->mail_reply_to,
+        ));
+
+        NotificationLog::withoutGlobalScopes()->create([
+            'tenant_id' => $reservation->tenant_id,
+            'location_id' => $reservation->location_id,
+            'reservation_id' => $reservation->id,
+            'channel' => 'mail',
+            'template_key' => 'owner_new_reservation',
+            'recipient' => $to,
+            'subject' => $subject,
+            'status' => 'queued',
+        ]);
     }
 
     public function sendGuestMail(Reservation $reservation, string $templateKey, array $extra = []): void

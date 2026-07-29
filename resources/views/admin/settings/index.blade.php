@@ -317,6 +317,16 @@
         </div>
 
         <div class="mt-4 border-t border-stone-100 pt-4">
+            <h3 class="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">Benachrichtigung an den Betrieb</h3>
+            <div class="flex flex-wrap items-end gap-4 text-sm">
+                <label class="flex items-center gap-2"><input type="checkbox" name="owner_notification_enabled" value="1" @checked($settings->owner_notification_enabled)> Bei jeder neuen Reservierung informieren <span class="tip" tabindex="0" data-tip="Schickt dir sofort eine E-Mail, sobald eine neue Reservierung eingeht – mit Datum, Uhrzeit, Personenzahl, Tisch, Kontaktdaten, Anlass und Allergien.">?</span></label>
+                <div><label class="mb-1 block text-xs font-semibold text-stone-500">E-Mail-Adresse <span class="tip" tabindex="0" data-tip="Leer lassen, um die Kontakt-E-Mail des Standorts zu verwenden (Tab &#39;Allgemein&#39;).">?</span></label>
+                    <input type="email" name="owner_notification_email" value="{{ $settings->owner_notification_email }}" placeholder="{{ $location->email ?: 'inhaber@betrieb.de' }}" class="w-64 rounded-lg border-stone-200"></div>
+            </div>
+            <p class="mt-1 text-xs text-stone-400">Ohne eigene Adresse geht die Benachrichtigung an die Kontakt-E-Mail des Standorts.</p>
+        </div>
+
+        <div class="mt-4 border-t border-stone-100 pt-4">
             <h3 class="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">Feedback nach dem Besuch</h3>
             <div class="space-y-3 text-sm">
                 <label class="flex items-center gap-2"><input type="checkbox" name="feedback_enabled" value="1" @checked($settings->feedback_enabled)> Feedback-Mail aktiv <span class="tip" tabindex="0" data-tip="Schickt Gästen nach dem Besuch automatisch eine kurze Bewertungsanfrage (1–5 Sterne). Zufriedene Gäste leitest du danach gezielt zu deinem öffentlichen Bewertungsportal weiter.">?</span></label>
