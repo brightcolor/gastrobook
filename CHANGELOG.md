@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.85.0] – 2026-07-07
+
+### Neu: Stühle im Tischplan – auch für Gäste – und Stirnseiten pro Tisch abschaltbar
+- **Gäste sehen jetzt die Stühle**: Auf der öffentlichen Buchungsseite werden im
+  Tischplan die Sitzplätze rund um jeden Tisch dargestellt (drehen korrekt mit
+  dem Tisch mit). Das macht auf einen Blick klar, wie ein Tisch belegt ist.
+- **Stirnseiten pro Tisch abschaltbar**: Neue Option „Stühle an den Stirnseiten"
+  im Tisch-Editor des Tischplans – praktisch, wenn an den Kopfenden eine Wand
+  oder ein Durchgang ist. Die Plätze verteilen sich dann auf die Längsseiten,
+  die Kapazität bleibt unverändert.
+- Die Einstellung wirkt in **beiden** Tischplänen (Gast + Admin). Bestehende
+  Tische behalten ihre Stirnseiten-Stühle (Standard: an). 4 Tests.
+
 ## [1.84.0] – 2026-07-07
 
 ### Neu: Optionale Benachrichtigung an den Betrieb bei neuer Reservierung

@@ -993,6 +993,48 @@ details > summary::-webkit-details-marker { display: none; }
                     el.style.cursor = (activeZoneFilter && !inActiveZone) ? 'default' : 'not-allowed';
                 }
                 fpCanvas.appendChild(el);
+
+                // Chairs around the table (positions come from the server and
+                // already respect a table's disabled head seats).
+                if (Array.isArray(t.seats) && t.seats.length) {
+                    const w = Math.max(28, t.width * scale);
+                    const h = Math.max(28, t.height * scale);
+                    const cx = pad + t.pos_x * scale + w / 2;
+                    const cy = pad + t.pos_y * scale + h / 2;
+                    const size = Math.max(5, Math.min(11, 7 * scale * 1.6));
+                    const gap = size * 0.75;
+                    const rot = (t.rotation || 0) * Math.PI / 180;
+
+                    t.seats.forEach(s => {
+                        // Seat offset from table centre, pushed outward past the edge.
+                        let dx = (s.x - 0.5) * w;
+                        let dy = (s.y - 0.5) * h;
+                        if (s.side === 'top') dy -= gap;
+                        else if (s.side === 'bottom') dy += gap;
+                        else if (s.side === 'left') dx -= gap;
+                        else if (s.side === 'right') dx += gap;
+                        else { // round: push outward along the radius
+                            const len = Math.hypot(dx, dy) || 1;
+                            dx += (dx / len) * gap; dy += (dy / len) * gap;
+                        }
+                        // Rotate with the table
+                        const rx = dx * Math.cos(rot) - dy * Math.sin(rot);
+                        const ry = dx * Math.sin(rot) + dy * Math.cos(rot);
+
+                        const chair = document.createElement('span');
+                        Object.assign(chair.style, {
+                            position: 'absolute',
+                            left: (cx + rx - size / 2) + 'px',
+                            top: (cy + ry - size / 2) + 'px',
+                            width: size + 'px', height: size + 'px',
+                            borderRadius: '50%',
+                            background: 'rgba(120,113,108,.35)',
+                            pointerEvents: 'none',
+                            opacity: (activeZoneFilter && !inActiveZone) ? '0.25' : '1',
+                        });
+                        fpCanvas.appendChild(chair);
+                    });
+                }
             });
         }
 

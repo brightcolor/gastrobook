@@ -218,7 +218,9 @@
                     <label class="flex items-center gap-2"><input type="checkbox" name="joinable" class="rounded"> Kombinierbar</label>
                     <label class="flex items-center gap-2"><input type="checkbox" name="outdoor" class="rounded"> Außenbereich</label>
                     <label class="flex items-center gap-2"><input type="checkbox" name="accessible" class="rounded"> Barrierefrei</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" name="head_seats_enabled" class="rounded"> Stühle an den Stirnseiten</label>
                 </div>
+                <p class="mt-1 text-xs text-stone-400">Abschalten, wenn an den Kopfenden des Tisches niemand sitzt (z. B. Wand oder Durchgang).</p>
             </div>
             <p id="tableEditErr" class="fp-err hidden"></p>
             <div class="fp-modal-foot">
@@ -388,8 +390,10 @@
             return out;
         }
 
-        // elongated table: long sides carry the guests, ends used as heads
-        const heads = n >= 8 ? 2 : (n % 2 === 1 ? 1 : 0);
+        // elongated table: long sides carry the guests, ends used as heads —
+        // unless the head seats are switched off for this table.
+        const wantsHeads = n >= 8 ? 2 : (n % 2 === 1 ? 1 : 0);
+        const heads = t.head_seats_enabled === false ? 0 : wantsHeads;
         const rest = n - heads;
         const sideA = Math.ceil(rest / 2), sideB = rest - sideA;
         if (horizontal) {
@@ -1049,6 +1053,8 @@
             eForm.joinable.checked = !!t.joinable;
             eForm.outdoor.checked = !!t.outdoor;
             eForm.accessible.checked = !!t.accessible;
+            // Default to on for tables created before this option existed.
+            eForm.head_seats_enabled.checked = t.head_seats_enabled !== false;
             editModal.classList.remove('hidden');
             editModal.classList.add('flex');
         };
@@ -1065,6 +1071,7 @@
                 joinable: eForm.joinable.checked,
                 outdoor: eForm.outdoor.checked,
                 accessible: eForm.accessible.checked,
+                head_seats_enabled: eForm.head_seats_enabled.checked,
             };
             const res = await fetch(`${tableUpdateBase}/${id}`, {
                 method: 'PUT',

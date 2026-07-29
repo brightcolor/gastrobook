@@ -119,7 +119,9 @@ class FloorPlanController extends Controller
                 'accessible' => (bool) $table->accessible,
                 'joinable' => (bool) $table->joinable,
                 'online_bookable' => (bool) $table->online_bookable,
+                'head_seats_enabled' => (bool) $table->head_seats_enabled,
                 'seats' => (int) $table->max_capacity,
+                'seat_positions' => $table->seatPositions(),
                 'occupied' => min((int) $occupiedSeats, (int) $table->max_capacity),
                 'current' => $current ? [
                     'id' => $current->id,
@@ -287,6 +289,7 @@ class FloorPlanController extends Controller
             'accessible' => ['nullable', 'boolean'],
             'joinable' => ['nullable', 'boolean'],
             'online_bookable' => ['nullable', 'boolean'],
+            'head_seats_enabled' => ['nullable', 'boolean'],
         ]);
 
         $old = ['name' => $table->name, 'min_capacity' => $table->min_capacity, 'max_capacity' => $table->max_capacity];
@@ -298,6 +301,7 @@ class FloorPlanController extends Controller
             'accessible' => $request->boolean('accessible'),
             'joinable' => $request->boolean('joinable'),
             'online_bookable' => $request->boolean('online_bookable'),
+            'head_seats_enabled' => $request->boolean('head_seats_enabled'),
         ]);
 
         $this->audit->log('table.updated', $table, $old, $validated);
@@ -313,6 +317,8 @@ class FloorPlanController extends Controller
             'accessible' => (bool) $table->accessible,
             'joinable' => (bool) $table->joinable,
             'online_bookable' => (bool) $table->online_bookable,
+            'head_seats_enabled' => (bool) $table->head_seats_enabled,
+            'seat_positions' => $table->seatPositions(),
         ]]);
     }
 

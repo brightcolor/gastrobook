@@ -9,6 +9,7 @@ use App\Models\FloorZone;
 use App\Models\Guest;
 use App\Models\Location;
 use App\Models\Reservation;
+use App\Models\RestaurantTable;
 use App\Models\Service;
 use App\Models\StaffMember;
 use App\Models\Tenant;
@@ -365,7 +366,7 @@ class PublicBookingController extends Controller
                 'plan_width_m' => $room->plan_width_m,
                 'plan_height_m' => $room->plan_height_m,
                 'zones' => $zonesByRoom->get($room->id, collect())->values()->all(),
-                'tables' => $room->tables->map(function ($t) use ($busy, $blockedRooms, $partySize) {
+                'tables' => $room->tables->map(function (RestaurantTable $t) use ($busy, $blockedRooms, $partySize) {
                     $status = 'available';
                     if (! $t->online_bookable || in_array($t->room_id, $blockedRooms, true)) {
                         $status = 'unavailable';
@@ -381,6 +382,7 @@ class PublicBookingController extends Controller
                         'status' => $status,
                         'selectable' => $status === 'available',
                         'capacity' => $t->min_capacity.'–'.$t->max_capacity,
+                        'seats' => $t->seatPositions(),
                         'pos_x' => (int) $t->pos_x,
                         'pos_y' => (int) $t->pos_y,
                         'width' => (int) ($t->width ?: 60),
