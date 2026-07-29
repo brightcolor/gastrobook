@@ -76,7 +76,19 @@ class ReservationLifecycleService
                     }
                     $tableIds = $check['table_ids'];
                 } else {
-                    // Manually chosen tables: conflict check, overbooking requires permission upstream
+                    // Manually chosen tables: even here the slot must respect
+                    // opening/special hours and blackouts — otherwise a picked
+                    // table would let staff/guests book a closed day or a
+                    // blacked-out time. Overbooking still goes via the
+                    // skip_availability_check flag (permission-gated upstream).
+                    $blockReason = $this->availability->bookingBlockReason($location, $startLocal, $startUtc, $endUtc, $tableIds);
+                    if ($blockReason !== null) {
+                        throw ValidationException::withMessages([
+                            'start_at' => $this->availabilityMessage($blockReason),
+                        ]);
+                    }
+
+                    // Conflict check; overbooking requires permission upstream.
                     $busy = $this->tableAssignment->busyTableIds($location, $startUtc, $endUtc, null);
                     $conflicts = array_intersect($tableIds, $busy);
                     if ($conflicts !== []) {
@@ -505,6 +517,7 @@ class ReservationLifecycleService
             'lead_time' => __('Für diesen Zeitpunkt ist es leider etwas zu kurzfristig – bitte wählen Sie einen Termin etwas weiter in der Zukunft.'),
             'too_far_ahead' => __('Dieser Termin liegt noch zu weit in der Zukunft. Bitte schauen Sie später noch einmal vorbei.'),
             'blackout' => __('Zu diesem Zeitpunkt sind wir leider geschlossen. Bitte wählen Sie einen anderen Tag.'),
+            'outside_opening_hours' => __('Zu dieser Uhrzeit haben wir leider geschlossen. Bitte wählen Sie eine Zeit innerhalb der Öffnungszeiten.'),
             'covers_full' => __('Zu diesem Zeitpunkt sind leider alle Plätze vergeben – wie wäre es mit einem anderen Termin?'),
             'no_table' => __('Zu diesem Zeitpunkt ist kein passender Tisch mehr frei – bitte probieren Sie eine andere Zeit oder Personenzahl.'),
             default => __('Dieser Zeitpunkt ist leider nicht mehr verfügbar – bitte wählen Sie einen anderen Termin.'),

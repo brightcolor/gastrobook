@@ -147,6 +147,60 @@ class ReservationAvailabilityService
     }
 
     /**
+     * Time-window and blackout constraints for a slot, independent of table
+     * assignment. Returns a block reason, or null if the slot is bookable.
+     *
+     * Used when tables are chosen manually (public floor plan / internal
+     * picker): those bookings must still respect opening/special hours and
+     * blackouts, which the plain busy-table check does not cover.
+     *
+     * @param  array<int>  $tableIds  chosen tables (for room-specific blackouts)
+     */
+    public function bookingBlockReason(
+        Location $location,
+        CarbonImmutable $startLocal,
+        CarbonImmutable $startUtc,
+        CarbonImmutable $endUtc,
+        array $tableIds = []
+    ): ?string {
+        $duration = (int) $startUtc->diffInMinutes($endUtc);
+
+        // Opening / special hours (a closed day yields no slot grid).
+        $validStarts = $this->timeSlots->slotStarts($location, $startLocal->startOfDay(), $duration);
+        $onGrid = collect($validStarts)->contains(fn ($s) => $s->equalTo($startLocal));
+        if (! $onGrid) {
+            return 'outside_opening_hours';
+        }
+
+        // Location-wide full blackout.
+        $fullBlackout = $location->blackoutPeriods()
+            ->whereNull('room_id')
+            ->whereNull('reduce_covers_to')
+            ->where('starts_at', '<', $endUtc)
+            ->where('ends_at', '>', $startUtc)
+            ->exists();
+        if ($fullBlackout) {
+            return 'blackout';
+        }
+
+        // Room-specific blackout covering any of the chosen tables.
+        if ($tableIds !== []) {
+            $blockedRooms = $location->blackoutPeriods()
+                ->whereNotNull('room_id')
+                ->whereNull('reduce_covers_to')
+                ->where('starts_at', '<', $endUtc)
+                ->where('ends_at', '>', $startUtc)
+                ->pluck('room_id')
+                ->all();
+            if ($blockedRooms !== [] && $location->tables()->whereIn('id', $tableIds)->whereIn('room_id', $blockedRooms)->exists()) {
+                return 'blackout';
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @return array{0: bool, 1: ?string}
      */
     private function checkSlot(

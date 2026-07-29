@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.83.0] – 2026-07-06
+
+### Behoben: Sperrzeiten, Sonderzeiten & Öffnungszeiten wirkten nicht bei manuell gewähltem Tisch
+- **Ursache:** Beim Anlegen einer Reservierung wurde die Verfügbarkeit nur bei
+  automatischer Tischzuweisung geprüft. Sobald ein Tisch **manuell gewählt**
+  wurde (öffentlicher Tischplan oder interner Reservierungs-Picker), lief nur
+  ein „Tisch belegt?"-Check – Sperrzeiten, geschlossene Sonderzeit-Tage und
+  Öffnungszeiten wurden komplett übersprungen.
+- Jetzt gilt: **jede** Reservierung – auch mit manuell gewähltem Tisch – muss
+  innerhalb der Öffnungs-/Sonderzeiten liegen und darf nicht in eine Sperrzeit
+  fallen (standortweit **und** raumspezifisch für die gewählten Tische).
+  Bewusstes Überbuchen bleibt über die Überbuchungs-Berechtigung möglich.
+- 4 neue Regressionstests (Sperrzeit, geschlossener Sondertag, außerhalb der
+  Öffnungszeiten, gültige Zeit).
+
 ## [1.82.1] – 2026-07-06
 
 ### Geändert: Reservierungsbuch zeigt standardmäßig alle Buchungen
