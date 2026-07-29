@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.88.0] – 2026-07-07
+
+### Neu: Kompletten Account exportieren (Umzug & Datensicherung)
+- Unter **Mein Konto → Alle Daten exportieren** lädt der Inhaber den gesamten
+  Betrieb als eine Datei herunter: Standorte und Einstellungen, Räume, Tische,
+  Tischkombinationen und Zonen, Öffnungs-, Sonder- und Sperrzeiten, alle
+  Reservierungen samt Verlauf und Notizen, Gäste mit Einwilligungen, Events und
+  Event-Buchungen, Warteliste, Mitarbeiter mit Arbeitszeiten und Abwesenheiten,
+  Leistungen, Tags, Anzahlungsregeln, E-Mail-Vorlagen, Feedback sowie Zahlungen
+  und Erstattungen.
+- Tischzuordnungen und Tags werden **zusätzlich im Klartext** gespeichert
+  (Tischnamen statt nur interner Nummern), damit die Daten auch in einem
+  anderen System zuordenbar bleiben.
+- **Sicherheit:** Zugangsdaten, Integrations-Schlüssel (z. B. Stripe/PayPal),
+  Webhook-Geheimnisse und Zugriffs-Token sind bewusst **nicht** enthalten.
+  Der Export ist ausschließlich dem Inhaber möglich, streng auf den eigenen
+  Betrieb begrenzt und wird im Änderungsprotokoll festgehalten.
+- 5 Tests (Inhalt, keine Secrets, keine fremden Daten, nur Inhaber, Protokoll).
+
 ## [1.87.0] – 2026-07-07
 
 ### Neu: No-Show-Schutz – Anzahlung wird einbehalten

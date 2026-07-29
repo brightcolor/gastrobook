@@ -16,6 +16,28 @@
         </div>
     </div>
 
+    {{-- Daten mitnehmen (nur für Inhaber) --}}
+    @if($isOwner && $tenant !== null)
+        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
+            <h2 class="mb-1 font-bold">Alle Daten exportieren</h2>
+            <p class="mb-4 text-sm text-stone-500">
+                Lädt den kompletten Betrieb <strong>„{{ $tenant->name }}"</strong> als Datei herunter:
+                Standorte, Räume und Tische, Öffnungs- und Sperrzeiten, alle Reservierungen,
+                Gäste, Events, Mitarbeiter, Leistungen und Einstellungen. Ideal als Sicherung
+                oder wenn du zu einem anderen System umziehen möchtest.
+            </p>
+            <p class="mb-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-800">
+                <strong>Bitte sorgsam aufbewahren:</strong> Die Datei enthält personenbezogene
+                Gästedaten. Zugangsdaten und Schlüssel für Zahlungsanbieter sind aus
+                Sicherheitsgründen <strong>nicht</strong> enthalten.
+            </p>
+            <a href="{{ route('admin.account.export') }}"
+               class="inline-block rounded-xl bg-stone-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-stone-700">
+                ↓ Daten herunterladen
+            </a>
+        </div>
+    @endif
+
     {{-- Betrieb löschen (nur für Inhaber) --}}
     @if($isLastOwner && $tenant !== null)
         <div class="rounded-2xl border-2 border-red-200 bg-red-50 p-5">

@@ -102,6 +102,8 @@ class AuditLog extends Model
             'tenant.type_changed' => 'Betriebsart geändert',
             'payment.succeeded' => 'Zahlung eingegangen',
             'payment.checkout_started' => 'Bezahlvorgang gestartet',
+            'payment.forfeited' => 'Anzahlung einbehalten (No-Show)',
+            'account.exported' => 'Alle Daten exportiert',
         ];
         if (isset($overrides[$this->action])) {
             return $overrides[$this->action];

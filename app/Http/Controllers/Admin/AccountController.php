@@ -6,10 +6,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
+use App\Services\AccountExportService;
 use App\Services\AuditLogger;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AccountController extends Controller
 {
@@ -23,11 +26,43 @@ class AccountController extends Controller
         $tenant = $this->context->tenant();
         $user = $request->user();
 
-        $isLastOwner = $tenant !== null
-            && $user->tenants()->where('tenants.id', $tenant->id)->wherePivot('role', 'tenant_owner')->exists()
+        $isOwner = $tenant !== null
+            && $user->tenants()->where('tenants.id', $tenant->id)->wherePivot('role', 'tenant_owner')->exists();
+
+        $isLastOwner = $isOwner
             && $tenant->memberships()->where('role', 'tenant_owner')->count() <= 1;
 
-        return view('admin.account.index', compact('user', 'tenant', 'isLastOwner'));
+        return view('admin.account.index', compact('user', 'tenant', 'isOwner', 'isLastOwner'));
+    }
+
+    /**
+     * Download the complete account as a JSON archive so the business can move
+     * to another installation (or keep an offline copy). Owner-only: this file
+     * contains every guest and reservation of the tenant.
+     */
+    public function export(Request $request, AccountExportService $exporter): StreamedResponse
+    {
+        $tenant = $this->context->tenant();
+        $user = $request->user();
+
+        abort_if($tenant === null, 404);
+        abort_unless(
+            $user->tenants()->where('tenants.id', $tenant->id)->wherePivot('role', 'tenant_owner')->exists(),
+            403
+        );
+
+        $data = $exporter->export($tenant);
+
+        $this->audit->log('account.exported', $tenant, null, [
+            'reservations' => count($data['reservations']),
+            'guests' => count($data['guests']),
+        ], null, $user, $tenant->id);
+
+        $filename = 'swayy-export-'.Str::slug($tenant->name).'-'.now()->format('Y-m-d').'.json';
+
+        return response()->streamDownload(function () use ($data) {
+            echo json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }, $filename, ['Content-Type' => 'application/json; charset=utf-8']);
     }
 
     public function destroy(Request $request)
