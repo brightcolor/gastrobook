@@ -70,7 +70,7 @@
 
 {{-- Aktiver-Filter-Banner + „Filter löschen" --}}
 <x-active-filters :reset="route('admin.reservations.index')" :filters="[
-    'Zeitraum' => request('q') ? null : ($preset === 'today' ? null : $rangeLabel),
+    'Zeitraum' => request('q') ? null : ($preset === 'all' ? null : $rangeLabel),
     'Status'   => request('status') ? __('reservations.status.' . request('status')) : null,
     'Quelle'   => request('source') ? __('reservations.source.' . request('source')) : null,
     'Raum'     => request('room_id') ? optional($rooms->firstWhere('id', request('room_id')))->name : null,

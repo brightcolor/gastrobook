@@ -208,11 +208,12 @@ class ReservationBookController extends Controller
             return [$range[0]?->toDateString(), $range[1]?->toDateString(), $preset];
         }
 
-        // Custom range, or legacy single `date`, else default to today.
+        // Custom range, or legacy single `date`, else default to ALL dates so
+        // staff see the full book by default (no accidental "today only" filter).
         $from = $request->input('from') ?: $request->input('date');
         $to = $request->input('to') ?: $from;
         if ($from === null && $to === null) {
-            return [$now->toDateString(), $now->toDateString(), 'today'];
+            return [null, null, 'all'];
         }
         // Keep the pair ordered so a reversed selection still works.
         if ($from && $to && $from > $to) {

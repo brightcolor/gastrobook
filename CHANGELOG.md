@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.82.1] – 2026-07-06
+
+### Geändert: Reservierungsbuch zeigt standardmäßig alle Buchungen
+- Der Standard-Zeitraum im Reservierungsbuch ist jetzt **„Alle"** statt „Heute".
+  Beim Öffnen sieht das Personal sofort das komplette Buch (Vergangenheit,
+  heute und Zukunft), ohne dass ein versehentlicher „Heute"-Filter Einträge
+  ausblendet. Die anderen Zeitraum-Presets bleiben unverändert wählbar; „Alle"
+  gilt nun als Standard und erscheint nicht mehr als aktiver Filter.
+
 ## [1.82.0] – 2026-07-06
 
 ### Neu: Umbuchungsfrist einstellbar + kritische Mails garantiert zugestellt

@@ -56,16 +56,23 @@ class ReservationBookRangeTest extends TestCase
             ->assertOk()->assertSee('GastVor40Tagen')->assertDontSee('GastHeute');
     }
 
-    public function test_default_view_shows_today_only(): void
+    public function test_default_view_shows_all_bookings(): void
     {
         $setup = $this->createTenantSetup();
         $admin = $this->createMember($setup['tenant'], 'tenant_owner');
         $now = CarbonImmutable::now($setup['location']->timezone);
         $this->makeOn($setup, $now, 'GastHeute');
         $this->makeOn($setup, $now->subDays(5), 'GastVor5Tagen');
+        $this->makeOn($setup, $now->subDays(120), 'GastVor120Tagen');
+        $this->makeOn($setup, $now->addDays(30), 'GastIn30Tagen');
         $this->clearTenantContext();
 
+        // Default (no range) shows the whole book: past, today and future.
         $this->actingAs($admin)->get('/admin/reservations')
-            ->assertOk()->assertSee('GastHeute')->assertDontSee('GastVor5Tagen');
+            ->assertOk()
+            ->assertSee('GastHeute')
+            ->assertSee('GastVor5Tagen')
+            ->assertSee('GastVor120Tagen')
+            ->assertSee('GastIn30Tagen');
     }
 }
