@@ -46,10 +46,18 @@
                 Die Daten werden <strong>hinzugefügt</strong>; nichts Bestehendes wird gelöscht
                 oder überschrieben.
             </p>
-            <p class="mb-4 rounded-xl bg-stone-50 p-3 text-xs text-stone-600">
-                Reservierungen erhalten dabei neue Buchungscodes und Links. Zugangsdaten für
-                Zahlungsanbieter sind im Export nicht enthalten und müssen hier neu hinterlegt werden.
-            </p>
+            <ul class="mb-4 space-y-1.5 rounded-xl bg-stone-50 p-3 text-xs text-stone-600">
+                <li><strong>Kommt mit:</strong> alles aus dem Export – auch Zahlungen und Erstattungen,
+                    Notizen, Statusverlauf, Einwilligungen und Feedback.</li>
+                <li><strong>Bestätigungslinks werden neu erzeugt.</strong> Bereits versendete Links zum
+                    Ändern oder Stornieren funktionieren danach nicht mehr. Gäste kommen über die
+                    Anmeldung per E-Mail-Link an ihre Buchung; mit der nächsten Erinnerung geht
+                    ohnehin ein neuer Link raus.</li>
+                <li><strong>Offene Erstattungen werden nicht ausgeführt</strong>, sondern als erledigt
+                    markiert – sie gehören ins alte System, wo die Zahlung liegt.</li>
+                <li><strong>Zahlungsanbieter neu verbinden:</strong> Stripe- und PayPal-Zugangsdaten sind
+                    aus Sicherheitsgründen nicht im Export und müssen hier neu hinterlegt werden.</li>
+            </ul>
             <form method="POST" action="{{ route('admin.account.import') }}" enctype="multipart/form-data" class="space-y-3">
                 @csrf
                 <input type="file" name="file" accept=".json,application/json" required

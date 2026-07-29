@@ -206,6 +206,25 @@ Angemessenheitsbeschlusses oder geeigneter Garantien gemäß Art. 46 DSGVO
 - **Einwilligungsnachweise** werden für die Dauer der Nachweisbarkeit
   aufbewahrt.
 
+## 14a. Umzug des Betriebs zu einem anderen System
+
+Der Betrieb kann seinen gesamten Datenbestand als Datei exportieren und in einer
+anderen Installation dieser Software wieder einspielen — etwa bei einem Wechsel
+des Anbieters oder Servers. Übertragen werden dabei auch die zu Ihrer Buchung
+gehörenden Daten: Reservierung samt Verlauf und Notizen, Gästeprofil,
+Einwilligungsnachweise, Zahlungsvorgänge und Feedback.
+
+- Es handelt sich um denselben Verantwortlichen (Ihren Betrieb), der die Daten
+  lediglich auf einer anderen technischen Plattform weiterführt; Zweck und
+  Rechtsgrundlage der Verarbeitung ändern sich dadurch nicht.
+- **Zugangsdaten und Zugriffs-Token sind in der Datei bewusst nicht enthalten.**
+  Nach einem Umzug funktionieren zuvor versandte Links (z. B. zum Ändern oder
+  Stornieren einer Reservierung) daher **nicht mehr**. Sie erhalten mit der
+  nächsten E-Mail einen neuen Link oder können sich über die Anmeldung per
+  E-Mail-Link erneut Zugang zu Ihrer Buchung verschaffen.
+- Der Export und das Einspielen sind ausschließlich dem Inhaber möglich und
+  werden im Änderungsprotokoll festgehalten.
+
 ## 15. Ihre Rechte
 
 Sie haben das Recht auf **Auskunft** (Art. 15), **Berichtigung** (Art. 16),

@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.90.0] – 2026-07-29
+
+### Account-Import: Zahlungen und Historie ziehen jetzt mit um
+Der Export enthielt acht Bereiche, die der Import in v1.89.0 noch übersprungen
+hat. Ein Umzug hat damit zwar die Reservierungen mitgenommen, aber nicht das,
+was daran hängt. Ergänzt wurden:
+
+- **Zahlungen und Erstattungen** (Anzahlungen, Event-Vorauszahlungen) – korrekt
+  an die neu angelegten Reservierungen und Event-Buchungen gehängt.
+- **Reservierungs-Notizen und Statusverlauf** – wer wann wie gebucht,
+  bestätigt, umgebucht oder storniert hat, bleibt nachvollziehbar.
+- **Gast-Notizen und Einwilligungsnachweise** (Art. 7 Abs. 1 DSGVO).
+- **Feedback-Anfragen und -Antworten** samt Bewertungen.
+
+**Offene Erstattungen werden dabei bewusst nicht mitgenommen, sondern
+abgeschlossen** („Beim Umzug übernommen – im alten System abschließen"). Sonst
+hätte der Erstattungs-Scheduler im Zielsystem eine Auszahlung gegen ein
+Anbieterkonto versucht, das die ursprüngliche Zahlung nie gesehen hat.
+
+### Klarheit beim Einspielen
+- Der Hinweis im Import-Formular sagt jetzt konkret, was mitkommt, dass
+  **bereits versendete Bestätigungs- und Stornolinks danach nicht mehr
+  funktionieren** (Gäste kommen über die Anmeldung per E-Mail-Link an ihre
+  Buchung, spätestens die nächste Erinnerung bringt einen neuen Link), und dass
+  Stripe/PayPal neu verbunden werden müssen.
+- Datenschutzerklärung um Abschnitt **14a „Umzug des Betriebs zu einem anderen
+  System"** ergänzt.
+
 ## [1.89.0] – 2026-07-29
 
 ### Neu: Export wieder einspielen (Account-Import)

@@ -6,9 +6,14 @@ namespace Tests\Feature;
 
 use App\Enums\ReservationStatus;
 use App\Models\Guest;
+use App\Models\GuestNote;
 use App\Models\Location;
+use App\Models\PaymentIntent;
 use App\Models\Plan;
+use App\Models\Refund;
 use App\Models\Reservation;
+use App\Models\ReservationNote;
+use App\Models\ReservationStatusHistory;
 use App\Models\Tag;
 use App\Models\Tenant;
 use App\Services\AccountExportService;
@@ -156,6 +161,83 @@ class AccountImportTest extends TestCase
         $reservation = Reservation::withoutGlobalScopes()->where('tenant_id', $target->id)->first();
         $this->assertSame('Fensterplatz', $reservation->tags->first()->name);
         $this->assertSame('#00ff00', $reservation->tags->first()->color);
+    }
+
+    /**
+     * A move has to carry the paper trail too: what was paid, what was noted,
+     * how a booking got to its status. Open refunds are the exception — see
+     * AccountImportService::refunds().
+     */
+    public function test_payments_notes_history_and_feedback_come_along(): void
+    {
+        $setup = $this->createTenantSetup();
+        $tenantId = $setup['tenant']->id;
+
+        $guest = Guest::withoutGlobalScopes()->create([
+            'tenant_id' => $tenantId, 'first_name' => 'Klara', 'last_name' => 'Meier',
+        ]);
+        $start = CarbonImmutable::now($setup['location']->timezone)->addDay()->setTime(19, 0);
+        $reservation = Reservation::create([
+            'tenant_id' => $tenantId, 'location_id' => $setup['location']->id,
+            'guest_id' => $guest->id, 'party_size' => 2,
+            'reservation_date' => $start->toDateString(), 'start_at' => $start->utc(), 'end_at' => $start->addHours(2)->utc(),
+            'timezone' => $setup['location']->timezone, 'status' => ReservationStatus::Confirmed, 'source' => 'online',
+            'guest_name_snapshot' => 'Klara Meier',
+        ]);
+
+        GuestNote::create(['tenant_id' => $tenantId, 'guest_id' => $guest->id, 'body' => 'Stammgast, mag Fensterplatz.']);
+        ReservationNote::create(['tenant_id' => $tenantId, 'reservation_id' => $reservation->id, 'body' => 'Ruft vorher an.']);
+        ReservationStatusHistory::create([
+            'tenant_id' => $tenantId, 'reservation_id' => $reservation->id,
+            'from_status' => 'pending', 'to_status' => 'confirmed', 'actor' => 'staff',
+        ]);
+        $payment = PaymentIntent::create([
+            'tenant_id' => $tenantId, 'reservation_id' => $reservation->id,
+            'provider' => 'stripe', 'type' => 'deposit', 'amount_minor' => 2000,
+            'currency' => 'EUR', 'status' => 'paid',
+        ]);
+        Refund::create([
+            'tenant_id' => $tenantId, 'reservation_id' => $reservation->id,
+            'payment_intent_id' => $payment->id, 'provider' => 'stripe',
+            'amount_minor' => 2000, 'currency' => 'EUR', 'status' => 'approved', 'source' => 'auto',
+        ]);
+
+        $export = app(AccountExportService::class)->export($setup['tenant']);
+        $setup['tenant']->forceDelete();
+
+        $target = $this->freshTenant();
+        $imported = app(AccountImportService::class)->import($target, $export);
+
+        $this->assertSame(1, $imported['guest_notes']);
+        $this->assertSame(1, $imported['reservation_notes']);
+        $this->assertSame(1, $imported['reservation_status_history']);
+        $this->assertSame(1, $imported['payments']);
+        $this->assertSame(1, $imported['refunds']);
+
+        $newReservation = Reservation::withoutGlobalScopes()->where('tenant_id', $target->id)->first();
+
+        // Everything hangs off the *new* reservation id, not the old one.
+        $newPayment = PaymentIntent::withoutGlobalScopes()->where('tenant_id', $target->id)->first();
+        $this->assertSame($newReservation->id, $newPayment->reservation_id);
+        $this->assertSame(2000, $newPayment->amount_minor);
+        $this->assertSame('paid', $newPayment->status);
+
+        $this->assertSame(
+            $newReservation->id,
+            ReservationNote::withoutGlobalScopes()->where('tenant_id', $target->id)->first()->reservation_id
+        );
+        $this->assertSame(
+            'confirmed',
+            ReservationStatusHistory::withoutGlobalScopes()->where('tenant_id', $target->id)->first()->to_status
+        );
+
+        // The open refund is closed instead of being retried against a provider
+        // that never saw the original payment.
+        $newRefund = Refund::withoutGlobalScopes()->where('tenant_id', $target->id)->first();
+        $this->assertSame('failed', $newRefund->status);
+        $this->assertNull($newRefund->scheduled_for);
+        $this->assertStringContainsString('alten System', (string) $newRefund->error);
+        $this->assertSame($newPayment->id, $newRefund->payment_intent_id);
     }
 
     public function test_broken_file_is_rejected_and_changes_nothing(): void
