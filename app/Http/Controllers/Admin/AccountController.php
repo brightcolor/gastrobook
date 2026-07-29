@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Services\AccountExportService;
+use App\Services\AccountImportService;
 use App\Services\AuditLogger;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
@@ -63,6 +64,51 @@ class AccountController extends Controller
         return response()->streamDownload(function () use ($data) {
             echo json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         }, $filename, ['Content-Type' => 'application/json; charset=utf-8']);
+    }
+
+    /**
+     * Import a previously exported account file into the current business.
+     * Additive: nothing existing is deleted. Runs in one transaction, so a
+     * broken file leaves the account untouched.
+     */
+    public function import(Request $request, AccountImportService $importer)
+    {
+        $tenant = $this->context->tenant();
+        $user = $request->user();
+
+        abort_if($tenant === null, 404);
+        abort_unless(
+            $user->tenants()->where('tenants.id', $tenant->id)->wherePivot('role', 'tenant_owner')->exists(),
+            403
+        );
+
+        $request->validate([
+            'file' => ['required', 'file', 'mimetypes:application/json,text/plain', 'max:51200'],
+            'confirm' => ['required', 'accepted'],
+        ], [
+            'confirm.accepted' => 'Bitte bestätige, dass die Daten zum aktuellen Betrieb hinzugefügt werden.',
+            'file.max' => 'Die Datei ist zu groß (max. 50 MB).',
+        ]);
+
+        $decoded = json_decode((string) file_get_contents($request->file('file')->getRealPath()), true);
+        if (! is_array($decoded)) {
+            return back()->withErrors(['file' => 'Die Datei konnte nicht gelesen werden – ist es eine gültige Export-Datei?']);
+        }
+
+        try {
+            $imported = $importer->import($tenant, $decoded);
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['file' => $e->getMessage()]);
+        }
+
+        $this->audit->log('account.imported', $tenant, null, $imported, null, $user, $tenant->id);
+
+        // Admin UI is German-only, so name the sections in German regardless of APP_LOCALE.
+        $summary = collect($imported)
+            ->map(fn ($count, $section) => $count.' '.__('import.'.$section, [], 'de'))
+            ->implode(', ');
+
+        return back()->with('success', __('Import abgeschlossen: :summary.', ['summary' => $summary]));
     }
 
     public function destroy(Request $request)

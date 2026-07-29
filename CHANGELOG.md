@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.89.0] – 2026-07-29
+
+### Neu: Export wieder einspielen (Account-Import)
+- Unter **Mein Konto → Daten einspielen** lädt der Inhaber eine zuvor
+  exportierte Datei hoch und übernimmt damit den kompletten Betrieb in die
+  aktuelle Installation – der zweite Teil des Umzugs.
+- Übernommen werden Standorte samt Einstellungen, Räume, Tische,
+  Tischkombinationen und Zonen, Öffnungs-, Sonder- und Sperrzeiten, Tags,
+  Anzahlungsregeln, E-Mail-Vorlagen, Leistungen, Mitarbeiter mit Arbeitszeiten
+  und Abwesenheiten, Gäste, Reservierungen, Events samt Buchungen und die
+  Warteliste. Danach erscheint eine Zusammenfassung im Klartext
+  („2 Standorte, 28 Tische, 5 Reservierungen …").
+- **Additiv:** Nichts Bestehendes wird gelöscht oder überschrieben. Hat der
+  Zielbetrieb bereits gleichnamige Tags oder E-Mail-Vorlagen, werden diese
+  wiederverwendet statt doppelt angelegt.
+- Der Import läuft in **einer Transaktion**: Eine fehlerhafte Datei bricht
+  vollständig ab und lässt den Betrieb unverändert. Interne Nummern aus dem
+  Quellsystem werden nie übernommen – alle Verknüpfungen (Tisch, Gast, Tag,
+  Standort) werden neu aufgebaut, Buchungscodes und Gäste-Links neu erzeugt.
+- Nur für Inhaber, streng auf den eigenen Betrieb begrenzt, im
+  Änderungsprotokoll festgehalten. Zugangsdaten für Zahlungsanbieter sind im
+  Export nicht enthalten und müssen neu hinterlegt werden.
+- 8 Tests (Round-Trip mit intakten Verknüpfungen, neue Codes/Token, keine
+  Wiederverwendung fremder IDs, Wiederverwendung bestehender Tags, defekte
+  Datei ändert nichts, Vorschau, nur Inhaber, Protokolleintrag).
+
 ## [1.88.0] – 2026-07-07
 
 ### Neu: Kompletten Account exportieren (Umzug & Datensicherung)

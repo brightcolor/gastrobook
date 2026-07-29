@@ -308,6 +308,7 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
     // Own account / danger zone
     Route::get('/account', [AccountController::class, 'show'])->name('account.show');
     Route::get('/account/export', [AccountController::class, 'export'])->name('account.export');
+    Route::post('/account/import', [AccountController::class, 'import'])->name('account.import');
     Route::delete('/account', [AccountController::class, 'destroy'])->name('account.destroy');
     Route::delete('/account/tenant', [AccountController::class, 'destroyTenant'])->name('account.tenant.destroy');
 

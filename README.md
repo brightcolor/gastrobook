@@ -138,6 +138,7 @@ Fertige Docker-Images baut die CI automatisch: `ghcr.io/brightcolor/gastrobook:l
 | Konfigurierbare Widget-Felder (E-Mail/Telefon/Anlass/Allergien/Notiz je Standort) | ✅ |
 | Einbettbares Widget (JS-Snippet → iframe mit Auto-Resize) | ✅ |
 | DSGVO-Werkzeuge (Export, Anonymisierung, Einwilligungshistorie, Retention-Job) | ✅ |
+| Kompletter Account-Export & -Import (Umzug/Sicherung, ohne Secrets, additiv) | ✅ |
 | Stripe-Zahlungen produktiv: Event-Vorauszahlungen + Reservierungs-Deposits (Checkout, signierter Webhook) | ✅ |
 | PayPal-Zahlungen (Orders v2, Capture-on-Return) – pro Mandant, parallel zu Stripe nutzbar (Gast wählt an der Kasse) | ✅ |
 | No-Show-Schutz: Anzahlungsregeln per Admin-UI, Verrechnungshinweis, keine Rückerstattung bei No-Show | ✅ |

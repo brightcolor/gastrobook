@@ -36,6 +36,35 @@
                 ↓ Daten herunterladen
             </a>
         </div>
+
+        {{-- Daten einspielen --}}
+        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
+            <h2 class="mb-1 font-bold">Daten einspielen</h2>
+            <p class="mb-4 text-sm text-stone-500">
+                Spielt eine zuvor exportierte Datei in <strong>„{{ $tenant->name }}"</strong> ein –
+                zum Beispiel beim Umzug von einem anderen Swayy-System.
+                Die Daten werden <strong>hinzugefügt</strong>; nichts Bestehendes wird gelöscht
+                oder überschrieben.
+            </p>
+            <p class="mb-4 rounded-xl bg-stone-50 p-3 text-xs text-stone-600">
+                Reservierungen erhalten dabei neue Buchungscodes und Links. Zugangsdaten für
+                Zahlungsanbieter sind im Export nicht enthalten und müssen hier neu hinterlegt werden.
+            </p>
+            <form method="POST" action="{{ route('admin.account.import') }}" enctype="multipart/form-data" class="space-y-3">
+                @csrf
+                <input type="file" name="file" accept=".json,application/json" required
+                       class="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-stone-100 file:px-4 file:py-2 file:text-sm file:font-semibold hover:file:bg-stone-200">
+                @error('file')<p class="text-xs text-red-600">{{ $message }}</p>@enderror
+                <label class="flex items-start gap-2 text-sm text-stone-600">
+                    <input type="checkbox" name="confirm" value="1" required class="mt-0.5 rounded">
+                    <span>Ja, die Daten aus der Datei zu diesem Betrieb hinzufügen.</span>
+                </label>
+                @error('confirm')<p class="text-xs text-red-600">{{ $message }}</p>@enderror
+                <button class="rounded-xl bg-stone-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-stone-700">
+                    ↑ Datei einspielen
+                </button>
+            </form>
+        </div>
     @endif
 
     {{-- Betrieb löschen (nur für Inhaber) --}}
