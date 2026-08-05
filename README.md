@@ -226,7 +226,7 @@ Vorbereitet für später: Subdomain-/Custom-Domain-Auflösung (zusätzlicher Res
 
 Die Rolle→Rechte-Matrix liegt in [`config/permissions.php`](config/permissions.php). Benutzer können Mitglied mehrerer Tenants mit unterschiedlichen Rollen sein; optional auf einzelne Standorte eingeschränkt (`tenant_users.all_locations = false` + `location_user`-Pivot). Prüfung via `permission:`-Route-Middleware und `User::canInTenant()`.
 
-Besondere Rechte: sensible Gastnotizen (`guest_notes.sensitive.view`), manuelle Überbuchung (`overbook.manual`, wird auditiert), Anonymisierung (`guests.anonymize`).
+Besondere Rechte: Gastnotizen lesen/schreiben (`guest_notes.view`) und darin die sensiblen (`guest_notes.sensitive.view`), Einwilligungshistorie (`consents.view`), Dubletten zusammenführen (`guests.merge`), manuelle Überbuchung (`overbook.manual`, wird auditiert), Anonymisierung (`guests.anonymize`).
 
 ---
 

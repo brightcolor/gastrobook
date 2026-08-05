@@ -66,6 +66,7 @@
         </div>
 
         {{-- Notes --}}
+        @if($canSeeNotes)
         <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
             <h2 class="mb-3 font-bold">Notizen</h2>
             <form method="POST" action="{{ route('admin.guests.notes', $guest) }}" class="mb-3 space-y-2">
@@ -86,6 +87,7 @@
                 @endforeach
             </div>
         </div>
+        @endif
 
         {{-- GDPR --}}
         <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
@@ -102,7 +104,7 @@
                     </form>
                 @endif
             </div>
-            @if($guest->consents->isNotEmpty())
+            @if($canSeeConsents && $guest->consents->isNotEmpty())
                 <h3 class="mt-4 text-xs font-bold uppercase text-stone-500">Einwilligungshistorie</h3>
                 <div class="mt-1 space-y-1 text-xs text-stone-600">
                     @foreach($guest->consents->sortByDesc('recorded_at')->take(10) as $consent)

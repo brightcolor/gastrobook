@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.100.0] – 2026-08-05
+
+### Drei Rechte, die es nur auf dem Papier gab
+In der Rechtematrix standen `guest_notes.view`, `consents.view` und
+`reservations.delete` – geprüft wurde keines davon.
+
+- **Gastnotizen** sieht jetzt nur noch, wer `guest_notes.view` hat. Für die
+  Nur-Lesen-Rolle heißt das: Profil und Historie ja, interne Notizen nein.
+  Wer keine Notizen sehen darf, kann auch keine schreiben.
+- **Einwilligungshistorie** braucht jetzt `consents.view`. Damit sie dort
+  sichtbar bleibt, wo sie gebraucht wird, haben Betriebs- und Standortleitung
+  das Recht neu bekommen (Marketing hatte es schon). Empfang und Service sehen
+  sie nicht mehr – es geht um Nachweise, nicht um den Tagesbetrieb.
+- **`reservations.delete`** ist ersatzlos entfallen. Reservierungen werden
+  storniert, nicht gelöscht; das Recht hat nie etwas freigeschaltet.
+
+### Technisch
+- `.github/dependabot.yml` ergänzt: wöchentliche Abhängigkeits-Updates für
+  Composer und npm, monatlich für die Actions. CodeQL lief schon, für bekannte
+  Sicherheitslücken in Paketen gab es bisher nichts.
+
 ## [1.99.0] – 2026-08-05
 
 ### Doppelte Gastprofile zusammenführen

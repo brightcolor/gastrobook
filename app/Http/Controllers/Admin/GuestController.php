@@ -70,8 +70,16 @@ class GuestController extends Controller
         $this->authorizeGuest($guest);
         $guest->load(['tags', 'consents']);
 
+        // Two separate rights, both of which existed but were never enforced:
+        // notes are only for those who may read them, the consent history only
+        // for those who work with consents (data protection, marketing).
+        $canSeeNotes = $request->user()->canInTenant('guest_notes.view', $this->context->tenant());
+        $canSeeConsents = $request->user()->canInTenant('consents.view', $this->context->tenant());
         $canSeeSensitive = $request->user()->canInTenant('guest_notes.sensitive.view', $this->context->tenant());
-        $notes = $guest->notes()->when(! $canSeeSensitive, fn ($q) => $q->where('is_sensitive', false))->with('user')->latest()->get();
+
+        $notes = $canSeeNotes
+            ? $guest->notes()->when(! $canSeeSensitive, fn ($q) => $q->where('is_sensitive', false))->with('user')->latest()->get()
+            : collect();
 
         $reservations = $guest->reservations()->orderByDesc('start_at')->limit(50)->get();
 
@@ -83,6 +91,8 @@ class GuestController extends Controller
             'reservations' => $reservations,
             'upcoming' => $reservations->filter(fn ($r) => $r->start_at->isFuture() && $r->status->isActive()),
             'noShows' => $reservations->filter(fn ($r) => $r->status->value === 'no_show'),
+            'canSeeNotes' => $canSeeNotes,
+            'canSeeConsents' => $canSeeConsents,
             'canMerge' => $canMerge,
             'mergeCandidates' => $canMerge && ! $guest->anonymized
                 ? $this->merges->candidatesFor($guest)
@@ -139,6 +149,7 @@ class GuestController extends Controller
     public function addNote(Request $request, Guest $guest)
     {
         $this->authorizeGuest($guest);
+        abort_unless($request->user()->canInTenant('guest_notes.view', $this->context->tenant()), 403);
 
         $validated = $request->validate([
             'body' => ['required', 'string', 'max:2000'],
