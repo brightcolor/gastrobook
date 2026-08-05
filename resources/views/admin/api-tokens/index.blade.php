@@ -51,6 +51,11 @@
         <div class="mt-4 rounded-xl bg-stone-50 p-3 text-xs text-stone-600">
             <p class="font-semibold">Beispiel:</p>
             <code class="mt-1 block">curl -H "Authorization: Bearer &lt;TOKEN&gt;" {{ url('/api/v1/reservations') }}</code>
+            <p class="mt-2">
+                Die vollständige Schnittstellenbeschreibung (OpenAPI) liegt unter
+                <a href="{{ url('/api/v1/openapi.yaml') }}" class="font-semibold text-teal-700 underline">/api/v1/openapi.yaml</a>
+                – die kann euer Dienstleister direkt einlesen.
+            </p>
         </div>
     </div>
 </div>

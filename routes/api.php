@@ -7,6 +7,14 @@ use App\Http\Controllers\Api\V1\WebhookApiController;
 use App\Http\Middleware\ResolveApiTenant;
 use Illuminate\Support\Facades\Route;
 
+// Machine-readable description of this API. Public on purpose: it documents
+// the contract, not any data, and integrators need it before they have a token.
+Route::get('/v1/openapi.yaml', function () {
+    return response()->file(resource_path('api/openapi.yaml'), [
+        'Content-Type' => 'application/yaml; charset=utf-8',
+    ]);
+})->name('api.openapi');
+
 Route::prefix('v1')
     ->middleware(['auth:sanctum', ResolveApiTenant::class, 'throttle:api'])
     ->group(function () {

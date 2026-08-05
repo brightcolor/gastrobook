@@ -135,6 +135,7 @@ Fertige Docker-Images baut die CI automatisch: `ghcr.io/brightcolor/gastrobook:l
 | Feedback-Booster (intern erfassen, positives Feedback → externes Portal) | ✅ |
 | Berichte (No-Show-Rate, Auslastung, Quellen, Covers, CSV-Exporte) | ✅ |
 | REST-API v1 (Sanctum, tenant-gebundene Tokens, Scopes, Rate Limits) | ✅ |
+| OpenAPI-Spezifikation unter `/api/v1/openapi.yaml` (testgeprüft gegen Routen) | ✅ |
 | Webhooks (HMAC-Signatur, Retry/Backoff, Auto-Deaktivierung, Delivery-Log) | ✅ |
 | Webhook-Verwaltung im Admin (anlegen, Testereignis, Secret neu erzeugen, pausieren/reaktivieren, Zustellprotokoll) | ✅ |
 | Auditlog (filterbar, IP-anonymisiert, Impersonation-Kennzeichnung) | ✅ |
@@ -375,6 +376,8 @@ curl -X POST -H "Authorization: Bearer <TOKEN>" \
 ```
 
 Rate Limit: 120 Requests/Minute pro Token. Der Telefon-/AI-Assistent (vorbereitet) bucht ausschließlich über diese Availability-API – keine ungeprüften Buchungsentscheidungen.
+
+**OpenAPI-Spezifikation:** `GET /api/v1/openapi.yaml` (öffentlich, kein Token nötig) beschreibt alle Endpunkte, Parameter, Antwortformate, Fehlercodes und Webhook-Ereignisse maschinenlesbar – direkt einlesbar in Postman, Insomnia, Swagger UI oder einen Client-Generator. Quelle: [`resources/api/openapi.yaml`](resources/api/openapi.yaml).
 
 ---
 

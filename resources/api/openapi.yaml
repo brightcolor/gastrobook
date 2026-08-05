@@ -1,0 +1,491 @@
+openapi: 3.1.0
+
+info:
+  title: Swayy API
+  version: "1"
+  description: |
+    REST-API für Reservierungen, Verfügbarkeiten, Gäste und Webhooks.
+
+    **Authentifizierung:** Bearer-Token aus der Verwaltung unter *API*
+    (`/admin/api-tokens`, Recht `api_tokens.manage`). Jeder Token ist an genau
+    einen Betrieb gebunden – eine `tenant_id` wird nirgends übergeben, sie
+    steckt im Token. Zusätzlich trägt jeder Token Scopes; fehlt der passende,
+    antwortet die API mit `403`.
+
+    **Voraussetzung:** Tarif-Feature `api_enabled`. Fehlt es, ist jede Antwort
+    `403`.
+
+    **Rate Limit:** 120 Anfragen pro Minute und Token.
+
+    **Zeiten:** Datum und Uhrzeit sind immer Ortszeit des Standorts;
+    Zeitstempel (`start_at`, `end_at`, `created_at`) sind ISO-8601 mit Offset.
+
+servers:
+  - url: https://swayy.de/api/v1
+    description: Produktion
+  - url: http://localhost:8080/api/v1
+    description: Lokale Installation
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Verfügbarkeit
+  - name: Reservierungen
+  - name: Gäste
+  - name: Webhooks
+
+paths:
+  /availability:
+    get:
+      tags: [Verfügbarkeit]
+      summary: Freie Zeitfenster eines Tages
+      description: |
+        Liefert die buchbaren Uhrzeiten für einen Standort, ein Datum und eine
+        Personenzahl. Berücksichtigt Öffnungs- und Sonderzeiten, Sperrzeiten,
+        Tischbelegung, Vorlauf- und Kapazitätsregeln.
+
+        Ein Telefon- oder KI-Assistent bucht ausschließlich über diesen
+        Endpunkt – nie über eigene Annahmen darüber, was frei sein könnte.
+      operationId: getAvailability
+      parameters:
+        - { name: location_id, in: query, required: true, schema: { type: integer }, description: Standort }
+        - { name: date, in: query, required: true, schema: { type: string, format: date }, example: "2026-08-14" }
+        - { name: party_size, in: query, required: true, schema: { type: integer, minimum: 1, maximum: 100 } }
+      responses:
+        "200":
+          description: Zeitfenster
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      location_id: { type: integer }
+                      timezone: { type: string, example: Europe/Berlin }
+                      date: { type: string, format: date }
+                      party_size: { type: integer }
+                      slots:
+                        type: array
+                        description: Buchbare Uhrzeiten in Ortszeit.
+                        items: { type: string, example: "19:00" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /reservations:
+    get:
+      tags: [Reservierungen]
+      summary: Reservierungen auflisten
+      operationId: listReservations
+      parameters:
+        - { name: location_id, in: query, schema: { type: integer } }
+        - { name: date, in: query, schema: { type: string, format: date } }
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/ReservationStatus" } }
+        - { name: per_page, in: query, schema: { type: integer, default: 25, maximum: 100 } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+      responses:
+        "200":
+          description: Liste
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Reservation" }
+                  meta:
+                    type: object
+                    properties:
+                      current_page: { type: integer }
+                      last_page: { type: integer }
+                      total: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    post:
+      tags: [Reservierungen]
+      summary: Reservierung anlegen
+      description: |
+        Legt eine Reservierung an – mit derselben Prüfung wie die
+        Buchungsseite: Öffnungszeiten, Sperrzeiten, freie Tische,
+        Tischzuteilung, Gästeprofil, Bestätigungsmail.
+
+        Ist der Wunschtermin nicht buchbar, antwortet die API mit `422` und
+        nennt den Grund im Feld `start_at`.
+      operationId: createReservation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [location_id, date, time, party_size, guest_name]
+              properties:
+                location_id: { type: integer }
+                date: { type: string, format: date, example: "2026-08-14" }
+                time: { type: string, pattern: '^\d{2}:\d{2}$', example: "19:00" }
+                party_size: { type: integer, minimum: 1, maximum: 100 }
+                guest_name: { type: string, maxLength: 120 }
+                guest_email: { type: [string, "null"], format: email }
+                guest_phone: { type: [string, "null"], maxLength: 40 }
+                note: { type: [string, "null"], maxLength: 1000 }
+                source:
+                  type: string
+                  enum: [api, phone_assistant]
+                  default: api
+                  description: Woher die Buchung kommt – erscheint in Berichten und im Auditlog.
+      responses:
+        "201":
+          description: Angelegt
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Reservation" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /reservations/{code}:
+    get:
+      tags: [Reservierungen]
+      summary: Eine Reservierung lesen
+      operationId: getReservation
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string }, description: Buchungscode, example: "R7K2M9" }
+      responses:
+        "200":
+          description: Reservierung
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Reservation" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /reservations/{code}/cancel:
+    post:
+      tags: [Reservierungen]
+      summary: Reservierung stornieren
+      description: |
+        Storniert im Namen des Betriebs (`cancelled_by_restaurant`). Der Gast
+        erhält die übliche Stornomail; Anzahlungen folgen der eingestellten
+        Rückerstattungsregel.
+      operationId: cancelReservation
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  description: Wird im Verlauf und im Auditlog festgehalten.
+                  default: api_cancellation
+      responses:
+        "200":
+          description: Storniert
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Reservation" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /guests:
+    get:
+      tags: [Gäste]
+      summary: Gäste suchen
+      description: Anonymisierte Profile werden nie ausgeliefert.
+      operationId: listGuests
+      parameters:
+        - { name: q, in: query, schema: { type: string }, description: Name, E-Mail oder Telefonnummer }
+        - { name: per_page, in: query, schema: { type: integer, default: 25, maximum: 100 } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+      responses:
+        "200":
+          description: Liste
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/GuestListItem" }
+                  meta:
+                    type: object
+                    properties:
+                      total: { type: integer }
+                      current_page: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /guests/{id}:
+    get:
+      tags: [Gäste]
+      summary: Ein Gastprofil lesen
+      operationId: getGuest
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Gastprofil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Guest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /webhooks:
+    get:
+      tags: [Webhooks]
+      summary: Endpunkte auflisten
+      operationId: listWebhooks
+      responses:
+        "200":
+          description: Liste
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/WebhookEndpoint" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Webhooks]
+      summary: Endpunkt anlegen
+      description: |
+        Nur öffentlich erreichbare `https`-Adressen. Interne, private oder
+        Loopback-Adressen werden abgelehnt – auch beim Zustellen wird erneut
+        geprüft.
+
+        Das zurückgegebene `secret` wird **nur einmal** ausgeliefert. Damit
+        prüft die Gegenstelle den Header
+        `X-Gastrobook-Signature: sha256=<HMAC-SHA256(Body, Secret)>`.
+      operationId: createWebhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url, events]
+              properties:
+                url: { type: string, format: uri, example: "https://example.com/swayy-webhook" }
+                events:
+                  type: array
+                  minItems: 1
+                  items: { $ref: "#/components/schemas/WebhookEvent" }
+      responses:
+        "201":
+          description: Angelegt
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/WebhookEndpoint"
+                      - type: object
+                        properties:
+                          secret:
+                            type: string
+                            description: Wird nur bei der Anlage ausgeliefert.
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /webhooks/{id}:
+    delete:
+      tags: [Webhooks]
+      summary: Endpunkt löschen
+      operationId: deleteWebhook
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "204": { description: Gelöscht }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        Token aus `/admin/api-tokens`. Scopes je Endpunkt:
+        `availability:read`, `reservations:read`, `reservations:write`,
+        `guests:read`, `webhooks:manage`.
+
+  schemas:
+    ReservationStatus:
+      type: string
+      enum:
+        - draft
+        - requested
+        - pending_confirmation
+        - confirmed
+        - payment_pending
+        - payment_failed
+        - seated
+        - partially_arrived
+        - completed
+        - no_show
+        - waitlisted
+        - waitlist_offered
+        - cancelled_by_guest
+        - cancelled_by_restaurant
+        - rejected
+        - expired
+
+    Reservation:
+      type: object
+      properties:
+        code: { type: string, example: "R7K2M9" }
+        status: { $ref: "#/components/schemas/ReservationStatus" }
+        party_size: { type: integer }
+        date: { type: string, format: date }
+        time: { type: string, example: "19:00", description: Ortszeit des Standorts }
+        start_at: { type: string, format: date-time }
+        end_at: { type: string, format: date-time }
+        timezone: { type: string, example: Europe/Berlin }
+        source: { type: string, example: api }
+        location_id: { type: integer }
+        guest:
+          type: object
+          description: Momentaufnahme zum Buchungszeitpunkt.
+          properties:
+            name: { type: string }
+            email: { type: [string, "null"] }
+            phone: { type: [string, "null"] }
+        tables:
+          type: [array, "null"]
+          description: Zugewiesene Tische; `null`, wenn nicht mitgeladen.
+          items: { type: string, example: "12" }
+        created_at: { type: string, format: date-time }
+
+    GuestListItem:
+      type: object
+      properties:
+        id: { type: integer }
+        first_name: { type: [string, "null"] }
+        last_name: { type: string }
+        email: { type: [string, "null"] }
+        phone: { type: [string, "null"] }
+        visit_count: { type: integer }
+        no_show_count: { type: integer }
+        is_vip: { type: boolean }
+        marketing_consent: { type: boolean }
+
+    Guest:
+      type: object
+      properties:
+        id: { type: integer }
+        first_name: { type: [string, "null"] }
+        last_name: { type: string }
+        email: { type: [string, "null"] }
+        phone: { type: [string, "null"] }
+        preferences: { type: [string, "null"] }
+        allergies: { type: [string, "null"], description: Gesundheitsangabe – nur verarbeiten, soweit für den Besuch nötig. }
+        visit_count: { type: integer }
+        no_show_count: { type: integer }
+        last_visit_at: { type: [string, "null"], format: date-time }
+        is_vip: { type: boolean }
+
+    WebhookEndpoint:
+      type: object
+      properties:
+        id: { type: integer }
+        url: { type: string, format: uri }
+        events:
+          type: array
+          items: { $ref: "#/components/schemas/WebhookEvent" }
+        is_active: { type: boolean }
+        failure_count: { type: integer, description: Nach 20 Fehlern in Folge schaltet sich der Endpunkt ab. }
+
+    WebhookEvent:
+      type: string
+      enum:
+        - "*"
+        - reservation.created
+        - reservation.confirmed
+        - reservation.updated
+        - reservation.cancelled
+        - reservation.seated
+        - reservation.completed
+        - reservation.no_show
+        - waitlist.created
+        - waitlist.offered
+        - waitlist.accepted
+        - event.booking_created
+        - payment.succeeded
+        - feedback.received
+
+    Error:
+      type: object
+      properties:
+        message: { type: string }
+
+    ValidationError:
+      type: object
+      properties:
+        message: { type: string }
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items: { type: string }
+
+  responses:
+    Unauthorized:
+      description: Kein oder ungültiger Token.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: Scope fehlt, Tarif ohne API, Betrieb inaktiv oder keine Mitgliedschaft.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Nicht gefunden – auch dann, wenn der Datensatz zu einem anderen Betrieb gehört.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    ValidationError:
+      description: Eingabe unvollständig oder Termin nicht buchbar.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ValidationError" }
+    TooManyRequests:
+      description: Rate Limit erreicht (120/min).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }

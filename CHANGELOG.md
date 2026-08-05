@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.104.0] – 2026-08-06
+
+### OpenAPI-Beschreibung der Schnittstelle
+Die API war bisher nur im README beschrieben – gut zum Lesen, nutzlos für
+Werkzeuge. Neu: **`GET /api/v1/openapi.yaml`**, öffentlich und ohne Token, weil
+ein Dienstleister die Beschreibung braucht, *bevor* er einen Zugang hat.
+
+Enthalten sind alle Endpunkte (Verfügbarkeit, Reservierungen, Gäste, Webhooks)
+mit Parametern, Antwortformaten, Fehlercodes, Scopes, Rate Limit und der
+vollständigen Liste der Webhook-Ereignisse. Postman, Insomnia, Swagger UI oder
+ein Client-Generator lesen die Datei direkt ein.
+
+Damit die Beschreibung nicht still veraltet, prüfen zwei Tests sie gegen die
+Wirklichkeit: Jede registrierte `api/v1`-Route muss dokumentiert sein, und jeder
+Reservierungsstatus aus dem Enum muss vorkommen. Wer einen Endpunkt hinzufügt
+und die Datei vergisst, bekommt einen roten Build statt einer stillen Lücke.
+
 ## [1.103.0] – 2026-08-05
 
 ### Salon: Anzahlung pro Leistung
