@@ -1,5 +1,43 @@
 # Changelog
 
+## [1.99.0] – 2026-08-05
+
+### Doppelte Gastprofile zusammenführen
+Swayy erkennt Dubletten bisher nur im Moment der Anlage – über E-Mail oder
+Telefonnummer. Wer einmal online und einmal telefonisch bucht, steht deshalb
+trotzdem zweimal in der Kundenliste, mit geteilter Historie: hier die Besuche,
+dort die Notizen.
+
+Auf dem Gastprofil steht jetzt die Karte **„Mögliche Dublette"**. Sie zeigt
+Profile mit derselben E-Mail-Adresse, derselben Telefonnummer oder demselben
+Namen. Ein Klick führt sie zusammen:
+
+- Reservierungen, Termine, Wartelisteneinträge, Eventbuchungen, Notizen,
+  Einwilligungsnachweise und Kundenkonto-Zugänge wandern in das behaltene
+  Profil.
+- Besuche, No-Shows und Stornierungen werden addiert, die durchschnittliche
+  Gruppengröße gewichtet neu berechnet, der letzte Besuch ist der spätere von
+  beiden, ⭐ Stammgast gewinnt.
+- Leere Felder werden aus der Dublette aufgefüllt – was im behaltenen Profil
+  schon steht, bleibt unangetastet.
+- Tags werden vereinigt.
+
+Das doppelte Profil wird anschließend **endgültig gelöscht** – ein
+halbtotes Profil würde sonst die E-Mail-Adresse blockieren und in Exporten als
+Geist auftauchen. Damit der Schritt nachvollziehbar bleibt, wird eine Kopie in
+`guest_merge_logs` abgelegt und der Vorgang im Auditlog vermerkt.
+
+Rechte: das neue `guests.merge` (Inhaber, Verwaltung, Betriebs- und
+Standortleitung). Service und Empfang können es nicht.
+
+### Datenschutz
+- Die Kopie des gelöschten Profils enthält Klardaten. Beim **Anonymisieren**
+  (Art. 17) des behaltenen Profils wird sie deshalb mitgelöscht – sonst bliebe
+  nach der Löschung eine lesbare Abschrift übrig. Über den Aufbewahrungs-Job
+  gilt dasselbe automatisch.
+- Die Datenschutzerklärung (Abschnitt 6) beschreibt Zusammenführung und
+  Protokoll jetzt ausdrücklich.
+
 ## [1.98.0] – 2026-08-05
 
 ### Webhooks endlich ohne Umweg über die API

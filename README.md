@@ -124,6 +124,7 @@ Fertige Docker-Images baut die CI automatisch: `ghcr.io/brightcolor/gastrobook:l
 | Kurze Buchungs-URL `/book/{laden}` (1 Standort: direkt; mehrere: Standortauswahl, Slug wird angehängt) | ✅ |
 | Logo pro Standort + Kontakt/Anfahrt (Adresse, Telefon, E-Mail) auf der Buchungsseite | ✅ |
 | Gäste-CRM (Dedupe, Besuchszähler, No-Show-Zähler, Tags, sensible Notizen) | ✅ |
+| Dubletten zusammenführen (Vorschläge am Profil, Historie/Notizen/Einwilligungen/Zähler wandern mit, Protokoll) | ✅ |
 | Stornolink / Änderungslink mit Secret-Token und Fristprüfung | ✅ |
 | Online-Umbuchung durch den Gast (Frist, Re-Check Tisch/Mitarbeiter) | ✅ |
 | Kundenkonto per Magic-Link (passwortlos): Termine ansehen, umbuchen, stornieren | ✅ |

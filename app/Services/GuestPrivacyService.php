@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Guest;
+use App\Models\GuestMergeLog;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\DB;
 
@@ -59,6 +60,11 @@ class GuestPrivacyService
             ]);
 
             $guest->notes()->withoutGlobalScope('tenant')->delete();
+
+            // Snapshots of profiles merged into this one still hold the plain
+            // personal data of the duplicate. Erasure has to reach them too,
+            // otherwise anonymising the survivor would leave a readable copy.
+            GuestMergeLog::withoutGlobalScopes()->where('kept_guest_id', $guest->id)->delete();
 
             $guest->update([
                 'first_name' => null,

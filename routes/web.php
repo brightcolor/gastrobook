@@ -270,6 +270,8 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
             ->middleware('permission:guests.export')->name('guests.export-single');
         Route::post('/guests/{guest}/anonymize', [GuestController::class, 'anonymize'])
             ->middleware('permission:guests.anonymize')->name('guests.anonymize');
+        Route::post('/guests/{guest}/merge', [GuestController::class, 'merge'])
+            ->middleware('permission:guests.merge')->name('guests.merge');
     });
 
     // Events

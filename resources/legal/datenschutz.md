@@ -78,6 +78,15 @@ Name, Kontaktdaten, bevorzugte Angaben, Anzahl der Besuche, Stornierungen und
 Nichterscheinen (No-Shows), letzter Besuch sowie eine interne Kennzeichnung als
 Stammgast.
 
+Entstehen für dieselbe Person dennoch zwei Profile (z. B. eine Buchung online,
+eine telefonisch), können unsere Mitarbeiter diese **manuell zusammenführen**.
+Dabei werden Besuchshistorie, Notizen, Einwilligungsnachweise, Kennzeichnungen
+und Zähler in ein Profil übernommen; das doppelte Profil wird gelöscht. Über den
+Vorgang wird ein internes Protokoll mit einer Kopie des gelöschten Profils
+geführt, um die Zusammenführung nachvollziehbar und korrigierbar zu halten.
+Dieses Protokoll unterliegt denselben Löschfristen wie das Gästeprofil
+(Abschnitt 14).
+
 Zur Reduzierung von Nichterscheinen wird ein **interner No-Show-Risiko-Hinweis**
 aus diesen Verlaufsdaten berechnet. Dieser dient ausschließlich der internen
 Einschätzung durch unsere Mitarbeiter; es findet **keine automatisierte

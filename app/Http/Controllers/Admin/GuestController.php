@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Guest;
 use App\Models\Tag;
 use App\Services\AuditLogger;
+use App\Services\GuestMergeService;
 use App\Services\GuestPrivacyService;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
@@ -16,6 +17,7 @@ class GuestController extends Controller
     public function __construct(
         private readonly TenantContext $context,
         private readonly GuestPrivacyService $privacy,
+        private readonly GuestMergeService $merges,
         private readonly AuditLogger $audit,
     ) {}
 
@@ -73,13 +75,41 @@ class GuestController extends Controller
 
         $reservations = $guest->reservations()->orderByDesc('start_at')->limit(50)->get();
 
+        $canMerge = $request->user()->canInTenant('guests.merge', $this->context->tenant());
+
         return view('admin.guests.show', [
             'guest' => $guest,
             'notes' => $notes,
             'reservations' => $reservations,
             'upcoming' => $reservations->filter(fn ($r) => $r->start_at->isFuture() && $r->status->isActive()),
             'noShows' => $reservations->filter(fn ($r) => $r->status->value === 'no_show'),
+            'canMerge' => $canMerge,
+            'mergeCandidates' => $canMerge && ! $guest->anonymized
+                ? $this->merges->candidatesFor($guest)
+                : collect(),
         ]);
+    }
+
+    /**
+     * Fold a duplicate profile into this one. The duplicate disappears; a
+     * snapshot stays behind in `guest_merge_logs`.
+     */
+    public function merge(Request $request, Guest $guest)
+    {
+        $this->authorizeGuest($guest);
+
+        $validated = $request->validate([
+            'merge_guest_id' => ['required', 'integer'],
+        ]);
+
+        $duplicate = Guest::where('id', $validated['merge_guest_id'])->first();
+        if ($duplicate === null) {
+            return back()->withErrors(['merge_guest_id' => __('Dieses Gastprofil gibt es nicht.')]);
+        }
+
+        $this->merges->merge($guest, $duplicate, $request->user());
+
+        return back()->with('success', __('Profile zusammengeführt.'));
     }
 
     public function update(Request $request, Guest $guest)

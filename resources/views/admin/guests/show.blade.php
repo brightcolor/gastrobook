@@ -111,6 +111,36 @@
                 </div>
             @endif
         </div>
+
+        @if($canMerge && $mergeCandidates->isNotEmpty())
+            <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
+                <h2 class="font-bold">Mögliche Dublette<span class="tip tip-left" tabindex="0" data-tip="Derselbe Gast, zweimal angelegt – etwa weil er einmal online und einmal telefonisch gebucht hat. Beim Zusammenführen wandern Besuche, Notizen, Tags und die komplette Historie hierher; das andere Profil verschwindet. Das lässt sich nicht per Klick rückgängig machen.">?</span></h2>
+                <p class="mt-1 text-xs text-stone-500">Diese Profile sehen nach derselben Person aus. Beim Zusammenführen wandert alles in <strong>dieses</strong> Profil.</p>
+                <div class="mt-3 space-y-2 text-sm">
+                    @foreach($mergeCandidates as $candidate)
+                        <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-stone-50 p-3">
+                            <div class="min-w-0">
+                                <a href="{{ route('admin.guests.show', $candidate) }}" class="font-semibold text-teal-700 hover:underline">{{ $candidate->fullName() }}</a>
+                                <div class="text-xs text-stone-500">
+                                    {{ $candidate->email ?: '—' }} · {{ $candidate->phone ?: '—' }}
+                                </div>
+                                <div class="text-xs text-stone-400">
+                                    {{ $candidate->visit_count }} Besuche · {{ $candidate->no_show_count }} No-Shows
+                                    @if($candidate->is_vip) · ⭐ Stammgast @endif
+                                </div>
+                            </div>
+                            <form method="POST" action="{{ route('admin.guests.merge', $guest) }}"
+                                  onsubmit="return confirm('„{{ $candidate->fullName() }}“ in dieses Profil zusammenführen? Das andere Profil wird dabei gelöscht.')">
+                                @csrf
+                                <input type="hidden" name="merge_guest_id" value="{{ $candidate->id }}">
+                                <button class="rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white hover:bg-stone-700">Hierher zusammenführen</button>
+                            </form>
+                        </div>
+                    @endforeach
+                </div>
+                @error('merge_guest_id')<p class="mt-2 text-xs text-red-600">{{ $message }}</p>@enderror
+            </div>
+        @endif
     </div>
 </div>
 @endsection
