@@ -9,9 +9,11 @@ use App\Models\BlackoutPeriod;
 use App\Models\DepositRule;
 use App\Models\IntegrationConnection;
 use App\Models\OpeningHour;
+use App\Models\Reservation;
 use App\Models\RestaurantTable;
 use App\Models\Room;
 use App\Models\SpecialOpeningHour;
+use App\Models\TableBlock;
 use App\Models\TableCombination;
 use App\Services\AuditLogger;
 use App\Services\Newsletter\MailwizzProvider;
@@ -82,6 +84,11 @@ class SettingsController extends Controller
             'specialHours' => $location->specialOpeningHours()->where('date', '>=', now()->subDay())->orderBy('date')->get(),
             'combinations' => $location->tableCombinations()->with('tables')->get(),
             'blackouts' => $location->blackoutPeriods()->with('room')->where('ends_at', '>=', now())->orderBy('starts_at')->get(),
+            'tableBlocks' => TableBlock::where('location_id', $location->id)
+                ->with('table.room')
+                ->where('ends_at', '>=', now())
+                ->orderBy('starts_at')
+                ->get(),
         ]);
     }
 
@@ -966,6 +973,71 @@ class SettingsController extends Controller
         $blackout->delete();
 
         return $this->saved($request, __('Sperrzeit gelöscht.'), true);
+    }
+
+    /**
+     * Block a single table for a period (defect, reserved for staff, repairs …).
+     * A blackout closes the whole location or a room – this is the per-table
+     * counterpart, honoured by the auto-assignment, the manual table choice,
+     * the floor plan and the live board.
+     */
+    public function storeTableBlock(Request $request)
+    {
+        $location = $this->context->location();
+        abort_if($location === null, 404);
+
+        $validated = $request->validate([
+            'restaurant_table_id' => ['required', 'integer'],
+            'starts_at' => ['required', 'date'],
+            'ends_at' => ['required', 'date', 'after:starts_at'],
+            'reason' => ['nullable', 'string', 'max:200'],
+        ]);
+
+        $tableId = (int) $validated['restaurant_table_id'];
+        if (! RestaurantTable::where('location_id', $location->id)->where('id', $tableId)->exists()) {
+            return $this->failed($request, 'restaurant_table_id', __('Dieser Tisch gehört nicht zu diesem Standort.'));
+        }
+
+        // Wall-clock input is in location time; the availability logic compares UTC.
+        $tz = $location->timezone;
+        $startUtc = Carbon::parse($validated['starts_at'], $tz)->utc();
+        $endUtc = Carbon::parse($validated['ends_at'], $tz)->utc();
+
+        // Refuse if the window collides with existing bookings on that table.
+        // Blocking does not cancel anything, so a silent overlap would leave the
+        // table looking blocked while guests still show up for it.
+        $conflict = Reservation::where('location_id', $location->id)
+            ->whereIn('status', ReservationStatus::activeStatuses())
+            ->where('start_at', '<', $endUtc)
+            ->where('end_at', '>', $startUtc)
+            ->whereHas('tables', fn ($q) => $q->where('restaurant_tables.id', $tableId))
+            ->exists();
+        if ($conflict) {
+            return $this->failed($request, 'restaurant_table_id', __('In diesem Zeitraum liegen noch Reservierungen auf diesem Tisch. Bitte zuerst umbelegen oder stornieren.'));
+        }
+
+        $block = TableBlock::create([
+            'tenant_id' => $location->tenant_id,
+            'location_id' => $location->id,
+            'restaurant_table_id' => $tableId,
+            'starts_at' => $startUtc,
+            'ends_at' => $endUtc,
+            'reason' => $validated['reason'] ?? null,
+            'created_by' => $request->user()?->id,
+        ]);
+
+        $this->audit->log('table_block.created', $block, null, $validated);
+
+        return $this->saved($request, __('Tisch gesperrt.'), true);
+    }
+
+    public function deleteTableBlock(TableBlock $block, Request $request)
+    {
+        abort_if($block->location_id !== $this->context->locationId(), 404);
+        $this->audit->log('table_block.deleted', $block, ['reason' => $block->reason]);
+        $block->delete();
+
+        return $this->saved($request, __('Tischsperre aufgehoben.'), true);
     }
 
     public function updateRoom(Request $request, Room $room)

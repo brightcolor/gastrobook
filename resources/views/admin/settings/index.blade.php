@@ -511,6 +511,50 @@
             @endforelse
         </div>
     </div>
+
+    {{-- Einzelne Tische sperren --}}
+    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
+        <h2 class="mb-1 font-bold">Tisch sperren <span class="tip" tabindex="0" data-tip="Nimmt einen einzelnen Tisch für einen Zeitraum aus dem Verkehr – z. B. weil er wackelt, repariert wird oder für etwas anderes gebraucht wird. Der Tisch wird dann weder automatisch vergeben noch lässt er sich von Hand belegen und erscheint im Tischplan und auf dem Live-Board als gesperrt.">?</span></h2>
+        <p class="mb-3 text-xs text-stone-500">Sperrzeiten gelten für den ganzen Standort oder einen Raum – hier geht es um einzelne Tische.</p>
+        <form method="POST" action="{{ route('admin.settings.table-blocks.store') }}" class="grid grid-cols-2 gap-2 text-sm">
+            @csrf
+            <label class="col-span-2 block">Tisch
+                <select name="restaurant_table_id" required class="mt-1 w-full rounded-lg border-stone-200">
+                    @foreach($tables as $t)
+                        <option value="{{ $t->id }}">{{ $t->name }}@if($t->room) · {{ $t->room->name }}@endif</option>
+                    @endforeach
+                </select>
+            </label>
+            <label class="block">Von
+                <input type="datetime-local" name="starts_at" required class="mt-1 w-full rounded-lg border-stone-200">
+            </label>
+            <label class="block">Bis
+                <input type="datetime-local" name="ends_at" required class="mt-1 w-full rounded-lg border-stone-200">
+            </label>
+            <input type="text" name="reason" placeholder="Grund (z. B. Tisch defekt)" class="col-span-2 rounded-lg border-stone-200">
+            <button class="col-span-2 rounded-lg bg-stone-900 px-4 py-2 font-semibold text-white" @disabled($tables->isEmpty())>Tisch sperren</button>
+        </form>
+        @error('restaurant_table_id')<p class="mt-2 text-xs text-red-600">{{ $message }}</p>@enderror
+        @if($tables->isEmpty())<p class="mt-2 text-xs text-stone-400">Noch keine Tische angelegt.</p>@endif
+        <div class="mt-3 space-y-1 text-sm">
+            @forelse($tableBlocks as $tb)
+                <div class="flex items-center justify-between rounded-lg bg-stone-50 px-3 py-2">
+                    <span>
+                        {{ $tb->table?->name ?? '—' }}
+                        · {{ $tb->starts_at->setTimezone($location->timezone)->format('d.m.Y H:i') }}–{{ $tb->ends_at->setTimezone($location->timezone)->format('d.m.Y H:i') }}
+                        @if($tb->reason) ({{ $tb->reason }}) @endif
+                    </span>
+                    <form method="POST" action="{{ route('admin.settings.table-blocks.delete', $tb) }}"
+                          onsubmit="return confirm('Tischsperre aufheben?')">
+                        @csrf @method('DELETE')
+                        <button class="text-xs text-red-500 hover:text-red-700">Aufheben</button>
+                    </form>
+                </div>
+            @empty
+                <p class="text-xs text-stone-400">Kein Tisch gesperrt.</p>
+            @endforelse
+        </div>
+    </div>
 </div>
 
 {{-- ═══════════════════════════════════════════════════════════════════════

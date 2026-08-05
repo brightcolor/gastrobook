@@ -361,6 +361,10 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
             ->middleware('permission:blackouts.manage')->name('settings.blackouts.store');
         Route::delete('/settings/blackouts/{blackout}', [SettingsController::class, 'deleteBlackout'])
             ->middleware('permission:blackouts.manage')->name('settings.blackouts.delete');
+        Route::post('/settings/table-blocks', [SettingsController::class, 'storeTableBlock'])
+            ->middleware('permission:blackouts.manage')->name('settings.table-blocks.store');
+        Route::delete('/settings/table-blocks/{block}', [SettingsController::class, 'deleteTableBlock'])
+            ->middleware('permission:blackouts.manage')->name('settings.table-blocks.delete');
         Route::put('/settings/general', [SettingsController::class, 'updateGeneral'])
             ->middleware('permission:tenant.settings.manage')->name('settings.general');
         Route::put('/settings/tenant-type', [SettingsController::class, 'updateTenantType'])

@@ -100,6 +100,7 @@ Fertige Docker-Images baut die CI automatisch: `ghcr.io/brightcolor/gastrobook:l
 | SEPA-Lastschrift fürs Abo (GoCardless): jederzeit buchen/kündigen, Mail an beide | ✅ |
 | Standort-Verwaltung im Admin (anlegen/umbenennen/aktivieren, Tarif-Limit) | ✅ |
 | Sperrzeiten/Blackouts (pro Standort/Raum, voll gesperrt oder Cover-Limit) | ✅ |
+| Einzelne Tische sperren (defekt/reserviert; Zeitraum + Grund, wirkt auf Auto-Vergabe, Handauswahl, Tischplan, Board) | ✅ |
 | Räume & Tische editieren, Events nachträglich bearbeiten, Sonderzeiten löschen | ✅ |
 | SaaS-Adminbereich: Dashboard, Mandanten-Karten, Plattform-Benutzerverwaltung, Supportzugriff (Auditlog) | ✅ |
 | Tarif-/Limit-System (Trial, Starter, Professional, Multi-Location, Enterprise) | ✅ |

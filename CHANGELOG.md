@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.97.0] – 2026-08-05
+
+### Einzelne Tische sperren
+Ein Tisch wackelt, wird lackiert oder wird für etwas anderes gebraucht – bisher
+ließ er sich nur komplett löschen oder gar nicht aus dem Verkehr ziehen. Jetzt
+gibt es unter **Einstellungen → Zeiten → „Tisch sperren"** einen Zeitraum je
+Tisch, mit Grund.
+
+Ein gesperrter Tisch wird in diesem Zeitraum
+
+- nicht mehr automatisch vergeben,
+- auch von Hand nicht mehr belegt (weder intern noch über den Gast-Tischplan),
+- im Tischplan und auf dem Live-Board als **gesperrt** angezeigt.
+
+Sperrzeiten schließen weiterhin den ganzen Standort oder einen Raum – das hier
+ist das Gegenstück für einzelne Tische.
+
+**Liegt im Zeitraum noch eine Reservierung auf dem Tisch, wird die Sperre
+abgelehnt.** Eine Sperre storniert nichts; ohne diese Bremse sähe der Tisch
+gesperrt aus, während die Gäste trotzdem kämen. Erst umbelegen, dann sperren.
+
+### Technisch
+Die Lese-Seite gab es seit dem ersten Tag: `TableAssignmentService`,
+Reservierungs-Anlage, Tischplan und Board haben `table_blocks` immer schon
+ausgewertet – nur anlegen konnte sie niemand. Ergänzt wurden die beiden Routen,
+die UI-Karte und 7 Tests über den gesamten Weg (inklusive Gegenprobe: nach dem
+Aufheben ist der Tisch sofort wieder buchbar). Rechte: `blackouts.manage`,
+also dieselbe Rolle wie für Sperrzeiten. Beides landet im Auditlog.
+
 ## [1.96.0] – 2026-07-29
 
 ### Behoben: Sperrzeiten galten beim Umbuchen nicht
