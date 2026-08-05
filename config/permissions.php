@@ -35,6 +35,7 @@ return [
         'guest_notes.sensitive.view',
         'consents.view',
         'templates.manage',
+        'marketing.manage',
         'payments.manage',
         'users.invite',
         'users.roles.manage',
@@ -61,7 +62,7 @@ return [
             'rooms.manage', 'tables.manage', 'opening_hours.manage', 'special_hours.manage',
             'blackouts.manage', 'events.manage',
             'guests.view', 'guests.update', 'guests.merge', 'guest_notes.view', 'consents.view',
-            'templates.manage', 'reports.view', 'users.invite', 'overbook.manual',
+            'templates.manage', 'marketing.manage', 'reports.view', 'users.invite', 'overbook.manual',
             'locations.manage',
         ],
 
@@ -92,7 +93,7 @@ return [
         'marketing_manager' => [
             'reservations.view',
             'guests.view', 'guests.export',
-            'consents.view', 'templates.manage', 'reports.view',
+            'consents.view', 'templates.manage', 'marketing.manage', 'reports.view',
             'events.manage',
         ],
 

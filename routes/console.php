@@ -4,6 +4,7 @@ use App\Enums\ReservationStatus;
 use App\Jobs\ProcessScheduledRefunds;
 use App\Jobs\RunRetentionPolicies;
 use App\Jobs\SendFeedbackRequests;
+use App\Jobs\SendMarketingCampaigns;
 use App\Jobs\SendReservationReminders;
 use App\Jobs\SendTrialExpiryWarnings;
 use App\Models\DepositRule;
@@ -20,6 +21,8 @@ Schedule::call(fn () => app(WaitlistService::class)->expireStale())->everyTenMin
 Schedule::job(new RunRetentionPolicies)->dailyAt('03:30');
 Schedule::call(fn () => FeedbackRequest::pruneUnanswered())->dailyAt('03:45');
 Schedule::job(new SendTrialExpiryWarnings)->dailyAt('08:00');
+// Guest campaigns: mid-morning, so a birthday greeting does not arrive at 03:00.
+Schedule::job(new SendMarketingCampaigns)->dailyAt('09:00');
 
 // Expire unpaid reservations past their payment deadline.
 // A rule may opt out of this ("kein Auto-Storno") – those bookings stay open

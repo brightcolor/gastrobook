@@ -140,6 +140,7 @@ Fertige Docker-Images baut die CI automatisch: `ghcr.io/brightcolor/gastrobook:l
 | Webhooks (HMAC-Signatur, Retry/Backoff, Auto-Deaktivierung, Delivery-Log) | ✅ |
 | Webhook-Verwaltung im Admin (anlegen, Testereignis, Secret neu erzeugen, pausieren/reaktivieren, Zustellprotokoll) | ✅ |
 | Auditlog (filterbar, IP-anonymisiert, Impersonation-Kennzeichnung) | ✅ |
+| Marketing-Automation (Geburtstagsgruß, Erinnerung nach dem Besuch, Win-back; nur mit Einwilligung, Abmeldelink, Testmail, Vorschau) | ✅ |
 | MailWizz-Newsletter-Sync (Einwilligung → Liste, verschlüsselte Credentials) | ✅ |
 | Konfigurierbare Widget-Felder (E-Mail/Telefon/Anlass/Allergien/Notiz je Standort) | ✅ |
 | Einbettbares Widget (JS-Snippet → iframe mit Auto-Resize) | ✅ |

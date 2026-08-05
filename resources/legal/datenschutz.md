@@ -173,6 +173,21 @@ Newsletter jederzeit über den Abmeldelink oder per Nachricht an uns abbestellen
 der Widerruf berührt nicht die Rechtmäßigkeit der bis dahin erfolgten
 Verarbeitung.
 
+**Automatische Nachrichten (Geburtstag, Erinnerung, „lange nicht gesehen"):**
+Auf Grundlage derselben Einwilligung können wir Ihnen anlassbezogene Nachrichten
+schicken – etwa einen Geburtstagsgruß, eine Erinnerung eine bestimmte Zeit nach
+Ihrem letzten Besuch oder eine Einladung, wenn Sie längere Zeit nicht bei uns
+waren. Verarbeitet werden dafür Ihre E-Mail-Adresse, Ihr Name, Ihr Geburtsdatum
+(nur beim Geburtstagsgruß), das Datum Ihres letzten Besuchs und die Anzahl Ihrer
+Besuche. Es findet **keine Profilbildung mit rechtlicher Wirkung** statt; die
+Regeln sind schlichte Zeit- und Zählwerte, die der Betrieb selbst festlegt.
+
+Jede dieser Nachrichten enthält einen **Abmeldelink**, der die Einwilligung mit
+einem Klick widerruft; der Widerruf wird in der Einwilligungshistorie
+dokumentiert. Bestätigungen und Erinnerungen zu gebuchten Terminen (Ziff. 9)
+sind davon nicht betroffen – sie gehören zur Buchung.
+**Rechtsgrundlage:** Art. 6 Abs. 1 lit. a DSGVO (Einwilligung).
+
 ## 11. Warteliste, Veranstaltungen, Feedback
 
 - **Warteliste:** Name, Kontaktdaten und Wunschzeit zur Benachrichtigung bei

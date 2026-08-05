@@ -1,5 +1,50 @@
 # Changelog
 
+## [1.106.0] – 2026-08-06
+
+### Marketing-Automation: Gäste von selbst zurückholen
+Die Daten lagen längst da – Geburtstag, letzter Besuch, Anzahl der Besuche,
+Werbe-Einwilligung. Genutzt hat sie nie jemand. Neu in der Seitenleiste:
+**Marketing** (Recht `marketing.manage`, also Inhaber, Verwaltung, Betriebs-
+und Standortleitung sowie Marketing).
+
+Drei Kampagnenarten, täglich automatisch:
+
+- **Geburtstagsgruß** – X Tage vor dem Geburtstag, einmal im Jahr.
+- **Erinnerung nach dem Besuch** – genau X Tage nach dem letzten Besuch, einmal
+  pro Besuch. Für Salons der eigentliche Umsatzhebel: Nach sechs Wochen fragt
+  das System, ob es wieder Zeit ist.
+- **Lange nicht gesehen** – wer seit X Tagen nicht da war, bekommt eine
+  Einladung; höchstens einmal im Jahr.
+
+Für jede Kampagne gibt es Betreff, Text mit Platzhaltern
+(`{first_name}`, `{location_name}`, `{booking_link}`, `{unsubscribe_link}`),
+eine Vorlage zum Loslegen, eine **Testmail an dich selbst** und die Anzeige,
+**wie viele Gäste heute an der Reihe wären** – bevor überhaupt etwas läuft.
+
+### Was das System *nicht* tut
+Der aufwendigere Teil war das Nicht-Senden:
+
+- **Ohne Werbe-Einwilligung geht nichts raus.** Punkt.
+- **Nur an Gäste, die bei diesem Standort waren** – sonst würde ein zweiter
+  Standort dieselbe Person ein zweites Mal anschreiben.
+- **Jede Nachricht nur einmal.** Der Job läuft täglich; ein Protokolleintrag je
+  Gast, Kampagne und Anlass wird *vor* dem Versand gesetzt, damit auch ein
+  Absturz mittendrin keine zweite Mail erzeugt.
+- **Neue Kampagnen sind pausiert**, bis du sie ausdrücklich aktivierst.
+- **Höchstens 500 Mails pro Kampagne und Lauf** als Notbremse.
+- **Mindestbesuche einstellbar**, damit Laufkundschaft nicht angeschrieben wird.
+
+### Abmeldung und Datenschutz
+Jede Nachricht enthält einen **Abmeldelink** – fehlt er im Text, wird er
+automatisch angehängt. Der Link ist signiert (kein Login, nicht manipulierbar);
+ein Klick widerruft die Einwilligung und schreibt den Widerruf in die
+Einwilligungshistorie, weil ein Widerruf genauso nachweisbar sein muss wie die
+Einwilligung selbst (Art. 7 Abs. 3 DSGVO). Terminbestätigungen und
+Erinnerungen laufen davon unberührt weiter – die gehören zur Buchung.
+Die Datenschutzerklärung (Abschnitt 10) beschreibt das Verfahren jetzt
+ausdrücklich.
+
 ## [1.105.0] – 2026-08-06
 
 ### Notizen zu einer Reservierung – jetzt auch schreibbar

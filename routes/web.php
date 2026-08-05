@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\FloorPlanController;
 use App\Http\Controllers\Admin\FloorZoneController;
 use App\Http\Controllers\Admin\GuestController;
 use App\Http\Controllers\Admin\LocationController;
+use App\Http\Controllers\Admin\MarketingCampaignController;
 use App\Http\Controllers\Admin\NotificationTemplateController;
 use App\Http\Controllers\Admin\OnboardingController;
 use App\Http\Controllers\Admin\RefundController;
@@ -35,6 +36,7 @@ use App\Http\Controllers\GoCardlessWebhookController;
 use App\Http\Controllers\Public\FeedbackController;
 use App\Http\Controllers\Public\GuestPortalController;
 use App\Http\Controllers\Public\MarketingController;
+use App\Http\Controllers\Public\MarketingUnsubscribeController;
 use App\Http\Controllers\Public\PaymentController;
 use App\Http\Controllers\Public\PublicBookingController;
 use App\Http\Controllers\Public\PublicEventController;
@@ -121,6 +123,10 @@ Route::post('/konto/{tenantSlug}', [GuestPortalController::class, 'sendLink'])
 Route::get('/konto/{tenantSlug}/login/{token}', [GuestPortalController::class, 'login'])->name('guest.portal.login');
 Route::get('/konto/{tenantSlug}/start', [GuestPortalController::class, 'dashboard'])->name('guest.portal.dashboard');
 Route::post('/konto/{tenantSlug}/logout', [GuestPortalController::class, 'logout'])->name('guest.portal.logout');
+
+// Opt-out from the guest campaigns – signed link from every marketing mail.
+Route::get('/marketing/abmelden/{guest}', MarketingUnsubscribeController::class)
+    ->middleware('throttle:booking-slots')->name('marketing.unsubscribe');
 
 Route::get('/feedback/{token}', [FeedbackController::class, 'show'])
     ->middleware('throttle:booking-slots')->name('feedback.show');
@@ -434,6 +440,16 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
         Route::get('/api-tokens', [ApiTokenController::class, 'index'])->name('api-tokens.index');
         Route::post('/api-tokens', [ApiTokenController::class, 'store'])->name('api-tokens.store');
         Route::delete('/api-tokens/{tokenId}', [ApiTokenController::class, 'destroy'])->name('api-tokens.destroy');
+    });
+
+    // Marketing campaigns (birthday, rebooking, win-back)
+    Route::middleware('permission:marketing.manage')->group(function () {
+        Route::get('/marketing', [MarketingCampaignController::class, 'index'])->name('marketing.index');
+        Route::post('/marketing', [MarketingCampaignController::class, 'store'])->name('marketing.store');
+        Route::put('/marketing/{campaign}', [MarketingCampaignController::class, 'update'])->name('marketing.update');
+        Route::post('/marketing/{campaign}/toggle', [MarketingCampaignController::class, 'toggle'])->name('marketing.toggle');
+        Route::post('/marketing/{campaign}/test', [MarketingCampaignController::class, 'test'])->name('marketing.test');
+        Route::delete('/marketing/{campaign}', [MarketingCampaignController::class, 'destroy'])->name('marketing.destroy');
     });
 
     // Webhooks (same endpoints as the REST API, without needing an API token)
