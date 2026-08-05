@@ -24,6 +24,7 @@ use App\Http\Controllers\Admin\TagController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Admin\WaitlistAdminController;
 use App\Http\Controllers\Admin\WalkInController;
+use App\Http\Controllers\Admin\WebhookController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\PasswordResetController;
@@ -417,6 +418,16 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
         Route::get('/api-tokens', [ApiTokenController::class, 'index'])->name('api-tokens.index');
         Route::post('/api-tokens', [ApiTokenController::class, 'store'])->name('api-tokens.store');
         Route::delete('/api-tokens/{tokenId}', [ApiTokenController::class, 'destroy'])->name('api-tokens.destroy');
+    });
+
+    // Webhooks (same endpoints as the REST API, without needing an API token)
+    Route::middleware('permission:webhooks.manage')->group(function () {
+        Route::get('/webhooks', [WebhookController::class, 'index'])->name('webhooks.index');
+        Route::post('/webhooks', [WebhookController::class, 'store'])->name('webhooks.store');
+        Route::post('/webhooks/{endpoint}/toggle', [WebhookController::class, 'toggle'])->name('webhooks.toggle');
+        Route::post('/webhooks/{endpoint}/rotate-secret', [WebhookController::class, 'rotateSecret'])->name('webhooks.rotate');
+        Route::post('/webhooks/{endpoint}/ping', [WebhookController::class, 'ping'])->name('webhooks.ping');
+        Route::delete('/webhooks/{endpoint}', [WebhookController::class, 'destroy'])->name('webhooks.destroy');
     });
 
     // E-mail templates (per-tenant overrides of the built-in notification texts)

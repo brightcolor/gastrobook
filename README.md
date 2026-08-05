@@ -134,6 +134,7 @@ Fertige Docker-Images baut die CI automatisch: `ghcr.io/brightcolor/gastrobook:l
 | Berichte (No-Show-Rate, Auslastung, Quellen, Covers, CSV-Exporte) | ✅ |
 | REST-API v1 (Sanctum, tenant-gebundene Tokens, Scopes, Rate Limits) | ✅ |
 | Webhooks (HMAC-Signatur, Retry/Backoff, Auto-Deaktivierung, Delivery-Log) | ✅ |
+| Webhook-Verwaltung im Admin (anlegen, Testereignis, Secret neu erzeugen, pausieren/reaktivieren, Zustellprotokoll) | ✅ |
 | Auditlog (filterbar, IP-anonymisiert, Impersonation-Kennzeichnung) | ✅ |
 | MailWizz-Newsletter-Sync (Einwilligung → Liste, verschlüsselte Credentials) | ✅ |
 | Konfigurierbare Widget-Felder (E-Mail/Telefon/Anlass/Allergien/Notiz je Standort) | ✅ |
@@ -375,14 +376,16 @@ Rate Limit: 120 Requests/Minute pro Token. Der Telefon-/AI-Assistent (vorbereite
 
 ## Webhooks
 
-Endpoints pro Tenant (Verwaltung über API `POST /api/v1/webhooks`). Events u. a.:
+Endpoints pro Tenant. **Verwaltung im Admin unter `/admin/webhooks`** (Recht `webhooks.manage`): anlegen, Ereignisse auswählen, **Testereignis** senden, Secret neu erzeugen, pausieren/reaktivieren, Zustellprotokoll der letzten 25 Versuche. Alternativ per REST-API (`POST /api/v1/webhooks`, Scope `webhooks:manage`) – dieselben Endpunkte.
 
-`reservation.created|confirmed|updated|cancelled|seated|completed|no_show`, `waitlist.created|offered|accepted`, `feedback.received`
+Events: `reservation.created|confirmed|updated|cancelled|seated|completed|no_show`, `waitlist.created|offered|accepted`, `event.booking_created`, `payment.succeeded`, `feedback.received` — oder `*` für alle.
 
 - Payload signiert: Header `X-Gastrobook-Signature: sha256=<HMAC-SHA256(body, secret)>`
 - Retries mit Backoff (1 min → 2 h, 5 Versuche), Delivery-Log in `webhook_deliveries`
-- Automatische Deaktivierung nach 20 Fehlern in Folge
+- Automatische Deaktivierung nach 20 Fehlern in Folge (Reaktivierung im Admin setzt den Fehlerzähler zurück)
+- Nur öffentlich erreichbare https-Ziele (SSRF-Guard, erneut geprüft beim Zustellen)
 - Payload-Versionierung (`"version": "1"`)
+- Voraussetzung: Tarif-Feature `webhooks_enabled`
 
 ---
 

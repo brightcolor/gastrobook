@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.98.0] – 2026-08-05
+
+### Webhooks endlich ohne Umweg über die API
+Webhooks gab es von Anfang an – man kam nur nicht an sie heran: Endpunkte
+ließen sich ausschließlich über die REST-API anlegen, wofür man einen
+API-Token braucht, wofür der Tarif die API enthalten muss. Wer Swayy an seine
+Website oder ein Kassensystem hängen wollte, brauchte also erst einen
+Umweg.
+
+Neu: **Webhooks** in der Seitenleiste (Recht `webhooks.manage`).
+
+- **Anlegen** mit Adresse und Auswahl der Ereignisse (oder „alle Ereignisse",
+  dann sind auch künftige automatisch dabei).
+- **Testereignis senden** – geht denselben Weg wie ein echtes Ereignis, samt
+  Signatur und Wiederholungen. Ob es angekommen ist, steht im Protokoll.
+- **Secret neu erzeugen**, falls es irgendwo aufgetaucht ist. Es wird wie
+  bisher genau einmal angezeigt.
+- **Pausieren und wieder aktivieren.** Wichtig für den Fall, dass sich ein
+  Endpunkt nach 20 Fehlversuchen selbst abgeschaltet hat: Beim Aktivieren wird
+  der Fehlerzähler zurückgesetzt, sonst wäre er beim nächsten Versuch sofort
+  wieder am Limit.
+- **Zustellprotokoll** der letzten 25 Versuche mit Ereignis, Ziel, Versuch und
+  HTTP-Status.
+
+Interne oder private Adressen werden weiterhin abgelehnt (auch beim Zustellen
+erneut geprüft), und ohne das Tarif-Feature `webhooks_enabled` lässt sich kein
+Endpunkt anlegen.
+
+### Nebenbei
+Die Ereignisliste im README stand nur halb drin – `event.booking_created` und
+`payment.succeeded` fehlten, obwohl sie verschickt werden. Jetzt vollständig.
+
 ## [1.97.0] – 2026-08-05
 
 ### Einzelne Tische sperren
