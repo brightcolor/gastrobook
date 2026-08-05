@@ -8,8 +8,8 @@ use App\Http\Controllers\Controller;
 use App\Models\BlackoutPeriod;
 use App\Models\DepositRule;
 use App\Models\IntegrationConnection;
-use App\Models\OpeningHour;
 use App\Models\Location;
+use App\Models\OpeningHour;
 use App\Models\Reservation;
 use App\Models\RestaurantTable;
 use App\Models\Room;
@@ -553,9 +553,13 @@ class SettingsController extends Controller
             return null;
         }
 
-        return Service::where('location_id', $location->id)->where('id', (int) $serviceId)->exists()
-            ? (int) $serviceId
-            : null;
+        $id = (int) $serviceId;
+
+        if (! Service::where('location_id', $location->id)->where('id', $id)->exists()) {
+            return null;
+        }
+
+        return $id;
     }
 
     public function deleteDepositRule(DepositRule $rule)
