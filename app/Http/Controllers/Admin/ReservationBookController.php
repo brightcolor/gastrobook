@@ -252,7 +252,7 @@ class ReservationBookController extends Controller
         return view('admin.reservations.show', [
             'reservation' => $reservation,
             'location' => $this->context->location(),
-            'canEditAttachments' => request()->user()->canInTenant('reservations.update', $this->context->tenant()),
+            'canEditReservation' => request()->user()->canInTenant('reservations.update', $this->context->tenant()),
         ]);
     }
 
@@ -647,6 +647,29 @@ class ReservationBookController extends Controller
             }
             fclose($out);
         }, 'reservierungen_'.$from.'_'.$until.'.csv', ['Content-Type' => 'text/csv; charset=utf-8']);
+    }
+
+    /**
+     * Internal note on a reservation. The notes were displayed from the start,
+     * there was simply no way to write one.
+     */
+    public function addNote(Request $request, Reservation $reservation, AuditLogger $audit)
+    {
+        $this->authorizeReservation($reservation);
+
+        $validated = $request->validate([
+            'body' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $reservation->notes()->create([
+            'tenant_id' => $reservation->tenant_id,
+            'user_id' => $request->user()->id,
+            'body' => $validated['body'],
+        ]);
+
+        $audit->log('reservation.note_added', $reservation);
+
+        return back()->with('success', __('Notiz gespeichert.'));
     }
 
     private function authorizeReservation(Reservation $reservation): void

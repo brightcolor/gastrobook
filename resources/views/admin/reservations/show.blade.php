@@ -206,7 +206,7 @@
                                 @if($attachment->uploader) · {{ $attachment->uploader->name }} @endif
                             </div>
                         </div>
-                        @if($canEditAttachments)
+                        @if($canEditReservation)
                             <form method="POST" action="{{ route('admin.reservations.attachments.destroy', [$reservation, $attachment]) }}"
                                   onsubmit="return confirm('Datei löschen?')">
                                 @csrf @method('DELETE')
@@ -218,7 +218,7 @@
                     <p class="text-xs text-stone-400">Noch keine Dateien.</p>
                 @endforelse
             </div>
-            @if($canEditAttachments)
+            @if($canEditReservation)
                 <form method="POST" action="{{ route('admin.reservations.attachments.store', $reservation) }}"
                       enctype="multipart/form-data" class="mt-3 flex flex-wrap items-center gap-2 text-sm">
                     @csrf
@@ -231,14 +231,25 @@
 
         {{-- Internal notes --}}
         <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
-            <h2 class="mb-3 font-bold">Notizen</h2>
+            <h2 class="mb-1 font-bold">Notizen<span class="tip" tabindex="0" data-tip="Kurze Vermerke zu genau dieser Buchung – „ruft nochmal an wegen Kinderstuhl“, „kommt später“. Nur fürs Team, der Gast sieht sie nie. Dauerhafte Vorlieben gehören ins Gastprofil.">?</span></h2>
+            <p class="mb-3 text-xs text-stone-500">Nur fürs Team, der Gast sieht sie nie.</p>
+            @if($canEditReservation)
+                <form method="POST" action="{{ route('admin.reservations.notes', $reservation) }}" class="mb-3 space-y-2">
+                    @csrf
+                    <textarea name="body" rows="2" required maxlength="2000" placeholder="Neue Notiz…" class="w-full rounded-lg border-stone-200 text-sm"></textarea>
+                    <button class="rounded-lg bg-stone-900 px-3 py-1.5 text-xs font-bold text-white">Speichern</button>
+                </form>
+                @error('body')<p class="mb-2 text-xs text-red-600">{{ $message }}</p>@enderror
+            @endif
             <div class="space-y-2 text-sm">
-                @foreach($reservation->notes->sortByDesc('created_at') as $note)
+                @forelse($reservation->notes->sortByDesc('created_at') as $note)
                     <div class="rounded-lg bg-stone-50 p-2.5">
                         {{ $note->body }}
                         <div class="mt-1 text-xs text-stone-400">{{ $note->user?->name }} · {{ $note->created_at->format('d.m. H:i') }}</div>
                     </div>
-                @endforeach
+                @empty
+                    <p class="text-xs text-stone-400">Noch keine Notizen.</p>
+                @endforelse
             </div>
         </div>
     </div>

@@ -206,6 +206,8 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
             ->middleware('permission:tables.assign')->name('reservations.tables');
         Route::post('/reservations/{reservation}/tags', [TagController::class, 'syncReservation'])
             ->middleware('permission:reservations.update')->name('reservations.tags');
+        Route::post('/reservations/{reservation}/notes', [ReservationBookController::class, 'addNote'])
+            ->middleware('permission:reservations.update')->name('reservations.notes');
         Route::get('/reservations/{reservation}/attachments/{attachment}', [ReservationAttachmentController::class, 'download'])
             ->name('reservations.attachments.download');
         Route::post('/reservations/{reservation}/attachments', [ReservationAttachmentController::class, 'store'])

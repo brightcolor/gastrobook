@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.105.0] – 2026-08-06
+
+### Notizen zu einer Reservierung – jetzt auch schreibbar
+Auf der Reservierung gab es seit der ersten Version eine Karte „Notizen". Sie
+war immer leer, und das blieb sie auch: Angezeigt wurden die Einträge, anlegen
+konnte sie niemand – weder über die Oberfläche noch sonst irgendwo. Nur der
+Account-Import konnte welche mitbringen.
+
+Jetzt steht ein Eingabefeld darüber. Notizen sind kurze Vermerke zu **dieser
+einen Buchung** („kommt später", „ruft nochmal an wegen Kinderstuhl") und nur
+fürs Team sichtbar – dauerhafte Vorlieben gehören weiter ins Gastprofil. Wer
+Reservierungen bearbeiten darf, kann schreiben; alle anderen sehen die Karte
+weiterhin, aber ohne Feld.
+
 ## [1.104.0] – 2026-08-06
 
 ### OpenAPI-Beschreibung der Schnittstelle
