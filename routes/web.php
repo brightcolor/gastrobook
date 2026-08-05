@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\ReservationAttachmentController;
 use App\Http\Controllers\Admin\ReservationBookController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\StaffCalendarController;
 use App\Http\Controllers\Admin\StaffMemberController;
 use App\Http\Controllers\Admin\TagController;
 use App\Http\Controllers\Admin\UserManagementController;
@@ -390,6 +391,10 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
         Route::put('/services/{service}', [ServiceController::class, 'update'])->name('services.update');
         Route::delete('/services/{service}', [ServiceController::class, 'destroy'])->name('services.destroy');
     });
+
+    // Salon: Terminplan (Tagesansicht) – auch fürs Personal, nicht nur für die Verwaltung
+    Route::get('/staff/calendar', [StaffCalendarController::class, 'index'])
+        ->middleware('permission:reservations.view')->name('staff.calendar');
 
     // Salon: Mitarbeiter
     Route::middleware(['permission:tables.manage'])->group(function () {

@@ -154,14 +154,16 @@ class GuestMergeTest extends TestCase
         Guest::factory()->create([
             'tenant_id' => $setup['tenant']->id, 'last_name' => 'Vogel', 'email' => 'VOGEL@example.test',
         ]);
-        // Same tenant, nothing in common – must not be suggested.
-        Guest::factory()->create(['tenant_id' => $setup['tenant']->id, 'last_name' => 'Fuchs']);
+        // Same tenant, nothing in common – must not be suggested. The name is
+        // deliberately artificial: faker names can also turn up as the location
+        // name in the sidebar and would make this assertion flaky.
+        Guest::factory()->create(['tenant_id' => $setup['tenant']->id, 'last_name' => 'Zzkeintreffer']);
         $this->clearTenantContext();
 
         $this->actingAs($admin)->get('/admin/guests/'.$keep->id)
             ->assertOk()
             ->assertSee('Mögliche Dublette')
-            ->assertDontSee('Fuchs');
+            ->assertDontSee('Zzkeintreffer');
     }
 
     public function test_the_merge_can_be_triggered_from_the_admin(): void

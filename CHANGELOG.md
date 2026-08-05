@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.102.0] – 2026-08-05
+
+### Salon: Terminplan als Tagesansicht
+Wer im Salon wissen wollte, wie der Tag aussieht, hatte bisher nur die
+Terminliste – eine Zeile nach der anderen, ohne Gefühl dafür, wo Luft ist und
+wo es eng wird. Neu in der Seitenleiste: **Terminplan**.
+
+- Eine **Spalte je Mitarbeiter**, Termine als Blöcke auf der Zeitachse.
+- Weiß hinterlegt ist die Arbeitszeit dieser Person (wer keinen eigenen
+  Dienstplan hat, bekommt die Öffnungszeiten – dieselbe Regel wie bei der
+  Buchung), grau der Rest. **Abwesenheiten** stehen als graue Balken drin,
+  mit Grund.
+- Farben nach Status: bestätigt, angefragt, im Haus. ⭐ markiert Stammgäste.
+- Klick auf einen Termin öffnet die Buchung.
+- Blättern über ← / Heute / → oder direkt per Datumsfeld.
+- Termine **ohne Mitarbeiter** stehen unter dem Plan in einer eigenen Liste –
+  sonst wären sie unsichtbar.
+
+Der Plan ist bewusst nur zum Ansehen: gebucht, verschoben und storniert wird
+weiter dort, wo es die Prüfungen dafür gibt. Recht: `reservations.view` – auch
+das Personal soll ihn öffnen können, nicht nur die Verwaltung.
+
+### Behoben
+Ein Test aus 1.99.0 konnte zufällig fehlschlagen: Er prüfte, dass ein
+unbeteiligter Gast **nicht** als Dublette vorgeschlagen wird – der Testname kam
+aber aus demselben deutschen Namenspool, aus dem auch der Standortname in der
+Seitenleiste gebaut wird. Traf beides zusammen, schlug die Prüfung an der
+falschen Stelle an.
+
 ## [1.101.0] – 2026-08-05
 
 ### Dateien an einer Reservierung
