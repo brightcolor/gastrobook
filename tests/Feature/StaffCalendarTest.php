@@ -8,6 +8,7 @@ use App\Enums\TenantType;
 use App\Models\Reservation;
 use App\Models\StaffAbsence;
 use App\Models\StaffMember;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\CreatesTenants;
@@ -21,7 +22,7 @@ class StaffCalendarTest extends TestCase
 {
     use CreatesTenants, RefreshDatabase;
 
-    /** @return array{0: array<string, mixed>, 1: \App\Models\User, 2: StaffMember} */
+    /** @return array{0: array<string, mixed>, 1: User, 2: StaffMember} */
     private function salon(): array
     {
         $setup = $this->createTenantSetup();
