@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.101.0] – 2026-08-05
+
+### Dateien an einer Reservierung
+Die abgestimmte Menüfolge, eine Tischskizze, die unterschriebene Vereinbarung
+fürs Event – bisher landete so etwas im Mailpostfach von irgendwem. Auf der
+Reservierung gibt es jetzt die Karte **Anhänge**: PDF oder Bild bis 8 MB
+hochladen, herunterladen, löschen.
+
+Die Dateien liegen auf dem **privaten** Speicher und werden nur über eine
+angemeldete Route ausgeliefert – nie über `public/`. Hochladen und löschen darf,
+wer Reservierungen bearbeiten darf; ansehen, wer sie sehen darf. SVG ist
+bewusst nicht erlaubt (kann Skripte enthalten), der Dateiname wird nie als Pfad
+verwendet.
+
+### Datenschutz
+- Beim **Anonymisieren** eines Gastes (Art. 17) werden die Dateien seiner
+  Reservierungen mitgelöscht – eine Menüvereinbarung trägt denselben Namen, der
+  gerade gelöscht wird. Das gilt damit auch für den automatischen
+  Aufbewahrungs-Job. **Wichtig für den Betrieb:** Wer Dokumente länger
+  aufbewahren muss (z. B. steuerlich relevante Vereinbarungen), sollte sie in
+  der Buchhaltung ablegen, nicht nur hier.
+- Der Datenauskunft (Art. 15) liegen jetzt die Dateinamen bei.
+- Datenschutzerklärung Abschnitt 3 ergänzt.
+
 ## [1.100.0] – 2026-08-05
 
 ### Drei Rechte, die es nur auf dem Papier gab

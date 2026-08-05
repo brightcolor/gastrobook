@@ -123,6 +123,7 @@ Fertige Docker-Images baut die CI automatisch: `ghcr.io/brightcolor/gastrobook:l
 | Nächste freie Termine bei ausgebuchtem Tag (Datum + Uhrzeit für die gewünschte Personenzahl, direkt anklickbar) | ✅ |
 | Kurze Buchungs-URL `/book/{laden}` (1 Standort: direkt; mehrere: Standortauswahl, Slug wird angehängt) | ✅ |
 | Logo pro Standort + Kontakt/Anfahrt (Adresse, Telefon, E-Mail) auf der Buchungsseite | ✅ |
+| Dateien an einer Reservierung (PDF/Bild, privat gespeichert, nur fürs Team) | ✅ |
 | Gäste-CRM (Dedupe, Besuchszähler, No-Show-Zähler, Tags, sensible Notizen) | ✅ |
 | Dubletten zusammenführen (Vorschläge am Profil, Historie/Notizen/Einwilligungen/Zähler wandern mit, Protokoll) | ✅ |
 | Stornolink / Änderungslink mit Secret-Token und Fristprüfung | ✅ |

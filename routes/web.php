@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\NotificationTemplateController;
 use App\Http\Controllers\Admin\OnboardingController;
 use App\Http\Controllers\Admin\RefundController;
 use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\ReservationAttachmentController;
 use App\Http\Controllers\Admin\ReservationBookController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\SettingsController;
@@ -204,6 +205,12 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
             ->middleware('permission:tables.assign')->name('reservations.tables');
         Route::post('/reservations/{reservation}/tags', [TagController::class, 'syncReservation'])
             ->middleware('permission:reservations.update')->name('reservations.tags');
+        Route::get('/reservations/{reservation}/attachments/{attachment}', [ReservationAttachmentController::class, 'download'])
+            ->name('reservations.attachments.download');
+        Route::post('/reservations/{reservation}/attachments', [ReservationAttachmentController::class, 'store'])
+            ->middleware('permission:reservations.update')->name('reservations.attachments.store');
+        Route::delete('/reservations/{reservation}/attachments/{attachment}', [ReservationAttachmentController::class, 'destroy'])
+            ->middleware('permission:reservations.update')->name('reservations.attachments.destroy');
     });
 
     // Tags (tenant-scoped)

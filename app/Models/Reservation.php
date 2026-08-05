@@ -134,6 +134,12 @@ class Reservation extends Model
         return $this->hasMany(ReservationNote::class);
     }
 
+    /** @return HasMany<ReservationAttachment, $this> */
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(ReservationAttachment::class);
+    }
+
     public function tags(): MorphToMany
     {
         return $this->morphToMany(Tag::class, 'taggable');

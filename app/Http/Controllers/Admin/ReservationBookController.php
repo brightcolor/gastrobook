@@ -247,11 +247,12 @@ class ReservationBookController extends Controller
     {
         $this->authorizeReservation($reservation);
 
-        $reservation->load(['tables.room', 'guest.tags', 'guest.notes', 'statusHistories.user', 'notes.user', 'tags']);
+        $reservation->load(['tables.room', 'guest.tags', 'guest.notes', 'statusHistories.user', 'notes.user', 'tags', 'attachments.uploader']);
 
         return view('admin.reservations.show', [
             'reservation' => $reservation,
             'location' => $this->context->location(),
+            'canEditAttachments' => request()->user()->canInTenant('reservations.update', $this->context->tenant()),
         ]);
     }
 

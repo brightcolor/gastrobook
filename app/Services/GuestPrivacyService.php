@@ -4,8 +4,10 @@ namespace App\Services;
 
 use App\Models\Guest;
 use App\Models\GuestMergeLog;
+use App\Models\ReservationAttachment;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class GuestPrivacyService
 {
@@ -39,6 +41,14 @@ class GuestPrivacyService
                 'recorded_at' => $c->recorded_at?->toIso8601String(),
             ])->all(),
             'notes' => $guest->notes()->withoutGlobalScope('tenant')->where('is_sensitive', false)->pluck('body')->all(),
+            // File names only – the files themselves are handed over on request.
+            'attachments' => ReservationAttachment::withoutGlobalScopes()
+                ->whereIn('reservation_id', $guest->reservations()->withoutGlobalScope('tenant')->select('reservations.id'))
+                ->get()
+                ->map(fn ($a) => [
+                    'name' => $a->original_name,
+                    'uploaded_at' => $a->created_at?->toIso8601String(),
+                ])->all(),
         ];
     }
 
@@ -65,6 +75,16 @@ class GuestPrivacyService
             // personal data of the duplicate. Erasure has to reach them too,
             // otherwise anonymising the survivor would leave a readable copy.
             GuestMergeLog::withoutGlobalScopes()->where('kept_guest_id', $guest->id)->delete();
+
+            // Same for files on this guest's reservations – a menu agreement or
+            // a signed contract carries the name that is being erased here.
+            $attachments = ReservationAttachment::withoutGlobalScopes()
+                ->whereIn('reservation_id', $guest->reservations()->withoutGlobalScope('tenant')->select('reservations.id'))
+                ->get();
+            foreach ($attachments as $attachment) {
+                Storage::disk($attachment->disk)->delete($attachment->path);
+                $attachment->delete();
+            }
 
             $guest->update([
                 'first_name' => null,

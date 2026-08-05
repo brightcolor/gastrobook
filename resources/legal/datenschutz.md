@@ -47,6 +47,13 @@ Bei einer Online-Reservierung bzw. Terminbuchung verarbeiten wir:
   Missbrauchs-/Spam-Abwehr ein **gekürzter/gehashter** Verarbeitungsnachweis
   Ihrer Einwilligungen (siehe Ziff. 5).
 
+- **Dateien zur Buchung (optional):** Unsere Mitarbeiter können einer Buchung
+  intern Dateien beilegen, etwa eine abgestimmte Menüfolge, eine Tischskizze
+  oder – bei Veranstaltungen – eine Vereinbarung. Diese Dateien sind
+  ausschließlich für unser Team zugänglich, werden nicht öffentlich
+  ausgeliefert und mit der Reservierung gelöscht bzw. anonymisiert
+  (siehe Ziff. 14).
+
 **Zweck:** Bearbeitung und Verwaltung Ihrer Reservierung/Ihres Termins.
 **Rechtsgrundlage:** Art. 6 Abs. 1 lit. b DSGVO (Durchführung
 vorvertraglicher/vertraglicher Maßnahmen). Ohne die Pflichtangaben kann die
