@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.103.0] – 2026-08-05
+
+### Salon: Anzahlung pro Leistung
+Anzahlungsregeln kannten bisher Personenzahl, Uhrzeit, Raum und Event – aber
+nicht die Leistung. Für einen Salon ist das aber genau der Hebel: Für die
+Balayage über drei Stunden ist eine Anzahlung angemessen, fürs Pony-Schneiden
+nicht.
+
+Jede Regel lässt sich jetzt auf **eine Leistung** binden (Feld „Nur für
+Leistung" bei den Anzahlungsregeln, erscheint nur im Salon-Betrieb). Sie greift,
+sobald diese Leistung im Termin steckt – auch als Teil einer Kombination.
+
+Trifft eine allgemeine und eine leistungsbezogene Regel zu, gewinnt die
+**leistungsbezogene**: Sie ist die genauere Aussage. Regeln ohne Leistung gelten
+unverändert für alles.
+
 ## [1.102.0] – 2026-08-05
 
 ### Salon: Terminplan als Tagesansicht

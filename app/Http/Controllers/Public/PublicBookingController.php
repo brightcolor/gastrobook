@@ -558,6 +558,7 @@ class PublicBookingController extends Controller
                 'duration_minutes' => $duration,
                 'source' => 'online',
                 'service_id' => $services->first()->id, // primary service
+                'service_ids' => $services->pluck('id')->all(), // deposit rules look at all of them
                 'staff_member_id' => $staff->id,
                 'guest_name' => $validated['name'],
                 'guest_email' => $validated['email'],

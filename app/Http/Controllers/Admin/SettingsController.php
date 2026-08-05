@@ -9,9 +9,11 @@ use App\Models\BlackoutPeriod;
 use App\Models\DepositRule;
 use App\Models\IntegrationConnection;
 use App\Models\OpeningHour;
+use App\Models\Location;
 use App\Models\Reservation;
 use App\Models\RestaurantTable;
 use App\Models\Room;
+use App\Models\Service;
 use App\Models\SpecialOpeningHour;
 use App\Models\TableBlock;
 use App\Models\TableCombination;
@@ -76,7 +78,10 @@ class SettingsController extends Controller
             'paypalCredentials' => $paypalCredentials,
             'sms' => $sms,
             'smsCredentials' => $smsCredentials,
-            'depositRules' => DepositRule::where('location_id', $location->id)->orderBy('name')->get(),
+            'depositRules' => DepositRule::where('location_id', $location->id)->with('service')->orderBy('name')->get(),
+            'salonServices' => $this->context->tenant()->isSalon()
+                ? Service::where('location_id', $location->id)->where('is_active', true)->orderBy('name')->get()
+                : collect(),
             'settings' => $location->effectiveSettings(),
             'rooms' => $location->rooms()->withCount('tables')->orderBy('sort_order')->get(),
             'tables' => $location->tables()->with('room')->orderBy('sort_order')->get(),
@@ -478,6 +483,7 @@ class SettingsController extends Controller
             'until_time' => ['nullable', 'date_format:H:i'],
             'payment_deadline_minutes' => ['nullable', 'integer', 'min:10', 'max:10080'],
             'cancel_unpaid_automatically' => ['nullable', 'boolean'],
+            'service_id' => ['nullable', 'integer'],
         ]);
 
         $rule = DepositRule::create([
@@ -485,6 +491,7 @@ class SettingsController extends Controller
             'location_id' => $location->id,
             'name' => $validated['name'],
             'type' => 'deposit',
+            'service_id' => $this->serviceIdForRule($location, $validated['service_id'] ?? null),
             'min_party_size' => $validated['min_party_size'] ?? null,
             'from_time' => $validated['from_time'] ?? null,
             'until_time' => $validated['until_time'] ?? null,
@@ -515,10 +522,12 @@ class SettingsController extends Controller
             'until_time' => ['nullable', 'date_format:H:i'],
             'payment_deadline_minutes' => ['nullable', 'integer', 'min:10', 'max:10080'],
             'cancel_unpaid_automatically' => ['nullable', 'boolean'],
+            'service_id' => ['nullable', 'integer'],
         ]);
 
         $rule->update([
             'name' => $validated['name'],
+            'service_id' => $this->serviceIdForRule($location, $validated['service_id'] ?? null),
             'min_party_size' => $validated['min_party_size'] ?? null,
             'from_time' => $validated['from_time'] ?? null,
             'until_time' => $validated['until_time'] ?? null,
@@ -531,6 +540,22 @@ class SettingsController extends Controller
         $this->audit->log('deposit_rule.updated', $rule, null, $validated);
 
         return $this->saved($request, __('Anzahlungsregel aktualisiert.'), true);
+    }
+
+    /**
+     * A deposit rule may point at one service of this location – or at none,
+     * then it applies to every booking. Anything else is dropped rather than
+     * silently attached to a foreign service.
+     */
+    private function serviceIdForRule(Location $location, mixed $serviceId): ?int
+    {
+        if (empty($serviceId)) {
+            return null;
+        }
+
+        return Service::where('location_id', $location->id)->where('id', (int) $serviceId)->exists()
+            ? (int) $serviceId
+            : null;
     }
 
     public function deleteDepositRule(DepositRule $rule)

@@ -41,6 +41,7 @@ class ReservationLifecycleService
      *     occasion?: ?string, room_id?: ?int, table_ids?: array<int>,
      *     consents?: array<string,bool>, ip?: ?string, event_id?: ?int,
      *     skip_availability_check?: bool, duration_minutes?: ?int,
+     *     service_id?: ?int, service_ids?: array<int>, staff_member_id?: ?int,
      * } $data
      */
     public function create(Location $location, array $data, ?User $actor = null): Reservation
@@ -132,7 +133,17 @@ class ReservationLifecycleService
             $paymentStatus = 'not_required';
             $paymentAmount = null;
             $paymentDueAt = null;
-            $rule = $this->payments->requirementFor($location, $startLocal, $data['party_size'], $data['event_id'] ?? null, $data['room_id'] ?? null);
+            // Salon: the booked services decide too – service_ids carries the
+            // whole combination, service_id only the primary one.
+            $serviceIds = $data['service_ids'] ?? array_filter([$data['service_id'] ?? null]);
+            $rule = $this->payments->requirementFor(
+                $location,
+                $startLocal,
+                $data['party_size'],
+                $data['event_id'] ?? null,
+                $data['room_id'] ?? null,
+                array_values(array_map('intval', $serviceIds)),
+            );
             if ($rule !== null && $online) {
                 $paymentStatus = 'required';
                 $paymentAmount = $rule->amountFor($data['party_size']);

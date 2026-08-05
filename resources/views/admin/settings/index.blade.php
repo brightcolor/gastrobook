@@ -746,6 +746,16 @@
         <form method="POST" action="{{ route('admin.settings.deposit-rules.store') }}" class="grid grid-cols-2 gap-2 text-sm">
             @csrf
             <input type="text" name="name" required placeholder="Name (z. B. Gruppen ab 6) *" title="Ein interner Name damit du die Regel wiedererkennst – z. B. &quot;Gruppen ab 6 Personen&quot; oder &quot;Abendtische ab 18 Uhr&quot;." class="col-span-2 rounded-lg border-stone-200">
+            @if($salonServices->isNotEmpty())
+                <div class="col-span-2"><label class="mb-1 block text-xs text-stone-500">Nur für Leistung <span class="tip" tabindex="0" data-tip="Die Regel greift nur, wenn diese Leistung im Termin enthalten ist – z. B. Anzahlung für Balayage, aber nicht für den Pony-Schnitt. Leer lassen, wenn sie für alle Termine gelten soll.">?</span></label>
+                    <select name="service_id" class="w-full rounded-lg border-stone-200">
+                        <option value="">Alle Leistungen</option>
+                        @foreach($salonServices as $service)
+                            <option value="{{ $service->id }}">{{ $service->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            @endif
             <div><label class="mb-1 block text-xs text-stone-500">Ab Personenzahl <span class="tip" tabindex="0" data-tip="Die Regel gilt nur wenn die Gruppe mindestens so groß ist. Leer lassen, wenn sie für jede Buchungsgröße gelten soll.">?</span></label>
                 <input type="number" name="min_party_size" min="1" placeholder="z. B. 6" class="w-full rounded-lg border-stone-200"></div>
             <div><label class="mb-1 block text-xs text-stone-500">Betrag p. P. (€) * <span class="tip" tabindex="0" data-tip="So viel Euro zahlt jede Person als Anzahlung. Beispiel: 10 € × 4 Personen = 40 € Anzahlung. Der Betrag wird beim Besuch mit der Rechnung verrechnet.">?</span></label>
@@ -769,6 +779,7 @@
                     <summary class="flex cursor-pointer items-center justify-between gap-2">
                         <span>
                             <strong>{{ $rule->name }}</strong>
+                            @if($rule->service) · nur {{ $rule->service->name }} @endif
                             @if($rule->min_party_size) · ab {{ $rule->min_party_size }} P. @endif
                             @if($rule->flat_amount_minor > 0) · {{ number_format($rule->flat_amount_minor / 100, 2, ',', '.') }} € Grundbetrag @endif
                             · {{ number_format($rule->amount_per_person_minor / 100, 2, ',', '.') }} € p. P.
@@ -786,6 +797,16 @@
                     <form method="POST" action="{{ route('admin.settings.deposit-rules.update', $rule) }}" class="mt-3 grid grid-cols-2 gap-2 border-t border-stone-200 pt-3">
                         @csrf @method('PUT')
                         <input type="text" name="name" required value="{{ $rule->name }}" placeholder="Name *" class="col-span-2 rounded-lg border-stone-200">
+                        @if($salonServices->isNotEmpty())
+                            <div class="col-span-2"><label class="mb-1 block text-xs text-stone-500">Nur für Leistung</label>
+                                <select name="service_id" class="w-full rounded-lg border-stone-200">
+                                    <option value="">Alle Leistungen</option>
+                                    @foreach($salonServices as $service)
+                                        <option value="{{ $service->id }}" @selected($rule->service_id === $service->id)>{{ $service->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endif
                         <div><label class="mb-1 block text-xs text-stone-500">Ab Personenzahl</label>
                             <input type="number" name="min_party_size" min="1" value="{{ $rule->min_party_size }}" class="w-full rounded-lg border-stone-200"></div>
                         <div><label class="mb-1 block text-xs text-stone-500">Betrag p. P. (€) *</label>
