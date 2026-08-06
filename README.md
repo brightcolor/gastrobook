@@ -92,6 +92,16 @@ Fertige Docker-Images baut die CI automatisch: `ghcr.io/brightcolor/gastrobook:l
 
 ---
 
+## Handbuch für Anwender
+
+Dieses README ist die technische Beschreibung. Das **Anwenderhandbuch** für
+Inhaber, Leitung und Service liegt unter [`docs/handbuch/`](docs/handbuch/) –
+26 Seiten in einfachem Deutsch, ohne technische Voraussetzungen, vorbereitet für
+den Import in eine BookStack-Instanz (ein Ordner = ein Kapitel, eine Datei = eine
+Seite; Hinweise dazu in [`docs/handbuch/00-import-hinweis.md`](docs/handbuch/00-import-hinweis.md)).
+
+---
+
 ## Featureübersicht
 
 | Modul | Status |

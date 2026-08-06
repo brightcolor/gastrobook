@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.106.1] – 2026-08-06
+
+### Anwenderhandbuch
+Neu unter `docs/handbuch/`: ein Handbuch für die Menschen, die täglich damit
+arbeiten – Inhaber, Leitung, Empfang, Service. 26 Seiten in einfachem Deutsch,
+ohne technische Voraussetzungen, gegliedert in acht Kapitel von den ersten
+Schritten bis zur Fehlersuche.
+
+Es erklärt nicht nur einzelne Knöpfe, sondern die **Zusammenhänge**: warum ohne
+Auschecken die Statistik leer bleibt, warum ein Event zusätzlich eine Sperrzeit
+braucht, in welcher Reihenfolge Öffnungszeiten, Regeln und Sperren
+ineinandergreifen.
+
+Für alles, was Geld kostet, stehen **Rechenbeispiele** darin: SMS-Erinnerungen
+(Preis je Nachricht, drei Betriebsgrößen), Anzahlungen (Gebühren je Zahlung, pro
+Monat, und was ein vermiedener No-Show wert ist) sowie die Tarife von Swayy
+selbst. Preise Dritter sind ausdrücklich als Beispielwerte mit Datum
+gekennzeichnet, damit niemand veraltete Zahlen für verbindlich hält.
+
+Aufbau und Dateinamen sind auf den Import in **BookStack** ausgelegt: ein Ordner
+= ein Kapitel, eine Datei = eine Seite, Reihenfolge über die Nummern.
+
 ## [1.106.0] – 2026-08-06
 
 ### Marketing-Automation: Gäste von selbst zurückholen
