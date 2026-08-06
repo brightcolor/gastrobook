@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.106.2] – 2026-08-06
+
+### Behoben: Der Abbild-Bau scheiterte am Hochladen, nicht am Bauen
+Beim Handbuch-Release lief der Bau des Docker-Abbilds durch, das **Hochladen zur
+Registry** brach dann mit `failed to fetch oauth token: denied` ab. Derselbe
+Stand ging beim zweiten Anlauf ohne jede Änderung durch – ein Aussetzer auf
+Seiten von ghcr.io, kein Fehler am Abbild.
+
+Damit so ein Aussetzer keinen Release mehr kostet, versucht der Bauschritt es
+jetzt **automatisch ein zweites Mal**. Dank Zwischenspeicher dauert das rund eine
+Minute; erst wenn auch der zweite Versuch scheitert, wird der Lauf rot.
+
+*(Kontrolle im Nachgang: Alle Abbilder von 1.96.0 bis 1.106.1 liegen vollständig
+in der Registry, `latest` zeigt auf 1.106.1.)*
+
 ## [1.106.1] – 2026-08-06
 
 ### Anwenderhandbuch

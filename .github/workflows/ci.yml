@@ -84,6 +84,23 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push image
+        id: build
+        continue-on-error: true
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ghcr.io denies the OAuth token mid-push every now and then ("failed to
+      # fetch oauth token: denied"). The build itself is fine, only the upload
+      # fails – and a run that is red for that reason costs a release. One
+      # retry; thanks to the cache it takes about a minute.
+      - name: Build and push image (Wiederholung)
+        if: steps.build.outcome == 'failure'
         uses: docker/build-push-action@v6
         with:
           context: .
