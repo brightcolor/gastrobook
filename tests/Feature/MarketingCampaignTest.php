@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Enums\ReservationStatus;
 use App\Mail\TemplatedMail;
 use App\Models\Guest;
 use App\Models\GuestConsent;
@@ -51,10 +52,13 @@ class MarketingCampaignTest extends TestCase
             'visit_count' => 3,
         ], $attributes));
 
+        // Abgeschlossener Besuch: nur wer wirklich da war, zaehlt als Gast
+        // dieses Standorts – eine blosse Buchung reicht nicht.
         Reservation::factory()->create([
             'tenant_id' => $setup['tenant']->id,
             'location_id' => $setup['location']->id,
             'guest_id' => $guest->id,
+            'status' => ReservationStatus::Completed,
         ]);
 
         return $guest;

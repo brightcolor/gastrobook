@@ -34,7 +34,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
-use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\CreatesTenants;
 use Tests\TestCase;
 
@@ -62,9 +61,11 @@ class ReviewFixesTest extends TestCase
         ]);
         $this->clearTenantContext();
 
-        Sanctum::actingAs($user, ['tenant:'.$mine['tenant']->id, 'webhooks:manage']);
+        $token = $user->createToken('test', ['tenant:'.$mine['tenant']->id, 'webhooks:manage'])->plainTextToken;
 
-        $this->deleteJson('/api/v1/webhooks/'.$foreign->id)->assertNotFound();
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->deleteJson('/api/v1/webhooks/'.$foreign->id)
+            ->assertNotFound();
         $this->assertSame(1, WebhookEndpoint::withoutGlobalScopes()->count());
     }
 
@@ -76,9 +77,11 @@ class ReviewFixesTest extends TestCase
         $foreign = Guest::factory()->create(['tenant_id' => $other['tenant']->id, 'last_name' => 'Fremd']);
         $this->clearTenantContext();
 
-        Sanctum::actingAs($user, ['tenant:'.$mine['tenant']->id, 'guests:read']);
+        $token = $user->createToken('test', ['tenant:'.$mine['tenant']->id, 'guests:read'])->plainTextToken;
 
-        $this->getJson('/api/v1/guests/'.$foreign->id)->assertNotFound();
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/v1/guests/'.$foreign->id)
+            ->assertNotFound();
     }
 
     public function test_api_refuses_unknown_webhook_events(): void
@@ -87,12 +90,13 @@ class ReviewFixesTest extends TestCase
         $user = $this->createMember($setup['tenant'], 'tenant_admin');
         $this->clearTenantContext();
 
-        Sanctum::actingAs($user, ['tenant:'.$setup['tenant']->id, 'webhooks:manage']);
+        $token = $user->createToken('test', ['tenant:'.$setup['tenant']->id, 'webhooks:manage'])->plainTextToken;
 
-        $this->postJson('/api/v1/webhooks', [
-            'url' => 'https://93.184.216.34/hook',
-            'events' => ['reservation.create'], // Tippfehler
-        ])->assertStatus(422);
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/v1/webhooks', [
+                'url' => 'https://93.184.216.34/hook',
+                'events' => ['reservation.create'], // Tippfehler
+            ])->assertStatus(422);
 
         $this->assertSame(0, WebhookEndpoint::withoutGlobalScopes()->count());
     }
