@@ -69,6 +69,9 @@
         @if($canSeeNotes)
         <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
             <h2 class="mb-3 font-bold">Notizen</h2>
+            {{-- Schreiben verlangt guests.update; ohne dieses Recht waere der
+                 Speichern-Knopf ein garantierter 403 (z. B. Rolle Service). --}}
+            @if(auth()->user()->canInTenant('guests.update', app(\App\Support\TenantContext::class)->tenant()))
             <form method="POST" action="{{ route('admin.guests.notes', $guest) }}" class="mb-3 space-y-2">
                 @csrf
                 <textarea name="body" rows="2" required placeholder="Neue Notiz…" class="w-full rounded-lg border-stone-200 text-sm"></textarea>
@@ -77,6 +80,7 @@
                 @endif
                 <button class="rounded-lg bg-stone-900 px-3 py-1.5 text-xs font-bold text-white">Speichern</button>
             </form>
+            @endif
             <div class="space-y-2 text-sm">
                 @foreach($notes as $note)
                     <div class="rounded-lg {{ $note->is_sensitive ? 'bg-red-50' : 'bg-stone-50' }} p-2.5">
@@ -93,7 +97,8 @@
         <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
             <h2 class="mb-3 font-bold">Datenschutz (DSGVO)</h2>
             <div class="space-y-2">
-                @if(auth()->user()->canInTenant('guests.export', app(\App\Support\TenantContext::class)->tenant()))
+                {{-- Der Auskunftsexport enthaelt die internen Notizen, deshalb beide Rechte. --}}
+                @if($canSeeNotes && auth()->user()->canInTenant('guests.export', app(\App\Support\TenantContext::class)->tenant()))
                     <a href="{{ route('admin.guests.export-single', $guest) }}" class="block rounded-xl bg-stone-100 px-4 py-2.5 text-center text-sm font-semibold hover:bg-stone-200">Datenexport (Art. 15/20)</a>
                 @endif
                 @if(auth()->user()->canInTenant('guests.anonymize', app(\App\Support\TenantContext::class)->tenant()) && ! $guest->anonymized)
@@ -131,8 +136,11 @@
                                     @if($candidate->is_vip) · ⭐ Stammgast @endif
                                 </div>
                             </div>
+                            {{-- Js::from statt {{ }}: Der Name landet hier in einem JavaScript-String
+                                 innerhalb eines HTML-Attributs. HTML-Escaping allein reicht dort nicht,
+                                 weil der Parser die Entities dekodiert, bevor der Handler kompiliert wird. --}}
                             <form method="POST" action="{{ route('admin.guests.merge', $guest) }}"
-                                  onsubmit="return confirm('„{{ $candidate->fullName() }}“ in dieses Profil zusammenführen? Das andere Profil wird dabei gelöscht.')">
+                                  onsubmit="return confirm({{ Js::from('„'.$candidate->fullName().'“ in dieses Profil zusammenführen? Das andere Profil wird dabei gelöscht.') }})">
                                 @csrf
                                 <input type="hidden" name="merge_guest_id" value="{{ $candidate->id }}">
                                 <button class="rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white hover:bg-stone-700">Hierher zusammenführen</button>

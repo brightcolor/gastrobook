@@ -78,7 +78,7 @@
                                     @csrf
                                     <button type="submit"
                                             class="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-teal-700"
-                                            onclick="return confirm('Konto {{ addslashes($req->tenant->name) }} aktivieren?')">
+                                            onclick="return confirm({{ Js::from('Konto '.$req->tenant->name.' aktivieren?') }})">
                                         Konto freischalten
                                     </button>
                                 </form>

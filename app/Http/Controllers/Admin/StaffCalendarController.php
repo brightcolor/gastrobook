@@ -80,14 +80,32 @@ class StaffCalendarController extends Controller
                 'top' => $this->offset($w['opens'], $from),
                 'height' => $this->length($w['opens'], $w['closes']),
             ], $windows[$member->id]),
-            'absences' => $absences->where('staff_member_id', $member->id)->map(fn ($a) => [
-                'top' => $this->offset(CarbonImmutable::parse($a->starts_at)->setTimezone($from->getTimezone()), $from),
-                'height' => $this->length(
-                    CarbonImmutable::parse($a->starts_at)->setTimezone($from->getTimezone()),
-                    CarbonImmutable::parse($a->ends_at)->setTimezone($from->getTimezone())
-                ),
-                'reason' => $a->reason,
-            ])->values()->all(),
+            // Auf den sichtbaren Ausschnitt zuschneiden: Ein Urlaub ueber zwei
+            // Wochen wuerde sonst einen 22.000 Pixel hohen Balken erzeugen, und
+            // eine Krankmeldung bis Dienstagmittag faerbte den ganzen Dienstag
+            // grau – die Ansicht behauptet dann eine Abwesenheit, die es so
+            // nicht gibt.
+            'absences' => $absences->where('staff_member_id', $member->id)
+                ->map(function ($a) use ($from, $to) {
+                    $tz = $from->getTimezone();
+                    $start = CarbonImmutable::parse($a->starts_at)->setTimezone($tz);
+                    $end = CarbonImmutable::parse($a->ends_at)->setTimezone($tz);
+                    $start = $start->lt($from) ? $from : $start;
+                    $end = $end->gt($to) ? $to : $end;
+
+                    if ($end->lte($start)) {
+                        return null;
+                    }
+
+                    return [
+                        'top' => $this->offset($start, $from),
+                        'height' => $this->length($start, $end),
+                        'reason' => $a->reason,
+                    ];
+                })
+                ->filter()
+                ->values()
+                ->all(),
             'appointments' => $this->appointmentsFor($reservations, $member->id, $from),
         ])->all();
 

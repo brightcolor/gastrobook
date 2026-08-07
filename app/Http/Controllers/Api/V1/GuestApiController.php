@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Guest;
+use App\Support\TenantContext;
 use Illuminate\Http\Request;
 
 class GuestApiController extends Controller
 {
+    public function __construct(private readonly TenantContext $context) {}
+
     public function index(Request $request)
     {
         abort_unless($request->user()->tokenCan('guests:read'), 403);
@@ -37,6 +40,12 @@ class GuestApiController extends Controller
     public function show(Request $request, Guest $guest)
     {
         abort_unless($request->user()->tokenCan('guests:read'), 403);
+
+        // Das Route-Model-Binding laeuft VOR ResolveApiTenant (SubstituteBindings
+        // kommt aus der api-Gruppe, unsere Middleware haengt an der Route). Zum
+        // Bindungszeitpunkt ist der Mandantenkontext leer, der globale Scope
+        // filtert also nichts – die Pruefung muss hier explizit stehen.
+        abort_if($guest->tenant_id !== $this->context->tenantId(), 404);
 
         return response()->json(['data' => [
             'id' => $guest->id,

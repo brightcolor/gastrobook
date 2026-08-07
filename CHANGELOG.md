@@ -1,5 +1,91 @@
 # Changelog
 
+## [1.107.0] – 2026-08-07
+
+### Code-Review: 19 Fehler gefunden und behoben
+Ein systematisches Review der zuletzt gelieferten Funktionen – jeder Fund
+anschließend von einer zweiten Prüfung auf Stichhaltigkeit abgeklopft. Fünf
+Verdachtsfälle haben sich dabei als unbegründet erwiesen und wurden nicht
+„repariert". Was übrig blieb:
+
+### Sicherheit
+- **API: fremde Webhooks löschbar.** `DELETE /api/v1/webhooks/{id}` prüfte nur
+  den Zugriffsschlüssel, nicht den Besitzer. Ursache: Die Zuordnung des Betriebs
+  passiert im Ablauf *nach* dem Laden des Datensatzes, der automatische
+  Mandantenfilter greift zu diesem Zeitpunkt also noch nicht. Ein Betrieb konnte
+  damit die Webhooks aller anderen löschen. Dieselbe Lücke bestand beim Abruf
+  eines Gastprofils über die API. Beide Stellen prüfen jetzt ausdrücklich.
+- **Gastname im Bestätigungsdialog.** Der Name im „Zusammenführen?"-Dialog lief
+  ungeschützt in JavaScript – ein Gast, der sich mit passend gebautem Namen
+  bucht, hätte darüber Code im Verwaltungsbereich ausführen können. Betraf auch
+  die Benutzerliste im Plattform-Admin. Beide Stellen liefern den Namen jetzt
+  als sicheres Literal.
+- **Anhänge über Standortgrenzen.** Ein nur für einen Standort freigeschalteter
+  Benutzer konnte Dateien von Reservierungen anderer Standorte herunterladen und
+  löschen. Die Reservierungsseite prüfte das korrekt, die Anhang-Routen nicht.
+- **Auskunftsexport umging die Notiz-Sichtbarkeit.** Der DSGVO-Export eines
+  Gastes enthält die internen Notizen; er verlangt jetzt zusätzlich das Recht,
+  Notizen zu sehen. **Achtung:** Die Rolle Marketing kann diesen Export damit
+  nicht mehr auslösen.
+
+### Umzug und Datensicherung
+- **Anzahlungsregeln zerlegten den Import.** Beim Einspielen behielten Regeln
+  die Raum-, Event- und Leistungs-IDs der *Quell*installation. Je nach Datenlage
+  brach dadurch der komplette Import ab oder die Regel hing still an einem
+  fremden Raum und verlangte nie wieder eine Anzahlung. Der Import ordnet jetzt
+  alle Verweise neu zu.
+- **Reihenfolge des Imports korrigiert.** Reservierungen wurden vor Events und
+  Anzahlungsregeln eingespielt – deren Verknüpfungen waren danach leer.
+  Eventbuchungen verloren Gast und Reservierung, Wartelisteneinträge ihre
+  Reservierung. Der Import folgt jetzt den tatsächlichen Abhängigkeiten.
+- **Tischsperren und Marketing-Kampagnen fehlten im Export.** Beim Umzug waren
+  sie ersatzlos weg. Jetzt wandern sie mit – inklusive Versandhistorie, sonst
+  bekäme jeder Gast seine Geburtstagsmail nach dem Umzug ein zweites Mal.
+
+### Gäste und Datenschutz
+- **Zusammenführen holte Abgemeldete zurück in den Verteiler.** Bisher gewann
+  beim Marketing-Häkchen immer das „ja". Ein gestern widerrufener Gast war nach
+  dem Zusammenführen mit einem zwei Jahre alten Profil wieder eingewilligt.
+  Jetzt gewinnt die **jüngere Entscheidung**.
+- **Zusammenführen löschte die Versandsperre** der Kampagnen und den Nachweis
+  früherer Zusammenführungen. Beides wandert jetzt mit.
+- **Anonymisieren ließ Klartext stehen:** Eventbuchungen und Wartelisteneinträge
+  führen eigene Namens- und Kontaktspalten. Nach der „unwiderruflichen" Löschung
+  stand der Gast weiterhin mit vollem Namen in der Teilnehmerliste. Wird jetzt
+  mitgelöscht; die Auskunft nennt beide Bereiche zusätzlich.
+- **Betrieb löschen ließ Dateien liegen.** Anhänge, Eventbilder, Raumpläne und
+  Logos blieben auf der Platte, ohne dass eine Datenbankzeile sie noch
+  auffindbar gemacht hätte. Werden jetzt vorher entfernt.
+
+### Buchungen und Zahlungen
+- **Falsche Anzahlungsregel in der Produktion.** Bei zwei zutreffenden Regeln
+  entschied die Sortierung – und die verhält sich in PostgreSQL genau umgekehrt
+  wie in der Testdatenbank. Wer eine allgemeine Regel *und* eine für große
+  Gruppen hatte, bekam auf dem Server die allgemeine: zu wenig Anzahlung, ohne
+  dass ein Test angeschlagen hätte. Die Sortierung ist jetzt eindeutig.
+- **Bearbeiten löste die Leistungsbindung.** Wurde eine Leistung deaktiviert,
+  verschwand beim nächsten Speichern der Regel die Bindung – aus „nur Balayage"
+  wurde stillschweigend „alle Termine".
+- **Umbuchung im Salon ignorierte Arbeitszeit, Urlaub und Pufferzeit.** Über den
+  Änderungslink ließ sich ein Termin mitten in den Urlaub der Stylistin
+  schieben. Die Umbuchung prüft jetzt dasselbe wie die Neuanlage.
+- **Marketing schrieb Gäste an, die nie da waren.** Eine stornierte oder erst
+  bevorstehende Buchung zählte als Besuch. Jetzt zählt nur, wer wirklich da war.
+
+### Kleineres
+- Antworten von Webhook-Zielen wurden byteweise abgeschnitten; mitten in einem
+  Umlaut führte das auf PostgreSQL dazu, dass eine **erfolgreiche** Zustellung
+  als Fehler galt, wiederholt wurde und den Endpunkt am Ende abschaltete.
+- Die API akzeptierte beliebige Ereignisnamen – ein Tippfehler ergab einen
+  Webhook, der gesund aussah und nie etwas zustellte.
+- Der Terminplan schnitt Abwesenheiten nicht auf den Tag zu: Eine Krankmeldung
+  bis Dienstagmittag färbte den ganzen Dienstag grau, ein zweiwöchiger Urlaub
+  erzeugte einen 22.000 Pixel hohen Balken.
+- Das Notizfeld am Gastprofil wurde auch Rollen gezeigt, die nicht speichern
+  dürfen – Klick auf Speichern endete garantiert im Fehler.
+- Zeitstempel von Notizen, Anhängen und Verlauf standen in UTC statt in der
+  Zeit des Standorts (über Mitternacht am falschen Tag).
+
 ## [1.106.2] – 2026-08-06
 
 ### Behoben: Der Abbild-Bau scheiterte am Hochladen, nicht am Bauen

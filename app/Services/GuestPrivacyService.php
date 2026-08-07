@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Models\EventBooking;
 use App\Models\Guest;
 use App\Models\GuestMergeLog;
 use App\Models\ReservationAttachment;
 use App\Models\Tenant;
+use App\Models\WaitlistEntry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -41,6 +43,24 @@ class GuestPrivacyService
                 'recorded_at' => $c->recorded_at?->toIso8601String(),
             ])->all(),
             'notes' => $guest->notes()->withoutGlobalScope('tenant')->where('is_sensitive', false)->pluck('body')->all(),
+            'event_bookings' => EventBooking::withoutGlobalScopes()
+                ->where('guest_id', $guest->id)
+                ->get()
+                ->map(fn ($b) => [
+                    'event_id' => $b->event_id,
+                    'ticket_count' => $b->ticket_count,
+                    'status' => $b->status,
+                    'created_at' => $b->created_at?->toIso8601String(),
+                ])->all(),
+            'waitlist_entries' => WaitlistEntry::withoutGlobalScopes()
+                ->where('guest_id', $guest->id)
+                ->get()
+                ->map(fn ($w) => [
+                    'desired_date' => $w->desired_date,
+                    'party_size' => $w->party_size,
+                    'status' => $w->status,
+                    'created_at' => $w->created_at?->toIso8601String(),
+                ])->all(),
             // File names only – the files themselves are handed over on request.
             'attachments' => ReservationAttachment::withoutGlobalScopes()
                 ->whereIn('reservation_id', $guest->reservations()->withoutGlobalScope('tenant')->select('reservations.id'))
@@ -70,6 +90,34 @@ class GuestPrivacyService
             ]);
 
             $guest->notes()->withoutGlobalScope('tenant')->delete();
+
+            // Eventbuchungen und Wartelisteneintraege fuehren eigene Klartext-
+            // spalten. Ohne diesen Schritt steht der Gast nach der "Loeschung"
+            // weiterhin mit vollem Namen in der Teilnehmerliste und im CSV-Export.
+            $anonymousContact = [
+                'guest_name' => $placeholder,
+                'guest_email' => null,
+                'guest_phone' => null,
+            ];
+            EventBooking::withoutGlobalScopes()->where('guest_id', $guest->id)->update($anonymousContact);
+            WaitlistEntry::withoutGlobalScopes()->where('guest_id', $guest->id)->update($anonymousContact);
+            // Wartelisteneintraege tragen nicht immer eine guest_id (sie wird nur
+            // beim Zusammenfuehren und beim Import gesetzt) – deshalb zusaetzlich
+            // ueber die Kontaktdaten, solange diese noch bekannt sind.
+            if ($guest->email !== null || $guest->phone !== null) {
+                WaitlistEntry::withoutGlobalScopes()
+                    ->where('tenant_id', $guest->tenant_id)
+                    ->whereNull('guest_id')
+                    ->where(function ($q) use ($guest) {
+                        if ($guest->email !== null) {
+                            $q->orWhereRaw('LOWER(guest_email) = ?', [mb_strtolower($guest->email)]);
+                        }
+                        if ($guest->phone !== null) {
+                            $q->orWhere('guest_phone', $guest->phone);
+                        }
+                    })
+                    ->update($anonymousContact);
+            }
 
             // Snapshots of profiles merged into this one still hold the plain
             // personal data of the duplicate. Erasure has to reach them too,

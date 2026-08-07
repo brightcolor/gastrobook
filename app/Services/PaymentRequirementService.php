@@ -51,7 +51,13 @@ class PaymentRequirementService
             // A rule written for one service is the more specific statement and
             // wins over a blanket rule for the whole location.
             ->orderByRaw('CASE WHEN service_id IS NULL THEN 1 ELSE 0 END')
+            // NULL-Sortierung ist datenbankabhaengig: PostgreSQL stellt NULL bei
+            // DESC nach vorne, SQLite nach hinten. Ohne diese Zeile gewinnt in
+            // Produktion die Pauschalregel gegen jede Schwellenregel – und kein
+            // Test schlaegt an, weil SQLite es andersherum macht.
+            ->orderByRaw('CASE WHEN min_party_size IS NULL THEN 1 ELSE 0 END')
             ->orderByDesc('min_party_size')
+            ->orderBy('id')
             ->get()
             ->first(function (DepositRule $rule) use ($weekday) {
                 $days = $rule->weekdays;

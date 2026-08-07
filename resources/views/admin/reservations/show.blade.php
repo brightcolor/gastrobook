@@ -123,7 +123,7 @@
             <div class="space-y-2 text-sm">
                 @foreach($reservation->statusHistories->sortByDesc('created_at') as $h)
                     <div class="flex items-center gap-3 border-l-2 border-stone-200 pl-3">
-                        <span class="text-stone-400">{{ $h->created_at->format('d.m. H:i') }}</span>
+                        <span class="text-stone-400">{{ $h->created_at->copy()->setTimezone($location?->timezone ?? config('app.timezone'))->format('d.m. H:i') }}</span>
                         <span>{{ $h->from_status ? __('reservations.status.' . $h->from_status) . ' → ' : '' }}<strong>{{ __('reservations.status.' . $h->to_status) }}</strong></span>
                         <span class="text-stone-500">{{ $h->user?->name ?? ($h->actor === 'guest' ? 'Gast' : 'System') }}</span>
                         @if($h->reason)<span class="text-stone-400">({{ $h->reason }})</span>@endif
@@ -202,7 +202,7 @@
                             <a href="{{ route('admin.reservations.attachments.download', [$reservation, $attachment]) }}"
                                class="block truncate font-semibold text-teal-700 hover:underline">{{ $attachment->original_name }}</a>
                             <div class="text-xs text-stone-400">
-                                {{ $attachment->humanSize() }} · {{ $attachment->created_at->format('d.m.Y') }}
+                                {{ $attachment->humanSize() }} · {{ $attachment->created_at->copy()->setTimezone($location?->timezone ?? config('app.timezone'))->format('d.m.Y') }}
                                 @if($attachment->uploader) · {{ $attachment->uploader->name }} @endif
                             </div>
                         </div>
@@ -245,7 +245,7 @@
                 @forelse($reservation->notes->sortByDesc('created_at') as $note)
                     <div class="rounded-lg bg-stone-50 p-2.5">
                         {{ $note->body }}
-                        <div class="mt-1 text-xs text-stone-400">{{ $note->user?->name }} · {{ $note->created_at->format('d.m. H:i') }}</div>
+                        <div class="mt-1 text-xs text-stone-400">{{ $note->user?->name }} · {{ $note->created_at->copy()->setTimezone($location?->timezone ?? config('app.timezone'))->format('d.m. H:i') }}</div>
                     </div>
                 @empty
                     <p class="text-xs text-stone-400">Noch keine Notizen.</p>

@@ -9,6 +9,7 @@ use App\Models\NotificationLog;
 use App\Models\Reservation;
 use App\Models\ReservationStatusHistory;
 use App\Models\RestaurantTable;
+use App\Models\StaffMember;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -20,6 +21,7 @@ class ReservationLifecycleService
 {
     public function __construct(
         private readonly ReservationAvailabilityService $availability,
+        private readonly SalonAvailabilityService $salonAvailability,
         private readonly TableAssignmentService $tableAssignment,
         private readonly GuestProfileService $guests,
         private readonly PaymentRequirementService $payments,
@@ -415,7 +417,7 @@ class ReservationLifecycleService
         $startUtc = $newStartLocal->utc();
         $endUtc = $startUtc->addMinutes($duration);
 
-        return DB::transaction(function () use ($reservation, $location, $newStartLocal, $startUtc, $endUtc, $partySize, $actor, $actorType) {
+        return DB::transaction(function () use ($reservation, $location, $newStartLocal, $startUtc, $endUtc, $duration, $partySize, $actor, $actorType) {
             $tableIds = null;
 
             // Moving a booking has to respect opening hours, special hours and
@@ -430,15 +432,19 @@ class ReservationLifecycleService
             }
 
             if ($reservation->staff_member_id) {
-                // Salon: the assigned staff member must be free at the new slot
-                $conflict = Reservation::withoutGlobalScope('tenant')
-                    ->where('staff_member_id', $reservation->staff_member_id)
-                    ->where('id', '!=', $reservation->id)
-                    ->whereIn('status', ReservationStatus::activeStatuses())
-                    ->where('start_at', '<', $endUtc)
-                    ->where('end_at', '>', $startUtc)
-                    ->exists();
-                if ($conflict) {
+                // Salon: dieselbe Pruefung wie bei der Neuanlage – Arbeitszeiten,
+                // Abwesenheiten und Pufferzeit, nicht nur "hat gerade nichts
+                // anderes". Sonst schiebt ein Gast seinen Termin per Aenderungs-
+                // link in den Urlaub der Stylistin.
+                $staff = StaffMember::withoutGlobalScope('tenant')->find($reservation->staff_member_id);
+                $available = $staff !== null && $this->salonAvailability->canStaffTake(
+                    $staff,
+                    (int) $duration,
+                    $startUtc,
+                    $location,
+                    $reservation->id,
+                );
+                if (! $available) {
                     throw ValidationException::withMessages(['time' => __('Dieser Zeitpunkt ist leider gerade vergeben – bitte wählen Sie eine andere Zeit.')]);
                 }
             } else {

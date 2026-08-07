@@ -84,10 +84,18 @@ class ReservationAttachmentController extends Controller
     }
 
     /**
-     * Defense in depth alongside the tenant global scope.
+     * Wie im ReservationBookController: Mandant UND Standort pruefen. Ein
+     * Benutzer, der nur fuer einen Standort freigeschaltet ist, kommt sonst
+     * ueber die Anhang-Route an Dateien des anderen Standorts – die
+     * permission-Middleware prueft nur den AKTIVEN Standort, nicht den der
+     * Reservierung.
      */
     private function authorizeReservation(Reservation $reservation): void
     {
         abort_if($reservation->tenant_id !== $this->context->tenantId(), 404);
+
+        $location = $this->context->location();
+        abort_if($location !== null && $reservation->location_id !== $location->id
+            && ! request()->user()->canAccessLocation($this->context->tenant(), $reservation->location), 403);
     }
 }

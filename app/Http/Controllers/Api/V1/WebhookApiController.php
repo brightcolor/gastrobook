@@ -2,16 +2,22 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Controllers\Admin\WebhookController as AdminWebhookController;
 use App\Http\Controllers\Controller;
 use App\Models\WebhookEndpoint;
 use App\Services\AuditLogger;
 use App\Support\OutboundUrlGuard;
+use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class WebhookApiController extends Controller
 {
-    public function __construct(private readonly AuditLogger $audit) {}
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly TenantContext $context,
+    ) {}
 
     public function index(Request $request)
     {
@@ -38,7 +44,10 @@ class WebhookApiController extends Controller
                 },
             ],
             'events' => ['required', 'array', 'min:1'],
-            'events.*' => ['string', 'max:64'],
+            // Dieselbe Liste wie im Admin und in der OpenAPI-Beschreibung. Ohne
+            // sie legt ein Tippfehler ("reservation.create") einen Endpunkt an,
+            // der gesund aussieht und nie irgendetwas zustellt.
+            'events.*' => ['string', Rule::in(array_merge(['*'], AdminWebhookController::EVENTS))],
         ]);
 
         $secret = Str::random(40);
@@ -61,6 +70,10 @@ class WebhookApiController extends Controller
     public function destroy(Request $request, WebhookEndpoint $endpoint)
     {
         abort_unless($request->user()->tokenCan('webhooks:manage'), 403);
+
+        // Siehe GuestApiController::show – das Binding passiert vor
+        // ResolveApiTenant, der globale Scope greift hier also nicht.
+        abort_if($endpoint->tenant_id !== $this->context->tenantId(), 404);
 
         $this->audit->log('webhook.deleted', $endpoint, ['url' => $endpoint->url]);
         $endpoint->delete();

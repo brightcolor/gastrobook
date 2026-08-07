@@ -67,7 +67,7 @@ class DeliverWebhook implements ShouldQueue
                 'attempt' => $this->attempts(),
                 'status' => $response->successful() ? 'success' : 'failed',
                 'response_code' => $response->status(),
-                'response_body' => substr($response->body(), 0, 2000),
+                'response_body' => self::safeText($response->body()),
                 'delivered_at' => $response->successful() ? now() : null,
             ]);
 
@@ -83,7 +83,7 @@ class DeliverWebhook implements ShouldQueue
             $delivery->update([
                 'attempt' => $this->attempts(),
                 'status' => 'failed',
-                'response_body' => substr($e->getMessage(), 0, 2000),
+                'response_body' => self::safeText($e->getMessage()),
             ]);
             $this->registerFailure($endpoint);
 
@@ -92,6 +92,21 @@ class DeliverWebhook implements ShouldQueue
             }
             $this->release($this->backoff[min($this->attempts() - 1, count($this->backoff) - 1)]);
         }
+    }
+
+    /**
+     * Fremdtext fuer die Datenbank zurechtschneiden. substr() schneidet nach
+     * BYTES: faellt der Schnitt mitten in ein Mehrbyte-Zeichen, lehnt PostgreSQL
+     * den ganzen Datensatz ab ("invalid byte sequence"). Der Job faellt dann
+     * ausgerechnet im Erfolgsfall um, stellt erneut zu und schaltet am Ende einen
+     * gesunden Endpunkt ab. SQLite in den Tests schluckt es klaglos - deshalb
+     * faellt es dort nie auf.
+     */
+    private static function safeText(string $text): string
+    {
+        $clean = mb_convert_encoding($text, 'UTF-8', 'UTF-8');
+
+        return mb_substr($clean, 0, 2000, 'UTF-8');
     }
 
     private function registerFailure($endpoint): void

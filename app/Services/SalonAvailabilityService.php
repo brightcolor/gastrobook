@@ -254,7 +254,18 @@ class SalonAvailabilityService
         return false;
     }
 
-    private function staffAvailableAt(StaffMember $staff, int $duration, CarbonImmutable $startUtc, Location $location): bool
+    /**
+     * Kann dieser Mitarbeiter den Termin uebernehmen – Arbeitszeit, Abwesenheit
+     * und Puffer eingeschlossen? Fuer Umbuchungen: die eigene Reservierung wird
+     * ueber $excludeReservationId ausgeklammert, sonst kollidiert der Termin
+     * mit sich selbst.
+     */
+    public function canStaffTake(StaffMember $staff, int $duration, CarbonImmutable $startUtc, Location $location, ?int $excludeReservationId = null): bool
+    {
+        return $this->staffAvailableAt($staff, $duration, $startUtc, $location, $excludeReservationId);
+    }
+
+    private function staffAvailableAt(StaffMember $staff, int $duration, CarbonImmutable $startUtc, Location $location, ?int $excludeReservationId = null): bool
     {
         $buffer = (int) $location->effectiveSettings()->buffer_minutes;
         $endUtc = $startUtc->addMinutes($duration);
@@ -270,7 +281,7 @@ class SalonAvailabilityService
             return false;
         }
 
-        return ! $this->hasConflict($staff, $startUtc, $endUtc, $buffer);
+        return ! $this->hasConflict($staff, $startUtc, $endUtc, $buffer, $excludeReservationId);
     }
 
     /**
@@ -399,7 +410,7 @@ class SalonAvailabilityService
         return false;
     }
 
-    private function hasConflict(StaffMember $staff, CarbonImmutable $startUtc, CarbonImmutable $endUtc, int $buffer): bool
+    private function hasConflict(StaffMember $staff, CarbonImmutable $startUtc, CarbonImmutable $endUtc, int $buffer, ?int $excludeReservationId = null): bool
     {
         $from = $startUtc->subMinutes($buffer);
         $to = $endUtc->addMinutes($buffer);
@@ -407,6 +418,7 @@ class SalonAvailabilityService
         return $staff->reservations()
             ->withoutGlobalScope('tenant')
             ->whereIn('status', ReservationStatus::activeStatuses())
+            ->when($excludeReservationId, fn ($q, $id) => $q->where('reservations.id', '!=', $id))
             ->where('start_at', '<', $to)
             ->where('end_at', '>', $from)
             ->exists();

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\ReservationStatus;
 use App\Mail\TemplatedMail;
 use App\Models\Guest;
 use App\Models\Location;
@@ -51,8 +52,16 @@ class MarketingCampaignService
             ->where('marketing_consent', true)
             ->whereNotNull('email')
             ->where('visit_count', '>=', max(0, (int) $campaign->min_visits))
-            // Only guests who have actually been to this location.
-            ->whereHas('reservations', fn ($q) => $q->where('location_id', $location->id));
+            // Nur Gaeste, die hier wirklich WAREN. Ohne den Statusfilter zaehlt
+            // auch eine stornierte oder noch bevorstehende Buchung als Besuch –
+            // dann bekommt jemand "schoen war's bei uns" von einem Betrieb, in
+            // dem er nie gegessen hat.
+            ->whereHas('reservations', fn ($q) => $q->where('location_id', $location->id)
+                ->whereIn('status', [
+                    ReservationStatus::Completed->value,
+                    ReservationStatus::Seated->value,
+                    ReservationStatus::PartiallyArrived->value,
+                ]));
 
         // Visit timestamps are stored in UTC, the campaign thinks in local
         // days: comparing the two as dates would be off by hours at the edges,

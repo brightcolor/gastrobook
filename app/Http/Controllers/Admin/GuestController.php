@@ -192,9 +192,14 @@ class GuestController extends Controller
         }, 'gaeste.csv', ['Content-Type' => 'text/csv; charset=utf-8']);
     }
 
-    public function exportSingle(Guest $guest)
+    public function exportSingle(Request $request, Guest $guest)
     {
         $this->authorizeGuest($guest);
+        // Der Auskunftsexport enthaelt dieselben internen Notizen, die die
+        // Profilseite hinter guest_notes.view versteckt. Ohne dieses Recht
+        // waere die Sichtbarkeitsregel ueber die Export-Route umgehbar.
+        abort_unless($request->user()->canInTenant('guest_notes.view', $this->context->tenant()), 403);
+
         $this->audit->log('guest.data_export', $guest);
 
         return response()->json($this->privacy->export($guest), 200, [

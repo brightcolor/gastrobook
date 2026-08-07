@@ -79,7 +79,7 @@
                     <td class="px-4 py-3 text-stone-500">{{ $u->tenant_memberships_count }}</td>
                     <td class="px-4 py-3 text-right">
                         @if($canManage && $u->id !== auth()->id())
-                            <form method="POST" action="{{ route('saas.users.destroy', $u) }}" onsubmit="return confirm('Benutzer „{{ $u->name }}“ endgültig löschen?')">
+                            <form method="POST" action="{{ route('saas.users.destroy', $u) }}" onsubmit="return confirm({{ Js::from('Benutzer „'.$u->name.'“ endgültig löschen?') }})">
                                 @csrf @method('DELETE')
                                 <button class="text-xs font-semibold text-red-500 hover:text-red-700">Löschen</button>
                             </form>

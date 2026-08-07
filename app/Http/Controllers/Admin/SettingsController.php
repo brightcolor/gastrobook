@@ -79,8 +79,16 @@ class SettingsController extends Controller
             'sms' => $sms,
             'smsCredentials' => $smsCredentials,
             'depositRules' => DepositRule::where('location_id', $location->id)->with('service')->orderBy('name')->get(),
+            // Aktive Leistungen PLUS die, an denen eine Regel bereits haengt:
+            // Fehlt eine inaktive Leistung in der Auswahl, stuende das Feld beim
+            // Bearbeiten auf "Alle Leistungen" und die Bindung waere beim naechsten
+            // Speichern still verschwunden.
             'salonServices' => $this->context->tenant()->isSalon()
-                ? Service::where('location_id', $location->id)->where('is_active', true)->orderBy('name')->get()
+                ? Service::where('location_id', $location->id)
+                    ->where(fn ($q) => $q->where('is_active', true)
+                        ->orWhereIn('id', DepositRule::where('location_id', $location->id)->whereNotNull('service_id')->select('service_id')))
+                    ->orderBy('name')
+                    ->get()
                 : collect(),
             'settings' => $location->effectiveSettings(),
             'rooms' => $location->rooms()->withCount('tables')->orderBy('sort_order')->get(),
@@ -527,7 +535,12 @@ class SettingsController extends Controller
 
         $rule->update([
             'name' => $validated['name'],
-            'service_id' => $this->serviceIdForRule($location, $validated['service_id'] ?? null),
+            // Nur ueberschreiben, wenn das Feld ueberhaupt mitgeschickt wurde –
+            // im Restaurantbetrieb (oder ohne Leistungen) gibt es das Auswahlfeld
+            // nicht, und die bestehende Bindung darf davon nicht verschwinden.
+            'service_id' => $request->has('service_id')
+                ? $this->serviceIdForRule($location, $validated['service_id'] ?? null)
+                : $rule->service_id,
             'min_party_size' => $validated['min_party_size'] ?? null,
             'from_time' => $validated['from_time'] ?? null,
             'until_time' => $validated['until_time'] ?? null,

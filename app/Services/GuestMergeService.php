@@ -8,6 +8,7 @@ use App\Models\GuestAuthToken;
 use App\Models\GuestConsent;
 use App\Models\GuestMergeLog;
 use App\Models\GuestNote;
+use App\Models\MarketingSend;
 use App\Models\Reservation;
 use App\Models\User;
 use App\Models\WaitlistEntry;
@@ -114,6 +115,15 @@ class GuestMergeService
                 'waitlist_entries' => WaitlistEntry::withoutGlobalScopes()->where('guest_id', $duplicate->id)->update(['guest_id' => $keep->id]),
                 'event_bookings' => EventBooking::withoutGlobalScopes()->where('guest_id', $duplicate->id)->update(['guest_id' => $keep->id]),
                 'auth_tokens' => GuestAuthToken::withoutGlobalScopes()->where('guest_id', $duplicate->id)->update(['guest_id' => $keep->id]),
+                // Die Versandsperre der Kampagnen haengt am Gast und wuerde beim
+                // Loeschen mitgehen – dieselbe Person bekaeme dieselbe Mail ein
+                // zweites Mal. Zeilen, die es beim behaltenen Profil fuer denselben
+                // Anlass schon gibt, wuerden den Unique-Index verletzen: die
+                // erfuellen ihren Zweck bereits und werden verworfen.
+                'marketing_sends' => $this->moveMarketingSends($keep, $duplicate),
+                // Snapshots frueherer Merges dieses Profils – sonst loescht die
+                // Kaskade die einzige verbliebene Kopie des damaligen Duplikats.
+                'merge_logs' => GuestMergeLog::withoutGlobalScopes()->where('kept_guest_id', $duplicate->id)->update(['kept_guest_id' => $keep->id]),
             ];
 
             $keep->tags()->syncWithoutDetaching($duplicate->tags()->pluck('tags.id')->all());
@@ -141,6 +151,33 @@ class GuestMergeService
 
             return $keep->refresh();
         });
+    }
+
+    /**
+     * Versandhistorie umhaengen, ohne den Unique-Index (Kampagne, Gast, Anlass)
+     * zu verletzen: Was es beim behaltenen Profil fuer denselben Anlass schon
+     * gibt, wird verworfen statt umgehaengt.
+     */
+    private function moveMarketingSends(Guest $keep, Guest $duplicate): int
+    {
+        $existing = MarketingSend::withoutGlobalScopes()
+            ->where('guest_id', $keep->id)
+            ->get(['marketing_campaign_id', 'reference'])
+            ->map(fn ($s) => $s->marketing_campaign_id.'|'.$s->reference)
+            ->all();
+
+        $moved = 0;
+        foreach (MarketingSend::withoutGlobalScopes()->where('guest_id', $duplicate->id)->get() as $send) {
+            if (in_array($send->marketing_campaign_id.'|'.$send->reference, $existing, true)) {
+                $send->delete();
+
+                continue;
+            }
+            $send->update(['guest_id' => $keep->id]);
+            $moved++;
+        }
+
+        return $moved;
     }
 
     /**
@@ -181,11 +218,21 @@ class GuestMergeService
             $attributes['last_visit_at'] = collect($lastVisits)->max();
         }
 
-        // A consent given on either profile is a consent by the same person –
-        // the matching entry in the consent history moves along with it.
-        if (! $keep->marketing_consent && $duplicate->marketing_consent) {
-            $attributes['marketing_consent'] = true;
-            $attributes['marketing_consent_at'] = $duplicate->marketing_consent_at;
+        // Einwilligung: Es gewinnt die JUENGSTE Entscheidung, nicht das "ja".
+        // Sonst wuerde ein Widerruf vom Vortag von einer zwei Jahre alten
+        // Einwilligung des Duplikats ueberschrieben – der Gast waere gegen
+        // seinen dokumentierten Willen wieder im Verteiler (Art. 7 Abs. 3).
+        $keepAt = $keep->marketing_consent_at;
+        $dupAt = $duplicate->marketing_consent_at;
+        if ((bool) $keep->marketing_consent !== (bool) $duplicate->marketing_consent) {
+            $duplicateIsNewer = $keepAt === null
+                ? $dupAt !== null
+                : ($dupAt !== null && $dupAt->greaterThan($keepAt));
+
+            if ($duplicateIsNewer) {
+                $attributes['marketing_consent'] = (bool) $duplicate->marketing_consent;
+                $attributes['marketing_consent_at'] = $dupAt;
+            }
         }
 
         if ($keep->email_verified_at === null && $duplicate->email_verified_at !== null

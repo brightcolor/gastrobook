@@ -15,6 +15,8 @@ use App\Models\Guest;
 use App\Models\GuestConsent;
 use App\Models\GuestNote;
 use App\Models\Location;
+use App\Models\MarketingCampaign;
+use App\Models\MarketingSend;
 use App\Models\NotificationTemplate;
 use App\Models\OpeningHour;
 use App\Models\PaymentIntent;
@@ -29,6 +31,7 @@ use App\Models\SpecialOpeningHour;
 use App\Models\StaffAbsence;
 use App\Models\StaffMember;
 use App\Models\StaffWorkingHour;
+use App\Models\TableBlock;
 use App\Models\TableCombination;
 use App\Models\Tag;
 use App\Models\Tenant;
@@ -104,25 +107,55 @@ class AccountImportService
             $done['special_opening_hours'] = $this->simple($tenant, $data, 'special_opening_hours', SpecialOpeningHour::class, ['location_id' => 'locations']);
             $done['blackout_periods'] = $this->simple($tenant, $data, 'blackout_periods', BlackoutPeriod::class, ['location_id' => 'locations', 'room_id' => 'rooms']);
             $done['tags'] = $this->simple($tenant, $data, 'tags', Tag::class, [], ['name', 'scope']);
-            $done['deposit_rules'] = $this->simple($tenant, $data, 'deposit_rules', DepositRule::class, ['location_id' => 'locations']);
+            $done['table_blocks'] = $this->simple($tenant, $data, 'table_blocks', TableBlock::class, ['location_id' => 'locations', 'restaurant_table_id' => 'tables']);
             $done['notification_templates'] = $this->simple($tenant, $data, 'notification_templates', NotificationTemplate::class, ['location_id' => 'locations'], ['location_id', 'key', 'locale']);
             $done['services'] = $this->simple($tenant, $data, 'services', Service::class, ['location_id' => 'locations']);
             $done['staff_members'] = $this->simple($tenant, $data, 'staff_members', StaffMember::class, ['location_id' => 'locations']);
             $done['staff_working_hours'] = $this->simple($tenant, $data, 'staff_working_hours', StaffWorkingHour::class, ['staff_member_id' => 'staff_members']);
             $done['staff_absences'] = $this->simple($tenant, $data, 'staff_absences', StaffAbsence::class, ['staff_member_id' => 'staff_members']);
+
+            // Reihenfolge = Abhaengigkeiten. Alles, worauf spaeter gezeigt wird,
+            // muss vorher importiert sein – sonst steht in der Fremdschluessel-
+            // spalte die ID der QUELLinstallation: entweder eine Verletzung, die
+            // die ganze Transaktion abbricht, oder eine stille Falschverknuepfung.
+            $done['events'] = $this->simple($tenant, $data, 'events', Event::class, ['location_id' => 'locations']);
+            $done['deposit_rules'] = $this->simple($tenant, $data, 'deposit_rules', DepositRule::class, [
+                'location_id' => 'locations',
+                'room_id' => 'rooms',
+                'event_id' => 'events',
+                'service_id' => 'services',
+            ]);
+
             $done['guests'] = $this->simple($tenant, $data, 'guests', Guest::class);
             $done['guest_notes'] = $this->simple($tenant, $data, 'guest_notes', GuestNote::class, ['guest_id' => 'guests']);
             $done['guest_consents'] = $this->simple($tenant, $data, 'guest_consents', GuestConsent::class, ['guest_id' => 'guests']);
+
             $done['reservations'] = $this->reservations($tenant, $data);
             $done['reservation_notes'] = $this->simple($tenant, $data, 'reservation_notes', ReservationNote::class, ['reservation_id' => 'reservations']);
             $done['reservation_status_history'] = $this->simple($tenant, $data, 'reservation_status_history', ReservationStatusHistory::class, ['reservation_id' => 'reservations']);
-            $done['events'] = $this->simple($tenant, $data, 'events', Event::class, ['location_id' => 'locations']);
-            $done['event_bookings'] = $this->simple($tenant, $data, 'event_bookings', EventBooking::class, ['event_id' => 'events']);
-            $done['waitlist_entries'] = $this->simple($tenant, $data, 'waitlist_entries', WaitlistEntry::class, ['location_id' => 'locations', 'guest_id' => 'guests']);
+
+            $done['event_bookings'] = $this->simple($tenant, $data, 'event_bookings', EventBooking::class, [
+                'event_id' => 'events',
+                'reservation_id' => 'reservations',
+                'guest_id' => 'guests',
+            ]);
+            $done['waitlist_entries'] = $this->simple($tenant, $data, 'waitlist_entries', WaitlistEntry::class, [
+                'location_id' => 'locations',
+                'guest_id' => 'guests',
+                'reservation_id' => 'reservations',
+            ]);
             $done['payments'] = $this->simple($tenant, $data, 'payments', PaymentIntent::class, ['reservation_id' => 'reservations', 'event_booking_id' => 'event_bookings']);
             $done['refunds'] = $this->refunds($tenant, $data);
             $done['feedback_requests'] = $this->simple($tenant, $data, 'feedback_requests', FeedbackRequest::class, ['location_id' => 'locations', 'reservation_id' => 'reservations']);
             $done['feedback_responses'] = $this->simple($tenant, $data, 'feedback_responses', FeedbackResponse::class, ['location_id' => 'locations', 'feedback_request_id' => 'feedback_requests']);
+
+            $done['marketing_campaigns'] = $this->simple($tenant, $data, 'marketing_campaigns', MarketingCampaign::class, ['location_id' => 'locations']);
+            // Die Versandhistorie wandert mit, sonst bekommt jeder Gast nach dem
+            // Umzug seinen Geburtstagsgruss oder die Win-back-Mail ein zweites Mal.
+            $done['marketing_sends'] = $this->simple($tenant, $data, 'marketing_sends', MarketingSend::class, [
+                'marketing_campaign_id' => 'marketing_campaigns',
+                'guest_id' => 'guests',
+            ]);
 
             return array_filter($done);
         });
@@ -134,12 +167,13 @@ class AccountImportService
         return [
             'locations', 'rooms', 'tables', 'table_combinations', 'floor_zones',
             'opening_hours', 'special_opening_hours', 'blackout_periods',
-            'tags', 'deposit_rules', 'notification_templates',
+            'tags', 'table_blocks', 'deposit_rules', 'notification_templates',
             'services', 'staff_members', 'staff_working_hours', 'staff_absences',
             'guests', 'guest_notes', 'guest_consents',
             'reservations', 'reservation_notes', 'reservation_status_history',
             'events', 'event_bookings', 'waitlist_entries',
             'payments', 'refunds', 'feedback_requests', 'feedback_responses',
+            'marketing_campaigns', 'marketing_sends',
         ];
     }
 

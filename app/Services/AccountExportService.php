@@ -16,6 +16,8 @@ use App\Models\GuestConsent;
 use App\Models\GuestNote;
 use App\Models\Location;
 use App\Models\LocationSettings;
+use App\Models\MarketingCampaign;
+use App\Models\MarketingSend;
 use App\Models\NotificationTemplate;
 use App\Models\OpeningHour;
 use App\Models\PaymentIntent;
@@ -30,6 +32,7 @@ use App\Models\SpecialOpeningHour;
 use App\Models\StaffAbsence;
 use App\Models\StaffMember;
 use App\Models\StaffWorkingHour;
+use App\Models\TableBlock;
 use App\Models\TableCombination;
 use App\Models\Tag;
 use App\Models\Tenant;
@@ -111,7 +114,12 @@ class AccountExportService
             'staff_absences' => $this->rows(StaffAbsence::withoutGlobalScopes()->where('tenant_id', $tenant->id)),
 
             'tags' => $this->rows(Tag::withoutGlobalScopes()->where('tenant_id', $tenant->id)),
+            'table_blocks' => $this->rows(TableBlock::withoutGlobalScopes()->where('tenant_id', $tenant->id)),
             'deposit_rules' => $this->rows(DepositRule::withoutGlobalScopes()->where('tenant_id', $tenant->id)),
+            'marketing_campaigns' => $this->rows(MarketingCampaign::withoutGlobalScopes()->where('tenant_id', $tenant->id)),
+            // Ohne die Versandhistorie faengt jede Kampagne nach dem Umzug von
+            // vorn an – der Gast bekommt dieselbe Mail ein zweites Mal.
+            'marketing_sends' => $this->rows(MarketingSend::withoutGlobalScopes()->where('tenant_id', $tenant->id)),
             'notification_templates' => $this->rows(NotificationTemplate::withoutGlobalScopes()->where('tenant_id', $tenant->id)),
 
             'feedback_requests' => $this->rows(FeedbackRequest::withoutGlobalScopes()->where('tenant_id', $tenant->id)),
