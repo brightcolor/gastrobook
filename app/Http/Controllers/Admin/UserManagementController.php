@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Invitation;
+use App\Models\Tenant;
 use App\Models\TenantUser;
 use App\Models\User;
 use App\Services\AuditLogger;
@@ -28,7 +29,7 @@ class UserManagementController extends Controller
             'tenant' => $tenant,
             'memberships' => $tenant->memberships()->with('user')->get(),
             'invitations' => Invitation::whereNull('accepted_at')->where('expires_at', '>', now())->get(),
-            'roles' => array_keys(config('permissions.roles')),
+            'roles' => $this->assignableRoles(request(), $tenant),
             'locations' => $tenant->locations()->get(),
         ]);
     }
@@ -43,7 +44,7 @@ class UserManagementController extends Controller
 
         $validated = $request->validate([
             'email' => ['required', 'email:rfc'],
-            'role' => ['required', 'in:'.implode(',', array_keys(config('permissions.roles')))],
+            'role' => ['required', 'in:'.implode(',', $this->assignableRoles($request, $tenant))],
             'all_locations' => ['nullable', 'boolean'],
             'location_ids' => ['nullable', 'array'],
             'location_ids.*' => ['integer'],
@@ -90,13 +91,35 @@ class UserManagementController extends Controller
         ]));
     }
 
+    /**
+     * Welche Rollen darf dieser Benutzer vergeben?
+     *
+     * Die Inhaberrolle schliesst Abrechnung und "Betrieb loeschen" ein. Ohne
+     * diese Grenze koennte jemand mit users.invite (z. B. die Betriebsleitung,
+     * die users.roles.manage ausdruecklich NICHT hat) sich ueber eine zweite
+     * Mailadresse selbst zum Inhaber machen.
+     *
+     * @return array<int, string>
+     */
+    private function assignableRoles(Request $request, Tenant $tenant): array
+    {
+        $alle = array_keys(config('permissions.roles'));
+        $user = $request->user();
+
+        if ($user?->isSaasAdmin() || $user?->membershipFor($tenant)?->role === 'tenant_owner') {
+            return $alle;
+        }
+
+        return array_values(array_diff($alle, ['tenant_owner']));
+    }
+
     public function updateRole(Request $request, TenantUser $membership)
     {
         $tenant = $this->context->tenant();
         abort_if($membership->tenant_id !== $tenant->id, 404);
 
         $validated = $request->validate([
-            'role' => ['required', 'in:'.implode(',', array_keys(config('permissions.roles')))],
+            'role' => ['required', 'in:'.implode(',', $this->assignableRoles($request, $tenant))],
         ]);
 
         // The last owner cannot be demoted

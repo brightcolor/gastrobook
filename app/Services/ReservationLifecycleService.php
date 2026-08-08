@@ -55,20 +55,24 @@ class ReservationLifecycleService
         $startUtc = $startLocal->utc();
         $endUtc = $startUtc->addMinutes($duration);
 
-        return DB::transaction(function () use ($location, $data, $actor, $online, $settings, $startLocal, $startUtc, $endUtc) {
+        return DB::transaction(function () use ($location, $data, $actor, $online, $settings, $startLocal, $startUtc, $endUtc, $duration) {
             $tableIds = $data['table_ids'] ?? [];
 
+            // Die Sperre steht bewusst VOR der Ausnahme: Der Salon-Pfad
+            // ueberspringt zwar die Tischsuche, braucht aber dieselbe
+            // Serialisierung – sonst pruefen zwei gleichzeitige Anfragen beide
+            // "frei" und belegen dieselbe Person doppelt.
+            // Der Schluessel haengt am Betriebstag, nicht am Startzeitpunkt:
+            // ueberlappende Buchungen starten selten sekundengleich.
+            $this->lockSlot($location, $startLocal);
+
             if (! ($data['skip_availability_check'] ?? false)) {
-                // Serialize concurrent availability checks for the same location+slot.
-                // Without this, two transactions under READ COMMITTED can both see a free
-                // table, both pass the check, and both commit → double-booking.
-                // pg_advisory_xact_lock is automatically released when the transaction ends.
-                if (DB::getDriverName() === 'pgsql') {
-                    $lockKey = crc32("swayy_booking_{$location->id}_{$startUtc->timestamp}");
-                    DB::statement('SELECT pg_advisory_xact_lock(?)', [$lockKey]);
-                }
                 if ($tableIds === []) {
                     $check = $this->availability->checkExact($location, $startLocal, $data['party_size'], [
+                        // Ohne die Dauer rechnet checkExact mit der Standarddauer
+                        // und prueft ein zu kurzes Fenster – der zugeteilte Tisch
+                        // waere im hinteren Teil womoeglich schon vergeben.
+                        'duration' => $duration,
                         'online' => $online,
                         'room_id' => $data['room_id'] ?? null,
                     ]);
@@ -578,6 +582,29 @@ class ReservationLifecycleService
             'subject' => $subject,
             'status' => 'queued',
         ]);
+    }
+
+    /**
+     * Serialisiert konkurrierende Buchungsversuche desselben Standorts an
+     * einem Betriebstag.
+     *
+     * Frueher hing der Schluessel am exakten Startzeitpunkt – zwei ueberlappende
+     * Buchungen (19:00 und 19:30 bei zwei Stunden Dauer) bekamen dadurch
+     * verschiedene Schluessel und liefen ungebremst nebeneinander. Genau das ist
+     * der Normalfall, nicht die Ausnahme.
+     *
+     * Der Betriebstag statt des Kalendertags, damit ein Fenster ueber
+     * Mitternacht nicht in zwei Sperren zerfaellt.
+     */
+    private function lockSlot(Location $location, CarbonImmutable $startLocal): void
+    {
+        if (DB::getDriverName() !== 'pgsql') {
+            return;
+        }
+
+        $betriebstag = $startLocal->hour < 6 ? $startLocal->subDay() : $startLocal;
+        $lockKey = crc32("swayy_booking_{$location->id}_{$betriebstag->toDateString()}");
+        DB::statement('SELECT pg_advisory_xact_lock(?)', [$lockKey]);
     }
 
     public function sendGuestMail(Reservation $reservation, string $templateKey, array $extra = []): void

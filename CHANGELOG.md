@@ -1,5 +1,66 @@
 # Changelog
 
+## [1.108.0] – 2026-08-07
+
+### Sicherheit: zwei Seiten waren für jeden offen
+Beim Audit kam heraus, dass **`/admin/billing-requests` gar keine
+Rechteprüfung hatte**. Jeder angemeldete Benutzer – auch mit der Rolle
+„Nur lesen", auch aus einem fremden Betrieb – konnte damit
+
+- die Firmendaten **aller** Kunden der Installation einsehen (Anschrift,
+  USt-IdNr., Telefon, gewünschter Tarif) und
+- **jeden Betrieb auf einen bezahlten Tarif freischalten**, den eigenen
+  eingeschlossen.
+
+Beide Seiten verlangen jetzt eine Plattform-Rolle (Inhaber oder Abrechnung).
+
+### Sicherheit: Einladungslink meldete in fremde Konten an
+Existierte zur eingeladenen Adresse bereits ein Konto, hat der Einladungslink
+das eingegebene Passwort **ignoriert** und die Person trotzdem angemeldet. Da
+der Link dem Einladenden im Klartext angezeigt wird, war das ein Weg in ein
+fremdes Konto. Jetzt wird nur noch die Mitgliedschaft angelegt; angemeldet wird
+sich regulär mit dem eigenen Passwort.
+
+### Sicherheit: Passwort-Reset-Link ließ sich umleiten
+`X-Forwarded-Host` wurde jedem Aufrufer geglaubt. Damit ließ sich der Link in
+der Passwort-Reset-Mail auf eine fremde Domain zeigen lassen – echte Mail,
+gültiger Token, falsches Ziel. Der Header wird nicht mehr ausgewertet; in
+Produktion ist der Hostname zusätzlich an `APP_URL` gebunden.
+
+### Sicherheit: Inhaberrolle nicht mehr frei vergebbar
+Wer Benutzer einladen darf (etwa die Betriebsleitung), konnte bisher die
+**Inhaberrolle** vergeben – inklusive Abrechnung und „Betrieb löschen". Diese
+Rolle kann jetzt nur noch vergeben, wer sie selbst hat.
+
+Dazu: `SESSION_SECURE_COOKIE=true` steht jetzt in der Beispielkonfiguration.
+
+### Betrieb: Das Live-Board konnte die Installation blockieren
+Der Board-Datenstrom belegt je offenem Bildschirm dauerhaft einen
+Arbeitsprozess. Das Abbild lief mit der Voreinstellung von **fünf** – fünf
+offene Boards legten damit alles lahm, auch die öffentlichen Buchungsseiten.
+Das Abbild bringt jetzt ein eigenes Profil mit (30 Prozesse, über
+`SWAYY_FPM_MAX_CHILDREN` anpassbar).
+
+### Buchungen: drei Fehler in der Kernlogik
+- **Verlängerte Dauer wurde bei der Tischsuche ignoriert.** Wer intern eine
+  Reservierung mit abweichender Dauer anlegte, bekam einen Tisch zugeteilt, der
+  nur für die Standarddauer geprüft war – der hintere Teil konnte längst
+  vergeben sein. Betraf ausgerechnet lange Gesellschaften.
+- **Zeiten nach Mitternacht waren nicht buchbar.** Bei Öffnungszeiten wie
+  18:00–02:00 wurden Slots nach Mitternacht angeboten, aber mit „wir haben
+  geschlossen" abgewiesen. Die Rasterprüfung sieht jetzt auch das Fenster, das
+  am Vortag beginnt.
+- **Die Sperre gegen Doppelbuchungen griff nur bei sekundengleichem Start.**
+  Zwei überlappende Buchungen um 19:00 und 19:30 liefen ungebremst nebeneinander
+  und konnten denselben Tisch bekommen. Die Sperre gilt jetzt je Betriebstag –
+  und auch im Salon, der sie bisher komplett übersprungen hat.
+
+### Salon: Sperrzeiten und Vorlaufzeit gelten wieder
+Der Salon-Pfad übersprang die Zeitprüfung des Standorts vollständig. Termine
+ließen sich an geschlossenen Feiertagen, in Sperrzeiten und beliebig
+kurzfristig buchen. Wird jetzt geprüft – Salons ohne hinterlegte
+Öffnungszeiten (dort geben die Arbeitszeiten den Rahmen) bleiben unberührt.
+
 ## [1.107.0] – 2026-08-07
 
 ### Code-Review: 19 Fehler gefunden und behoben

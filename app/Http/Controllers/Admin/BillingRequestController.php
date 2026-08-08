@@ -97,8 +97,10 @@ class BillingRequestController extends Controller
     }
 
     /** List all billing requests (owner-only admin page). */
-    public function index(): View
+    public function index(Request $request): View
     {
+        $this->authorizePlatform($request);
+
         $requests = BillingRequest::with('tenant')
             ->latest()
             ->paginate(30);
@@ -110,8 +112,10 @@ class BillingRequestController extends Controller
      * Activate the tenant (owner clicks the link in the owner e-mail).
      * Sets status back to 'active' and pushes trial_ends_at to null.
      */
-    public function activate(BillingRequest $billingRequest): RedirectResponse
+    public function activate(Request $request, BillingRequest $billingRequest): RedirectResponse
     {
+        $this->authorizePlatform($request);
+
         $tenant = $billingRequest->tenant;
 
         // Switch to the requested plan
@@ -124,5 +128,18 @@ class BillingRequestController extends Controller
 
         return redirect()->route('admin.billing-requests.index')
             ->with('success', "Konto \"{$tenant->name}\" wurde aktiviert (Tarif: {$billingRequest->plan_key}).");
+    }
+
+    /**
+     * Diese beiden Seiten gehoeren dem Plattformbetreiber, nicht den Betrieben:
+     * Die Liste zeigt Firmendaten ALLER Kunden, und activate() schaltet einen
+     * beliebigen Betrieb auf einen bezahlten Tarif frei. BillingRequest traegt
+     * bewusst keinen Mandanten-Scope – deshalb muss die Pruefung hier stehen.
+     */
+    private function authorizePlatform(Request $request): void
+    {
+        $user = $request->user();
+        abort_unless($user?->isSaasAdmin(), 403);
+        abort_unless(in_array($user->saas_role, ['super_admin', 'billing_admin'], true), 403);
     }
 }

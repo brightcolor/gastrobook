@@ -65,13 +65,20 @@ class ReservationAvailabilityService
     {
         $online = $options['online'] ?? true;
         $settings = $location->effectiveSettings();
-        $duration = $settings->durationFor($partySize);
+        // Die aufrufende Stelle darf eine abweichende Dauer vorgeben (interne
+        // Maske, Salon-Kombileistungen). Wird sie hier ignoriert, prueft die
+        // Verfuegbarkeit ein kuerzeres Fenster als spaeter gespeichert wird.
+        $duration = (int) ($options['duration'] ?? $settings->durationFor($partySize));
         $startUtc = $startLocal->utc();
         $endUtc = $startUtc->addMinutes($duration);
         $nowLocal = CarbonImmutable::now($location->timezone);
 
-        // Must be on a generated slot grid inside opening windows
-        $validStarts = $this->timeSlots->slotStarts($location, $startLocal->startOfDay(), $duration);
+        // Must be on a generated slot grid inside opening windows. Fenster ueber
+        // Mitternacht beginnen am Vortag – deshalb beide Tage einbeziehen.
+        $validStarts = array_merge(
+            $this->timeSlots->slotStarts($location, $startLocal->startOfDay()->subDay(), $duration),
+            $this->timeSlots->slotStarts($location, $startLocal->startOfDay(), $duration),
+        );
         $onGrid = collect($validStarts)->contains(fn ($s) => $s->equalTo($startLocal));
         if (! $onGrid) {
             return ['available' => false, 'reason' => 'outside_opening_hours', 'table_ids' => [], 'duration' => $duration];
@@ -166,7 +173,12 @@ class ReservationAvailabilityService
         $duration = (int) $startUtc->diffInMinutes($endUtc);
 
         // Opening / special hours (a closed day yields no slot grid).
-        $validStarts = $this->timeSlots->slotStarts($location, $startLocal->startOfDay(), $duration);
+        // Auch hier den Vortag mitnehmen: Ein Fenster 18:00–02:00 erzeugt seine
+        // Starts nach Mitternacht am Vortag.
+        $validStarts = array_merge(
+            $this->timeSlots->slotStarts($location, $startLocal->startOfDay()->subDay(), $duration),
+            $this->timeSlots->slotStarts($location, $startLocal->startOfDay(), $duration),
+        );
         $onGrid = collect($validStarts)->contains(fn ($s) => $s->equalTo($startLocal));
         if (! $onGrid) {
             return 'outside_opening_hours';

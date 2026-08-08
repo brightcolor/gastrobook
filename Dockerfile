@@ -33,6 +33,11 @@ COPY . .
 COPY --from=assets /app/public/build public/build
 
 COPY docker/entrypoint.sh /entrypoint.sh
+# Eigener FPM-Pool: die Voreinstellung von 5 Prozessen reicht nicht, weil das
+# Live-Board je offenem Bildschirm dauerhaft einen davon belegt.
+COPY docker/www.conf /usr/local/etc/php-fpm.d/zz-swayy.conf
+
+ENV SWAYY_FPM_MAX_CHILDREN=30
 
 RUN composer dump-autoload --optimize \
     && chown -R www-data:www-data storage bootstrap/cache \

@@ -40,14 +40,27 @@ return Application::configure(basePath: dirname(__DIR__))
         // Behind the bundled nginx and/or an external reverse proxy (TLS
         // termination): honour X-Forwarded-* so generated URLs use the correct
         // scheme/host (https links in mails, payment returns, magic links).
+        // X-Forwarded-HOST steht bewusst NICHT in der Liste: Mit at:'*' gilt jeder
+        // Aufrufer als Proxy, ein gefaelschter Host-Header landete sonst in
+        // generierten Links – etwa im Passwort-Reset-Link, der dann auf eine
+        // fremde Domain zeigt (mit gueltigem Token). Fuer https-Links reicht
+        // X-Forwarded-Proto.
         $middleware->trustProxies(
             at: '*',
             headers: Request::HEADER_X_FORWARDED_FOR
-                | Request::HEADER_X_FORWARDED_HOST
                 | Request::HEADER_X_FORWARDED_PORT
                 | Request::HEADER_X_FORWARDED_PROTO
                 | Request::HEADER_X_FORWARDED_AWS_ELB,
         );
+
+        // Zweite Haelfte desselben Problems: Auch der normale Host-Header ist
+        // frei waehlbar. In Produktion binden wir ihn an APP_URL. Lokal (leer
+        // oder localhost) bleibt alles wie bisher, damit Entwicklung und Tests
+        // unter beliebigen Adressen laufen.
+        $appHost = parse_url((string) config('app.url'), PHP_URL_HOST);
+        if (is_string($appHost) && ! in_array($appHost, ['', 'localhost', '127.0.0.1'], true)) {
+            $middleware->trustHosts(at: [$appHost], subdomains: true);
+        }
 
         // Signed provider webhooks authenticate via signature, not session
         $middleware->validateCsrfTokens(except: [

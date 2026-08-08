@@ -549,6 +549,36 @@ class PublicBookingController extends Controller
             }
         }
 
+        // Der Salon-Pfad ueberspringt die Tischsuche (skip_availability_check),
+        // damit gilt die Zeitpruefung des Standorts hier nicht automatisch mit.
+        // Ohne diesen Aufruf koennte ein Gast am geschlossenen Feiertag, in einer
+        // Sperrzeit oder zwei Minuten vor dem Termin buchen.
+        $blockReason = $this->availability->bookingBlockReason(
+            $location,
+            $startLocal,
+            $startUtc,
+            $startUtc->addMinutes($duration),
+        );
+        // Manche Salons pflegen nur Arbeitszeiten je Mitarbeiter und gar keine
+        // Öffnungszeiten des Standorts. Dort ist "ausserhalb der Öffnungszeiten"
+        // kein Ausschlussgrund – sonst waere nach dieser Änderung kein Termin
+        // mehr buchbar. Sperrzeiten und Vorlaufzeit gelten trotzdem.
+        if ($blockReason === 'outside_opening_hours'
+            && ! $location->openingHours()->where('weekday', $startLocal->dayOfWeekIso - 1)->exists()) {
+            $blockReason = null;
+        }
+
+        if ($blockReason !== null) {
+            $meldung = match ($blockReason) {
+                'lead_time' => __('Für diesen Termin ist es leider etwas zu kurzfristig – bitte wählen Sie einen späteren Zeitpunkt.'),
+                'too_far_ahead' => __('Dieser Termin liegt noch zu weit in der Zukunft.'),
+                'blackout' => __('Zu diesem Zeitpunkt haben wir leider geschlossen. Bitte wählen Sie einen anderen Tag.'),
+                default => __('Zu dieser Uhrzeit haben wir leider geschlossen. Bitte wählen Sie eine Zeit innerhalb der Öffnungszeiten.'),
+            };
+
+            return back()->withErrors(['time' => $meldung])->withInput();
+        }
+
         $needsConfirm = $this->needsEmailConfirmation($location, $validated['email']);
 
         try {
