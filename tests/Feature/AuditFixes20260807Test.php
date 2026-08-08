@@ -211,8 +211,10 @@ class AuditFixes20260807Test extends TestCase
         }
         $this->clearTenantContext();
 
-        // 00:30 des Folgetags gehoert zum Fenster, das am Vortag um 18:00 beginnt.
-        $start = CarbonImmutable::now($tz)->addDays(2)->setTime(0, 30);
+        // 00:00 gehoert zum Fenster, das am Vortag um 18:00 beginnt. Spaeter
+        // geht nicht: Bei Schluss um 02:00 und zwei Stunden Dauer ist 00:00 der
+        // letzte Start, der noch vollstaendig hineinpasst.
+        $start = CarbonImmutable::now($tz)->addDays(2)->setTime(0, 0);
         $reservation = app(ReservationLifecycleService::class)->create($setup['location'], [
             'party_size' => 2,
             'start_local' => $start,
