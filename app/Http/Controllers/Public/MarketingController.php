@@ -5,13 +5,15 @@ namespace App\Http\Controllers\Public;
 use App\Http\Controllers\Controller;
 use App\Mail\ContactRequestMail;
 use App\Models\Plan;
+use App\Services\LegalDocumentStatus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class MarketingController extends Controller
 {
+    public function __construct(private readonly LegalDocumentStatus $rechtstexte) {}
+
     public function home()
     {
         $plans = Plan::where('is_active', true)
@@ -39,27 +41,22 @@ class MarketingController extends Controller
 
     /**
      * Render a legal document from its Markdown source. Read fresh on every
-     * request (storage/app/legal/<key>.md) so edits take effect without a
+     * request (storage/app/private/legal/<key>.md) so edits take effect without a
      * restart. Falls back to the shipped template if the file is missing.
+     *
+     * Gelesen wird über LegalDocumentStatus – derselbe Weg, auf dem auch die
+     * Vollständigkeitsprüfung schaut. Zwei Lesepfade würden früher oder später
+     * auseinanderlaufen und den Hinweis auf einer Seite anzeigen, die längst
+     * gepflegt ist (oder umgekehrt).
      */
     private function legalDocument(string $key)
     {
         $titles = config('swayy.legal.documents');
         abort_unless(isset($titles[$key]), 404);
 
-        $disk = Storage::disk('local');
-        $path = "legal/{$key}.md";
-
-        if ($disk->exists($path)) {
-            $markdown = (string) $disk->get($path);
-        } else {
-            $fallback = resource_path("legal/{$key}.md");
-            $markdown = is_file($fallback) ? (string) file_get_contents($fallback) : '';
-        }
-
         return view('marketing.legal.document', [
             'title' => $titles[$key],
-            'html' => Str::markdown($markdown),
+            'html' => Str::markdown($this->rechtstexte->markdown($key)),
         ]);
     }
 

@@ -59,7 +59,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Impressum, Datenschutz und AGB liegen als Markdown unter
-    | storage/app/legal/<key>.md (bind-gemountet → auf dem Host editierbar).
+    | storage/app/private/legal/<key>.md (bind-gemountet → auf dem Host editierbar).
     | Fehlende Dateien legt `php artisan swayy:install-legal` aus den
     | Vorlagen in resources/legal an. Der Controller liest sie pro Request
     | frisch – Änderungen wirken sofort, ohne Neustart.

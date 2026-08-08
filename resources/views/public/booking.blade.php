@@ -580,7 +580,7 @@ details > summary::-webkit-details-marker { display: none; }
             <input type="text" id="wlWebsite" tabindex="-1" autocomplete="off" class="hidden" aria-hidden="true">
             <label class="flex items-start gap-2 text-xs text-stone-600">
                 <input type="checkbox" id="wlPrivacy" class="mt-0.5">
-                <span>Ich akzeptiere die <a href="{{ route('legal.privacy') }}" target="_blank" class="underline">Datenschutzerklärung</a>.</span>
+                <span>Ich akzeptiere die @if($tenant->privacy_url)<a href="{{ $tenant->privacy_url }}" target="_blank" rel="noopener" class="underline">Datenschutzhinweise</a>@else Datenschutzhinweise @endif.</span>
             </label>
             <p id="wlError" class="hidden text-xs font-medium text-red-600"></p>
             <button type="button" id="wlSubmit" class="w-full rounded-xl bg-amber-600 py-2.5 text-sm font-bold text-white hover:bg-amber-700 active:scale-[0.98]">

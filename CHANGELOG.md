@@ -1,5 +1,42 @@
 # Changelog
 
+## [1.110.0] – 2026-08-08
+
+### Hinweis „noch nicht in Betrieb", solange Impressum und AGB fehlen
+Eine Installation, deren Rechtstexte noch die mitgelieferte Vorlage enthalten,
+sagt das jetzt auch. Auf **allen Seiten der Plattform** – Startseite, Kontakt,
+Rechtstexte, Anmeldung, Registrierung, Passwort vergessen, Einladung – steht
+ein Hinweis, dass hier nichts in Betrieb ist, keine Verträge zustande kommen
+und keine echten Daten eingegeben werden sollten.
+
+- **Verschwindet von selbst**, sobald die Texte gepflegt sind. Kein Schalter,
+  kein Wegklicken, nichts, was man später wieder ausbauen muss.
+- Erkannt wird die Vorlage an ihren Musterangaben (`Musterfirma`,
+  `Max Mustermann`, `kontakt@example.com`, `[Firmenname]` …) und am Warnkasten
+  am Dateikopf. In der Datenschutzerklärung zählen nur die Betreiberangaben –
+  Klammern wie `[Stripe]`, die eine Entscheidung markieren, halten den Hinweis
+  nicht künstlich am Leben.
+- Bei der AGB gibt es keine Musterdaten. Dort gilt das Entfernen des
+  Warnkastens als bewusstes „geprüft und übernommen".
+- **Die Buchungsseiten der Betriebe bleiben unberührt.** Dort tritt der
+  Gastronom als Anbieter auf; ein „nicht in Betrieb" wäre gegenüber seinen
+  Gästen falsch. Zwei Tests halten das fest.
+
+**Nebenbei aufgefallen und mit behoben**
+- Die **Warteliste auf der Buchungsseite verlinkte auf die Datenschutz­erklärung
+  der Plattform** statt auf die des Betriebs – anders als die beiden
+  Zustimmungszeilen direkt daneben. Ein Gast bestätigte damit die falschen
+  Hinweise; seit dieser Version zeigt auch die Warteliste auf
+  `tenant.privacy_url` (inklusive des fehlenden `rel="noopener"`).
+- **Der Ablageort der Rechtstexte wurde überall falsch angegeben**: Doku,
+  Kommandobeschreibung und die Vorlagentexte selbst nannten
+  `storage/app/legal/`, gelesen wird aber aus `storage/app/private/legal/`.
+  Wer der Anleitung folgte, bearbeitete eine Datei, die nie ausgeliefert wird.
+- Das Plattform-Dashboard unter `/saas` zeigt dem Betreiber, welche Dateien
+  noch offen sind und wo sie liegen.
+- Die Rechtstextseiten lesen ihre Dateien jetzt über denselben Weg wie die
+  Prüfung – zwei Lesepfade wären früher oder später auseinandergelaufen.
+
 ## [1.109.2] – 2026-08-08
 
 ### Hotfix: Host-Prüfung sperrte die eigene Seite aus

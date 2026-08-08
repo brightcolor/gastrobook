@@ -1,7 +1,7 @@
 # Impressum
 
 > **Bitte anpassen.** Diese Vorlage ist ein Platzhalter. Tragen Sie Ihre echten
-> Angaben ein. Diese Datei liegt unter `storage/app/legal/impressum.md` und kann
+> Angaben ein. Diese Datei liegt unter `storage/app/private/legal/impressum.md` und kann
 > jederzeit bearbeitet werden – Änderungen sind sofort ohne Neustart wirksam.
 
 ## Angaben gemäß § 5 DDG / § 5 TMG

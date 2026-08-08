@@ -11,6 +11,8 @@
 </head>
 <body class="min-h-screen bg-white text-stone-900 antialiased">
 
+    <x-platform-notice />
+
     <div id="scrollProgress" class="fixed left-0 top-0 z-[70] h-[2.5px] w-0" style="background:linear-gradient(90deg,#14b8a6,#0f766e); transition:width .1s linear" aria-hidden="true"></div>
 
     <header id="mkt-header" class="sticky top-0 z-50 transition-all duration-300">
@@ -75,8 +77,12 @@
     (function () {
         const hdr = document.getElementById('mkt-header');
         const bar = document.getElementById('scrollProgress');
+        // Der Betriebshinweis steht ueber dem Header und schiebt ihn nach
+        // unten. Ohne seine Hoehe im Schwellwert wuerde der Header opak, waehrend
+        // er noch mitten auf der Seite steht.
+        const notice = document.getElementById('platform-notice');
         const update = () => {
-            const scrolled = window.scrollY > 20;
+            const scrolled = window.scrollY > (notice ? notice.offsetHeight : 0) + 20;
             if (hdr) {
                 hdr.style.background    = scrolled ? 'rgba(255,255,255,0.9)' : 'transparent';
                 hdr.style.backdropFilter = scrolled ? 'saturate(160%) blur(14px)' : 'none';

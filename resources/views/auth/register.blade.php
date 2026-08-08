@@ -12,6 +12,8 @@
         <h1 class="flex items-center justify-center gap-2.5 text-2xl" style="font-family:var(--font-display,'Fraunces Variable',serif); font-weight:500"><img src="/logo-mark.svg" alt="" class="h-9 w-9" style="border-radius:0.85rem"> Swayy</h1>
         <p class="mt-1 text-center text-sm text-stone-500">30 Tage kostenlos testen – keine Zahlungsdaten nötig</p>
 
+        <x-platform-notice compact />
+
         @if($errors->any())
             <div class="mt-4 rounded-lg bg-red-100 px-4 py-3 text-sm text-red-900">{{ $errors->first() }}</div>
         @endif

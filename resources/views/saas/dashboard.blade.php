@@ -7,6 +7,25 @@
     <a href="{{ route('saas.tenants.index') }}" class="rounded-xl bg-stone-900 px-4 py-2 text-sm font-bold text-white">+ Mandant anlegen</a>
 </div>
 
+{{-- Solange die Rechtstexte die Vorlage enthalten, sehen Besucher auf allen
+     Plattformseiten einen Hinweis, dass hier noch nichts in Betrieb ist. --}}
+@if(($legalPending ?? []) !== [])
+    <div class="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-amber-900">
+        <p class="font-bold">🚧 Plattform ist als „nicht in Betrieb“ gekennzeichnet</p>
+        <p class="mt-1 text-sm">
+            Noch die mitgelieferte Vorlage: {{ implode(', ', $legalPending) }}.
+            Besucher sehen deshalb auf Startseite, Rechtstexten und Anmeldung
+            einen Warnhinweis – er verschwindet von selbst, sobald die Texte
+            gepflegt sind.
+        </p>
+        <p class="mt-2 text-xs text-amber-800">
+            Zu bearbeiten unter <code class="rounded bg-amber-100 px-1 py-0.5">storage/app/private/legal/</code>
+            @foreach(array_keys($legalPending) as $key)<code class="rounded bg-amber-100 px-1 py-0.5">{{ $key }}.md</code>@if(! $loop->last), @endif @endforeach
+            – Änderungen wirken sofort, ohne Neustart.
+        </p>
+    </div>
+@endif
+
 {{-- KPI cards --}}
 <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
     @php

@@ -1,7 +1,7 @@
 # Allgemeine Geschäftsbedingungen (AGB)
 
 > **Bitte anpassen.** Diese Vorlage ist ein Platzhalter und ersetzt keine
-> Rechtsberatung. Datei: `storage/app/legal/agb.md` – Änderungen sind sofort
+> Rechtsberatung. Datei: `storage/app/private/legal/agb.md` – Änderungen sind sofort
 > ohne Neustart wirksam.
 
 ## 1. Geltungsbereich

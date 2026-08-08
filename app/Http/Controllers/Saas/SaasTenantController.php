@@ -10,6 +10,7 @@ use App\Models\Tenant;
 use App\Models\TenantUser;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\LegalDocumentStatus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -19,7 +20,7 @@ class SaasTenantController extends Controller
 {
     public function __construct(private readonly AuditLogger $audit) {}
 
-    public function dashboard(Request $request)
+    public function dashboard(Request $request, LegalDocumentStatus $rechtstexte)
     {
         $this->authorizeSaas($request);
 
@@ -41,6 +42,7 @@ class SaasTenantController extends Controller
             'reservationsThisMonth' => $reservationsThisMonth,
             'recentTenants' => Tenant::with('plan')->latest()->limit(8)->get(),
             'plans' => Plan::withCount('tenants')->orderBy('sort_order')->get(),
+            'legalPending' => $rechtstexte->pending(),
         ]);
     }
 

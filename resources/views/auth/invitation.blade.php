@@ -14,6 +14,8 @@
             Sie wurden als <strong>{{ $invitation->role }}</strong> eingeladen ({{ $invitation->email }}).
         </p>
 
+        <x-platform-notice compact />
+
         @if($errors->any())
             <div class="mt-4 rounded-lg bg-red-100 px-4 py-3 text-sm text-red-900">{{ $errors->first() }}</div>
         @endif

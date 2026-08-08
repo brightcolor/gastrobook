@@ -5,7 +5,7 @@
 > vorausgefüllte Vorlage, ersetzt aber **keine Rechtsberatung**. Bitte ergänzen
 > Sie die in eckigen Klammern markierten Angaben des Betreibers und streichen
 > Sie Abschnitte zu Diensten, die Sie **nicht** aktiviert haben
-> (z. B. SMS, PayPal, Newsletter). Datei: `storage/app/legal/datenschutz.md` –
+> (z. B. SMS, PayPal, Newsletter). Datei: `storage/app/private/legal/datenschutz.md` –
 > Änderungen wirken sofort, ohne Neustart.
 
 ## 1. Verantwortlicher

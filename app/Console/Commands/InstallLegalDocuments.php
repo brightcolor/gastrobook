@@ -11,7 +11,7 @@ class InstallLegalDocuments extends Command
 {
     protected $signature = 'swayy:install-legal {--force : Vorhandene Dateien überschreiben}';
 
-    protected $description = 'Legt Impressum/Datenschutz/AGB als Markdown unter storage/app/legal an, falls sie fehlen.';
+    protected $description = 'Legt Impressum/Datenschutz/AGB als Markdown unter storage/app/private/legal an, falls sie fehlen.';
 
     public function handle(): int
     {

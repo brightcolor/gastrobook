@@ -575,7 +575,7 @@ php artisan swayy:reservations --tenant=demo --date=2026-07-01 --upcoming --stat
 
 **`php artisan swayy:billing-requests`** — Zeigt eingegangene Billing-Anfragen (entstehen, wenn ein Trial ausläuft und der Betreiber zahlen will). Mit `--pending` nur die, die der Kunde bestätigt hat, du aber noch nicht freigeschaltet hast.
 
-**`php artisan swayy:install-legal`** — Legt Impressum/Datenschutz/AGB als Markdown unter `storage/app/legal/` an, falls sie fehlen (läuft beim Container-Start). `--force` überschreibt vorhandene Dateien mit den Vorlagen.
+**`php artisan swayy:install-legal`** — Legt Impressum/Datenschutz/AGB als Markdown unter `storage/app/private/legal/` an, falls sie fehlen (läuft beim Container-Start). `--force` überschreibt vorhandene Dateien mit den Vorlagen.
 
 ### Diagnose & Betrieb
 
@@ -614,11 +614,37 @@ php artisan license:sign --id=lic_abc123 --licensee="Firma GmbH" --email=du@firm
 
 ## Rechtstexte (Impressum / Datenschutz / AGB)
 
-Liegen als **Markdown** unter `storage/app/legal/{impressum,datenschutz,agb}.md`
+Liegen als **Markdown** unter `storage/app/private/legal/{impressum,datenschutz,agb}.md`
 (bind-gemountet → direkt auf dem Host editierbar). Der Container legt beim Start
 fehlende Dateien aus Vorlagen an (`php artisan swayy:install-legal`).
 Der Inhalt wird **bei jedem Aufruf frisch** gelesen – Änderungen sind **sofort
 ohne Neustart** wirksam (`/impressum`, `/datenschutz`, `/agb`).
+
+### „Noch nicht in Betrieb"-Hinweis
+
+Solange ein Rechtstext noch die mitgelieferte Vorlage enthält, zeigen **alle
+Plattformseiten** (Startseite, Kontakt, Rechtstexte, Anmeldung, Registrierung)
+einen Hinweis, dass hier noch nichts in Betrieb ist und keine Verträge zustande
+kommen. Im Plattform-Dashboard unter `/saas` steht dazu, welche Dateien noch
+offen sind.
+
+Der Hinweis **verschwindet von selbst**, sobald die Texte gepflegt sind – es
+gibt bewusst keinen Schalter zum Wegklicken. Erkannt wird die Vorlage an ihren
+Musterangaben (`Musterfirma`, `Max Mustermann`, `kontakt@example.com`,
+`[Firmenname]` …) und am Warnkasten `> **Bitte anpassen.**` am Dateikopf.
+Bei der AGB gibt es keine Musterdaten – dort gilt das Entfernen des Warnkastens
+als bewusstes „geprüft und übernommen".
+
+**Die Buchungsseiten der Betriebe sind ausgenommen.** Dort tritt der jeweilige
+Gastronom als Anbieter auf, nicht die Plattform; ein „nicht in Betrieb" wäre
+gegenüber echten Gästen schlicht falsch. Zwei Dinge halten das auseinander:
+
+1. Plattform- und Buchungsseiten teilen **kein Layout**
+   (`layouts/marketing.blade.php` gegen `layouts/public.blade.php`).
+2. Gästeseiten verlinken **ausschließlich auf die Rechtstexte des Betriebs**
+   (`tenant.privacy_url`), nie auf `/impressum`, `/datenschutz` oder `/agb` –
+   sonst landet der Gast mit einem Klick doch im Plattform-Layout. Ein Test
+   hält beides fest.
 
 ## E-Mail
 
