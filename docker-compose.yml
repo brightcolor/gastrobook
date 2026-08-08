@@ -42,6 +42,16 @@ services:
     depends_on:
       app:
         condition: service_healthy  # nginx only starts once PHP-FPM is actually ready
+    healthcheck:
+      # Bewusst durch die ganze Kette, mit genau dem Host-Header, den auch der
+      # Proxy schickt: Der FPM-Port kann offen sein, waehrend die Anwendung
+      # jede Anfrage ablehnt. Genau das war am 08.08.2026 der Fall und blieb
+      # unbemerkt, weil nur der Port geprueft wurde.
+      test: ["CMD-SHELL", "wget -q -O /dev/null --header=\"Host: ${SWAYY_HEALTH_HOST:-localhost}\" http://127.0.0.1/up || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
 
   queue:
     image: ghcr.io/brightcolor/gastrobook:latest

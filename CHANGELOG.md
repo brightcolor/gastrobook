@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.109.2] – 2026-08-08
+
+### Hotfix: Host-Prüfung sperrte die eigene Seite aus
+Die in 1.108.0 eingeführte Bindung des Host-Headers an `APP_URL` konnte eine
+Installation komplett unerreichbar machen: **jede** Anfrage endete in „400 Bad
+Request". Ausgelöst wurde das durch ein `APP_URL`, das noch auf den lokalen
+Port hinter dem Reverse Proxy zeigte statt auf die öffentliche Domain.
+
+Ursache war eine Fehlannahme über Laravels `trustHosts(subdomains: true)`: Der
+Schalter hängt zusätzlich ein aus `APP_URL` abgeleitetes Muster an – auch an
+eine absichtlich leere Liste. Aus „keine Einschränkung" wurde so „nur
+localhost erlaubt".
+
+- Die Ableitung steckt jetzt in `App\Support\TrustedHosts` und bringt das
+  Subdomain-Muster selbst mit (`subdomains: false`). Leer heißt wieder leer.
+- Unit-Tests halten alle drei Fälle fest: echte Domain (mit Subdomains, aber
+  ohne `swayy.de.angreifer.test`), lokale Adresse, reine IP.
+- **Der Container warnt beim Start**, wenn `APP_ENV=production` mit einem
+  `APP_URL` auf localhost zusammentrifft. Auch ohne die Host-Prüfung ist das
+  ein Fehler: Magic-Links, Passwort-Reset und Zahlungsrücksprung zeigen dann
+  ins Leere.
+- **Der Healthcheck prüft jetzt die Anwendung statt nur den Port.** Der alte
+  prüfte, ob PHP-FPM auf 9000 lauscht – der Container galt deshalb die ganze
+  Zeit als „healthy", während er jede Anfrage ablehnte. Der neue geht über
+  nginx auf `/up`, mit dem Host aus `SWAYY_HEALTH_HOST`.
+
 ## [1.109.1] – 2026-08-08
 
 ### Doku zu den Änderungen aus dem Audit

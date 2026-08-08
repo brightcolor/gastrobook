@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsureTrialActive;
 use App\Http\Middleware\RequirePermission;
 use App\Http\Middleware\RequireValidLicense;
 use App\Http\Middleware\ResolveTenantContext;
+use App\Support\TrustedHosts;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -72,14 +73,14 @@ return Application::configure(basePath: dirname(__DIR__))
         // unter beliebigen Adressen laufen.
         // Als Closure, nicht direkt: Diese Datei wird ausgewertet, bevor der
         // Konfigurationsdienst existiert – config() waere hier ein Absturz.
-        $middleware->trustHosts(at: function (): array {
-            $host = parse_url((string) config('app.url'), PHP_URL_HOST);
-
-            // Leere Liste = keine Einschraenkung (lokal, Tests, APP_URL unbesetzt).
-            return is_string($host) && ! in_array($host, ['', 'localhost', '127.0.0.1'], true)
-                ? [$host]
-                : [];
-        }, subdomains: true);
+        // subdomains: false ist Absicht – TrustedHosts::patterns() bringt das
+        // Subdomain-Muster selbst mit. Mit true haengte Laravel ein zweites
+        // Muster aus APP_URL an, auch an eine leere Liste; siehe die Warnung
+        // in TrustedHosts.
+        $middleware->trustHosts(
+            at: fn (): array => TrustedHosts::patterns(),
+            subdomains: false,
+        );
 
         // Signed provider webhooks authenticate via signature, not session
         $middleware->validateCsrfTokens(except: [
