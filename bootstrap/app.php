@@ -57,10 +57,16 @@ return Application::configure(basePath: dirname(__DIR__))
         // frei waehlbar. In Produktion binden wir ihn an APP_URL. Lokal (leer
         // oder localhost) bleibt alles wie bisher, damit Entwicklung und Tests
         // unter beliebigen Adressen laufen.
-        $appHost = parse_url((string) config('app.url'), PHP_URL_HOST);
-        if (is_string($appHost) && ! in_array($appHost, ['', 'localhost', '127.0.0.1'], true)) {
-            $middleware->trustHosts(at: [$appHost], subdomains: true);
-        }
+        // Als Closure, nicht direkt: Diese Datei wird ausgewertet, bevor der
+        // Konfigurationsdienst existiert – config() waere hier ein Absturz.
+        $middleware->trustHosts(at: function (): array {
+            $host = parse_url((string) config('app.url'), PHP_URL_HOST);
+
+            // Leere Liste = keine Einschraenkung (lokal, Tests, APP_URL unbesetzt).
+            return is_string($host) && ! in_array($host, ['', 'localhost', '127.0.0.1'], true)
+                ? [$host]
+                : [];
+        }, subdomains: true);
 
         // Signed provider webhooks authenticate via signature, not session
         $middleware->validateCsrfTokens(except: [
