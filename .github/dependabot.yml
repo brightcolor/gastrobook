@@ -1,27 +1,39 @@
 version: 2
 
-# Security and version updates. CodeQL already runs on every push; this closes
-# the other half – known vulnerabilities in dependencies.
+# Abhaengigkeits-Updates. CodeQL prueft den eigenen Code bei jedem Push, das
+# hier deckt die Fremdpakete ab.
+#
+# Hinweis zur Vorgeschichte: Die erste Fassung dieser Datei arbeitete mit
+# `groups: { dependency-type: development }` und hat in ihrem Lauf keine einzige
+# Pull-Request erzeugt, obwohl Aktualisierungen vorlagen. Deshalb hier die
+# einfachste Form ohne Gruppierung - erst wenn die wieder Vorschlaege liefert,
+# lohnt sich Feintuning.
 updates:
   - package-ecosystem: composer
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
-    groups:
-      php-dev:
-        dependency-type: development
+      day: monday
+    open-pull-requests-limit: 10
+    # Nur den Lockfile aktualisieren, solange die Vorgabe in composer.json passt.
+    versioning-strategy: increase-if-necessary
+    commit-message:
+      prefix: "chore(deps)"
 
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
-    groups:
-      frontend:
-        dependency-type: development
+      day: monday
+    open-pull-requests-limit: 10
+    versioning-strategy: increase-if-necessary
+    commit-message:
+      prefix: "chore(deps)"
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(ci)"
