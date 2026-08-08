@@ -6,13 +6,21 @@ namespace Tests\Feature;
 
 use App\Enums\ReservationStatus;
 use App\Enums\TenantType;
+use App\Jobs\SendFeedbackRequests;
+use App\Models\DepositRule;
+use App\Models\Event;
 use App\Models\EventBooking;
+use App\Models\FeedbackRequest;
 use App\Models\Guest;
+use App\Models\Location;
 use App\Models\NotificationLog;
+use App\Models\Refund;
 use App\Models\Reservation;
 use App\Models\Service;
 use App\Models\StaffMember;
+use App\Services\EventBookingService;
 use App\Services\GuestPrivacyService;
+use App\Services\ReservationAvailabilityService;
 use App\Services\ReservationLifecycleService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -51,10 +59,10 @@ class AuditFollowUpTest extends TestCase
         $this->clearTenantContext();
 
         $setup['location']->settings()->update(['feedback_enabled' => true]);
-        (new \App\Jobs\SendFeedbackRequests)->handle(app(ReservationLifecycleService::class));
+        (new SendFeedbackRequests)->handle(app(ReservationLifecycleService::class));
 
         // Nur der frische Besuch, nicht der Altbestand.
-        $this->assertSame(1, \App\Models\FeedbackRequest::withoutGlobalScopes()->count());
+        $this->assertSame(1, FeedbackRequest::withoutGlobalScopes()->count());
     }
 
     // ── Vorwaertssuche ────────────────────────────────────────────────────
@@ -65,7 +73,7 @@ class AuditFollowUpTest extends TestCase
         $tz = $setup['location']->timezone;
         $this->clearTenantContext();
 
-        $treffer = app(\App\Services\ReservationAvailabilityService::class)
+        $treffer = app(ReservationAvailabilityService::class)
             ->nextSlots($setup['location'], CarbonImmutable::now($tz)->addDay(), 2);
 
         // Ohne Budget wuerde hier der komplette Horizont (90 Tage) gerechnet.
@@ -157,7 +165,7 @@ class AuditFollowUpTest extends TestCase
         // Modus "aus" -> die Anfrage darf nichts anlegen, aber auch nicht krachen.
         $setup['location']->settings()->update(['refund_mode' => 'off']);
 
-        $event = \App\Models\Event::create([
+        $event = Event::create([
             'tenant_id' => $setup['tenant']->id, 'location_id' => $setup['location']->id,
             'title' => 'Weinprobe', 'slug' => 'weinprobe',
             'starts_at' => now()->addWeek(), 'ends_at' => now()->addWeek()->addHours(3),
@@ -170,10 +178,10 @@ class AuditFollowUpTest extends TestCase
         ]);
         $this->clearTenantContext();
 
-        app(\App\Services\EventBookingService::class)->cancel($booking, 'restaurant');
+        app(EventBookingService::class)->cancel($booking, 'restaurant');
 
         $this->assertSame('cancelled', $booking->fresh()->status);
-        $this->assertSame(0, \App\Models\Refund::withoutGlobalScopes()->count());
+        $this->assertSame(0, Refund::withoutGlobalScopes()->count());
     }
 
     // ── Salon: Zuweisung ──────────────────────────────────────────────────
@@ -250,7 +258,7 @@ class AuditFollowUpTest extends TestCase
             'room_id' => $setup['room']->id,
         ])->assertRedirect();
 
-        $rule = \App\Models\DepositRule::withoutGlobalScopes()->firstOrFail();
+        $rule = DepositRule::withoutGlobalScopes()->firstOrFail();
         $this->assertSame([4, 5], $rule->weekdays);
         $this->assertSame($setup['room']->id, $rule->room_id);
     }
@@ -260,10 +268,10 @@ class AuditFollowUpTest extends TestCase
     public function test_event_check_in_respects_the_location(): void
     {
         $setup = $this->createTenantSetup();
-        $zweiter = \App\Models\Location::factory()->create(['tenant_id' => $setup['tenant']->id]);
+        $zweiter = Location::factory()->create(['tenant_id' => $setup['tenant']->id]);
         $admin = $this->createMember($setup['tenant'], 'tenant_admin');
 
-        $event = \App\Models\Event::create([
+        $event = Event::create([
             'tenant_id' => $setup['tenant']->id, 'location_id' => $zweiter->id,
             'title' => 'Fremdes Event', 'slug' => 'fremd',
             'starts_at' => now()->addWeek(), 'ends_at' => now()->addWeek()->addHours(2),
