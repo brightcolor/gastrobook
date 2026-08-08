@@ -48,7 +48,22 @@ Balken.
    Abwesenheiten, bestehende Termine und die Pufferzeit.
 4. Kontaktdaten.
 
-## 4. Der Lückenoptimierer
+## 4. Termin am Telefon annehmen
+
+**Terminbuch → Neuer Termin.** Die Maske zeigt im Salon-Modus zwei zusätzliche
+Felder:
+
+- **Leistungen** – ankreuzen, was gemacht wird. Die Dauer des Termins ergibt
+  sich daraus automatisch; du musst nichts rechnen. Ohne Auswahl gilt die
+  Standarddauer aus den Buchungsregeln.
+- **Mitarbeiter** – wer den Termin übernimmt. „Ohne Zuweisung" ist erlaubt, wenn
+  ihr das am Vortag verteilt.
+
+Ist eine Person gewählt, prüft Swayy sofort deren Arbeitszeit, Abwesenheiten und
+bestehende Termine. Passt es nicht, bekommst du eine Meldung statt einer
+Doppelbelegung.
+
+## 5. Der Lückenoptimierer
 
 Optional einschaltbar (**Einstellungen → Buchungsregeln**). Wenn ein Gast „Egal"
 wählt, verteilt Swayy den Termin nicht zufällig, sondern **dockt ihn an
@@ -62,7 +77,7 @@ anderes tun kann.
 Bei einem Team ab drei Personen ist das bares Geld. Bei zwei Personen ändert es
 wenig.
 
-## 5. Der Terminplan
+## 6. Der Terminplan
 
 **Terminplan** zeigt den Tag mit einer **Spalte je Mitarbeiter**:
 
@@ -75,13 +90,16 @@ wenig.
 Blättern über ← / Heute / → oder das Datumsfeld.
 
 Termine **ohne Mitarbeiter** stehen unter dem Plan in einer eigenen Liste. Die
-entstehen zum Beispiel bei einer Umstellung des Betriebstyps – öffne sie und
-weise jemanden zu, sonst arbeiten sie im Nirgendwo.
+entstehen bei telefonischer Annahme ohne Zuweisung oder bei einer Umstellung des
+Betriebstyps. Öffne den Termin und weise unter **Mitarbeiterin/Mitarbeiter**
+jemanden zu – danach steht er im Terminplan in der richtigen Spalte. Solange
+niemand zugewiesen ist, taucht der Termin in keiner Tagesspalte auf und wird beim
+Verplanen leicht übersehen.
 
 Der Plan ist zum Ansehen gedacht. Gebucht, verschoben und storniert wird im
 Terminbuch, wo alle Prüfungen greifen.
 
-## 6. Anzahlung für teure Leistungen
+## 7. Anzahlung für teure Leistungen
 
 Eine Anzahlungsregel kann an **eine Leistung** gebunden werden: Anzahlung für die
 Balayage, keine fürs Pony-Schneiden. Die Regel greift, sobald diese Leistung im
@@ -90,7 +108,7 @@ Termin steckt – auch als Teil einer Kombination.
 Trifft eine allgemeine und eine leistungsbezogene Regel zu, gewinnt die
 leistungsbezogene. Details im Kapitel *Anzahlungen*.
 
-## 7. Was im Salon anders heißt
+## 8. Was im Salon anders heißt
 
 | Restaurant | Salon |
 |---|---|

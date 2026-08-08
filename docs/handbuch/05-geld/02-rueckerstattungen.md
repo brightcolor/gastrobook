@@ -29,6 +29,11 @@ Dazu zwei Stellschrauben:
   der Zahlung gesehen hat.
 - **Ihr storniert** → ebenfalls nach eingestelltem Modus. Hier ist voller
   Rückerstattungsanteil das Übliche und Faire.
+- **Eventticket storniert oder Event abgesagt** → läuft durch dieselbe Logik.
+  Sagt ihr ein Event ab, entsteht für **jede bezahlte Buchung** ein eigener
+  Vorgang; im Modus „Manuell" liegen die dann alle zur Freigabe bereit und ihr
+  gebt sie in einem Rutsch frei. Nur der Modus „Aus" bedeutet: Ihr müsst jede
+  Rückzahlung selbst beim Anbieter auslösen.
 
 ## Der Arbeitsplatz
 

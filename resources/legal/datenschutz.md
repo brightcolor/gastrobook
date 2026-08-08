@@ -157,7 +157,10 @@ Abbuchungen. Das Mandat kann jederzeit im Konto gekündigt werden.
   Anbieter **seven.io** (seven communications GmbH). Hierzu wird Ihre
   Telefonnummer an den Anbieter als Auftragsverarbeiter übermittelt.
 - Über den Versand führen wir ein Protokoll (Empfänger, Kanal, Status), um die
-  Zustellung nachvollziehen zu können.
+  Zustellung nachvollziehen zu können. Wird Ihr Gästeprofil anonymisiert oder
+  gelöscht, werden auch in diesem Protokoll Empfängeradresse und Betreff
+  entfernt; es bleibt nur die Information, dass eine Nachricht dieser Art
+  versandt wurde.
 
 **Zweck:** Durchführung der Buchung und Reduzierung von Nichterscheinen.
 **Rechtsgrundlage:** Art. 6 Abs. 1 lit. b DSGVO (transaktionsbezogene

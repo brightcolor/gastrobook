@@ -311,6 +311,8 @@ Funktioniert problemlos – die App vertraut `X-Forwarded-*`-Headern (in `bootst
 
 Den Host-Port am besten nur lokal binden und den Proxy davorsetzen, z. B. in der `.env`: `SWAYY_PORT=127.0.0.1:8080` (dann lauscht nur der Proxy nach außen).
 
+**PHP-Prozesse (wichtig, wenn das Live-Board genutzt wird):** Jede offene Board-Ansicht hält über SSE dauerhaft einen PHP-FPM-Prozess. Der Pool steht deshalb auf 30 Kinder (`docker/www.conf`); zum Ändern `SWAYY_FPM_MAX_CHILDREN` in der `.env` setzen. Als Faustregel: gleichzeitige Board-Ansichten + 10. Zu klein bemessen wirkt wie ein Totalausfall – alle übrigen Anfragen warten, bis ein Board-Tab geschlossen wird. Jeder Prozess braucht grob 40–60 MB RAM.
+
 **Bind-Mounts (alle Daten im Projektordner):**
 
 | Host-Pfad | Container | Inhalt |

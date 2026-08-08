@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.109.1] – 2026-08-08
+
+### Doku zu den Änderungen aus dem Audit
+Reine Dokumentation, am Verhalten ändert sich nichts.
+
+- **Handbuch, Salon:** neues Kapitel „Termin am Telefon annehmen" (Leistungen +
+  Mitarbeiterin direkt in der Maske) und die nachträgliche Zuweisung aus dem
+  Terminplan heraus beschrieben.
+- **Handbuch, Rückerstattungen:** Eventtickets und Eventabsagen laufen durch
+  denselben Weg wie Reservierungen – ergänzt.
+- **Datenschutzerklärung:** Beim Anonymisieren werden auch im Versandprotokoll
+  Empfänger und Betreff entfernt (Art. 5 Abs. 2 DSGVO).
+- **README/.env.example:** `SWAYY_FPM_MAX_CHILDREN` dokumentiert – jede offene
+  Live-Board-Ansicht belegt dauerhaft einen PHP-Prozess.
+
 ## [1.109.0] – 2026-08-08
 
 ### 16 weitere Auditbefunde behoben
