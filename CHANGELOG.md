@@ -1,5 +1,76 @@
 # Changelog
 
+## [1.109.0] – 2026-08-08
+
+### 16 weitere Auditbefunde behoben
+Die zweite Haelfte des Audits: 18 offene Verdachtsfaelle wurden einzeln
+gegengeprueft, 16 hielten stand, 2 fielen durch (der Webhook-Zaehler und der
+abgebrochene Bezahlvorgang – beide harmloser als gemeldet).
+
+**Onboarding war fuer neue Betriebe kaputt.** Der Schritt „Buchungsregeln"
+schickte `auto_confirm`, die Route verlangt aber `booking_confirmation_mode` –
+und drei Pflichtfelder fehlten ganz. Jeder neue Betrieb lief dort in eine
+Fehlermeldung. Nebenbei schaltete derselbe Schritt Warteliste, Walk-ins,
+Erinnerungen und Feedback still aus, weil er leere Werte sendete; jetzt stehen
+dort die Vorgaben.
+
+**Geld**
+- Eine Rueckerstattung blieb bei einer Ausnahme des Zahlungsanbieters fuer immer
+  in „in Arbeit" haengen und wurde von keinem Lauf mehr angefasst. Jetzt landet
+  sie mit Fehlertext auf „fehlgeschlagen" und kann erneut versucht werden.
+- **Eventbuchungen kannten gar keine Erstattung.** Wer ein bezahltes Ticket
+  stornierte, bekam nichts zurueck; bei einer Eventabsage musste der Betrieb
+  jede Rueckzahlung von Hand beim Anbieter ausloesen. Eventstornierungen laufen
+  jetzt durch dieselbe Logik wie Reservierungen (Modus, Prozentsatz, Freigabe).
+
+**Buchungen**
+- Umbuchen prueft jetzt dieselben Zeitgrenzen wie das Anlegen: Vorlauf,
+  Vorausbuchungsgrenze und Vergangenheit. Ein Gast konnte seinen Termin sonst
+  per Aenderungslink in die Vergangenheit schieben. Reine Personenzahl-
+  Aenderungen bleiben ausgenommen.
+- Umbuchen nutzt jetzt dieselbe Pruefung wie die Neuanlage statt eines Nachbaus.
+  Damit gilt auch beim Verschieben das Platzlimit – und im Kapazitaetsmodus
+  „Plaetze" (dort gibt es keine Tische) funktioniert Umbuchen ueberhaupt erst.
+- Ein korrigierter No-Show nimmt den Zaehler am Gastprofil wieder zurueck.
+
+**Salon**
+- **Termine lassen sich intern mit Mitarbeiterin anlegen** (Leistung + Person in
+  der Maske) **und nachtraeglich zuweisen**. Telefonisch angelegte Termine
+  landeten bisher ohne Zuordnung und tauchten im Terminplan nur in der Restliste
+  auf.
+
+**Datenschutz**
+- Das Versandprotokoll fuehrte die Empfaengeradresse im Klartext weiter, auch
+  nach dem Anonymisieren eines Gastes. Wird jetzt mitgeloescht.
+
+**Last und Betrieb**
+- Der oeffentliche Slot-Endpunkt rechnete bei ausgebuchtem Zeitraum bis zu 90
+  Tage durch – ohne Anmeldung ausloesbar. Die Vorwaertssuche hat jetzt ein
+  Budget von sieben **geoeffneten** Tagen; Ruhetage und Betriebsferien kosten
+  nichts, werden also weiterhin uebersprungen.
+- Der Erinnerungs-Job lud alle 15 Minuten saemtliche kuenftigen Reservierungen
+  aller Betriebe in den Speicher, obwohl weiter als sieben Tage nie erinnert
+  werden kann. Jetzt mit Obergrenze und seitenweise.
+- Der Feedback-Job hatte keine untere Zeitgrenze: Wer die Funktion einmal
+  ausgeschaltet hatte, verschickte beim Wiedereinschalten an den gesamten
+  Altbestand. Jetzt nur noch Besuche der letzten drei Wochen, hoechstens 1000
+  je Lauf.
+- Zwei Indizes auf `reservations` (Mitarbeiter und Gast, je mit Startzeit) –
+  PostgreSQL legt fuer Fremdschluessel keine an.
+
+**Sicherheit**
+- `X-Forwarded-For` wurde jedem Aufrufer geglaubt: Damit war die Client-IP frei
+  waehlbar und **saemtliche Rate Limits waren mit einem Header umgehbar**.
+  Vertraut wird jetzt nur noch Loopback und den privaten Netzen; externe Proxys
+  gehoeren in `TRUSTED_PROXIES` (siehe README).
+- Check-in und Storno einzelner Eventbuchungen pruefen jetzt den Standort.
+- `install.sh` setzt die `.env` auf 0600, bevor Schluessel und Datenbank-
+  passwort hineingeschrieben werden.
+
+**Anzahlungsregeln** lassen sich jetzt auf **Wochentage** und einen **Raum**
+begrenzen – beides war im Handbuch beschrieben, in der Oberflaeche aber nicht
+einstellbar.
+
 ## [1.108.0] – 2026-08-07
 
 ### Sicherheit: zwei Seiten waren für jeden offen

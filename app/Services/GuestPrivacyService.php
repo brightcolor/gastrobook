@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\EventBooking;
 use App\Models\Guest;
 use App\Models\GuestMergeLog;
+use App\Models\NotificationLog;
 use App\Models\ReservationAttachment;
 use App\Models\Tenant;
 use App\Models\WaitlistEntry;
@@ -132,6 +133,29 @@ class GuestPrivacyService
             foreach ($attachments as $attachment) {
                 Storage::disk($attachment->disk)->delete($attachment->path);
                 $attachment->delete();
+            }
+
+            // Das Versandprotokoll fuehrt die Empfaengeradresse im Klartext und
+            // ist ueber reservation_id auf den Gast rueckfuehrbar - die Loeschung
+            // muss es erreichen. Laeuft VOR dem Leeren des Profils, solange
+            // E-Mail und Telefon noch bekannt sind.
+            NotificationLog::withoutGlobalScopes()
+                ->whereIn('reservation_id', $guest->reservations()->withoutGlobalScope('tenant')->select('reservations.id'))
+                ->update(['recipient' => '-', 'subject' => null]);
+
+            if ($guest->email !== null || $guest->phone !== null) {
+                NotificationLog::withoutGlobalScopes()
+                    ->where('tenant_id', $guest->tenant_id)
+                    ->whereNull('reservation_id')
+                    ->where(function ($q) use ($guest) {
+                        if ($guest->email !== null) {
+                            $q->orWhereRaw('LOWER(recipient) = ?', [mb_strtolower($guest->email)]);
+                        }
+                        if ($guest->phone !== null) {
+                            $q->orWhere('recipient', $guest->phone);
+                        }
+                    })
+                    ->update(['recipient' => '-', 'subject' => null]);
             }
 
             $guest->update([

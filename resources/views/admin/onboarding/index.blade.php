@@ -643,14 +643,19 @@
             max_advance_days: document.getElementById('obMaxAdvance')?.value || '60',
             min_party_online: document.getElementById('obMinParty')?.value || '1',
             max_party_online: document.getElementById('obMaxParty')?.value || '10',
-            auto_confirm: document.getElementById('obAutoConfirm')?.checked ? '1' : '',
-            request_only: '',
+            // Feldname und Werte muessen zur Validierung der Zielroute passen
+            // (booking_confirmation_mode, nicht auto_confirm/request_only) - sonst
+            // scheitert dieser Schritt bei JEDEM neuen Betrieb mit 422.
+            booking_confirmation_mode: document.getElementById('obAutoConfirm')?.checked ? 'auto' : 'manual',
             capacity_mode: 'table',
             max_covers_per_slot: '',
-            waitlist_enabled: '',
-            walkins_enabled: '',
-            cancellation_deadline_minutes: '0',
-            reminder_enabled: '',
+            // Die Vorgaben aus der Datenbank spiegeln, nicht stillschweigend
+            // ausschalten: Der Assistent hat diese Schalter gar nicht im Formular.
+            waitlist_enabled: '1',
+            walkins_enabled: '1',
+            cancellation_deadline_minutes: '120',
+            modification_deadline_minutes: '120',
+            reminder_enabled: '1',
             reminder_hours_before: '24',
             sms_reminder_enabled: '',
             gap_optimization_enabled: '',
@@ -659,7 +664,10 @@
             refund_percent: '0',
             refund_processing: 'immediate',
             require_email_confirmation: document.getElementById('obEmailConfirm')?.checked ? '1' : '',
-            confetti_on_booking: '',
+            confetti_on_booking: '1',
+            feedback_enabled: '1',
+            feedback_hours_after: '18',
+            feedback_redirect_min_score: '4',
             guest_address: 'Sie',
         };
         btn.disabled = true; btn.textContent = '…';

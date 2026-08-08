@@ -18,14 +18,21 @@ class SendReservationReminders implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable;
 
+    /** Obergrenze aus SettingsController: reminder_hours_before => max:168. */
+    private const MAX_LEAD_HOURS = 168;
+
     public function handle(ReservationLifecycleService $lifecycle, SmsManager $sms): void
     {
         $reservations = Reservation::withoutGlobalScopes()
             ->where('status', ReservationStatus::Confirmed->value)
             ->whereNull('reminder_sent_at')
             ->where('start_at', '>', now())
+            // Weiter als die groesste erlaubte Vorwarnzeit kann nie erinnert
+            // werden - solche Datensaetze alle 15 Minuten mitzuladen, kostet auf
+            // einem Host ohne Swap echten Speicher.
+            ->where('start_at', '<=', now()->addHours(self::MAX_LEAD_HOURS))
             ->with('location.settings', 'location.tenant')
-            ->get()
+            ->lazyById(200)
             ->filter(function (Reservation $r) {
                 $settings = $r->location?->effectiveSettings();
 

@@ -766,6 +766,23 @@
                 <input type="number" name="flat_amount" step="0.01" min="0" placeholder="0,00" class="w-full rounded-lg border-stone-200"></div>
             <div><label class="mb-1 block text-xs text-stone-500">Zahlungsfrist (Min.) <span class="tip" tabindex="0" data-tip="Wie lange hat der Gast nach der Buchung Zeit zu zahlen? Nach Ablauf kann die Buchung automatisch storniert werden – siehe Häkchen darunter.">?</span></label>
                 <input type="number" name="payment_deadline_minutes" min="10" placeholder="60" class="w-full rounded-lg border-stone-200"></div>
+            <div class="col-span-2"><label class="mb-1 block text-xs text-stone-500">Nur an diesen Wochentagen <span class="tip" tabindex="0" data-tip="Nichts angehakt = die Regel gilt an allen Tagen. Typisch: nur Freitag und Samstag, weil dort die Ausfälle wehtun.">?</span></label>
+                <div class="flex flex-wrap gap-2 text-xs">
+                    @foreach(['Mo','Di','Mi','Do','Fr','Sa','So'] as $i => $tag)
+                        <label class="flex items-center gap-1"><input type="checkbox" name="weekdays[]" value="{{ $i }}"> {{ $tag }}</label>
+                    @endforeach
+                </div>
+            </div>
+            @if($rooms->isNotEmpty())
+                <div class="col-span-2"><label class="mb-1 block text-xs text-stone-500">Nur für Raum <span class="tip" tabindex="0" data-tip="Die Regel greift nur, wenn der zugeteilte Tisch in diesem Raum steht – etwa für den Wintergarten oder einen Nebenraum.">?</span></label>
+                    <select name="room_id" class="w-full rounded-lg border-stone-200">
+                        <option value="">Alle Räume</option>
+                        @foreach($rooms as $room)
+                            <option value="{{ $room->id }}">{{ $room->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            @endif
             <label class="col-span-2 flex items-center gap-2 text-xs text-stone-600">
                 <input type="checkbox" name="cancel_unpaid_automatically" value="1" checked class="rounded">
                 Unbezahlte Buchungen nach Fristablauf automatisch stornieren
@@ -780,6 +797,8 @@
                         <span>
                             <strong>{{ $rule->name }}</strong>
                             @if($rule->service) · nur {{ $rule->service->name }} @endif
+                            @if($rule->room_id) · nur {{ $rooms->firstWhere('id', $rule->room_id)?->name }} @endif
+                            @if(! empty($rule->weekdays)) · {{ collect($rule->weekdays)->map(fn ($d) => ['Mo','Di','Mi','Do','Fr','Sa','So'][$d] ?? '?')->implode(', ') }} @endif
                             @if($rule->min_party_size) · ab {{ $rule->min_party_size }} P. @endif
                             @if($rule->flat_amount_minor > 0) · {{ number_format($rule->flat_amount_minor / 100, 2, ',', '.') }} € Grundbetrag @endif
                             · {{ number_format($rule->amount_per_person_minor / 100, 2, ',', '.') }} € p. P.

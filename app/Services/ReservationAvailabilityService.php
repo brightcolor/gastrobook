@@ -8,6 +8,14 @@ use Carbon\CarbonImmutable;
 
 class ReservationAvailabilityService
 {
+    /**
+     * Wie viele GEOEFFNETE Tage die Vorwaertssuche hoechstens durchrechnet.
+     * Ohne diese Grenze rechnet eine einzige oeffentliche Anfrage bei
+     * ausgebuchtem Zeitraum den kompletten Buchungshorizont durch (Standard 90
+     * Tage) - je Tag mit Abfragen pro Zeitfenster.
+     */
+    private const FORWARD_SCAN_BUDGET = 7;
+
     public function __construct(
         private readonly TimeSlotService $timeSlots,
         private readonly TableAssignmentService $tableAssignment,
@@ -113,10 +121,17 @@ class ReservationAvailabilityService
         $otherDays = [];
         $cursor = $desiredLocal->startOfDay();
         $maxAdvance = $location->effectiveSettings()->max_advance_days;
-        for ($i = 1; $i <= $maxAdvance && count($otherDays) < $maxOtherDays; $i++) {
+        $budget = self::FORWARD_SCAN_BUDGET;
+        for ($i = 1; $i <= $maxAdvance && count($otherDays) < $maxOtherDays && $budget > 0; $i++) {
             $day = $cursor->addDays($i);
-            $daySlots = collect($this->slotsFor($location, $day, $partySize))->filter(fn ($s) => $s['available']);
-            if ($daySlots->isNotEmpty()) {
+            $alle = $this->slotsFor($location, $day, $partySize);
+            // Geschlossene Tage kosten kein Budget - Ruhetage und Betriebsferien
+            // sollen die Suche nicht aufbrauchen.
+            if ($alle === []) {
+                continue;
+            }
+            $budget--;
+            if (collect($alle)->contains(fn ($s) => $s['available'])) {
                 $otherDays[] = $day->toDateString();
             }
         }
@@ -136,9 +151,15 @@ class ReservationAvailabilityService
         $start = $fromLocalDate->startOfDay();
         $maxAdvance = (int) $location->effectiveSettings()->max_advance_days;
 
-        for ($i = 0; $i <= $maxAdvance && count($out) < $limit; $i++) {
+        $budget = self::FORWARD_SCAN_BUDGET;
+        for ($i = 0; $i <= $maxAdvance && count($out) < $limit && $budget > 0; $i++) {
             $day = $start->addDays($i);
-            $daySlots = collect($this->slotsFor($location, $day, $partySize))
+            $alle = $this->slotsFor($location, $day, $partySize);
+            if ($alle === []) {
+                continue;
+            }
+            $budget--;
+            $daySlots = collect($alle)
                 ->filter(fn ($s) => $s['available'])
                 ->take($perDay);
 
@@ -271,6 +292,9 @@ class ReservationAvailabilityService
             if ($maxCovers !== null) {
                 $currentCovers = (int) $location->reservations()
                     ->whereIn('status', ReservationStatus::activeStatuses())
+                    // Beim Umbuchen darf sich die eigene Reservierung nicht
+                    // selbst gegen das Platzlimit zaehlen.
+                    ->when($options['exclude_reservation_id'] ?? null, fn ($q, $id) => $q->where('reservations.id', '!=', $id))
                     ->where('start_at', '<', $endUtc)
                     ->where('end_at', '>', $startUtc)
                     ->sum('party_size');

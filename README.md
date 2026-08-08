@@ -306,7 +306,8 @@ Enthalten: PHP-FPM-App, nginx, PostgreSQL 17, Redis 7, dedizierter Queue-Worker,
 Funktioniert problemlos – die App vertraut `X-Forwarded-*`-Headern (in `bootstrap/app.php` konfiguriert), erzeugt also korrekte `https`-Links. Zwei Dinge beachten:
 
 1. **`APP_URL` in der `.env` auf die echte Domain setzen**, z. B. `APP_URL=https://buchung.example.com`. Daraus entstehen alle absoluten Links (Mails, Magic-Link, Zahlungs-Rücksprung).
-2. Der Proxy muss `X-Forwarded-Proto`/`-Host` setzen (Standard bei Traefik/Caddy; bei nginx `proxy_set_header X-Forwarded-Proto $scheme;` etc.). Für das **Live-Board (SSE)** Pufferung aus lassen (nginx: `proxy_buffering off;` für die App, oder den Header `X-Accel-Buffering: no` durchreichen – wird von der App bereits gesetzt).
+2. **Sitzt der Proxy nicht im privaten Netz**, seine Adresse in `TRUSTED_PROXIES` eintragen (Komma-Liste, CIDR erlaubt). Voreingestellt sind Loopback und die privaten Bereiche – damit ist der mitgelieferte nginx abgedeckt, ein externer Load Balancer oder Cloudflare aber nicht. Ohne Eintrag ignoriert die App dessen `X-Forwarded-Proto` und erzeugt `http`-Links.
+3. Der Proxy muss `X-Forwarded-Proto` setzen (Standard bei Traefik/Caddy; bei nginx `proxy_set_header X-Forwarded-Proto $scheme;` etc.). Für das **Live-Board (SSE)** Pufferung aus lassen (nginx: `proxy_buffering off;` für die App, oder den Header `X-Accel-Buffering: no` durchreichen – wird von der App bereits gesetzt).
 
 Den Host-Port am besten nur lokal binden und den Proxy davorsetzen, z. B. in der `.env`: `SWAYY_PORT=127.0.0.1:8080` (dann lauscht nur der Proxy nach außen).
 

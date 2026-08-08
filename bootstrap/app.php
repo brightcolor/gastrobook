@@ -45,8 +45,21 @@ return Application::configure(basePath: dirname(__DIR__))
         // generierten Links – etwa im Passwort-Reset-Link, der dann auf eine
         // fremde Domain zeigt (mit gueltigem Token). Fuer https-Links reicht
         // X-Forwarded-Proto.
+        // at:'*' hiesse: jeder Aufrufer gilt als Proxy. Dann kaeme die Client-IP
+        // aus X-Forwarded-For und waere frei waehlbar – saemtliche Rate Limits
+        // (Buchung, Slots, API) haengen an dieser IP, ebenso der Auditlog.
+        // Voreingestellt sind Loopback und die privaten Netze, in denen der
+        // mitgelieferte nginx sitzt. Wer einen Proxy auf einer oeffentlichen
+        // Adresse davor hat (Cloudflare, externer Load Balancer), traegt ihn in
+        // TRUSTED_PROXIES ein – sonst kommen https-Links und Anmeldung ins
+        // Straucheln, weil auch X-Forwarded-Proto an dieser Liste haengt.
+        // getenv statt env()/config(): Diese Closure laeuft, bevor die
+        // Konfiguration geladen ist.
         $middleware->trustProxies(
-            at: '*',
+            at: array_values(array_filter(array_map('trim', explode(
+                ',',
+                (string) (getenv('TRUSTED_PROXIES') ?: '127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16')
+            )))),
             headers: Request::HEADER_X_FORWARDED_FOR
                 | Request::HEADER_X_FORWARDED_PORT
                 | Request::HEADER_X_FORWARDED_PROTO

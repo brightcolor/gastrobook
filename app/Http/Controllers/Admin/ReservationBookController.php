@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\ReservationStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Reservation;
+use App\Models\Service;
+use App\Models\StaffMember;
 use App\Services\AuditLogger;
 use App\Services\RefundService;
 use App\Services\ReservationAvailabilityService;
 use App\Services\ReservationLifecycleService;
+use App\Services\SalonAvailabilityService;
 use App\Services\TableAssignmentService;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
@@ -23,6 +26,7 @@ class ReservationBookController extends Controller
         private readonly TenantContext $context,
         private readonly ReservationLifecycleService $lifecycle,
         private readonly ReservationAvailabilityService $availability,
+        private readonly SalonAvailabilityService $salonAvailability,
         private readonly RefundService $refunds,
         private readonly TableAssignmentService $tableAssignment,
     ) {}
@@ -371,6 +375,10 @@ class ReservationBookController extends Controller
             'table_ids' => ['nullable', 'array'],
             'table_ids.*' => ['integer'],
             'force' => ['nullable', 'boolean'],
+            // Salon: Leistung(en) und Mitarbeiterin am Telefon mitnehmen.
+            'staff_member_id' => ['nullable', 'integer'],
+            'service_ids' => ['nullable', 'array'],
+            'service_ids.*' => ['integer'],
         ]);
 
         // Manual table choice: validate tables belong to this location
@@ -385,9 +393,51 @@ class ReservationBookController extends Controller
             abort(403, 'Überbuchung erfordert eine erweiterte Berechtigung.');
         }
 
-        $reservation = $this->lifecycle->create($location, [
+        $startLocal = CarbonImmutable::parse($validated['date'].' '.$validated['time'], $location->timezone);
+
+        // Salon: Leistungen und Mitarbeiterin aufloesen. Ohne diesen Zweig
+        // landeten telefonische Termine ohne Zuordnung und tauchten im
+        // Terminplan nur in der Restliste auf.
+        $salon = [];
+        if ($this->context->tenant()->isSalon() && ! empty($validated['service_ids'])) {
+            $services = Service::where('location_id', $location->id)
+                ->where('is_active', true)
+                ->whereIn('id', $validated['service_ids'])
+                ->get();
+
+            if ($services->isNotEmpty()) {
+                $dauer = $this->salonAvailability->combinedDuration($services);
+                $staff = null;
+
+                if (! empty($validated['staff_member_id'])) {
+                    $staff = StaffMember::where('location_id', $location->id)
+                        ->where('is_active', true)
+                        ->find((int) $validated['staff_member_id']);
+                    if ($staff !== null
+                        && ! $force
+                        && ! $this->salonAvailability->isStaffAvailableForServices($staff, $services, $startLocal->utc(), $location)) {
+                        return back()->withErrors(['staff_member_id' => __('Diese Person ist zu dem Zeitpunkt nicht verfügbar.')])->withInput();
+                    }
+                } else {
+                    $staff = $this->salonAvailability->firstAvailableStaffForServices($services, $startLocal->utc(), $location);
+                }
+
+                $salon = [
+                    'duration_minutes' => $dauer,
+                    'service_id' => $services->first()->id,
+                    'service_ids' => $services->pluck('id')->all(),
+                    'staff_member_id' => $staff?->id,
+                    // Die Tischsuche ergibt im Salon keinen Sinn; die
+                    // Personenverfuegbarkeit ist oben bereits geprueft.
+                    'skip_availability_check' => true,
+                ];
+                $salonServices = $services;
+            }
+        }
+
+        $reservation = $this->lifecycle->create($location, $salon + [
             'party_size' => (int) $validated['party_size'],
-            'start_local' => CarbonImmutable::parse($validated['date'].' '.$validated['time'], $location->timezone),
+            'start_local' => $startLocal,
             'duration_minutes' => $validated['duration_minutes'] ?? null,
             'source' => $validated['source'] ?? 'manual',
             'guest_name' => $validated['name'],
@@ -400,6 +450,18 @@ class ReservationBookController extends Controller
             'table_ids' => $tableIds,
             'skip_availability_check' => $force,
         ], $request->user());
+
+        if (isset($salonServices)) {
+            $reservation->services()->sync(
+                $salonServices->values()->mapWithKeys(fn (Service $s, int $i) => [
+                    $s->id => [
+                        'sort_order' => $i,
+                        'duration_minutes' => $s->duration_minutes,
+                        'price_minor' => $s->price_minor,
+                    ],
+                ])->all()
+            );
+        }
 
         return redirect()->route('admin.reservations.show', $reservation)
             ->with('success', __('Reservierung :code angelegt.', ['code' => $reservation->code]));
@@ -670,6 +732,39 @@ class ReservationBookController extends Controller
         $audit->log('reservation.note_added', $reservation);
 
         return back()->with('success', __('Notiz gespeichert.'));
+    }
+
+    /**
+     * Einen Salon-Termin nachtraeglich einer Person zuweisen (oder umhaengen).
+     * Prueft dieselbe Verfuegbarkeit wie die Anlage und klammert den Termin
+     * selbst aus, damit er nicht mit sich kollidiert.
+     */
+    public function assignStaff(Request $request, Reservation $reservation, AuditLogger $audit)
+    {
+        $this->authorizeReservation($reservation);
+
+        $validated = $request->validate([
+            'staff_member_id' => ['required', 'integer'],
+        ]);
+
+        $location = $reservation->location()->withoutGlobalScope('tenant')->first();
+        $staff = StaffMember::where('location_id', $reservation->location_id)
+            ->where('is_active', true)
+            ->find((int) $validated['staff_member_id']);
+        if ($staff === null || $location === null) {
+            return back()->withErrors(['staff_member_id' => __('Diese Person gibt es hier nicht.')]);
+        }
+
+        $dauer = (int) $reservation->start_at->diffInMinutes($reservation->end_at);
+        if (! $this->salonAvailability->canStaffTake($staff, $dauer, CarbonImmutable::parse($reservation->start_at), $location, $reservation->id)) {
+            return back()->withErrors(['staff_member_id' => __('Diese Person ist zu dem Zeitpunkt nicht verfügbar.')]);
+        }
+
+        $alt = $reservation->staff_member_id;
+        $reservation->update(['staff_member_id' => $staff->id]);
+        $audit->log('reservation.staff_assigned', $reservation, ['staff_member_id' => $alt], ['staff_member_id' => $staff->id]);
+
+        return back()->with('success', __(':name zugewiesen.', ['name' => $staff->name]));
     }
 
     private function authorizeReservation(Reservation $reservation): void

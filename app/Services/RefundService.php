@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\EventBooking;
 use App\Models\PaymentIntent;
 use App\Models\Refund;
 use App\Models\Reservation;
@@ -204,18 +205,34 @@ class RefundService
 
         $refund->setAttribute('status', 'processing');
 
-        $tenant = Tenant::find($refund->tenant_id);
-        $provider = $tenant ? $this->payments->provider($tenant, $refund->provider) : null;
-        $intent = $refund->payment_intent_id ? PaymentIntent::withoutGlobalScopes()->find($refund->payment_intent_id) : null;
-        $reference = $intent->metadata['refund_ref'] ?? null;
+        // Der try-Block endet BEWUSST direkt hinter dem Anbieteraufruf: Danach
+        // ist das Geld unterwegs. Wuerde ein Fehler in der Nachbuchung ebenfalls
+        // auf 'failed' gesetzt, gaebe der Wiederholen-Knopf eine zweite echte
+        // Erstattung frei. Ohne diesen Block bliebe der Datensatz bei einer
+        // Ausnahme fuer immer in 'processing' stehen und wuerde von keinem Lauf
+        // mehr angefasst.
+        try {
+            $tenant = Tenant::find($refund->tenant_id);
+            $provider = $tenant ? $this->payments->provider($tenant, $refund->provider) : null;
+            $intent = $refund->payment_intent_id ? PaymentIntent::withoutGlobalScopes()->find($refund->payment_intent_id) : null;
+            $reference = $intent->metadata['refund_ref'] ?? null;
 
-        if ($provider === null || ! $reference) {
-            $refund->update(['status' => 'failed', 'error' => 'Kein Anbieter oder keine Zahlungsreferenz.']);
+            if ($provider === null || ! $reference) {
+                $refund->update(['status' => 'failed', 'error' => 'Kein Anbieter oder keine Zahlungsreferenz.']);
+
+                return false;
+            }
+
+            $result = $provider->refund($reference, $refund->amount_minor, $refund->currency);
+        } catch (\Throwable $e) {
+            report($e);
+            $refund->update([
+                'status' => 'failed',
+                'error' => 'Anbieter nicht erreichbar. Bitte dort pruefen, ob die Erstattung doch ausgefuehrt wurde, bevor erneut versucht wird. ('.mb_substr($e->getMessage(), 0, 300).')',
+            ]);
 
             return false;
         }
-
-        $result = $provider->refund($reference, $refund->amount_minor, $refund->currency);
         if (! $result['ok']) {
             $refund->update(['status' => 'failed', 'error' => 'Anbieter hat die Rückerstattung abgelehnt.']);
 
@@ -237,11 +254,94 @@ class RefundService
                 ->update(['payment_status' => $fully ? 'refunded' : 'partially_refunded']);
         }
 
+        if ($refund->event_booking_id) {
+            EventBooking::withoutGlobalScopes()
+                ->where('id', $refund->event_booking_id)
+                ->update(['payment_status' => $fully ? 'refunded' : 'partially_refunded']);
+        }
+
         $this->audit->log('refund.completed', $refund, null, [
             'amount_minor' => $refund->amount_minor, 'provider_refund_id' => $result['id'],
         ], null, null, $refund->tenant_id);
 
         return true;
+    }
+
+    /**
+     * Zwilling zu requestForReservation fuer Eventbuchungen.
+     *
+     * Ohne diesen Weg blieb eine bezahlte Eventbuchung bei der Stornierung
+     * unerstattet - bei einer Eventabsage musste der Betrieb jede Rueckzahlung
+     * von Hand beim Zahlungsanbieter ausloesen.
+     */
+    public function requestForEventBooking(EventBooking $booking, string $source = 'guest_cancel', ?User $actor = null): ?Refund
+    {
+        $event = $booking->event()->withoutGlobalScopes()->first();
+        $location = $event?->location()->withoutGlobalScope('tenant')->first();
+        if ($location === null) {
+            return null;
+        }
+
+        $settings = $location->effectiveSettings();
+        $mode = $settings->refund_mode;
+        if ($mode === 'off') {
+            return null;
+        }
+
+        $intent = PaymentIntent::withoutGlobalScopes()
+            ->where('event_booking_id', $booking->id)
+            ->where('status', 'paid')
+            ->latest()
+            ->first();
+        if ($intent === null || empty($intent->metadata['refund_ref'])) {
+            return null;
+        }
+
+        $refund = DB::transaction(function () use ($booking, $intent, $settings, $mode, $source, $actor) {
+            $existing = Refund::withoutGlobalScopes()
+                ->where('event_booking_id', $booking->id)
+                ->whereNotIn('status', ['rejected', 'failed'])
+                ->lockForUpdate()
+                ->first();
+            if ($existing !== null) {
+                return $existing;
+            }
+
+            $percent = max(0, min(100, (int) $settings->refund_percent));
+            $amount = (int) round($intent->amount_minor * $percent / 100);
+            if ($amount <= 0) {
+                return null;
+            }
+
+            $refund = Refund::create([
+                'tenant_id' => $booking->tenant_id,
+                'event_booking_id' => $booking->id,
+                'payment_intent_id' => $intent->id,
+                'provider' => $intent->provider,
+                'amount_minor' => $amount,
+                'currency' => $intent->currency,
+                'status' => $mode === 'auto' ? 'approved' : 'pending',
+                'source' => $source,
+                'reason' => 'cancellation',
+                'requested_by' => $actor?->id,
+            ]);
+
+            $this->audit->log('refund.requested', $refund, null, [
+                'amount_minor' => $amount, 'mode' => $mode, 'event_booking_id' => $booking->id,
+            ], null, $actor, $booking->tenant_id);
+
+            return $refund;
+        });
+
+        if ($refund === null) {
+            return null;
+        }
+
+        if ($refund->status === 'approved' && $settings->refund_processing === 'immediate') {
+            $this->process($refund);
+        }
+
+        return $refund->fresh();
     }
 
     /**

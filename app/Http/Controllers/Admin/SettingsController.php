@@ -492,6 +492,9 @@ class SettingsController extends Controller
             'payment_deadline_minutes' => ['nullable', 'integer', 'min:10', 'max:10080'],
             'cancel_unpaid_automatically' => ['nullable', 'boolean'],
             'service_id' => ['nullable', 'integer'],
+            'weekdays' => ['nullable', 'array'],
+            'weekdays.*' => ['integer', 'min:0', 'max:6'],
+            'room_id' => ['nullable', 'integer'],
         ]);
 
         $rule = DepositRule::create([
@@ -500,6 +503,12 @@ class SettingsController extends Controller
             'name' => $validated['name'],
             'type' => 'deposit',
             'service_id' => $this->serviceIdForRule($location, $validated['service_id'] ?? null),
+            'room_id' => $this->roomIdForRule($location, $validated['room_id'] ?? null),
+            // Leere Auswahl muss null werden, nicht [] - null ist der Wert, den
+            // der Rest des Codes als "alle Tage" erwartet.
+            'weekdays' => ! empty($validated['weekdays'])
+                ? array_values(array_unique(array_map('intval', $validated['weekdays'])))
+                : null,
             'min_party_size' => $validated['min_party_size'] ?? null,
             'from_time' => $validated['from_time'] ?? null,
             'until_time' => $validated['until_time'] ?? null,
@@ -531,6 +540,9 @@ class SettingsController extends Controller
             'payment_deadline_minutes' => ['nullable', 'integer', 'min:10', 'max:10080'],
             'cancel_unpaid_automatically' => ['nullable', 'boolean'],
             'service_id' => ['nullable', 'integer'],
+            'weekdays' => ['nullable', 'array'],
+            'weekdays.*' => ['integer', 'min:0', 'max:6'],
+            'room_id' => ['nullable', 'integer'],
         ]);
 
         $rule->update([
@@ -541,6 +553,14 @@ class SettingsController extends Controller
             'service_id' => $request->has('service_id')
                 ? $this->serviceIdForRule($location, $validated['service_id'] ?? null)
                 : $rule->service_id,
+            'room_id' => $request->has('room_id')
+                ? $this->roomIdForRule($location, $validated['room_id'] ?? null)
+                : $rule->room_id,
+            'weekdays' => $request->has('weekdays')
+                ? (! empty($validated['weekdays'])
+                    ? array_values(array_unique(array_map('intval', $validated['weekdays'])))
+                    : null)
+                : $rule->weekdays,
             'min_party_size' => $validated['min_party_size'] ?? null,
             'from_time' => $validated['from_time'] ?? null,
             'until_time' => $validated['until_time'] ?? null,
@@ -569,6 +589,25 @@ class SettingsController extends Controller
         $id = (int) $serviceId;
 
         if (! Service::where('location_id', $location->id)->where('id', $id)->exists()) {
+            return null;
+        }
+
+        return $id;
+    }
+
+    /**
+     * Wie serviceIdForRule, aber fuer den Raum: Eine fremde ID wird verworfen
+     * statt still uebernommen.
+     */
+    private function roomIdForRule(Location $location, mixed $roomId): ?int
+    {
+        if (empty($roomId)) {
+            return null;
+        }
+
+        $id = (int) $roomId;
+
+        if (! Room::where('location_id', $location->id)->where('id', $id)->exists()) {
             return null;
         }
 

@@ -291,6 +291,15 @@ class ReservationLifecycleService
             // Guest statistics
             $guest = $reservation->guest;
             if ($guest !== null) {
+                // Korrektur NoShow -> Completed: Der Gast kam doch. Ohne diese
+                // Ruecknahme traegt das Profil dauerhaft einen No-Show zu viel,
+                // mit dem No-Show-Risiko und Stammgast-Erkennung weiterrechnen.
+                if ($from === ReservationStatus::NoShow
+                    && $to === ReservationStatus::Completed
+                    && $guest->no_show_count > 0) {
+                    $guest->decrement('no_show_count');
+                }
+
                 match ($to) {
                     ReservationStatus::Completed => $this->guests->registerVisit($guest, $reservation->party_size),
                     ReservationStatus::NoShow => $guest->increment('no_show_count'),
@@ -421,6 +430,23 @@ class ReservationLifecycleService
         $startUtc = $newStartLocal->utc();
         $endUtc = $startUtc->addMinutes($duration);
 
+        // Umbuchen muss dieselben Zeitgrenzen einhalten wie die Neuanlage:
+        // Vorlauf und Vorausbuchungsgrenze. Die erste Pruefung deckt zugleich
+        // die Vergangenheit ab (bei Vorlauf 0 wird sie zu "vor jetzt").
+        // Ausgenommen ist der Fall, in dem nur die Personenzahl geaendert wird -
+        // dort ist der Zeitpunkt unveraendert und darf nicht neu gemessen werden.
+        if ($actorType === 'guest' && ! $newStartLocal->equalTo($reservation->localStart())) {
+            $grenzen = $location->effectiveSettings();
+            $nowLocal = CarbonImmutable::now($location->timezone);
+
+            if ($newStartLocal->lt($nowLocal->addMinutes((int) $grenzen->min_lead_minutes))) {
+                throw ValidationException::withMessages(['time' => $this->availabilityMessage('lead_time')]);
+            }
+            if ($newStartLocal->gt($nowLocal->addDays((int) $grenzen->max_advance_days))) {
+                throw ValidationException::withMessages(['time' => $this->availabilityMessage('too_far_ahead')]);
+            }
+        }
+
         return DB::transaction(function () use ($reservation, $location, $newStartLocal, $startUtc, $endUtc, $duration, $partySize, $actor, $actorType) {
             $tableIds = null;
 
@@ -452,23 +478,35 @@ class ReservationLifecycleService
                     throw ValidationException::withMessages(['time' => __('Dieser Zeitpunkt ist leider gerade vergeben – bitte wählen Sie eine andere Zeit.')]);
                 }
             } else {
-                // Restaurant: reassign a fitting free table/combination
-                $assignment = $this->tableAssignment->findTables($location, $startUtc, $endUtc, $partySize, [
+                // Dieselbe Pruefung wie bei der Neuanlage statt eines Nachbaus:
+                // Der reine Tischcheck kannte weder das Platzlimit noch den
+                // Kapazitaetsmodus "Plaetze" - dort gibt es gar keine Tische,
+                // und jede Umbuchung lief ins Leere.
+                $check = $this->availability->checkExact($location, $newStartLocal, $partySize, [
+                    'duration' => $duration,
                     'online' => true,
                     'exclude_reservation_id' => $reservation->id,
                 ]);
-                if ($assignment === null) {
-                    throw ValidationException::withMessages(['time' => __('Zu diesem Zeitpunkt ist leider kein passender Tisch mehr frei – bitte wählen Sie eine andere Zeit oder Personenzahl.')]);
-                }
-                $tableIds = $assignment['table_ids'];
-
-                // The picked table may sit in a room that is blocked for this
-                // window even though the location as a whole is open.
-                $roomBlock = $this->availability->bookingBlockReason($location, $newStartLocal, $startUtc, $endUtc, $tableIds);
-                if ($roomBlock !== null) {
+                if (! $check['available']) {
                     throw ValidationException::withMessages([
-                        'time' => $this->availabilityMessage($roomBlock),
+                        'time' => $this->availabilityMessage($check['reason']),
                     ]);
+                }
+
+                // Im Platzmodus kommen bewusst keine Tische zurueck. Dann darf
+                // $tableIds null bleiben, sonst raeumt der sync() weiter unten
+                // eine vorhandene Zuordnung ab.
+                $tableIds = $check['table_ids'] !== [] ? $check['table_ids'] : null;
+
+                if ($tableIds !== null) {
+                    // The picked table may sit in a room that is blocked for this
+                    // window even though the location as a whole is open.
+                    $roomBlock = $this->availability->bookingBlockReason($location, $newStartLocal, $startUtc, $endUtc, $tableIds);
+                    if ($roomBlock !== null) {
+                        throw ValidationException::withMessages([
+                            'time' => $this->availabilityMessage($roomBlock),
+                        ]);
+                    }
                 }
             }
 

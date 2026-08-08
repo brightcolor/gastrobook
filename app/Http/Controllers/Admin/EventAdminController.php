@@ -240,7 +240,7 @@ class EventAdminController extends Controller
 
     public function checkIn(Request $request, EventBooking $booking)
     {
-        abort_if($booking->tenant_id !== $this->context->tenantId(), 404);
+        $this->authorizeBooking($booking);
 
         $this->bookings->checkIn($booking, $request->user());
 
@@ -249,7 +249,7 @@ class EventAdminController extends Controller
 
     public function cancelBooking(Request $request, EventBooking $booking)
     {
-        abort_if($booking->tenant_id !== $this->context->tenantId(), 404);
+        $this->authorizeBooking($booking);
 
         $this->bookings->cancel($booking, 'restaurant', $request->user());
 
@@ -280,5 +280,23 @@ class EventAdminController extends Controller
     {
         abort_if($event->tenant_id !== $this->context->tenantId(), 404);
         abort_if($event->location_id !== $this->context->locationId(), 404);
+    }
+
+    /**
+     * Eventbuchungen tragen keine eigene location_id - der Standort haengt am
+     * Event. Die permission-Middleware prueft nur den AKTIVEN Standort, nicht
+     * den der Buchung; ohne diesen Schritt kann ein auf einen Standort
+     * beschraenkter Benutzer fremde Buchungen einchecken und stornieren.
+     */
+    private function authorizeBooking(EventBooking $booking): void
+    {
+        abort_if($booking->tenant_id !== $this->context->tenantId(), 404);
+
+        // withoutGlobalScopes: abgesagte Events sind soft-geloescht, die
+        // Pruefung liefe sonst ins Leere statt zu greifen.
+        $event = $booking->event()->withoutGlobalScopes()->first();
+        abort_if($event === null, 404);
+
+        $this->authorizeEvent($event);
     }
 }

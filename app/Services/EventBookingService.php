@@ -15,6 +15,7 @@ class EventBookingService
     public function __construct(
         private readonly GuestProfileService $guests,
         private readonly WebhookDispatchService $webhooks,
+        private readonly RefundService $refunds,
         private readonly AuditLogger $audit,
     ) {}
 
@@ -121,6 +122,12 @@ class EventBookingService
         }
 
         $booking->update(['status' => 'cancelled', 'cancelled_at' => now()]);
+
+        // Bezahlte Eventbuchungen laufen jetzt in dieselbe Erstattungslogik wie
+        // Reservierungen (Modus aus / manuell / automatisch, Prozentsatz). Der
+        // Aufruf ist gutartig: ohne Zahlung, ohne Referenz oder bei Modus "aus"
+        // gibt er null zurueck und aendert nichts.
+        $this->refunds->requestForEventBooking($booking, $actorType === 'guest' ? 'guest_cancel' : 'staff_cancel', $actor);
 
         $this->audit->log('event.booking_cancelled', $booking, null, ['by' => $actorType], null, $actor, $booking->tenant_id);
     }

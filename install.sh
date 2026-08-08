@@ -53,6 +53,10 @@ if [ -f .env ]; then
     say ".env existiert bereits – bleibt unverändert."
 else
     fetch .env.example .env
+    # Eng setzen, BEVOR APP_KEY und Datenbankpasswort hineingeschrieben werden.
+    # Hinweis: Installation und "docker compose" muessen unter demselben Konto
+    # laufen - die Datei wird von der CLI gelesen, nicht vom Daemon.
+    chmod 600 .env 2>/dev/null || true
 
     APP_KEY="base64:$(head -c 32 /dev/urandom | base64)"
     APP_PORT="$(find_port 8080)"
