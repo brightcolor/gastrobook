@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.112.0] – 2026-08-20
+
+### Reservierungsbuch: Tag, Wochentag und Buchungseingang
+In der Liste stand nur die Uhrzeit. Weil der Zeitraum standardmäßig auf „Alle"
+steht, lagen Tage bunt untereinander – 15:00 konnte heute sein oder in drei
+Wochen, und man musste jede Zeile einzeln öffnen, um es zu erfahren.
+
+- Die erste Spalte heißt jetzt **Wann** und nennt den Tag über der Uhrzeit:
+  „Heute", „Morgen", „Gestern" – sonst Wochentag und Datum, das Jahr nur, wenn
+  es nicht das laufende ist.
+- Neue Spalte **Gebucht**: wann die Reservierung eingegangen ist. Zeigt auf
+  einen Blick, was langfristig geplant war und was kurzfristig reinkam.
+- Die Personenspalte hieß **P.** und war ohne Mauszeiger nicht zu erraten.
+  Jetzt **Pers.**
+- Die Detailansicht nennt beim Datum den Wochentag mit und zeigt ebenfalls,
+  wann gebucht wurde.
+- Der CSV-Export bekommt die beiden Spalten **Wochentag** und **Gebucht am**.
+
 ## [1.111.0] – 2026-08-20
 
 ### Anzahlungen: der Gast erfährt jetzt auch davon

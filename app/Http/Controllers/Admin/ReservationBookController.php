@@ -691,11 +691,12 @@ class ReservationBookController extends Controller
 
         return response()->streamDownload(function () use ($reservations) {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['Code', 'Datum', 'Uhrzeit', 'Personen', 'Name', 'E-Mail', 'Telefon', 'Status', 'Quelle', 'Tische', 'Notiz'], ';');
+            fputcsv($out, ['Code', 'Datum', 'Wochentag', 'Uhrzeit', 'Personen', 'Name', 'E-Mail', 'Telefon', 'Status', 'Quelle', 'Tische', 'Gebucht am', 'Notiz'], ';');
             foreach ($reservations as $r) {
                 fputcsv($out, [
                     $r->code,
                     $r->reservation_date->format('d.m.Y'),
+                    $r->localStart()->translatedFormat('l'),
                     $r->localStart()->format('H:i'),
                     $r->party_size,
                     $r->guest_name_snapshot,
@@ -704,6 +705,7 @@ class ReservationBookController extends Controller
                     $r->status->value,
                     $r->source,
                     $r->tables->pluck('name')->implode(', '),
+                    $r->localCreatedAt()?->format('d.m.Y H:i'),
                     $r->guest_note,
                 ], ';');
             }

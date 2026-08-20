@@ -181,6 +181,32 @@ class Reservation extends Model
         return $this->end_at->copy()->setTimezone($this->timezone);
     }
 
+    /**
+     * Zeitpunkt der Buchung in der Ortszeit des Standorts.
+     */
+    public function localCreatedAt(): ?Carbon
+    {
+        return $this->created_at?->copy()->setTimezone($this->timezone ?: config('app.timezone'));
+    }
+
+    /**
+     * Der Reservierungstag, wie ihn das Personal liest: „Heute", „Morgen",
+     * sonst Wochentag und Datum. Das Jahr nur, wenn es nicht das laufende ist.
+     */
+    public function localDayLabel(): string
+    {
+        $tag = $this->localStart();
+        $heute = Carbon::now($this->timezone ?: config('app.timezone'))->startOfDay();
+
+        return match (true) {
+            $tag->isSameDay($heute) => 'Heute',
+            $tag->isSameDay($heute->copy()->addDay()) => 'Morgen',
+            $tag->isSameDay($heute->copy()->subDay()) => 'Gestern',
+            $tag->year !== $heute->year => $tag->translatedFormat('D, d.m.Y'),
+            default => $tag->translatedFormat('D, d.m.'),
+        };
+    }
+
     public function isWalkIn(): bool
     {
         return $this->source === 'walk_in';

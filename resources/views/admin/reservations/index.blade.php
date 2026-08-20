@@ -179,12 +179,13 @@
         <thead class="border-b border-stone-100 text-left text-xs font-semibold uppercase tracking-wide text-stone-500">
             <tr>
                 <th class="w-8 px-3 py-3"><input type="checkbox" id="bulkAll" aria-label="Alle auswählen" class="rounded"><span class="tip" tabindex="0" data-tip="Hakt alle Reservierungen der Liste an. Oben erscheint dann eine Leiste, mit der du für alle zusammen denselben Schritt ausführen kannst.">?</span></th>
-                <th class="px-4 py-3">Zeit</th>
+                <th class="px-4 py-3">Wann<span class="tip" tabindex="0" data-tip="Tag und Uhrzeit des Besuchs. „Heute" und „Morgen" stehen statt des Datums, damit die nächsten Tage sofort ins Auge fallen.">?</span></th>
                 <th class="px-4 py-3">Gast</th>
-                <th class="px-4 py-3">P.<span class="tip" tabindex="0" data-tip="Personen – für wie viele Gäste der Tisch reserviert ist.">?</span></th>
+                <th class="px-4 py-3">Pers.<span class="tip" tabindex="0" data-tip="Personen – für wie viele Gäste der Tisch reserviert ist.">?</span></th>
                 <th class="px-4 py-3">Tisch</th>
                 <th class="px-4 py-3">Status<span class="tip" tabindex="0" data-tip="Der Bearbeitungsstand: Anfrage wartet auf deine Bestätigung · Bestätigt ist zugesagt · Da sitzt gerade am Tisch · Abgeschlossen ist gegangen · No-Show ist nicht erschienen.">?</span></th>
                 <th class="px-4 py-3">Quelle<span class="tip" tabindex="0" data-tip="Woher die Buchung kam – über deine Buchungsseite, von euch selbst eingetragen, als Laufgast oder aus der Warteliste.">?</span></th>
+                <th class="px-4 py-3">Gebucht<span class="tip" tabindex="0" data-tip="Wann die Reservierung bei euch eingegangen ist. Hilft bei Rückfragen und zeigt, wie kurzfristig gebucht wurde.">?</span></th>
                 <th class="px-4 py-3">Aktionen<span class="tip tip-left" tabindex="0" data-tip="Bringt die Reservierung einen Schritt weiter. „Bestätigen" sagt dem Gast per E-Mail zu, „Ablehnen" sagt ab. „Angekommen" markiert, dass die Gäste da sind. „No-Show" hält fest, dass niemand kam – das zählt beim Gast mit und kann eine Anzahlung einbehalten. „Auschecken" gibt den Tisch wieder frei.">?</span></th>
             </tr>
         </thead>
@@ -192,7 +193,10 @@
             @forelse($reservations as $r)
                 <tr class="hover:bg-stone-50">
                     <td class="px-3 py-3"><input type="checkbox" form="bulkForm" name="ids[]" value="{{ $r->id }}" class="bulk-check rounded" aria-label="{{ $r->guest_name_snapshot }} auswählen"></td>
-                    <td class="px-4 py-3 font-semibold">{{ $r->localStart()->format('H:i') }}<span class="font-normal text-stone-400">–{{ $r->localEnd()->format('H:i') }}</span></td>
+                    <td class="whitespace-nowrap px-4 py-3">
+                        <div class="text-xs font-medium text-stone-500">{{ $r->localDayLabel() }}</div>
+                        <div class="font-semibold">{{ $r->localStart()->format('H:i') }}<span class="font-normal text-stone-400">–{{ $r->localEnd()->format('H:i') }}</span></div>
+                    </td>
                     <td class="px-4 py-3">
                         <a href="{{ route('admin.reservations.show', $r) }}" class="font-semibold hover:underline">{{ $r->guest_name_snapshot }}</a>
                         @if($r->guest?->is_vip)<span title="VIP">⭐</span>@endif
@@ -203,6 +207,16 @@
                     <td class="px-4 py-3">{{ $r->tables->pluck('name')->implode(', ') ?: '–' }}</td>
                     <td class="px-4 py-3"><x-status-badge :status="$r->status" /></td>
                     <td class="px-4 py-3 text-stone-500">{{ __('reservations.source.' . $r->source) }}</td>
+                    <td class="whitespace-nowrap px-4 py-3 text-xs text-stone-500">
+                        @if($gebucht = $r->localCreatedAt())
+                            <span title="{{ $gebucht->translatedFormat('l, d.m.Y H:i') }} Uhr">
+                                {{ $gebucht->format('d.m.y') }}
+                                <span class="text-stone-400">{{ $gebucht->format('H:i') }}</span>
+                            </span>
+                        @else
+                            –
+                        @endif
+                    </td>
                     <td class="px-4 py-3">
                         <div class="flex gap-1.5">
                             @if($r->status->value === 'requested')
@@ -235,7 +249,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="8" class="px-4 py-8 text-center text-stone-500">Keine Reservierungen gefunden.</td></tr>
+                <tr><td colspan="9" class="px-4 py-8 text-center text-stone-500">Keine Reservierungen gefunden.</td></tr>
             @endforelse
         </tbody>
     </table>

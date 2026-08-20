@@ -14,7 +14,7 @@
         {{-- Details --}}
         <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
             <div class="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
-                <div><div class="text-stone-500">Datum</div><div class="font-bold">{{ $reservation->localStart()->format('d.m.Y') }}</div></div>
+                <div><div class="text-stone-500">Datum</div><div class="font-bold">{{ $reservation->localStart()->translatedFormat('D, d.m.Y') }}</div></div>
                 <div><div class="text-stone-500">Uhrzeit</div><div class="font-bold">{{ $reservation->localStart()->format('H:i') }}–{{ $reservation->localEnd()->format('H:i') }}</div></div>
                 <div><div class="text-stone-500">Personen</div><div class="font-bold">{{ $reservation->party_size }}</div></div>
                 <div><div class="text-stone-500">Quelle</div><div class="font-bold">{{ __('reservations.source.' . $reservation->source) }}</div></div>
@@ -24,6 +24,7 @@
                 <div><div class="text-stone-500">E-Mail</div><div class="font-bold">{{ $reservation->guest_email_snapshot ?? '–' }}</div></div>
                 <div><div class="text-stone-500">Telefon</div><div class="font-bold">{{ $reservation->guest_phone_snapshot ?? '–' }}</div></div>
                 <div><div class="text-stone-500">Anlass</div><div class="font-bold">{{ $reservation->occasion ?? '–' }}</div></div>
+                <div><div class="text-stone-500">Gebucht am</div><div class="font-bold">{{ $reservation->localCreatedAt()?->translatedFormat('D, d.m.Y H:i') ?? '–' }}</div></div>
             </div>
             @if($reservation->guest_note)
                 <div class="mt-4 rounded-xl bg-stone-50 p-3 text-sm"><strong>Gastnotiz:</strong> {{ $reservation->guest_note }}</div>
