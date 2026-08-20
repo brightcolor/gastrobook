@@ -150,7 +150,11 @@ class ReservationLifecycleService
                 $data['room_id'] ?? null,
                 array_values(array_map('intval', $serviceIds)),
             );
-            if ($rule !== null && $online) {
+            // Eine Regel ueber 0 Euro ist anlegbar (Betrag pro Person und
+            // Grundbetrag duerfen beide 0 sein). Sie darf keine Buchung
+            // aufhalten: Der Gast bekaeme eine Aufforderung ueber 0,00 EUR und
+            // einen Bezahlvorgang, den kein Anbieter annimmt.
+            if ($rule !== null && $online && $rule->amountFor($data['party_size']) > 0) {
                 $paymentStatus = 'required';
                 $paymentAmount = $rule->amountFor($data['party_size']);
                 $paymentDueAt = now()->addMinutes($rule->payment_deadline_minutes);
@@ -217,8 +221,16 @@ class ReservationLifecycleService
                 // When email confirmation is required, the caller sends the
                 // verification mail instead of the normal confirmation mail.
                 if ($reservation->guest_email_snapshot && ! $emailConfirm) {
-                    $templateKey = $status === ReservationStatus::Requested ? 'reservation_requested' : 'reservation_confirmed';
-                    if (in_array($status, [ReservationStatus::Confirmed, ReservationStatus::Requested], true)) {
+                    // Anzahlungspflichtige Buchungen brauchen die Aufforderung
+                    // per Mail. Ohne sie hat der Gast den Zahlungslink nur auf
+                    // der Bestätigungsseite - schließt er den Tab, verliert
+                    // er den Tisch, ohne je erfahren zu haben, warum.
+                    $templateKey = match ($status) {
+                        ReservationStatus::PaymentPending => 'payment_pending',
+                        ReservationStatus::Requested => 'reservation_requested',
+                        default => 'reservation_confirmed',
+                    };
+                    if (in_array($status, [ReservationStatus::Confirmed, ReservationStatus::Requested, ReservationStatus::PaymentPending], true)) {
                         $this->sendGuestMail($reservation, $templateKey);
                     }
                 }

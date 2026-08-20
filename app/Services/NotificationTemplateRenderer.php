@@ -70,6 +70,18 @@ class NotificationTemplateRenderer
             'reservation_code' => $reservation->code,
             'cancel_link' => route('booking.manage', ['code' => $reservation->code, 'token' => $reservation->manage_token]),
             'modify_link' => route('booking.manage', ['code' => $reservation->code, 'token' => $reservation->manage_token]),
+            // Leer, wenn nichts zu zahlen ist: Die Adresse antwortet ohne
+            // offene Zahlung mit 410, ein Link darauf in einer gewöhnlichen
+            // Bestätigungsmail führt den Gast also ins Leere.
+            'payment_link' => $reservation->payment_amount_minor > 0
+                ? route('pay.reservation', ['code' => $reservation->code, 'token' => $reservation->manage_token])
+                : '',
+            'payment_amount' => $reservation->payment_amount_minor !== null
+                ? number_format($reservation->payment_amount_minor / 100, 2, ',', '.').' '.($reservation->currency ?: 'EUR')
+                : '',
+            'payment_deadline' => $reservation->payment_due_at
+                ? $reservation->payment_due_at->setTimezone($reservation->timezone ?: config('app.timezone'))->format('d.m.Y H:i')
+                : '',
             'event_name' => '',
             'custom_message' => '',
         ], $extra);
@@ -87,6 +99,7 @@ class NotificationTemplateRenderer
             'location_name', 'tenant_name', 'table_name', 'room_name',
             'reservation_code', 'cancel_link', 'modify_link', 'feedback_link',
             'waitlist_link', 'custom_message',
+            'payment_link', 'payment_amount', 'payment_deadline',
         ];
     }
 
@@ -148,6 +161,18 @@ class NotificationTemplateRenderer
                     'subject' => 'Ein Tisch ist frei geworden – {location_name}',
                     'body' => "Hallo {guest_name},\n\nfür deinen Wartelisteneintrag ist ein Tisch frei geworden. Bitte bestätige zeitnah:\n\n{waitlist_link}\n\n{location_name}",
                 ],
+                'payment_pending' => [
+                    'subject' => 'Bitte Anzahlung leisten – {location_name} am {reservation_date}',
+                    'body' => "Hallo {guest_name},\n\nwir haben deinen Tisch vorgemerkt:\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nPersonen: {party_size}\nReservierungsnummer: {reservation_code}\n\nDamit die Reservierung verbindlich wird, brauchen wir noch eine Anzahlung von {payment_amount}. Der Betrag wird bei deinem Besuch vollständig mit der Rechnung verrechnet; bei Nichterscheinen erfolgt keine Rückerstattung.\n\nJetzt bezahlen: {payment_link}\n\nBitte bis {payment_deadline} Uhr – danach können wir den Tisch weitergeben.\n\n{location_name}",
+                ],
+                'payment_reminder' => [
+                    'subject' => 'Erinnerung: Anzahlung offen – {location_name}',
+                    'body' => "Hallo {guest_name},\n\ndeine Anzahlung von {payment_amount} für den {reservation_date} um {reservation_time} Uhr steht noch aus.\n\nJetzt bezahlen: {payment_link}\n\nWir halten den Tisch noch bis {payment_deadline} Uhr für dich frei.\n\n{location_name}",
+                ],
+                'payment_expired' => [
+                    'subject' => 'Reservierung verfallen – {location_name}',
+                    'body' => "Hallo {guest_name},\n\nda die Anzahlung nicht innerhalb der Frist eingegangen ist, haben wir deine Reservierung für den {reservation_date} um {reservation_time} Uhr wieder freigegeben.\n\nDu kannst jederzeit neu buchen – wir freuen uns auf dich.\n\n{location_name}",
+                ],
             ];
         }
 
@@ -179,6 +204,18 @@ class NotificationTemplateRenderer
             'waitlist_offer' => [
                 'subject' => 'Ein Tisch ist frei geworden – {location_name}',
                 'body' => "Hallo {guest_name},\n\nfür Ihren Wartelisteneintrag ist ein Tisch frei geworden. Bitte bestätigen Sie zeitnah:\n\n{waitlist_link}\n\n{location_name}",
+            ],
+            'payment_pending' => [
+                'subject' => 'Bitte Anzahlung leisten – {location_name} am {reservation_date}',
+                'body' => "Hallo {guest_name},\n\nwir haben Ihren Tisch vorgemerkt:\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nPersonen: {party_size}\nReservierungsnummer: {reservation_code}\n\nDamit die Reservierung verbindlich wird, brauchen wir noch eine Anzahlung von {payment_amount}. Der Betrag wird bei Ihrem Besuch vollständig mit der Rechnung verrechnet; bei Nichterscheinen erfolgt keine Rückerstattung.\n\nJetzt bezahlen: {payment_link}\n\nBitte bis {payment_deadline} Uhr – danach können wir den Tisch weitergeben.\n\n{location_name}",
+            ],
+            'payment_reminder' => [
+                'subject' => 'Erinnerung: Anzahlung offen – {location_name}',
+                'body' => "Hallo {guest_name},\n\nIhre Anzahlung von {payment_amount} für den {reservation_date} um {reservation_time} Uhr steht noch aus.\n\nJetzt bezahlen: {payment_link}\n\nWir halten den Tisch noch bis {payment_deadline} Uhr für Sie frei.\n\n{location_name}",
+            ],
+            'payment_expired' => [
+                'subject' => 'Reservierung verfallen – {location_name}',
+                'body' => "Hallo {guest_name},\n\nda die Anzahlung nicht innerhalb der Frist eingegangen ist, haben wir Ihre Reservierung für den {reservation_date} um {reservation_time} Uhr wieder freigegeben.\n\nSie können jederzeit neu buchen – wir freuen uns auf Sie.\n\n{location_name}",
             ],
         ];
     }

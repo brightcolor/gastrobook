@@ -1,5 +1,60 @@
 # Changelog
 
+## [1.111.0] – 2026-08-20
+
+### Anzahlungen: der Gast erfährt jetzt auch davon
+Der No-Show-Schutz war zur Hälfte gebaut. Eine Reservierung über der
+Anzahlungsschwelle wurde korrekt auf „Zahlung ausstehend" gesetzt, der Betrag
+berechnet und die Frist gesetzt – **aber der Gast bekam keine einzige
+Nachricht darüber**. Den Zahlungslink sah er nur auf der Bestätigungsseite
+direkt nach der Buchung. Wer den Tab schloss, verlor seinen Tisch, ohne je
+erfahren zu haben, warum.
+
+Drei Nachrichten laufen jetzt von selbst:
+
+| Wann | Nachricht |
+|---|---|
+| direkt nach der Buchung | Zahlungsaufforderung mit Betrag, Link und Frist |
+| nach der halben Frist | Erinnerung, dass die Anzahlung noch aussteht |
+| nach Fristablauf | Absage, sobald der Platz wieder freigegeben wird |
+
+Alle drei sind unter *Einstellungen → Nachrichtenvorlagen* anpassbar, in beiden
+Anreden. Dafür gibt es die neuen Platzhalter `{payment_link}`,
+`{payment_amount}` und `{payment_deadline}`.
+
+**Wer pünktlich zahlt, behält seinen Tisch.** Ein begonnener Bezahlvorgang
+schützt die Buchung 15 Minuten über die Frist hinaus. Vorher konnte es
+passieren, dass ein Gast bei Minute 58 auf „Jetzt bezahlen" klickte, der Tisch
+bei Minute 60 weiterverkauft wurde und die Zahlung bei Minute 61 eintraf – das
+Geld ging automatisch zurück, aber der Abend war weg.
+
+**Weiteres**
+- Nach Fristablauf steht die Reservierung auf `Zahlungsfrist abgelaufen` statt
+  weiter auf „Zahlung ausstehend" – im Reservierungsbuch ist damit auf einen
+  Blick unterscheidbar, worauf man noch wartet und was schon verfallen ist.
+- Die Ablauflogik lag bisher als Codeblock im Scheduler und war dadurch nicht
+  prüfbar. Sie steckt jetzt in einem eigenen Lauf mit Tests und arbeitet alle
+  fünf Minuten statt alle zehn – bei kurzen Zahlungsfristen kam die Erinnerung
+  sonst erst nach dem Ablauf.
+- Die drei neuen Vorlagen stehen im Vorlagen-Editor zur Bearbeitung bereit.
+
+**Beim Fertigstellen mit aufgefallen**
+- **Im Live-Board führte „Ablehnen" bei einer wartenden Anzahlung ins Leere.**
+  Der Knopf zielte auf einen Status, den der Ablauf aus „Zahlung ausstehend"
+  gar nicht zulässt – statt abzusagen erschien eine Fehlermeldung. Dort steht
+  jetzt „Absagen", und der Gast bekommt seine Stornobestätigung.
+- **Wer seine E-Mail-Adresse erst bestätigen musste, erfuhr nie von der
+  Anzahlung.** Die Aufforderung wurde in dieser Kombination unterdrückt und nie
+  nachgeholt; die Buchung verfiel wortlos. Sie geht jetzt raus, sobald die
+  Adresse bestätigt ist.
+- **Eine Anzahlungsregel über 0 € hielt Buchungen auf.** Betrag pro Person und
+  Grundbetrag dürfen beide leer bleiben – das Ergebnis war eine Aufforderung
+  über 0,00 € und ein Bezahlvorgang, den kein Anbieter annimmt. Solche Regeln
+  greifen jetzt nicht mehr.
+- Der Platzhalter `{payment_link}` bleibt leer, wenn nichts zu zahlen ist.
+  Vorher stand dort auch in gewöhnlichen Bestätigungsmails eine Adresse, die
+  den Gast nur auf eine Fehlerseite geführt hätte.
+
 ## [1.110.0] – 2026-08-08
 
 ### Hinweis „noch nicht in Betrieb", solange Impressum und AGB fehlen

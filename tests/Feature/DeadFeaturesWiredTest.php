@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Enums\ReservationStatus;
+use App\Jobs\ExpireUnpaidReservations;
 use App\Models\DepositRule;
 use App\Models\Event;
 use App\Models\Reservation;
 use App\Models\RestaurantTable;
 use App\Services\EventBookingService;
+use App\Services\ReservationLifecycleService;
 use Carbon\CarbonImmutable;
-use Illuminate\Console\Scheduling\CallbackEvent;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -140,20 +141,25 @@ class DeadFeaturesWiredTest extends TestCase
         $this->assertSame(ReservationStatus::Expired, $reservation->fresh()->status);
     }
 
-    /** Run the scheduled closure that expires unpaid bookings. */
+    /**
+     * Run the job that expires unpaid bookings – and make sure it is actually
+     * on the schedule.
+     *
+     * Frueher lief hier eine Suche ueber alle Scheduler-Events. Die hing an
+     * `$event->description` und fand den Lauf nicht mehr, sobald er von
+     * `Schedule::call()` auf `Schedule::job()` umgestellt wurde: `job()` traegt
+     * den Klassennamen als Beschreibung ein, `str_contains(..., 'expire')` ist
+     * gross-/kleinschreibungsempfindlich und traf 'ExpireUnpaidReservations'
+     * nicht. Die Tests waren dadurch gruen, ohne noch etwas auszufuehren.
+     */
     private function runExpiryTask(): void
     {
-        $schedule = app(Schedule::class);
+        $registriert = collect(app(Schedule::class)->events())
+            ->contains(fn ($event) => str_contains((string) $event->description, ExpireUnpaidReservations::class));
 
-        foreach ($schedule->events() as $event) {
-            if (str_contains((string) $event->description, 'expire') || $event->description === null) {
-                // Callback events carry no command string; run them all – the
-                // other closures are idempotent on an empty data set.
-                if ($event instanceof CallbackEvent) {
-                    $event->run(app());
-                }
-            }
-        }
+        $this->assertTrue($registriert, 'ExpireUnpaidReservations steht nicht im Scheduler.');
+
+        (new ExpireUnpaidReservations)->handle(app(ReservationLifecycleService::class));
     }
 
     // ── Kinderstuhl am Tisch ──────────────────────────────────────────────

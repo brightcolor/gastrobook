@@ -1,16 +1,13 @@
 <?php
 
-use App\Enums\ReservationStatus;
+use App\Jobs\ExpireUnpaidReservations;
 use App\Jobs\ProcessScheduledRefunds;
 use App\Jobs\RunRetentionPolicies;
 use App\Jobs\SendFeedbackRequests;
 use App\Jobs\SendMarketingCampaigns;
 use App\Jobs\SendReservationReminders;
 use App\Jobs\SendTrialExpiryWarnings;
-use App\Models\DepositRule;
 use App\Models\FeedbackRequest;
-use App\Models\Reservation;
-use App\Services\ReservationLifecycleService;
 use App\Services\WaitlistService;
 use Illuminate\Support\Facades\Schedule;
 
@@ -24,29 +21,9 @@ Schedule::job(new SendTrialExpiryWarnings)->dailyAt('08:00');
 // Guest campaigns: mid-morning, so a birthday greeting does not arrive at 03:00.
 Schedule::job(new SendMarketingCampaigns)->dailyAt('09:00');
 
-// Expire unpaid reservations past their payment deadline.
-// A rule may opt out of this ("kein Auto-Storno") – those bookings stay open
-// so the business can chase the payment or decide by hand.
-Schedule::call(function () {
-    Reservation::withoutGlobalScopes()
-        ->where('status', ReservationStatus::PaymentPending->value)
-        ->whereNotNull('payment_due_at')
-        ->where('payment_due_at', '<', now())
-        // withoutGlobalScopes: the scheduler runs without a tenant context, so
-        // the tenant scope on DepositRule would match nothing at all here.
-        ->where(function ($q) {
-            $q->whereNull('deposit_rule_id')
-                ->orWhereIn('deposit_rule_id', DepositRule::withoutGlobalScopes()
-                    ->where('cancel_unpaid_automatically', true)
-                    ->select('id'));
-        })
-        ->each(function ($reservation) {
-            app(ReservationLifecycleService::class)->transition(
-                $reservation,
-                ReservationStatus::Expired,
-                null,
-                'system',
-                'payment_deadline_exceeded'
-            );
-        });
-})->everyTenMinutes();
+// Offene Anzahlungen: erinnern, wenn die halbe Frist um ist, und nach Ablauf
+// den Tisch freigeben. Eine Regel kann das Auto-Storno abschalten – solche
+// Buchungen bleiben stehen, damit der Betrieb selbst entscheiden kann.
+// Alle fuenf Minuten, weil die Frist frei einstellbar ist und bei kurzen
+// Fristen sonst die Erinnerung erst nach dem Ablauf käme.
+Schedule::job(new ExpireUnpaidReservations)->everyFiveMinutes();

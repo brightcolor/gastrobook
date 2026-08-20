@@ -400,10 +400,17 @@ class BoardController extends Controller
     {
         return match ($status) {
             ReservationStatus::Requested,
-            ReservationStatus::PendingConfirmation,
-            ReservationStatus::PaymentPending => [
+            ReservationStatus::PendingConfirmation => [
                 ['label' => 'Bestätigen', 'status' => ReservationStatus::Confirmed->value, 'style' => 'primary'],
                 ['label' => 'Ablehnen', 'status' => ReservationStatus::Rejected->value, 'style' => 'danger'],
+            ],
+            // Aus einer wartenden Anzahlung führt kein Weg nach Rejected –
+            // ReservationStatus::allowedTransitions() lässt hier nur Confirmed,
+            // PaymentFailed, die beiden Stornos und Expired zu. Der Knopf hätte
+            // eine Fehlermeldung ausgelöst statt abzusagen.
+            ReservationStatus::PaymentPending => [
+                ['label' => 'Bestätigen', 'status' => ReservationStatus::Confirmed->value, 'style' => 'primary'],
+                ['label' => 'Absagen', 'status' => ReservationStatus::CancelledByRestaurant->value, 'style' => 'danger'],
             ],
             ReservationStatus::Confirmed => [
                 ['label' => 'Eingetroffen', 'status' => ReservationStatus::Seated->value, 'style' => 'primary'],

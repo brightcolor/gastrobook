@@ -43,6 +43,7 @@
                         'refunded' => 'Anzahlung erstattet',
                         'forfeited' => 'Anzahlung einbehalten (No-Show)',
                         'failed' => 'Zahlung fehlgeschlagen',
+                        'expired' => 'Zahlungsfrist abgelaufen',
                     ];
                     $isForfeited = $reservation->payment_status === 'forfeited';
                 @endphp

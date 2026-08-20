@@ -49,6 +49,24 @@ Greift eine Regel, ist die Buchung zunächst **„Zahlung ausstehend"**. Der Gas
 bekommt einen Zahlungslink, zahlt beim Anbieter und die Buchung bestätigt sich
 automatisch.
 
+Drei Nachrichten laufen dabei von selbst:
+
+| Wann | Nachricht |
+|---|---|
+| sofort nach der Buchung | Zahlungsaufforderung mit Betrag, Link und Frist |
+| nach der halben Frist | Erinnerung, dass die Anzahlung noch aussteht |
+| nach Fristablauf | Absage – nur wenn „Automatisch stornieren" an ist |
+
+Der Tisch bleibt bis zum Fristende reserviert und wird danach wieder verkauft.
+Hat der Gast den Bezahlvorgang **kurz vor Schluss noch gestartet**, wartet
+Swayy eine Viertelstunde länger – wer pünktlich klickt, soll seinen Tisch nicht
+deshalb verlieren, weil die Kartenzahlung ein paar Minuten dauert.
+
+Steht „Automatisch stornieren" auf Aus, bleibt die Buchung nach Fristablauf
+stehen und wartet auf euch. Sie steht dann im Reservierungsbuch weiterhin unter
+**Zahlung ausstehend** – bitte regelmäßig durchsehen, sonst blockieren diese
+Buchungen Plätze, für die nie Geld gekommen ist.
+
 An jeder Zahlungsstelle steht der Hinweis: *Die Vorauszahlung wird beim Besuch
 vollständig mit der Rechnung verrechnet. Bei Nichterscheinen erfolgt keine
 Rückerstattung.* Damit ist die Einbehaltung transparent vereinbart – nimm den

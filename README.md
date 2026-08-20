@@ -428,7 +428,19 @@ Preise werden in Minor Units gespeichert; `payment_status = required` markiert o
 
 **Event-Vorauszahlungen:** Eventbuchungen mit Preis erhalten in Bestätigungsmail und auf der Verwaltungsseite einen „Jetzt bezahlen"-Button → Stripe Checkout (gehostet, **keine Kartendaten im System**). Nach Zahlungseingang setzt der signierte Webhook die Buchung auf `paid`.
 
-**Reservierungs-Deposits (No-Show-Schutz):** Unter *Einstellungen → Anzahlungsregeln* legst du fest, ab welcher Personenzahl/Uhrzeit eine Anzahlung fällig ist (Betrag pro Person, Zahlungsfrist). Online-Reservierungen, die eine Regel treffen, starten als `payment_pending` mit Zahlungslink; nach Zahlung bestätigt der Webhook die Reservierung automatisch. Unbezahlte Reservierungen laufen per Scheduler nach Fristablauf ab.
+**Reservierungs-Deposits (No-Show-Schutz):** Unter *Einstellungen → Anzahlungsregeln* legst du fest, ab welcher Personenzahl/Uhrzeit eine Anzahlung fällig ist (Betrag pro Person, Zahlungsfrist). Online-Reservierungen, die eine Regel treffen, starten als `payment_pending` mit Zahlungslink; nach Zahlung bestätigt der Webhook die Reservierung automatisch.
+
+Den offenen Zahlungen widmet sich `App\Jobs\ExpireUnpaidReservations` (Scheduler, alle 5 Minuten):
+
+| Zeitpunkt | Was passiert | Vorlage |
+|---|---|---|
+| direkt nach der Buchung | Zahlungsaufforderung mit Betrag, Link und Frist | `payment_pending` |
+| nach der halben Frist | Erinnerung | `payment_reminder` |
+| nach Fristablauf | `payment_status` → `expired`, Status → `Expired`, Tisch frei | `payment_expired` |
+
+Regeln mit `cancel_unpaid_automatically = false` halten die Buchung offen — der Betrieb entscheidet selbst. Ein **begonnener Checkout schützt die Buchung 15 Minuten über die Frist hinaus** (`CHECKOUT_GRACE_MINUTES`), damit niemand seinen Tisch verliert, während er beim Zahlungsanbieter steht. Trifft eine Zahlung dennoch auf eine bereits verfallene Reservierung, löst der Webhook eine automatische Erstattung aus statt sie wiederzubeleben.
+
+Neue Platzhalter für eigene Vorlagen: `{payment_link}`, `{payment_amount}`, `{payment_deadline}`.
 
 **Verrechnungs- und No-Show-Hinweis:** Gäste sehen an jeder Zahlungsstelle (Eventseite, Bestätigungs-/Verwaltungsseite, E-Mail) den Hinweis: *„Die Vorauszahlung wird bei Ihrem Besuch vollständig mit der Rechnung verrechnet. Bei Nichterscheinen (No-Show) erfolgt keine Rückerstattung."* Damit ist die Einbehaltung bei No-Show transparent vereinbart (AGB-Hinterlegung pro Tenant empfohlen).
 

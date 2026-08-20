@@ -22,6 +22,9 @@ class NotificationTemplateController extends Controller
         'reservation_reminder' => 'Erinnerung',
         'feedback_request' => 'Feedback-Anfrage',
         'waitlist_offer' => 'Wartelisten-Angebot',
+        'payment_pending' => 'Anzahlung angefordert',
+        'payment_reminder' => 'Anzahlung: Erinnerung',
+        'payment_expired' => 'Anzahlung: Frist abgelaufen',
     ];
 
     public function __construct(

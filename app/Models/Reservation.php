@@ -87,6 +87,17 @@ class Reservation extends Model
         return $this->belongsTo(Location::class);
     }
 
+    /**
+     * Die Anzahlungsregel, die bei der Buchung gegriffen hat. Kann null sein,
+     * wenn die Regel spaeter geloescht wurde (nullOnDelete).
+     *
+     * @return BelongsTo<DepositRule, $this>
+     */
+    public function depositRule(): BelongsTo
+    {
+        return $this->belongsTo(DepositRule::class);
+    }
+
     public function guest(): BelongsTo
     {
         return $this->belongsTo(Guest::class);

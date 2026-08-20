@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Public;
 use App\Enums\ReservationStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Guest;
+use App\Models\NotificationLog;
 use App\Models\Reservation;
 use App\Models\Tenant;
 use App\Services\GuestAuthService;
@@ -112,6 +113,21 @@ class GuestPortalController extends Controller
                 );
                 $reservation->refresh();
             }
+        }
+
+        // Wartet die Buchung auf eine Anzahlung, ist genau hier der richtige
+        // Moment für die Zahlungsaufforderung: Beim Anlegen wurde sie bewusst
+        // zurückgehalten, weil die Adresse noch unbestätigt war. Ohne diesen
+        // Zweig erführe der Gast nie, dass er zahlen muss – und verlöre den
+        // Tisch nach Fristablauf ohne jede Nachricht.
+        if ($reservation !== null
+            && $reservation->status === ReservationStatus::PaymentPending
+            && $reservation->guest_email_snapshot
+            && ! NotificationLog::withoutGlobalScopes()
+                ->where('reservation_id', $reservation->id)
+                ->where('template_key', 'payment_pending')
+                ->exists()) {
+            app(ReservationLifecycleService::class)->sendGuestMail($reservation, 'payment_pending');
         }
 
         return view('public.portal.verified', ['reservation' => $reservation]);
