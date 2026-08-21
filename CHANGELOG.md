@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.115.0] – 2026-08-20
+
+### Zahlungen im PayPal- oder Stripe-Konto wiederfinden
+Ein Zahlungskonto wird selten nur für dieses System genutzt. Bisher stand an
+einer PayPal-Zahlung nur eine nackte Vorgangsnummer – von der Kontoseite her
+liess sich nicht sagen, welche Zahlung aus dem Buchungssystem stammt und zu
+welcher Reservierung sie gehört. Die Zuordnung ging nur in eine Richtung.
+
+Mit jedem Zahlungsvorgang geht jetzt eine wiedererkennbare Kennung mit:
+
+| Feld | Inhalt |
+|---|---|
+| PayPal `custom_id`, Stripe-Metadaten | `swayy:{betrieb}:res:{nummer}` bzw. `:event:{nummer}` |
+| PayPal `invoice_id` | fortlaufende Rechnungsnummer |
+| PayPal `soft_descriptor` | Name des Betriebs auf dem Kontoauszug des Gastes |
+
+**Im Anbieterkonto findet man alles aus dem Buchungssystem über den Präfix
+`swayy:`**, und die Reservierungsnummer in der Kennung führt direkt zur Buchung.
+Der Name des Betriebs auf dem Kontoauszug senkt nebenbei Rückbuchungen – Gäste
+erkennen die Abbuchung wieder.
+
+Die Rechnungsnummer ist bei PayPal eindeutig: Eine zweite Zahlung zum selben
+Vorgang wird abgewiesen, was doppelte Anzahlungen verhindert. Damit das keinen
+Gast aussperrt, wird die Anfrage in diesem Fall einmal ohne Rechnungsnummer
+wiederholt.
+
+Beide Anbieter bauen ihre Kennung an derselben Stelle, damit sie nicht
+auseinanderlaufen. Die Datenschutzerklärung nennt die übermittelten Angaben.
+
 ## [1.114.0] – 2026-08-20
 
 ### E-Mail-Bestätigung bei jeder Buchung – gegen Reservierungen auf Vorrat

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Payments;
 
 use App\Models\PaymentIntent;
+use App\Support\PaymentReference;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -47,27 +49,16 @@ class PayPalProvider implements PaymentProvider
 
     public function createCheckout(PaymentIntent $intent, array $options): array
     {
-        $value = number_format($intent->amount_minor / 100, 2, '.', '');
+        $response = $this->postOrder($intent, $options, PaymentReference::invoice($intent));
 
-        $response = Http::withToken($this->accessToken())
-            ->timeout(15)
-            ->post($this->baseUrl().'/v2/checkout/orders', [
-                'intent' => 'CAPTURE',
-                'purchase_units' => [[
-                    'custom_id' => (string) $intent->id,
-                    'description' => mb_substr($options['description'], 0, 127),
-                    'amount' => [
-                        'currency_code' => strtoupper($intent->currency),
-                        'value' => $value,
-                    ],
-                ]],
-                'application_context' => [
-                    'user_action' => 'PAY_NOW',
-                    'shipping_preference' => 'NO_SHIPPING',
-                    'return_url' => $options['success_url'],
-                    'cancel_url' => $options['cancel_url'],
-                ],
-            ]);
+        // PayPal erzwingt die Eindeutigkeit der Rechnungsnummer. Das ist als
+        // Schutz vor doppelten Anzahlungen gewollt – darf aber niemals dazu
+        // führen, dass ein Gast gar nicht mehr zahlen kann, etwa weil ein
+        // früherer Versuch zu demselben Vorgang schon abgeschlossen wurde.
+        // In diesem Fall noch einmal ohne Rechnungsnummer.
+        if (! $response->successful() && $this->isDuplicateInvoice($response->body())) {
+            $response = $this->postOrder($intent, $options, null);
+        }
 
         if (! $response->successful()) {
             throw new RuntimeException('PayPal order creation failed: '.substr($response->body(), 0, 300));
@@ -79,6 +70,46 @@ class PayPalProvider implements PaymentProvider
             'id' => (string) $response->json('id'),
             'url' => (string) ($approve['href'] ?? ''),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     */
+    private function postOrder(PaymentIntent $intent, array $options, ?string $invoiceId): Response
+    {
+        $einheit = array_filter([
+            // Für den Käufer unsichtbar, steht aber im Transaktionsbericht und
+            // in der API – das Filterkriterium für „stammt aus Swayy".
+            'custom_id' => $options['reference'] ?? null,
+            'invoice_id' => $invoiceId,
+            'description' => mb_substr($options['description'], 0, 127),
+            'amount' => [
+                'currency_code' => strtoupper($intent->currency),
+                'value' => number_format($intent->amount_minor / 100, 2, '.', ''),
+            ],
+            // Was auf dem Kontoauszug des Gastes erscheint. Ohne das steht dort
+            // der Kontoname des Betreibers, was zu Rückfragen und im
+            // schlimmsten Fall zu Rückbuchungen führt.
+            'soft_descriptor' => $options['statement_name'] ?? null,
+        ], fn ($wert) => $wert !== null && $wert !== '');
+
+        return Http::withToken($this->accessToken())
+            ->timeout(15)
+            ->post($this->baseUrl().'/v2/checkout/orders', [
+                'intent' => 'CAPTURE',
+                'purchase_units' => [$einheit],
+                'application_context' => [
+                    'user_action' => 'PAY_NOW',
+                    'shipping_preference' => 'NO_SHIPPING',
+                    'return_url' => $options['success_url'],
+                    'cancel_url' => $options['cancel_url'],
+                ],
+            ]);
+    }
+
+    private function isDuplicateInvoice(string $body): bool
+    {
+        return str_contains($body, 'DUPLICATE_INVOICE_ID');
     }
 
     /**

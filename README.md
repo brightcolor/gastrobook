@@ -444,6 +444,21 @@ Regeln mit `cancel_unpaid_automatically = false` halten die Buchung offen — de
 
 Neue Platzhalter für eigene Vorlagen: `{payment_link}`, `{payment_amount}`, `{payment_deadline}`.
 
+### Zahlungen im Anbieterkonto wiederfinden
+
+Ein PayPal- oder Stripe-Konto wird selten nur für Swayy genutzt. Damit sich von der Kontoseite her sagen lässt, welche Zahlung aus dem Buchungssystem stammt, geht mit jedem Vorgang eine Kennung mit — gebaut in `App\Support\PaymentReference`, damit sie über beide Anbieter hinweg gleich aussieht:
+
+| Feld | Inhalt | Wo es auftaucht |
+|---|---|---|
+| PayPal `custom_id`, Stripe `metadata[reference]` | `swayy:{mandant}:res:{code}` bzw. `:event:{code}` | Transaktionsbericht, API, Stripe-Dashboard-Suche |
+| PayPal `invoice_id` | `SWAYY-{vorgangs-id}` | PayPal-Oberfläche, Berichte |
+| PayPal `soft_descriptor` | Standortname, 22 Zeichen | Kontoauszug des Gastes |
+| Stripe `metadata[source]` | `swayy` | Dashboard-Filter |
+
+**Alles aus Swayy findest du also über den Präfix `swayy:`.** Der Reservierungscode in der Kennung führt direkt zur Buchung.
+
+Zur `invoice_id`: PayPal erzwingt deren Eindeutigkeit — ein willkommener Nebeneffekt, weil eine zweite Zahlung zum selben Vorgang abgewiesen wird. Damit das keinen Gast aussperrt, wiederholt `PayPalProvider` die Anfrage bei `DUPLICATE_INVOICE_ID` einmal ohne Rechnungsnummer.
+
 **Verrechnungs- und No-Show-Hinweis:** Gäste sehen an jeder Zahlungsstelle (Eventseite, Bestätigungs-/Verwaltungsseite, E-Mail) den Hinweis: *„Die Vorauszahlung wird bei Ihrem Besuch vollständig mit der Rechnung verrechnet. Bei Nichterscheinen (No-Show) erfolgt keine Rückerstattung."* Damit ist die Einbehaltung bei No-Show transparent vereinbart (AGB-Hinterlegung pro Tenant empfohlen).
 
 Sicherheit: Webhook-Signaturprüfung (HMAC, Replay-Schutz ±5 min) gegen das Secret des jeweiligen Tenants, idempotente Verarbeitung, Audit-Log (`payment.checkout_started`, `payment.succeeded`), ausgehender Webhook `payment.succeeded` an Tenant-Endpoints.

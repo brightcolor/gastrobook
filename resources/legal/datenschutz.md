@@ -128,6 +128,15 @@ Zahlungsdienstleister. Wir speichern lediglich Zahlungsreferenzen, Betrag,
 Währung und Status, um Zahlungen und etwaige **Rückerstattungen** zuordnen zu
 können.
 
+An den Zahlungsdienstleister übermitteln wir mit dem Zahlungsvorgang eine
+**Vorgangskennung** (Name unseres Betriebs und die Nummer Ihrer Reservierung
+bzw. Buchung), eine fortlaufende Rechnungsnummer sowie – sofern Sie sie
+angegeben haben – Ihre E-Mail-Adresse für den Zahlungsbeleg. Die Kennung
+enthält keine Angaben zu Ihrer Person; sie dient allein dazu, eine Zahlung
+später der richtigen Buchung zuzuordnen und Rückerstattungen korrekt
+auszuführen. Auf Ihrem Kontoauszug erscheint der Name unseres Betriebs, damit
+Sie die Abbuchung wiedererkennen.
+
 **Zweck:** Abwicklung von Anzahlungen, No-Show-Schutz, Rückerstattungen.
 **Rechtsgrundlage:** Art. 6 Abs. 1 lit. b DSGVO.
 **Empfänger:** [Stripe Payments Europe, Ltd.] / [PayPal (Europe) S.à r.l. et

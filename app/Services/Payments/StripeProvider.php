@@ -3,6 +3,7 @@
 namespace App\Services\Payments;
 
 use App\Models\PaymentIntent;
+use App\Support\PaymentReference;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -36,6 +37,11 @@ class StripeProvider implements PaymentProvider
                 'success_url' => $options['success_url'],
                 'cancel_url' => $options['cancel_url'],
                 'metadata[payment_intent_id]' => (string) $intent->id,
+                // Wiedererkennbar im Stripe-Dashboard und über die Suche: ein
+                // Konto wird selten nur für Swayy genutzt.
+                'metadata[reference]' => $options['reference'] ?? null,
+                'metadata[source]' => PaymentReference::PREFIX,
+                'payment_intent_data[description]' => mb_substr($options['description'], 0, 350),
                 'expires_at' => now()->addMinutes(60)->timestamp,
             ]));
 

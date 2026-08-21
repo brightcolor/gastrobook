@@ -16,6 +16,7 @@ use App\Services\Payments\StripeProvider;
 use App\Services\RefundService;
 use App\Services\ReservationLifecycleService;
 use App\Services\WebhookDispatchService;
+use App\Support\PaymentReference;
 use Illuminate\Http\Request;
 
 class PaymentController extends Controller
@@ -61,6 +62,8 @@ class PaymentController extends Controller
             'customer_email' => $booking->guest_email,
             'success_url' => $this->successUrl($key, $intent, $manageUrl),
             'cancel_url' => $manageUrl,
+            'reference' => PaymentReference::forBooking($tenant->slug, 'event', $booking->code),
+            'statement_name' => PaymentReference::statementName($tenant->name),
         ]);
 
         $intent->update(['provider_intent_id' => $session['id']]);
@@ -109,6 +112,11 @@ class PaymentController extends Controller
             'customer_email' => $reservation->guest_email_snapshot,
             'success_url' => $this->successUrl($key, $intent, $manageUrl),
             'cancel_url' => $manageUrl,
+            'reference' => PaymentReference::forBooking($tenant->slug, 'res', $reservation->code),
+            // Der Standortname steht dem Gast näher als der Firmenname des
+            // Mandanten – er hat bei „Sternenwald" gebucht, nicht bei der
+            // Betreibergesellschaft.
+            'statement_name' => PaymentReference::statementName($location?->name ?? $tenant->name),
         ]);
 
         $intent->update(['provider_intent_id' => $session['id']]);
