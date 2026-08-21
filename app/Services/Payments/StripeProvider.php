@@ -57,7 +57,10 @@ class StripeProvider implements PaymentProvider
      * nie in der Anwendung an: Der Gast sah „bezahlt", die Reservierung blieb
      * auf „Zahlung ausstehend" und verfiel nach der Frist.
      *
-     * @return array{paid: bool, charge_reference: ?string}|null  null = Abruf fehlgeschlagen
+     * Liefert null, wenn Stripe nicht erreichbar ist – dann bleibt alles
+     * stehen, statt auf Verdacht zu bestätigen.
+     *
+     * @return array{paid: bool, charge_reference: ?string}|null
      */
     public function fetchSession(string $sessionId): ?array
     {
