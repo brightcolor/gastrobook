@@ -19,7 +19,7 @@
         <nav class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5">
             <a href="{{ route('home') }}" class="flex items-center gap-2.5 text-2xl tracking-tight" style="font-family:var(--font-display,'Fraunces Variable',serif); font-weight:500">
                 <img src="/logo-mark.svg" alt="" class="h-8 w-8 shadow-sm" style="border-radius:0.75rem">
-                <span>Swayy</span>
+                <span>Swayy<x-beta /></span>
             </a>
             <div class="hidden items-center gap-1 text-sm font-medium md:flex">
                 <a href="{{ route('home') }}#branchen"    class="rounded-lg px-3 py-2 text-stone-600 hover:bg-stone-100 hover:text-stone-900">Branchen</a>
@@ -52,7 +52,7 @@
                 <div>
                     <div class="flex items-center gap-2.5">
                         <img src="/logo-mark.svg" alt="" class="h-8 w-8" style="border-radius:0.75rem">
-                        <p class="text-xl" style="font-family:var(--font-display,'Fraunces Variable',serif); font-weight:500">Swayy</p>
+                        <p class="text-xl" style="font-family:var(--font-display,'Fraunces Variable',serif); font-weight:500">Swayy<x-beta /></p>
                     </div>
                     <p class="mt-2 max-w-xs text-sm text-stone-500 leading-relaxed">Die Buchungsplattform für Restaurants, Cafés, Bars sowie Friseure und Dienstleister. Gehostet in der EU.</p>
                 </div>

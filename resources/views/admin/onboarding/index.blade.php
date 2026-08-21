@@ -29,7 +29,7 @@
     {{-- ── Sidebar ─────────────────────────────────────────────────────── --}}
     <aside class="hidden w-64 shrink-0 flex-col bg-white shadow-sm lg:flex">
         <div class="border-b border-stone-100 px-6 py-5">
-            <span class="text-xl font-black tracking-tight text-stone-900">Swayy</span>
+            <span class="text-xl font-black tracking-tight text-stone-900">Swayy<x-beta /></span>
             <p class="mt-0.5 text-xs text-stone-400">Einrichtungsassistent</p>
         </div>
         <nav class="flex-1 px-4 py-6">

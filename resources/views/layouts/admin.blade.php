@@ -57,7 +57,7 @@
 <div class="flex min-h-screen">
     {{-- Sidebar (Desktop) --}}
     <aside class="hidden w-60 shrink-0 flex-col bg-stone-900 text-stone-100 md:flex">
-        <div class="px-5 py-5 text-lg font-bold tracking-tight">Swayy</div>
+        <div class="px-5 py-5 text-lg font-bold tracking-tight">Swayy<x-beta /></div>
         @if($tenant)
             <div class="px-5 pb-3 text-xs text-stone-400">{{ $tenant->name }}</div>
             @if($tenant->locations->count() > 1)
@@ -110,7 +110,7 @@
         {{-- Mobile top bar --}}
         <header class="flex items-center justify-between bg-stone-900 px-4 py-3 text-stone-100 md:hidden">
             <button type="button" onclick="swayyToggleMenu(true)" aria-label="Menü öffnen" aria-controls="swayyMobileMenu" aria-expanded="false" id="swayyMenuBtn" class="-ml-1 flex h-9 w-9 items-center justify-center rounded-md text-2xl leading-none hover:bg-stone-800">☰</button>
-            <span class="font-bold">Swayy</span>
+            <span class="font-bold">Swayy<x-beta /></span>
             <span class="h-9 w-9"></span>
         </header>
 
@@ -145,7 +145,7 @@
     <div class="absolute inset-0 bg-black/50" onclick="swayyToggleMenu(false)"></div>
     <aside class="absolute left-0 top-0 flex h-full w-72 max-w-[82%] flex-col bg-stone-900 text-stone-100 shadow-2xl">
         <div class="flex items-center justify-between px-5 py-4">
-            <span class="text-lg font-bold tracking-tight">Swayy</span>
+            <span class="text-lg font-bold tracking-tight">Swayy<x-beta /></span>
             <button type="button" onclick="swayyToggleMenu(false)" aria-label="Menü schließen" class="flex h-9 w-9 items-center justify-center rounded-md text-2xl leading-none hover:bg-stone-800">×</button>
         </div>
         @if($tenant)

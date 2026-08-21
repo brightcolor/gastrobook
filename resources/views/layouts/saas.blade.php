@@ -18,7 +18,7 @@
 <div class="flex min-h-screen">
     {{-- Sidebar --}}
     <aside class="hidden w-56 shrink-0 flex-col bg-stone-900 text-stone-100 md:flex">
-        <div class="px-5 py-5 text-lg font-bold tracking-tight">Swayy <span class="ml-1 rounded bg-stone-700 px-1.5 py-0.5 text-[10px] font-semibold text-stone-300">SaaS</span></div>
+        <div class="px-5 py-5 text-lg font-bold tracking-tight">Swayy<x-beta /> <span class="ml-1 rounded bg-stone-700 px-1.5 py-0.5 text-[10px] font-semibold text-stone-300">SaaS</span></div>
         <nav class="flex-1 space-y-0.5 px-3 text-sm">
             @foreach($nav as $item)
                 <a href="{{ route($item['route']) }}"
@@ -38,7 +38,7 @@
     <div class="flex min-w-0 flex-1 flex-col">
         {{-- Mobile top bar --}}
         <header class="flex items-center justify-between bg-stone-900 px-4 py-3 text-stone-100 md:hidden">
-            <span class="font-bold">Swayy SaaS</span>
+            <span class="font-bold">Swayy<x-beta /> SaaS</span>
             <form method="POST" action="{{ route('logout') }}">@csrf<button class="text-xs">Abmelden</button></form>
         </header>
         {{-- Mobile nav --}}

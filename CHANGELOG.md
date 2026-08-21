@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.115.1] – 2026-08-21
+
+### Beta-Zeichen am Wortzeichen
+Das Wortzeichen trägt jetzt ein hochgestelltes β – auf der Website, in den
+Anmeldeseiten, im Adminbereich und in der Plattformverwaltung.
+
+**Die Buchungsseiten der Betriebe bleiben frei davon.** Dort tritt der Gastronom
+als Anbieter auf; ein Beta-Zeichen an seiner Buchungsstrecke würde seine Gäste
+verunsichern. Ein Test hält die Grenze fest.
+
+Das Zeichen bringt seine eigene Schriftfamilie mit: Die Anzeigeschrift enthält
+keine griechischen Glyphen, ohne Vorgabe sähe das β an jeder Stelle anders aus.
+
 ## [1.115.0] – 2026-08-20
 
 ### Zahlungen im PayPal- oder Stripe-Konto wiederfinden
