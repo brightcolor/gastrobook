@@ -58,9 +58,17 @@ Nach dem Absenden:
   die Bestätigung mit Storno- und Änderungslink.
 - **Automatisch bestätigen aus** → es wird eine **Anfrage**, der Gast bekommt eine
   Eingangsbestätigung, und ihr entscheidet im Board.
-- **E-Mail-Bestätigung verlangt** (optional) → unbekannte Gäste müssen zuerst
-  ihre Adresse per Klick bestätigen. Wirkt gegen Fantasiebuchungen, kostet aber
-  einen Schritt. Wer einmal bestätigt hat, muss es nie wieder.
+- **E-Mail-Bestätigung verlangt** (optional) → der Gast bekommt eine Mail und
+  muss auf den Link darin klicken. Erst dann ist der Tisch reserviert. Das gilt
+  für **jede** Buchung, auch bei Gästen, die schon oft da waren.
+
+  Das kostet einen Schritt, ist aber das beste Mittel gegen zwei Ärgernisse:
+  Fantasieadressen, und Gäste, die **auf Vorrat reservieren** – wer sich vier
+  Adventssonntage freihalten will, muss vier Mails öffnen. Erfahrungsgemäß
+  bleiben dann ein oder zwei übrig, die wirklich gewollt sind.
+
+  Kommt der Klick nicht innerhalb von 24 Stunden, wird der Tisch **automatisch
+  wieder frei**. Ihr müsst nichts nachhalten.
 - **Anzahlung fällig** (wenn eine Regel greift) → die Buchung wartet auf die
   Zahlung, siehe *Anzahlungen*.
 

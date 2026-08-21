@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\ExpireUnconfirmedReservations;
 use App\Jobs\ExpireUnpaidReservations;
 use App\Jobs\ProcessScheduledRefunds;
 use App\Jobs\RunRetentionPolicies;
@@ -27,3 +28,7 @@ Schedule::job(new SendMarketingCampaigns)->dailyAt('09:00');
 // Alle fuenf Minuten, weil die Frist frei einstellbar ist und bei kurzen
 // Fristen sonst die Erinnerung erst nach dem Ablauf käme.
 Schedule::job(new ExpireUnpaidReservations)->everyFiveMinutes();
+
+// Buchungen, deren E-Mail-Bestätigung nie kam. Der Link gilt 24 Stunden;
+// stündlich prüfen reicht, danach wird der Tisch wieder frei.
+Schedule::job(new ExpireUnconfirmedReservations)->hourly();

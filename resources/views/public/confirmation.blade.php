@@ -45,19 +45,45 @@ if ($companions) {
     <div class="h-1.5 bg-brand"></div>
     <div class="p-6 sm:p-8">
 
+    @php
+        // Wartet die Buchung auf die Bestaetigung der E-Mail-Adresse, ist das
+        // die wichtigste Aussage der Seite - nicht "Anfrage erhalten". Wer den
+        // Link nicht anklickt, hat keinen Tisch.
+        $wartetAufMail = (bool) session('email_confirmation_sent');
+        $vorgang = $isSalon ? 'Buchung' : 'Reservierung';
+    @endphp
+
     {{-- Status-Icon --}}
-    <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full {{ $isRequested ? 'bg-amber-50' : ($isPending ? 'bg-blue-50' : 'bg-brand/10') }} text-4xl">
-        {{ $isRequested ? '⏳' : ($isPending ? '💳' : '✅') }}
+    <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full {{ $wartetAufMail ? 'bg-amber-50' : ($isRequested ? 'bg-amber-50' : ($isPending ? 'bg-blue-50' : 'bg-brand/10')) }} text-4xl">
+        {{ $wartetAufMail ? '📧' : ($isRequested ? '⏳' : ($isPending ? '💳' : '✅')) }}
     </div>
 
     <h1 class="mt-4 text-2xl font-extrabold tracking-tight">
-        @if($isRequested) Anfrage erhalten
+        @if($wartetAufMail) Fast geschafft!
+        @elseif($isRequested) Anfrage erhalten
         @elseif($isPending) Zahlung ausstehend
         @else {{ $isSalon ? 'Termin bestätigt!' : 'Reservierung bestätigt!' }}
         @endif
     </h1>
 
-    @if($isConfirmed)
+    @if($wartetAufMail)
+        <p class="mt-2 text-sm leading-relaxed text-stone-600">
+            Wir haben {{ $du ? 'dir' : 'Ihnen' }} eine E-Mail an
+            <strong class="whitespace-nowrap">{{ $reservation->guest_email_snapshot }}</strong> geschickt.
+            {{ $du ? 'Klicke' : 'Klicken Sie' }} auf den Link darin –
+            <strong>erst dann {{ $du ? 'ist dein Tisch' : 'ist Ihr Tisch' }} reserviert.</strong>
+        </p>
+
+        <div class="mt-4 rounded-xl bg-amber-50 p-4 text-left text-sm text-amber-900">
+            <p class="font-bold">📬 Keine E-Mail bekommen?</p>
+            <ul class="mt-1.5 space-y-1 text-amber-800">
+                <li>Die Zustellung dauert meist nur Sekunden, manchmal ein paar Minuten.</li>
+                <li><strong>{{ $du ? 'Sieh' : 'Sehen Sie' }} im Spam- oder Werbeordner nach</strong> – dort landet die
+                    Bestätigung erfahrungsgemäß am häufigsten.</li>
+                <li>Der Link gilt 24 Stunden. Danach {{ $du ? 'buche einfach neu' : 'buchen Sie einfach neu' }}.</li>
+            </ul>
+        </div>
+    @elseif($isConfirmed)
         <p class="mt-2 text-sm leading-relaxed text-stone-600">
             {{ $welcomeMsg }}
         </p>
@@ -66,16 +92,9 @@ if ($companions) {
             @if($isRequested)
                 Wir prüfen {{ $du ? 'deine' : 'Ihre' }} Anfrage und melden uns schnellstmöglich.
             @elseif($isPending)
-                {{ $du ? 'Deine' : 'Ihre' }} {{ $isSalon ? 'Buchung' : 'Reservierung' }} wird nach Zahlungseingang bestätigt.
+                {{ $du ? 'Deine' : 'Ihre' }} {{ $vorgang }} wird nach Zahlungseingang bestätigt.
             @endif
         </p>
-    @endif
-
-    @if(session('email_confirmation_sent'))
-        <div class="mt-4 rounded-xl bg-amber-50 p-3.5 text-sm text-amber-900">
-            📧 Bitte {{ $du ? 'bestätige deine' : 'bestätigen Sie Ihre' }} E-Mail-Adresse über den Link, den wir {{ $du ? 'dir' : 'Ihnen' }} gerade geschickt haben –
-            erst danach ist {{ $du ? 'deine' : 'Ihre' }} {{ $isSalon ? 'Buchung' : 'Reservierung' }} verbindlich.
-        </div>
     @endif
 
     {{-- Details --}}

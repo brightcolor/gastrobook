@@ -6,7 +6,6 @@ use App\Enums\ReservationStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\FloorZone;
-use App\Models\Guest;
 use App\Models\Location;
 use App\Models\Reservation;
 use App\Models\RestaurantTable;
@@ -43,21 +42,19 @@ class PublicBookingController extends Controller
     ) {}
 
     /**
-     * Whether a booking with this email must be confirmed via email first.
-     * True only when the setting is on and the guest hasn't verified before.
+     * Muss der Gast diese Buchung per E-Mail bestätigen?
+     *
+     * Bewusst bei JEDER Online-Buchung, nicht nur beim ersten Mal. Die frühere
+     * Fassung liess bereits bestätigte Adressen durch – gegen Buchungen auf
+     * Vorrat war sie damit wirkungslos, denn genau die kommen von jemandem,
+     * der schon einmal gebucht hat. Der Bestätigungslink hängt ohnehin an der
+     * einzelnen Reservierung, nicht am Gast.
      */
     private function needsEmailConfirmation(Location $location, ?string $email): bool
     {
-        if (! $email || ! $location->effectiveSettings()->require_email_confirmation) {
-            return false;
-        }
-
-        $guest = Guest::withoutGlobalScopes()
-            ->where('tenant_id', $location->tenant_id)
-            ->whereRaw('lower(email) = ?', [strtolower(trim($email))])
-            ->first();
-
-        return $guest === null || $guest->email_verified_at === null;
+        return $email !== null
+            && trim($email) !== ''
+            && $location->effectiveSettings()->require_email_confirmation;
     }
 
     /**

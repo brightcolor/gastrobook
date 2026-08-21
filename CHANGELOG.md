@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.114.0] – 2026-08-20
+
+### E-Mail-Bestätigung bei jeder Buchung – gegen Reservierungen auf Vorrat
+Die Einstellung „E-Mail-Bestätigung verlangen" griff nur beim **ersten** Mal.
+Gegen Buchungen auf Vorrat war sie damit wirkungslos: Genau die kommen von
+jemandem, der längst bestätigt hat. Wer fünf Termine blockieren wollte,
+brauchte dafür eine einzige Bestätigung – und in elf Minuten fünf Formulare.
+
+- **Jede Online-Buchung braucht jetzt ihren eigenen Bestätigungsklick.** Wer
+  fünf Termine will, muss fünf E-Mails öffnen. Der Link hing ohnehin schon an
+  der einzelnen Reservierung, nicht am Gast.
+- **Die Abschlussseite sagt jetzt, was noch fehlt.** Vorher stand dort „Anfrage
+  erhalten" und der Hinweis auf die E-Mail lief als Nebensatz mit. Jetzt ist er
+  die Hauptaussage – mit der Adresse, an die geschickt wurde, dem ausdrücklichen
+  **Hinweis auf den Spam- und Werbeordner** und der Angabe, dass der Link
+  24 Stunden gilt.
+- **Unbestätigte Buchungen geben den Tisch wieder frei.** Bisher hing eine
+  Buchung ohne Bestätigung für immer auf „Anfrage" – und blockierte den Tisch,
+  weil dieser Status als aktiv gilt. Ohne diesen Teil hätte die Verschärfung das
+  Problem vergrößert statt gelöst. Abgeräumt wird ausschließlich, was an einem
+  abgelaufenen, nie angeklickten Link hängt; Anfragen, die der Betrieb selbst
+  freigeben will, bleiben unberührt.
+
 ## [1.113.0] – 2026-08-20
 
 ### Stripe: Zahlungen hängen nicht mehr allein am Webhook
