@@ -40,16 +40,32 @@ class EmailConfirmationRequiredTest extends TestCase
      */
     private function bookOnline(array $setup, int $inTagen = 3, string $mail = 'kessler@example.test'): void
     {
+        // Ohne assertRedirect braeche ein abgewiesenes Formular erst spaeter
+        // und an ganz anderer Stelle - naemlich dort, wo die Reservierung
+        // gesucht wird, die es nie gab. Telefon ist ab Werk ein Pflichtfeld.
+        $this->post(
+            '/book/'.$setup['tenant']->slug.'/'.$setup['location']->slug,
+            $this->bookingPayload($setup, $inTagen, $mail)
+        )->assertRedirect();
+    }
+
+    /**
+     * @param  array<string, mixed>  $setup
+     * @return array<string, mixed>
+     */
+    private function bookingPayload(array $setup, int $inTagen = 3, string $mail = 'kessler@example.test'): array
+    {
         $tag = CarbonImmutable::now($setup['location']->timezone)->addDays($inTagen);
 
-        $this->post('/book/'.$setup['tenant']->slug, [
+        return [
             'date' => $tag->toDateString(),
             'time' => '19:00',
             'party_size' => 2,
             'name' => 'Frau Kessler',
             'email' => $mail,
+            'phone' => '+49 451 123456',
             'privacy_accepted' => '1',
-        ]);
+        ];
     }
 
     public function test_an_online_booking_waits_for_the_confirmation_link(): void
@@ -222,15 +238,10 @@ class EmailConfirmationRequiredTest extends TestCase
         $this->requireConfirmation($setup);
         $this->clearTenantContext();
 
-        $tag = CarbonImmutable::now($setup['location']->timezone)->addDays(3);
-        $antwort = $this->followingRedirects()->post('/book/'.$setup['tenant']->slug, [
-            'date' => $tag->toDateString(),
-            'time' => '19:00',
-            'party_size' => 2,
-            'name' => 'Frau Kessler',
-            'email' => 'kessler@example.test',
-            'privacy_accepted' => '1',
-        ]);
+        $antwort = $this->followingRedirects()->post(
+            '/book/'.$setup['tenant']->slug.'/'.$setup['location']->slug,
+            $this->bookingPayload($setup)
+        );
 
         $antwort->assertOk()
             ->assertSee('Fast geschafft!')
