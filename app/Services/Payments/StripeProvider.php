@@ -69,13 +69,14 @@ class StripeProvider implements PaymentProvider
             return null;
         }
 
+        // Fuer eine spaetere Erstattung. Stripe liefert je nach Abruf eine
+        // Zeichenkette oder das ausgeklappte Objekt.
+        $zahlung = $response->json('payment_intent');
+        $referenz = is_array($zahlung) ? ($zahlung['id'] ?? null) : $zahlung;
+
         return [
             'paid' => $response->json('payment_status') === 'paid',
-            // Fuer eine spaetere Erstattung; Stripe liefert je nach Abruf eine
-            // Zeichenkette oder das ausgeklappte Objekt.
-            'charge_reference' => is_array($response->json('payment_intent'))
-                ? ($response->json('payment_intent.id') ?: null)
-                : ($response->json('payment_intent') ?: null),
+            'charge_reference' => is_string($referenz) && $referenz !== '' ? $referenz : null,
         ];
     }
 
