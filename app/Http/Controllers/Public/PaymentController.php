@@ -12,6 +12,7 @@ use App\Services\AuditLogger;
 use App\Services\Payments\PaymentProvider;
 use App\Services\Payments\PaymentProviderManager;
 use App\Services\Payments\PayPalProvider;
+use App\Services\Payments\StripeProvider;
 use App\Services\RefundService;
 use App\Services\ReservationLifecycleService;
 use App\Services\WebhookDispatchService;
@@ -149,6 +150,49 @@ class PaymentController extends Controller
     }
 
     /**
+     * Rückweg von Stripe. Schlägt die Sitzung direkt bei Stripe nach und
+     * schließt die Zahlung selbst ab.
+     *
+     * Vorher zeigte diese Stelle nur `?paid=1` an und überließ alles dem
+     * Webhook. War der bei Stripe nicht eingerichtet – was die Anwendung nicht
+     * prüfen kann –, hatte der Gast bezahlt, sah eine Bestätigung, und die
+     * Reservierung verfiel trotzdem nach Fristablauf.
+     */
+    public function stripeReturn(Request $request, int $intent)
+    {
+        $paymentIntent = PaymentIntent::withoutGlobalScopes()->findOrFail($intent);
+        $sessionId = (string) $request->query('session_id');
+
+        // Wie bei PayPal: Ohne die Sitzungskennung aus dem Ruecksprung geht
+        // hier nichts. Sie ist nur dem Gast bekannt, der wirklich bezahlt hat.
+        abort_unless($sessionId !== '' && hash_equals((string) $paymentIntent->provider_intent_id, $sessionId), 403);
+
+        $tenant = Tenant::findOrFail($paymentIntent->tenant_id);
+        $provider = $this->payments->provider($tenant, 'stripe');
+        $manageUrl = $this->manageUrlFor($paymentIntent);
+
+        if ($paymentIntent->status !== 'paid' && $provider instanceof StripeProvider) {
+            $session = $provider->fetchSession($sessionId);
+
+            if ($session !== null && $session['paid']) {
+                $this->handlePaid($paymentIntent, $tenant, $sessionId, $session['charge_reference']);
+
+                return redirect()->to($manageUrl.'?paid=1');
+            }
+
+            // Kein Abbruch: Stripe kann bei Lastschrift oder Sofortüberweisung
+            // ein paar Sekunden brauchen. Dann greift der Webhook, und die
+            // Verwaltungsseite zeigt den Stand.
+            $this->audit->log('payment.return_not_yet_paid', $paymentIntent, null, [
+                'provider' => 'stripe',
+                'session_reachable' => $session !== null,
+            ], null, null, $paymentIntent->tenant_id);
+        }
+
+        return redirect()->to($manageUrl.($paymentIntent->status === 'paid' ? '?paid=1' : ''));
+    }
+
+    /**
      * @param  array<string, PaymentProvider>  $available
      */
     private function chosenProviderKey(array $available, Request $request): ?string
@@ -183,11 +227,24 @@ class PaymentController extends Controller
         ]);
     }
 
+    /**
+     * Wohin der Anbieter den Gast nach dem Bezahlen zurückschickt.
+     *
+     * Beide Wege laufen über eine eigene Route, die die Zahlung beim Anbieter
+     * nachschlägt und selbst abschließt. Der Webhook bleibt die zweite Spur
+     * für den Fall, dass der Gast den Tab vorher schließt – aber er ist nicht
+     * mehr die einzige.
+     *
+     * `{CHECKOUT_SESSION_ID}` ist ein Platzhalter, den Stripe beim Zurückleiten
+     * durch die echte Sitzungskennung ersetzt.
+     */
     private function successUrl(string $providerKey, PaymentIntent $intent, string $manageUrl): string
     {
-        return $providerKey === 'paypal'
-            ? route('pay.paypal.return', ['intent' => $intent->id])
-            : $manageUrl.'?paid=1';
+        return match ($providerKey) {
+            'paypal' => route('pay.paypal.return', ['intent' => $intent->id]),
+            'stripe' => route('pay.stripe.return', ['intent' => $intent->id]).'?session_id={CHECKOUT_SESSION_ID}',
+            default => $manageUrl.'?paid=1',
+        };
     }
 
     private function manageUrlFor(PaymentIntent $intent): string
@@ -234,6 +291,14 @@ class PaymentController extends Controller
             || ! $provider->verifyWebhookSignature($payload, (string) $request->header('Stripe-Signature'))) {
             return response()->json(['error' => 'invalid signature'], 400);
         }
+
+        // Eigener Eintrag, damit die Einstellungsseite zeigen kann, ob der
+        // Endpunkt in Stripe wirklich eingerichtet ist. `payment.succeeded`
+        // taugt dafür nicht – den schreibt auch der Rückweg des Gastes.
+        $this->audit->log('payment.webhook_received', $intent, null, [
+            'provider' => 'stripe',
+            'event' => $event['type'],
+        ], null, null, $intent->tenant_id);
 
         match ($event['type']) {
             'checkout.session.completed' => $this->handlePaid(

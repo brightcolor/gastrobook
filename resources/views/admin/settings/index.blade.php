@@ -697,6 +697,22 @@
             Webhook-URL in Stripe hinterlegen: <code class="break-all">{{ route('webhooks.stripe') }}</code><br>
             Events: <code>checkout.session.completed</code>, <code>checkout.session.expired</code>
         </p>
+        @if($stripe && ($stripe->status ?? '') === 'connected')
+            @if($stripeWebhookSeen)
+                <p class="mt-2 rounded-lg bg-emerald-50 p-2 text-xs text-emerald-900">
+                    ✓ Der Webhook hat sich zuletzt am {{ $stripeWebhookSeen->translatedFormat('D, d.m.Y H:i') }} Uhr gemeldet.
+                </p>
+            @else
+                <p class="mt-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-900">
+                    <strong>Vom Webhook kam bisher nichts an.</strong> Solange keine Zahlung
+                    gelaufen ist, ist das normal. Prüfe den Hinweis nach der ersten Zahlung
+                    noch einmal: Bleibt er stehen, ist der Endpunkt in Stripe nicht richtig
+                    eingerichtet. Zahlungen werden dann zwar trotzdem erkannt, sobald der
+                    Gast von Stripe zurückkommt – schließt er den Tab vorher, fehlt die
+                    Bestätigung aber.
+                </p>
+            @endif
+        @endif
         <button class="mt-3 rounded-xl bg-stone-900 px-5 py-2.5 text-sm font-bold text-white">Speichern</button>
     </form>
 

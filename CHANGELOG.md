@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.113.0] – 2026-08-20
+
+### Stripe: Zahlungen hängen nicht mehr allein am Webhook
+Bisher bestätigte ausschließlich die Meldung von Stripe eine Reservierung. Der
+Rücksprung des Gastes setzte nur ein Anzeige-Häkchen. War der Webhook-Endpunkt
+in Stripe nicht richtig eingerichtet – was die Anwendung nicht prüfen kann –,
+dann hatte der Gast bezahlt, sah eine Bestätigung, und die Reservierung verfiel
+trotzdem nach Fristablauf. Geld weg, Tisch weg, und niemand hätte gewusst warum.
+
+- **Der Rücksprung von Stripe fragt die Zahlung jetzt selbst ab** und schließt
+  sie ab. Der Webhook bleibt als zweite Spur für den Fall, dass der Gast den
+  Tab vorher schließt. Doppelte Meldungen sind harmlos.
+- Steht die Zahlung noch aus – bei Lastschrift oder Sofortüberweisung dauert
+  das ein paar Sekunden – wird nichts auf Verdacht bestätigt. Dasselbe, wenn
+  Stripe gerade nicht erreichbar ist.
+- **Die Einstellungsseite zeigt, ob sich der Webhook je gemeldet hat.** Steht
+  der Hinweis nach der ersten Zahlung immer noch da, ist der Endpunkt in Stripe
+  nicht eingerichtet. Vorher war das von außen nicht zu erkennen.
+
+Bei PayPal war das nie ein Thema – dort erfasst der Rücksprung die Zahlung
+schon immer selbst.
+
 ## [1.112.0] – 2026-08-20
 
 ### Reservierungsbuch: Tag, Wochentag und Buchungseingang

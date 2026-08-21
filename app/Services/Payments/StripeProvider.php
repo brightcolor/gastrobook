@@ -50,6 +50,36 @@ class StripeProvider implements PaymentProvider
     }
 
     /**
+     * Eine Checkout-Sitzung direkt bei Stripe nachschlagen.
+     *
+     * Der Rückweg des Gastes verlässt sich damit nicht mehr allein auf den
+     * Webhook. Ist der bei Stripe nicht eingerichtet, kam die Zahlung sonst
+     * nie in der Anwendung an: Der Gast sah „bezahlt", die Reservierung blieb
+     * auf „Zahlung ausstehend" und verfiel nach der Frist.
+     *
+     * @return array{paid: bool, charge_reference: ?string}|null  null = Abruf fehlgeschlagen
+     */
+    public function fetchSession(string $sessionId): ?array
+    {
+        $response = Http::withToken($this->secretKey)
+            ->timeout(15)
+            ->get(self::API_BASE.'/checkout/sessions/'.$sessionId);
+
+        if (! $response->successful()) {
+            return null;
+        }
+
+        return [
+            'paid' => $response->json('payment_status') === 'paid',
+            // Fuer eine spaetere Erstattung; Stripe liefert je nach Abruf eine
+            // Zeichenkette oder das ausgeklappte Objekt.
+            'charge_reference' => is_array($response->json('payment_intent'))
+                ? ($response->json('payment_intent.id') ?: null)
+                : ($response->json('payment_intent') ?: null),
+        ];
+    }
+
+    /**
      * Stripe-Signature: t=<timestamp>,v1=<hmac sha256 of "t.payload">
      */
     public function verifyWebhookSignature(string $payload, string $signatureHeader): bool

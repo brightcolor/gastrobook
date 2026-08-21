@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\ReservationStatus;
 use App\Enums\TenantType;
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\BlackoutPeriod;
 use App\Models\DepositRule;
 use App\Models\IntegrationConnection;
@@ -74,6 +75,13 @@ class SettingsController extends Controller
             'mailwizz' => $mailwizz,
             'mailwizzCredentials' => $mailwizzCredentials,
             'stripe' => $stripe,
+            // Wann sich der Stripe-Webhook zuletzt gemeldet hat. Ob der
+            // Endpunkt drüben wirklich eingerichtet ist, lässt sich von hier
+            // aus nicht abfragen – aber ob je einer angekommen ist, schon.
+            'stripeWebhookSeen' => AuditLog::where('tenant_id', $this->context->tenant()->id)
+                ->where('action', 'payment.webhook_received')
+                ->latest('id')
+                ->value('created_at'),
             'paypal' => $paypal,
             'paypalCredentials' => $paypalCredentials,
             'sms' => $sms,

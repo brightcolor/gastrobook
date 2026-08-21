@@ -101,6 +101,8 @@ Route::get('/pay/reservation/{code}/{token}', [PaymentController::class, 'checko
     ->middleware('throttle:booking')->name('pay.reservation');
 Route::get('/pay/paypal/return/{intent}', [PaymentController::class, 'paypalReturn'])
     ->middleware('throttle:booking')->name('pay.paypal.return');
+Route::get('/pay/stripe/return/{intent}', [PaymentController::class, 'stripeReturn'])
+    ->middleware('throttle:booking')->name('pay.stripe.return');
 Route::post('/webhooks/stripe', [PaymentController::class, 'stripeWebhook'])->name('webhooks.stripe');
 Route::post('/webhooks/gocardless', [GoCardlessWebhookController::class, 'handle'])->name('webhooks.gocardless');
 
