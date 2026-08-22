@@ -18,6 +18,4 @@ use RuntimeException;
  * hier nie ankam – abgebrochener Rückweg, kein Webhook. Dann gehört der
  * Vorgang auf den Tisch des Betriebs, nicht noch einmal in den Bezahlvorgang.
  */
-class PaymentAlreadySettledException extends RuntimeException
-{
-}
+class PaymentAlreadySettledException extends RuntimeException {}
