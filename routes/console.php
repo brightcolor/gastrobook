@@ -1,23 +1,25 @@
 <?php
 
+use App\Jobs\ExpireStaleWaitlistOffers;
 use App\Jobs\ExpireUnconfirmedReservations;
 use App\Jobs\ExpireUnpaidReservations;
 use App\Jobs\ProcessScheduledRefunds;
+use App\Jobs\PruneUnansweredFeedback;
 use App\Jobs\RunRetentionPolicies;
 use App\Jobs\SendFeedbackRequests;
 use App\Jobs\SendMarketingCampaigns;
 use App\Jobs\SendReservationReminders;
 use App\Jobs\SendTrialExpiryWarnings;
-use App\Models\FeedbackRequest;
-use App\Services\WaitlistService;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::job(new SendReservationReminders)->everyFifteenMinutes();
 Schedule::job(new SendFeedbackRequests)->hourly();
 Schedule::job(new ProcessScheduledRefunds)->everyFifteenMinutes();
-Schedule::call(fn () => app(WaitlistService::class)->expireStale())->everyTenMinutes();
+// Als Job, nicht als Schedule::call: Ein call laeuft IM Scheduler-Prozess und
+// haelt ihn so lange auf, wie er dauert. Beide Aufgaben laden ohne Obergrenze.
+Schedule::job(new ExpireStaleWaitlistOffers)->everyTenMinutes();
 Schedule::job(new RunRetentionPolicies)->dailyAt('03:30');
-Schedule::call(fn () => FeedbackRequest::pruneUnanswered())->dailyAt('03:45');
+Schedule::job(new PruneUnansweredFeedback)->dailyAt('03:45');
 Schedule::job(new SendTrialExpiryWarnings)->dailyAt('08:00');
 // Guest campaigns: mid-morning, so a birthday greeting does not arrive at 03:00.
 Schedule::job(new SendMarketingCampaigns)->dailyAt('09:00');

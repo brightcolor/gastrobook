@@ -175,7 +175,12 @@ Route::get('/billing/confirm/{token}', [BillingRequestController::class, 'confir
 Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name('admin.')->group(function () {
     // Trial-expired screen + billing request form (accessible even when locked)
     Route::get('/trial/expired', [BillingRequestController::class, 'expired'])->name('trial.expired');
-    Route::post('/trial/request', [BillingRequestController::class, 'store'])->name('trial.request');
+    // Der Antrag uebermittelt die Rechnungsdaten des Betriebs und hebt die
+    // Testphase dauerhaft auf. Ohne Rechtepruefung konnte das jedes Mitglied
+    // ausloesen - auch mit der Rolle "nur lesen" - und an eine beliebige
+    // Mailadresse bestaetigen lassen, ohne dass der Inhaber davon erfuhr.
+    Route::post('/trial/request', [BillingRequestController::class, 'store'])
+        ->middleware('permission:billing.manage')->name('trial.request');
 
     // Owner-only billing request management (SaaS admin – no tenant scope needed here)
     Route::get('/billing-requests', [BillingRequestController::class, 'index'])->name('billing-requests.index');

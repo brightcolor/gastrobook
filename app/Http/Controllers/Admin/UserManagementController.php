@@ -53,11 +53,22 @@ class UserManagementController extends Controller
         // Existing user → direct membership, otherwise invitation token
         $user = User::where('email', strtolower($validated['email']))->first();
         if ($user !== null) {
-            TenantUser::firstOrCreate(
+            // Niemand aendert ueber diese Route seine eigene Freigabe. Sonst
+            // reicht users.invite, um sich selbst in einen bisher gesperrten
+            // Standort einzutragen - jede andere Aenderung an einer
+            // Mitgliedschaft liegt hinter users.roles.manage.
+            abort_if($user->id === $request->user()->id, 403);
+
+            $membership = TenantUser::firstOrCreate(
                 ['tenant_id' => $tenant->id, 'user_id' => $user->id],
                 ['role' => $validated['role'], 'all_locations' => $request->boolean('all_locations', true)]
             );
-            if (! $request->boolean('all_locations', true)) {
+
+            // Nur fuer eine NEUE Mitgliedschaft. Eine bestehende zu erweitern
+            // ist eine Aenderung an fremden Rechten und gehoert nicht zum
+            // Einladen - firstOrCreate laesst die Rolle aus demselben Grund
+            // unangetastet.
+            if ($membership->wasRecentlyCreated && ! $request->boolean('all_locations', true)) {
                 $locationIds = collect($validated['location_ids'] ?? [])
                     ->filter(fn ($id) => $tenant->locations()->where('id', $id)->exists());
                 foreach ($locationIds as $locationId) {
@@ -70,6 +81,11 @@ class UserManagementController extends Controller
                     ]);
                 }
             }
+
+            if (! $membership->wasRecentlyCreated) {
+                return back()->with('success', __('Dieser Benutzer gehört bereits zum Betrieb – Rolle und Standorte bleiben unverändert.'));
+            }
+
             $this->audit->log('user.added', $user, null, ['role' => $validated['role']]);
 
             return back()->with('success', __('Benutzer hinzugefügt.'));

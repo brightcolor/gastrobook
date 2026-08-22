@@ -428,32 +428,57 @@ class ReservationLifecycleService
     public function reassignTables(Reservation $reservation, array $tableIds, ?User $actor = null, bool $allowConflict = false): void
     {
         $location = $reservation->location()->withoutGlobalScope('tenant')->first();
-        $busy = $this->tableAssignment->busyTableIds(
-            $location,
-            CarbonImmutable::parse($reservation->start_at),
-            CarbonImmutable::parse($reservation->end_at),
-            $reservation->id
-        );
 
-        $conflicts = array_intersect($tableIds, $busy);
-        if ($conflicts !== [] && ! $allowConflict) {
+        // Nur Tische DIESES Standorts. Es gibt keine Standortbedingung auf der
+        // Verknuepfungstabelle, und die Kollisionspruefung unten kann einen
+        // fremden Tisch nie sehen - sie fragt die Belegung des eigenen
+        // Standorts ab. Ohne diese Zeile liesse sich hier ein Tisch eintragen,
+        // den es an diesem Standort nicht gibt.
+        $fremde = array_diff(
+            $tableIds,
+            $location->tables()->whereIn('id', $tableIds)->pluck('id')->map('intval')->all()
+        );
+        if ($fremde !== []) {
             throw ValidationException::withMessages([
-                'table_ids' => __('Tisch ist in diesem Zeitraum bereits belegt.'),
+                'table_ids' => __('Mindestens ein Tisch gehört nicht zu diesem Standort.'),
             ]);
         }
 
-        $old = $reservation->tables()->pluck('restaurant_tables.id')->all();
-        $reservation->tables()->sync($tableIds);
+        // Pruefen und Schreiben unter derselben Sperre wie Neuanlage und
+        // Umbuchung. Ohne sie sehen zwei gleichzeitige Tischwechsel denselben
+        // freien Tisch und tragen ihn beide ein.
+        [$old, $conflicts] = DB::transaction(function () use ($reservation, $location, $tableIds, $allowConflict, $actor) {
+            $this->lockSlot($location, CarbonImmutable::parse($reservation->localStart()));
 
-        $this->audit->log(
-            $conflicts !== [] ? 'reservation.tables_overbooked' : 'reservation.tables_changed',
-            $reservation,
-            ['table_ids' => $old],
-            ['table_ids' => $tableIds],
-            null,
-            $actor,
-            $reservation->tenant_id
-        );
+            $busy = $this->tableAssignment->busyTableIds(
+                $location,
+                CarbonImmutable::parse($reservation->start_at),
+                CarbonImmutable::parse($reservation->end_at),
+                $reservation->id
+            );
+
+            $conflicts = array_intersect($tableIds, $busy);
+            if ($conflicts !== [] && ! $allowConflict) {
+                throw ValidationException::withMessages([
+                    'table_ids' => __('Tisch ist in diesem Zeitraum bereits belegt.'),
+                ]);
+            }
+
+            $old = $reservation->tables()->pluck('restaurant_tables.id')->all();
+            $reservation->tables()->sync($tableIds);
+
+            $this->audit->log(
+                $conflicts !== [] ? 'reservation.tables_overbooked' : 'reservation.tables_changed',
+                $reservation,
+                ['table_ids' => $old],
+                ['table_ids' => $tableIds],
+                null,
+                $actor,
+                $reservation->tenant_id
+            );
+
+            return [$old, $conflicts];
+        });
 
         // Counter-proposal: the staff changed a table the guest had picked
         // themselves. Inform the guest about the new table and drop the

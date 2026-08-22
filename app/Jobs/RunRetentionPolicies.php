@@ -16,7 +16,12 @@ class RunRetentionPolicies implements ShouldQueue
 
     public function handle(GuestPrivacyService $privacy): void
     {
-        Tenant::where('status', 'active')->each(function (Tenant $tenant) use ($privacy) {
+        // Ueber ALLE Betriebe, nicht nur die aktiven. Die Anonymisierung nach
+        // Ablauf der Aufbewahrungsfrist ist eine gesetzliche Pflicht und keine
+        // Funktion des Tarifs. Gesperrte und gekuendigte Betriebe arbeiten
+        // nicht mehr mit den Daten - genau dort ist die Frist am wichtigsten,
+        // und genau dort lief sie nie.
+        Tenant::each(function (Tenant $tenant) use ($privacy) {
             $privacy->runRetention($tenant);
         });
 

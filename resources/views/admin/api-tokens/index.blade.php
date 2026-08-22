@@ -22,6 +22,9 @@
                 <div class="flex items-center justify-between py-2.5">
                     <div>
                         <strong>{{ $token->name }}</strong>
+                        @if($token->tokenable_id !== $currentUserId)
+                            <span class="ml-1 rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-600">{{ $token->tokenable?->name ?? 'unbekannt' }}</span>
+                        @endif
                         <div class="text-xs text-stone-500">{{ collect($token->abilities)->reject(fn ($a) => str_starts_with($a, 'tenant:'))->implode(', ') }}</div>
                         <div class="text-xs text-stone-400">Zuletzt verwendet: {{ $token->last_used_at?->diffForHumans() ?? 'nie' }}</div>
                     </div>

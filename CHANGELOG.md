@@ -1,5 +1,71 @@
 # Changelog
 
+## [1.120.0] – 2026-08-22
+
+### Schranken zwischen Betrieben, Standorten und Rollen
+Weiter aus der Vollprüfung: Wer wohin darf, und was der Scheduler wirklich tut.
+
+**Tische liessen sich standortübergreifend zuweisen.** Wer mehrere Standorte
+betreut, öffnet über das Gastprofil auch Buchungen anderer Standorte – die
+Tischauswahl darunter zeigte aber die Tische des gerade aktiven. Ein so
+zugewiesener Tisch stand an der falschen Buchung und galt am eigenen Standort
+weiter als frei, wurde also ein zweites Mal vergeben. Massgeblich ist jetzt der
+Standort der Reservierung, und ein fremder Tisch wird abgewiesen. Der
+Tischwechsel nimmt ausserdem dieselbe Sperre wie Neuanlage und Umbuchung.
+
+**Ohne freigegebenen Standort fiel die Standortschranke ganz aus.** Ein
+Mitglied mit „nur bestimmte Standorte" und keinem einzigen freigegebenen kam
+über die Detailseite an die Reservierungen sämtlicher Standorte des Betriebs –
+lesend und schreibend, inklusive Anhängen. Die Prüfung ist jetzt schliessend
+formuliert.
+
+**„Benutzer einladen" konnte Standortfreigaben erweitern.** Eine bestehende
+Mitgliedschaft wird über diese Route nicht mehr verändert, und niemand ändert
+darüber seine eigene Freigabe. Jede andere Änderung an einer Mitgliedschaft lag
+längst hinter einem eigenen Recht.
+
+**Der Betriebswechsel verlangt eine Mitgliedschaft.** Die Ausnahme für
+Plattform-Administratoren war ein zweiter, stiller Weg in jeden fremden
+Betrieb: ohne Rollenprüfung, ohne Grund, ohne Protokolleintrag – während
+derselbe Zugriff über die Supportfunktion all das verlangt. Supportzugriff
+läuft jetzt ausschliesslich dort.
+
+**Der Abrechnungsantrag verlangt das Abrechnungsrecht.** Er übermittelt die
+Rechnungsdaten des Betriebs und hebt die Testphase dauerhaft auf – auslösen
+konnte das bisher jedes Mitglied, auch mit der Rolle „nur lesen", und den
+Bestätigungslink an eine beliebige Adresse schicken lassen. Der Antrag steht
+jetzt ausserdem im Protokoll.
+
+**API-Token folgen der Rolle.** Ein einmal ausgestellter Token behielt die
+Rechte von damals: Wer vom Inhaber auf „nur lesen" herabgestuft wurde, konnte
+über die Schnittstelle weiter Reservierungen anlegen, die Gästeliste auslesen
+und Webhook-Ziele setzen. In der Oberfläche wirkte die Herabstufung sofort,
+auf dem Schnittstellenweg gar nicht. Ausserdem sieht die Tokenliste jetzt den
+Bestand des ganzen Betriebs – vorher gab es keinen Weg, den Token eines
+Kollegen zu widerrufen, ausser dessen Zugang komplett zu löschen.
+
+**Das eigene Konto lässt sich nicht mehr löschen, solange ein anderer Betrieb
+dadurch ohne Inhaber zurückbliebe.** Geprüft wurde bisher nur der gerade
+aktive.
+
+**Der Scheduler übersprang Minuten.** Die Schleife wartete 60 Sekunden plus der
+Laufzeit des Durchlaufs; der Aufrufzeitpunkt wanderte damit nach hinten, und
+irgendwann wurde eine Minute nie abgetastet. Tägliche Läufe fielen an dem Tag
+komplett aus – ohne Fehler, ohne Nachholen. Betroffen waren unter anderem die
+Aufbewahrungsfrist um 03:30 und die Gastkampagnen um 09:00. Zwei Aufgaben, die
+bisher im Scheduler selbst liefen, stehen jetzt in der Warteschlange.
+
+**Die Aufbewahrungsfrist lief nur für aktive Betriebe.** Gesperrte und
+gekündigte arbeiten nicht mehr mit den Daten – dort ist die Frist am
+wichtigsten, und dort lief sie nie. Die Anonymisierung ist eine gesetzliche
+Pflicht, keine Funktion des Tarifs.
+
+**Ein angenommener Wartelisteneintrag konnte auf „wartet" zurückfallen.** Der
+Aufräumlauf setzte den Eintrag zu jedem abgelaufenen Angebot zurück, ohne
+seinen Stand anzusehen – der Gast stand danach wieder in der Liste, mit
+hinterlegter Reservierung. Ein zweites Mal bedient, hätte er zwei Tische
+blockiert. Ein neues Angebot schliesst jetzt ausserdem die älteren.
+
 ## [1.119.0] – 2026-08-22
 
 ### Grenzen, die nur galten, wenn die Anwendung den Tisch selbst suchte

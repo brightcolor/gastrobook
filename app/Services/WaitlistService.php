@@ -72,6 +72,14 @@ class WaitlistService
      */
     public function offer(WaitlistEntry $entry, CarbonImmutable $startUtc, CarbonImmutable $endUtc, ?User $actor = null, int $validMinutes = 60): WaitlistOffer
     {
+        // Aeltere offene Angebote desselben Eintrags schliessen. Sonst haengen
+        // mehrere Angebote am selben Gast, und das Aufraeumen eines davon
+        // faellt spaeter dem Eintrag in den Ruecken.
+        WaitlistOffer::withoutGlobalScopes()
+            ->where('waitlist_entry_id', $entry->id)
+            ->where('status', 'open')
+            ->update(['status' => 'superseded']);
+
         $offer = WaitlistOffer::create([
             'tenant_id' => $entry->tenant_id,
             'waitlist_entry_id' => $entry->id,
@@ -166,7 +174,32 @@ class WaitlistService
     public function declineOffer(WaitlistOffer $offer): void
     {
         $offer->update(['status' => 'declined']);
-        $offer->entry()->withoutGlobalScope('tenant')->first()?->update(['status' => 'waiting']);
+        $this->backToWaiting((int) $offer->waitlist_entry_id);
+    }
+
+    /**
+     * Den Eintrag zurueck auf "wartet" - aber nur, wenn er noch auf ein
+     * Angebot wartet.
+     *
+     * Vorher lief das bedingungslos. Ein bereits angenommener Eintrag wurde
+     * damit vom Aufraeumlauf wieder auf "wartet" gesetzt - mit hinterlegter
+     * Reservierung. Wird er ein zweites Mal bedient, blockiert derselbe Gast
+     * zwei Tische.
+     */
+    private function backToWaiting(int $entryId): void
+    {
+        WaitlistEntry::withoutGlobalScopes()
+            ->whereKey($entryId)
+            ->where('status', 'offered')
+            // Nur wenn kein anderes Angebot mehr offen ist - sonst reisst das
+            // Aufraeumen des alten Angebots das laufende mit.
+            ->whereNotExists(function ($q) use ($entryId) {
+                $q->selectRaw('1')
+                    ->from('waitlist_offers')
+                    ->where('waitlist_entry_id', $entryId)
+                    ->where('status', 'open');
+            })
+            ->update(['status' => 'waiting']);
     }
 
     /**
@@ -181,7 +214,7 @@ class WaitlistService
 
         foreach ($expiredOffers as $offer) {
             $offer->update(['status' => 'expired']);
-            $offer->entry()->withoutGlobalScopes()->first()?->update(['status' => 'waiting']);
+            $this->backToWaiting((int) $offer->waitlist_entry_id);
         }
 
         $expiredEntries = WaitlistEntry::withoutGlobalScopes()

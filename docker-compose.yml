@@ -75,7 +75,13 @@ services:
   scheduler:
     image: ghcr.io/brightcolor/gastrobook:latest
     restart: unless-stopped
-    command: sh -c "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"
+    # schedule:work statt "while true; sleep 60": Die Schleife brauchte
+    # 60 Sekunden PLUS der Laufzeit von schedule:run. Der Aufrufzeitpunkt
+    # wanderte damit nach hinten, und sobald die Verschiebung eine Minute
+    # erreichte, wurde eine Minute nie abgetastet - taegliche Laeufe fielen
+    # an dem Tag still aus, ohne Fehler und ohne Nachholen. Betroffen waren
+    # unter anderem die Aufbewahrungsfrist um 03:30 und die Kampagnen um 09:00.
+    command: php artisan schedule:work --no-interaction
     env_file: .env
     environment:
       DB_CONNECTION: pgsql

@@ -70,15 +70,23 @@ class AuthController extends Controller
         return redirect()->route('login');
     }
 
+    /**
+     * Zwischen den eigenen Betrieben wechseln.
+     *
+     * Verlangt eine Mitgliedschaft - auch von Plattform-Administratoren. Deren
+     * Ausnahme war ein zweiter, stiller Weg in jeden fremden Betrieb: ohne
+     * Rollenpruefung, ohne Grund, ohne Auditeintrag, waehrend derselbe Zugriff
+     * ueber die Supportfunktion nur super_admin und support_admin offensteht,
+     * einen Grund verlangt und protokolliert wird. Supportzugriff laeuft
+     * ausschliesslich dort.
+     */
     public function switchTenant(Request $request)
     {
         $validated = $request->validate(['tenant_id' => ['required', 'integer']]);
         $user = $request->user();
         $tenant = Tenant::findOrFail($validated['tenant_id']);
 
-        if (! $user->isSaasAdmin() && $user->membershipFor($tenant) === null) {
-            abort(403);
-        }
+        abort_if($user->membershipFor($tenant) === null, 403);
 
         $user->forceFill([
             'current_tenant_id' => $tenant->id,

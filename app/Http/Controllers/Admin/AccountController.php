@@ -125,12 +125,22 @@ class AccountController extends Controller
         ]);
 
         $user = $request->user();
-        $tenant = $this->context->tenant();
 
-        if ($tenant !== null
-            && $user->tenants()->where('tenants.id', $tenant->id)->wherePivot('role', 'tenant_owner')->exists()
-            && $tenant->memberships()->where('role', 'tenant_owner')->count() <= 1) {
-            return back()->withErrors(['confirm' => __('Du bist der einzige Inhaber dieses Betriebs. Lösche den Betrieb zuerst oder übertrage die Inhaberrolle.')]);
+        // Ueber ALLE Betriebe pruefen, nicht nur ueber den gerade aktiven. Wer
+        // in Betrieb A nur mitarbeitet und in Betrieb B alleiniger Inhaber ist,
+        // kam vorher durch: Das Loeschen des Kontos raeumte ueber die Kaskade
+        // auch die Inhaberschaft in B ab, und B stand ohne Inhaber da -
+        // niemand konnte dort noch exportieren, importieren oder den Betrieb
+        // aufloesen.
+        $verwaist = Tenant::whereIn('id', $user->tenants()->wherePivot('role', 'tenant_owner')->pluck('tenants.id'))
+            ->get()
+            ->filter(fn (Tenant $tenant) => $tenant->memberships()->where('role', 'tenant_owner')->count() <= 1);
+
+        if ($verwaist->isNotEmpty()) {
+            return back()->withErrors(['confirm' => __(
+                'Du bist einziger Inhaber von :betriebe. Lösche diese Betriebe zuerst oder übertrage die Inhaberrolle.',
+                ['betriebe' => $verwaist->pluck('name')->implode(', ')]
+            )]);
         }
 
         $this->audit->log('user.self_deleted', $user, ['email' => $user->email, 'name' => $user->name]);

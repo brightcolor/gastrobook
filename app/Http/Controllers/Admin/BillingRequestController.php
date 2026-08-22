@@ -9,6 +9,7 @@ use App\Mail\BillingRequestConfirmMail;
 use App\Mail\BillingRequestOwnerMail;
 use App\Models\BillingRequest;
 use App\Models\Plan;
+use App\Services\AuditLogger;
 use App\Support\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,7 +19,10 @@ use Illuminate\View\View;
 
 class BillingRequestController extends Controller
 {
-    public function __construct(private readonly TenantContext $context) {}
+    public function __construct(
+        private readonly TenantContext $context,
+        private readonly AuditLogger $audit,
+    ) {}
 
     /** Trial-expired screen (shows form or pending state). */
     public function expired(): View
@@ -58,6 +62,14 @@ class BillingRequestController extends Controller
             'tenant_id' => $tenant->id,
             'token' => Str::random(64),
         ]);
+
+        // Der Antrag hebt die Sperre auf und uebermittelt Rechnungsdaten -
+        // das gehoert ins Protokoll des Betriebs, samt der Adresse, an die
+        // der Bestaetigungslink geht.
+        $this->audit->log('billing.request_created', $billingRequest, null, [
+            'contact_email' => $billingRequest->contact_email,
+            'plan_key' => $billingRequest->plan_key,
+        ], null, $request->user(), $tenant->id);
 
         Mail::to($billingRequest->contact_email)
             ->send(new BillingRequestConfirmMail($billingRequest));

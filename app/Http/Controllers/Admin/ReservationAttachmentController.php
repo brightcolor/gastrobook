@@ -94,8 +94,15 @@ class ReservationAttachmentController extends Controller
     {
         abort_if($reservation->tenant_id !== $this->context->tenantId(), 404);
 
+        // Schliessend formuliert: Ohne aufgeloesten Standort fiel die Schranke
+        // vorher ganz aus - die Bedingung war dann false und es wurde nicht
+        // abgebrochen. Der Nullfall ist erreichbar (Mitgliedschaft ohne
+        // all_locations und ohne einen einzigen freigegebenen Standort), und
+        // dann stand die Reservierung JEDES Standorts offen, lesend wie
+        // schreibend.
         $location = $this->context->location();
-        abort_if($location !== null && $reservation->location_id !== $location->id
+        abort_if($location === null, 403);
+        abort_if($reservation->location_id !== $location->id
             && ! request()->user()->canAccessLocation($this->context->tenant(), $reservation->location), 403);
     }
 }

@@ -255,7 +255,11 @@ class ReservationBookController extends Controller
 
         return view('admin.reservations.show', [
             'reservation' => $reservation,
-            'location' => $this->context->location(),
+            // Der Standort der Reservierung, nicht der aktive: Ueber das
+            // Gastprofil landet man hier auch bei Buchungen anderer Standorte,
+            // und die Tischauswahl darunter muss die richtigen Tische zeigen.
+            'location' => $reservation->location()->withoutGlobalScope('tenant')->first()
+                ?? $this->context->location(),
             'canEditReservation' => request()->user()->canInTenant('reservations.update', $this->context->tenant()),
         ]);
     }
@@ -652,7 +656,15 @@ class ReservationBookController extends Controller
             'force' => ['nullable', 'boolean'],
         ]);
 
-        $location = $this->context->location();
+        // Der Standort DER RESERVIERUNG, nicht der aktive im Kontext: Wer
+        // mehrere Standorte betreut, darf ueber das Gastprofil auch die
+        // Reservierung eines anderen Standorts oeffnen. Gegen den aktiven
+        // Standort gefiltert landete dort ein Tisch, den es an diesem Standort
+        // gar nicht gibt - und der am eigenen Standort weiter als frei galt,
+        // weil jede Belegtabfrage nach location_id filtert.
+        $location = $reservation->location()->withoutGlobalScope('tenant')->first();
+        abort_if($location === null, 404);
+
         $tableIds = collect($validated['table_ids'])
             ->map(fn ($id) => (int) $id)
             ->filter(fn ($id) => $location->tables()->where('id', $id)->exists())
@@ -773,8 +785,15 @@ class ReservationBookController extends Controller
     {
         // Global scope already filters by tenant; explicit check as defense in depth.
         abort_if($reservation->tenant_id !== $this->context->tenantId(), 404);
+        // Schliessend formuliert: Ohne aufgeloesten Standort fiel die Schranke
+        // vorher ganz aus - die Bedingung war dann false und es wurde nicht
+        // abgebrochen. Der Nullfall ist erreichbar (Mitgliedschaft ohne
+        // all_locations und ohne einen einzigen freigegebenen Standort), und
+        // dann stand die Reservierung JEDES Standorts offen, lesend wie
+        // schreibend.
         $location = $this->context->location();
-        abort_if($location !== null && $reservation->location_id !== $location->id
+        abort_if($location === null, 403);
+        abort_if($reservation->location_id !== $location->id
             && ! request()->user()->canAccessLocation($this->context->tenant(), $reservation->location), 403);
     }
 }

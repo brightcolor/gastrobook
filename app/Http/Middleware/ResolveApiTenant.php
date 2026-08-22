@@ -15,6 +15,31 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class ResolveApiTenant
 {
+    /**
+     * Welches Recht hinter jedem Token-Umfang steht.
+     *
+     * Die API prueft sonst nur die Umfaenge des Tokens, nie die Rolle im
+     * Betrieb. Ein einmal ausgestellter Token behielt damit die Rechte von
+     * damals: Wer vom Inhaber auf "nur lesen" heruntergestuft wurde, konnte
+     * ueber die API weiter Reservierungen anlegen, die komplette Gaesteliste
+     * auslesen und Webhook-Ziele auf eine beliebige fremde Adresse setzen. In
+     * der Oberflaeche wirkte die Herabstufung sofort, hier gar nicht.
+     *
+     * @var array<string, string>
+     */
+    private const SCOPE_PERMISSIONS = [
+        'reservations:read' => 'reservations.view',
+        'reservations:write' => 'reservations.create',
+        'guests:read' => 'guests.view',
+        'guests:write' => 'guests.update',
+        'availability:read' => 'reservations.view',
+        'waitlist:write' => 'waitlist.manage',
+        'events:read' => 'reservations.view',
+        'events:write' => 'events.manage',
+        'webhooks:manage' => 'webhooks.manage',
+        'reports:read' => 'reports.view',
+    ];
+
     public function __construct(private readonly TenantContext $context) {}
 
     public function handle(Request $request, Closure $next): Response
@@ -52,6 +77,17 @@ class ResolveApiTenant
         }
 
         $this->context->setTenant($tenant);
+
+        // Die Umfaenge des Tokens auf das eindampfen, was die HEUTIGE Rolle
+        // hergibt. tokenCan() in den Controllern fragt danach - eine
+        // Herabstufung wirkt damit auch hier.
+        if (! $user->isSaasAdmin()) {
+            $token->abilities = array_values(array_filter(
+                $token->abilities ?? [],
+                fn (string $ability) => ! isset(self::SCOPE_PERMISSIONS[$ability])
+                    || $user->canInTenant(self::SCOPE_PERMISSIONS[$ability], $tenant)
+            ));
+        }
 
         return $next($request);
     }
