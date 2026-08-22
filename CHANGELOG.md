@@ -1,5 +1,61 @@
 # Changelog
 
+## [1.122.0] – 2026-08-23
+
+### Die Verwaltungsseite war kaputt
+**Wer seine Reservierung über den Link aus der Bestätigungsmail öffnen wollte,
+bekam einen Serverfehler.** Seit v1.116.0, unbemerkt: Die vorhandenen Tests
+prüften nur, ob die Anwendung dorthin weiterleitet, nie die Seite selbst. Ursache
+war eine Eigenheit der Vorlagensprache, die zwei benachbarte PHP-Abschnitte
+zusammenzieht und alles dazwischen verschluckt. Behoben, und ein Test rendert
+jetzt jede Gästeseite wirklich — plus einer, der diese Kombination in allen
+Vorlagen sucht statt nur in dieser einen.
+
+### Gästeseite und Sicherheit
+**Betriebsangaben liefen als Markup auf die Gästeseite.** Telefonnummer und
+Zonennamen wurden roh in die Seite geschrieben — ein Skript darin wäre auf
+derselben Domain gelaufen wie Gastkonto und Verwaltung. Beides geht jetzt als
+Text, nicht als Auszeichnung.
+
+**Die Bestätigungsseite lud ein Skript von einem fremden Netzwerk.** Damit ging
+die IP-Adresse jedes Gastes, der gerade gebucht hat, ohne Einwilligung an einen
+Dritten — auf einer Seite, die Buchungscode und Verwaltungstoken im Link trägt,
+ohne Integritätsprüfung. Der Effekt ist jetzt selbst gezeichnet, die Seiten laden
+nichts mehr von aussen.
+
+**Anmeldung im Gastkonto erneuert die Sitzungskennung.** Ohne das trägt eine
+vorab bekannte Kennung nach der Anmeldung das Konto samt Reservierungshistorie.
+Beim Abmelden wird die Sitzung jetzt verworfen statt nur der Eintrag.
+
+**Der Pflichthaken für die Datenschutzhinweise verwies auf nichts.** Die Adresse
+liess sich nirgends hinterlegen — jeder Gast bestätigte, etwas gelesen zu haben,
+das auf der Seite gar nicht erreichbar war. Impressum, Datenschutzhinweise und
+AGB lassen sich jetzt unter Einstellungen → Allgemein eintragen; ohne Eintrag
+steht dort ein Satz, der ohne Bezugstext trägt.
+
+**Ein abgewählter Newsletter-Haken wurde verschluckt.** Wer beim ersten Mal
+zugestimmt und beim zweiten Mal bewusst nicht angehakt hat, blieb im Verteiler —
+der Widerruf landete weder im Profil noch in der Einwilligungshistorie.
+
+**Ein zu langer Stornogrund brach die Stornierung ab.** Der Gast sah eine
+Fehlerseite, die Buchung blieb stehen, und der Betrieb hielt einen Tisch für
+jemanden frei, der nicht kommt. Das Feld ist jetzt begrenzt und geprüft.
+
+**Eine fehlgeschlagene Wartelisten-Annahme blieb unsichtbar.** Die Seite lud
+unverändert neu: derselbe Knopf, keine Meldung, kein Tisch.
+
+**?paid=1 in der Adresszeile meldete eine Anzahlung, die nie eingegangen war** —
+und blendete zugleich den Bezahlknopf aus, sodass die Buchung an der
+Zahlungsfrist verfiel. Massgeblich ist jetzt allein der Zahlungsstand.
+
+**Das eingebundene Buchungsskript lieferte einen Serverfehler**, sobald ein
+Betrieb von einem auf zwei Standorte wuchs — auf der eigenen Website des Kunden
+verschwand damit der Reservierungsknopf.
+
+**Ein Wartelisteneintrag für ein vergangenes Datum wurde bestätigt**, war aber
+sofort abgelaufen und wurde nie einem Angebot zugeordnet. Die Personenzahl folgt
+dort jetzt denselben Grenzen wie im Buchungsformular.
+
 ## [1.121.0] – 2026-08-22
 
 ### Umzug und Löschung

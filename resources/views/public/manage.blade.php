@@ -1,9 +1,13 @@
 @extends('layouts.public', ['tenant' => $location->tenant])
 @section('title', 'Reservierung verwalten')
 @section('content')
-@php($du = $location?->effectiveSettings()->du() ?? false)
-
+{{-- Alles in EINEM PHP-Block. Steht die Kurzform mit Klammern davor, zieht
+     Blade beide zusammen: Der Block beginnt dann an der Kurzform und endet erst
+     am Ende des zweiten - alles dazwischen landet unausgeführt im Ausgabetext,
+     und die Seite endet im Serverfehler. (Und der Hinweis darf die Direktive
+     selbst nicht ausschreiben, sonst passiert genau dasselbe hier.) --}}
 @php
+$du = $location?->effectiveSettings()->du() ?? false;
 $isSalon = $location->tenant?->isSalon();
 $sv = $reservation->status->value;
 $statusBadge = match($sv) {
@@ -73,11 +77,26 @@ $statusBadge = match($sv) {
         </div>
     @endif
 
-    @if(request()->boolean('paid') || $reservation->payment_status === 'paid')
+    {{-- Allein der Zahlungsstand aus der Datenbank. Der URL-Parameter ?paid=1
+         ist frei setzbar: Er meldete eine Anzahlung, die nie eingegangen war,
+         und blendete zugleich den Bezahlknopf aus – die Buchung verfiel danach
+         an der Zahlungsfrist. Für den Rücksprung vom Anbieter genügt der
+         Zwischenhinweis darunter. --}}
+    @if($reservation->payment_status === 'paid')
         <div class="mt-4 flex items-center gap-2 rounded-xl bg-emerald-50 p-3.5 text-sm font-semibold text-emerald-900">
             <span class="text-base">✅</span> Anzahlung erhalten – vielen Dank!
         </div>
-    @elseif($payEnabled ?? false)
+    @else
+        @if(request()->boolean('paid'))
+            <div class="mt-4 rounded-xl bg-stone-50 p-3.5 text-sm text-stone-700">
+                <span class="text-base">⏳</span>
+                {{ $du ? 'Deine' : 'Ihre' }} Zahlung ist beim Anbieter eingegangen und wird gerade bestätigt.
+                Diese Seite zeigt den Stand, sobald sie durch ist.
+            </div>
+        @endif
+    @endif
+
+    @if($reservation->payment_status !== 'paid' && ($payEnabled ?? false))
         <a href="{{ route('pay.reservation', ['code' => $reservation->code, 'token' => $reservation->manage_token]) }}"
            class="btn-brand mt-5 flex items-center justify-center gap-2 rounded-xl py-3.5 text-base font-bold text-white transition-all active:scale-[0.99]">
             <span>💳</span>
@@ -108,7 +127,7 @@ $statusBadge = match($sv) {
                   onsubmit="return confirm('{{ $isSalon ? 'Termin' : 'Reservierung' }} wirklich stornieren?')">
                 @csrf
                 <label for="reason" class="mb-1.5 block text-sm font-semibold text-stone-700">Grund für die Stornierung <span class="font-normal text-stone-400">(optional)</span></label>
-                <input type="text" name="reason" id="reason" placeholder="z. B. Terminkonflikt"
+                <input type="text" name="reason" id="reason" placeholder="z. B. Terminkonflikt" maxlength="255"
                        class="public-input mb-3 w-full rounded-xl border-2 border-stone-200 px-4 py-2.5 text-sm">
                 <button type="submit" class="w-full rounded-xl bg-red-600 py-3 font-bold text-white transition-all hover:bg-red-700 active:scale-[0.99]">
                     {{ $isSalon ? 'Termin' : 'Reservierung' }} stornieren

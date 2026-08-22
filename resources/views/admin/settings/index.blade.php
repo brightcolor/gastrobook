@@ -93,8 +93,30 @@
             <label class="block sm:col-span-2">Begrüßungstext auf der Buchungsseite (optional)
                 <textarea name="public_intro" rows="2" class="mt-1 w-full rounded-lg border-stone-200">{{ old('public_intro', $location->public_intro) }}</textarea>
             </label>
+
+            <p class="sm:col-span-2 mt-2 text-xs text-stone-500">
+                Rechtstexte deiner Website. Die Buchungsseite verlangt vom Gast eine Zustimmung
+                zu den Datenschutzhinweisen und verlinkt sie hierher – ohne Adresse steht dort
+                nur Text ohne Ziel.
+            </p>
+            <label class="block">Datenschutzhinweise (URL)
+                <input type="url" name="privacy_url" value="{{ old('privacy_url', $location->tenant->privacy_url) }}"
+                       placeholder="https://…/datenschutz" class="mt-1 w-full rounded-lg border-stone-200">
+            </label>
+            <label class="block">Impressum (URL)
+                <input type="url" name="imprint_url" value="{{ old('imprint_url', $location->tenant->imprint_url) }}"
+                       placeholder="https://…/impressum" class="mt-1 w-full rounded-lg border-stone-200">
+            </label>
+            <label class="block sm:col-span-2">AGB (URL, optional)
+                <input type="url" name="terms_url" value="{{ old('terms_url', $location->tenant->terms_url) }}"
+                       placeholder="https://…/agb" class="mt-1 w-full rounded-lg border-stone-200">
+            </label>
+
             @error('business_name')<p class="text-xs text-red-600 sm:col-span-2">{{ $message }}</p>@enderror
             @error('email')<p class="text-xs text-red-600 sm:col-span-2">{{ $message }}</p>@enderror
+            @error('privacy_url')<p class="text-xs text-red-600 sm:col-span-2">{{ $message }}</p>@enderror
+            @error('imprint_url')<p class="text-xs text-red-600 sm:col-span-2">{{ $message }}</p>@enderror
+            @error('terms_url')<p class="text-xs text-red-600 sm:col-span-2">{{ $message }}</p>@enderror
             <div class="sm:col-span-2">
                 <button class="rounded-xl bg-stone-900 px-5 py-2.5 font-bold text-white">Stammdaten speichern</button>
                 @if($bookableLocations > 1 || $location->tenant->locations()->count() > 1)

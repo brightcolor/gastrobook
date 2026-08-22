@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\WaitlistEntry;
 use App\Services\WaitlistService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class WaitlistResponseController extends Controller
 {
@@ -35,7 +36,16 @@ class WaitlistResponseController extends Controller
             ->firstOrFail();
 
         if ($request->input('decision') === 'accept') {
-            $reservation = $this->waitlist->acceptOffer($offer);
+            try {
+                $reservation = $this->waitlist->acceptOffer($offer);
+            } catch (ValidationException $e) {
+                // Ohne diesen Zweig lud die Seite unveraendert neu: derselbe
+                // Knopf, keine Meldung, kein Tisch. Der Gast erfuhr nie, ob er
+                // ihn bekommen hat, und klickte weiter.
+                return back()->withErrors(['offer' => __(
+                    'Der Tisch ist leider gerade vergeben worden. Wir melden uns, sobald wieder etwas frei wird.'
+                )]);
+            }
 
             return redirect()->route('booking.confirmation', [
                 'code' => $reservation->code,

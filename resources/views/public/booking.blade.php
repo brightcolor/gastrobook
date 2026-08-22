@@ -184,7 +184,7 @@ details > summary::-webkit-details-marker { display: none; }
                             <label class="flex cursor-pointer items-start gap-3">
                                 <input type="checkbox" name="privacy_accepted" value="1" required
                                        class="mt-0.5 h-4 w-4 flex-shrink-0 rounded accent-[var(--brand)]">
-                                <span class="text-stone-600">Ich habe die @if($tenant->privacy_url)<a href="{{ $tenant->privacy_url }}" target="_blank" rel="noopener" class="text-brand underline">Datenschutzhinweise</a>@else Datenschutzhinweise @endif gelesen und akzeptiere die Verarbeitung meiner Daten. *</span>
+                                <span class="text-stone-600">@if($tenant->privacy_url)Ich habe die <a href="{{ $tenant->privacy_url }}" target="_blank" rel="noopener" class="text-brand underline">Datenschutzhinweise</a> gelesen und akzeptiere die Verarbeitung meiner Daten.@else Ich bin damit einverstanden, dass meine Angaben zur Bearbeitung dieser Reservierung gespeichert und verarbeitet werden.@endif *</span>
                             </label>
                             <label class="flex cursor-pointer items-start gap-3">
                                 <input type="checkbox" name="newsletter" value="1"
@@ -552,7 +552,7 @@ details > summary::-webkit-details-marker { display: none; }
                         <label class="flex cursor-pointer items-start gap-3">
                             <input type="checkbox" name="privacy_accepted" value="1" required
                                    class="mt-0.5 h-4 w-4 flex-shrink-0 rounded accent-[var(--brand)]">
-                            <span class="text-stone-600">Ich habe die @if($tenant->privacy_url)<a href="{{ $tenant->privacy_url }}" target="_blank" rel="noopener" class="text-brand underline">Datenschutzhinweise</a>@else Datenschutzhinweise @endif gelesen und akzeptiere die Verarbeitung meiner Daten. *</span>
+                            <span class="text-stone-600">@if($tenant->privacy_url)Ich habe die <a href="{{ $tenant->privacy_url }}" target="_blank" rel="noopener" class="text-brand underline">Datenschutzhinweise</a> gelesen und akzeptiere die Verarbeitung meiner Daten.@else Ich bin damit einverstanden, dass meine Angaben zur Bearbeitung dieser Reservierung gespeichert und verarbeitet werden.@endif *</span>
                         </label>
                         <label class="flex cursor-pointer items-start gap-3">
                             <input type="checkbox" name="newsletter" value="1"
@@ -584,7 +584,7 @@ details > summary::-webkit-details-marker { display: none; }
             <input type="text" id="wlWebsite" tabindex="-1" autocomplete="off" class="hidden" aria-hidden="true">
             <label class="flex items-start gap-2 text-xs text-stone-600">
                 <input type="checkbox" id="wlPrivacy" class="mt-0.5">
-                <span>Ich akzeptiere die @if($tenant->privacy_url)<a href="{{ $tenant->privacy_url }}" target="_blank" rel="noopener" class="underline">Datenschutzhinweise</a>@else Datenschutzhinweise @endif.</span>
+                <span>@if($tenant->privacy_url)Ich akzeptiere die <a href="{{ $tenant->privacy_url }}" target="_blank" rel="noopener" class="underline">Datenschutzhinweise</a>.@else Ich bin damit einverstanden, dass meine Angaben zur Bearbeitung meiner Anfrage gespeichert und verarbeitet werden.@endif</span>
             </label>
             <p id="wlError" class="hidden text-xs font-medium text-red-600"></p>
             <button type="button" id="wlSubmit" class="w-full rounded-xl bg-amber-600 py-2.5 text-sm font-bold text-white hover:bg-amber-700 active:scale-[0.98]">
@@ -763,7 +763,22 @@ details > summary::-webkit-details-marker { display: none; }
                 if (!data.slots || !data.slots.length) {
                     if (data.oversized) {
                         slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm text-stone-600">Für Gruppen ab ' + (parseInt(data.max_party) + 1) + ' Personen nehmen wir Reservierungen gerne direkt entgegen.</p>';
-                        altBox.innerHTML = @js($du ? 'Kontaktiere uns, wir finden eine Lösung für dich' : 'Kontaktieren Sie uns, wir finden eine Lösung für Sie') + (data.phone ? ': <a class="font-semibold underline" href="tel:' + data.phone.replace(/\s/g, '') + '">' + data.phone + '</a>' : '.');
+                        // Elemente statt Markup-Text: data.phone ist eine
+                        // Eingabe aus den Betriebseinstellungen. In einer
+                        // innerHTML-Zuweisung wuerde ein Skript darin auf dem
+                        // Origin der Anwendung laufen - derselben Domain wie
+                        // Gastkonto und Verwaltung.
+                        altBox.textContent = @js($du ? 'Kontaktiere uns, wir finden eine Lösung für dich' : 'Kontaktieren Sie uns, wir finden eine Lösung für Sie');
+                        if (data.phone) {
+                            altBox.append(': ');
+                            const tel = document.createElement('a');
+                            tel.className = 'font-semibold underline';
+                            tel.setAttribute('href', 'tel:' + String(data.phone).replace(/\s/g, ''));
+                            tel.textContent = data.phone;
+                            altBox.appendChild(tel);
+                        } else {
+                            altBox.append('.');
+                        }
                         altBox.classList.remove('hidden'); return;
                     }
                     const head = document.createElement('p');
@@ -887,12 +902,25 @@ details > summary::-webkit-details-marker { display: none; }
                 const card = document.createElement('button');
                 card.type = 'button';
                 card.className = 'zone-card text-left rounded-xl border-2 border-stone-200 bg-white overflow-hidden transition-all hover:border-stone-400 hover:shadow-sm active:scale-[0.98]';
-                card.innerHTML = `<div style="height:6px;background:${zone.color}"></div>
-                    <div class="p-3">
-                        <p class="font-bold text-sm text-stone-800">${zone.name}</p>
-                        <p class="text-xs text-stone-400 mt-0.5">${inZone.length} Tische · ${avail} frei</p>
-                        <p class="mt-2 text-xs font-semibold text-brand">Auswählen →</p>
-                    </div>`;
+                // Farbe und Name kommen aus den Zonen des Betriebs. Als
+                // Template-Literal in innerHTML waeren beide ein Einfallstor;
+                // hier gehen sie durch style bzw. textContent.
+                const streifen = document.createElement('div');
+                streifen.style.height = '6px';
+                streifen.style.background = zone.color || '#e7e5e4';
+                const inhalt = document.createElement('div');
+                inhalt.className = 'p-3';
+                const titel = document.createElement('p');
+                titel.className = 'font-bold text-sm text-stone-800';
+                titel.textContent = zone.name;
+                const zahlen = document.createElement('p');
+                zahlen.className = 'text-xs text-stone-400 mt-0.5';
+                zahlen.textContent = inZone.length + ' Tische · ' + avail + ' frei';
+                const hinweis = document.createElement('p');
+                hinweis.className = 'mt-2 text-xs font-semibold text-brand';
+                hinweis.textContent = 'Auswählen →';
+                inhalt.append(titel, zahlen, hinweis);
+                card.append(streifen, inhalt);
                 card.addEventListener('click', () => selectZone(zone, roomIdx));
                 zoneCards.appendChild(card);
             });

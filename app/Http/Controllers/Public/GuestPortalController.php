@@ -50,6 +50,11 @@ class GuestPortalController extends Controller
             $guest->update(['email_verified_at' => now()]);
         }
 
+        // Neue Sitzungskennung beim Wechsel des Berechtigungsstands. Ohne sie
+        // traegt eine vorab bekannte Kennung nach der Anmeldung das Gastkonto -
+        // und dort stehen bis zu 50 Reservierungen mit Datum, Leistungen und
+        // Mitarbeiterzuordnung.
+        session()->regenerate();
         session(['guest_portal' => ['guest_id' => $guest->id, 'tenant_id' => $tenant->id]]);
 
         return redirect()->route('guest.portal.dashboard', $tenant->slug);
@@ -80,7 +85,10 @@ class GuestPortalController extends Controller
 
     public function logout(string $tenantSlug)
     {
-        session()->forget('guest_portal');
+        // Die ganze Sitzung verwerfen, nicht nur den Schluessel: Auf einem
+        // geteilten Geraet bliebe die Kennung sonst nach dem Abmelden gueltig.
+        session()->invalidate();
+        session()->regenerateToken();
 
         return redirect()->route('guest.portal.request', $tenantSlug);
     }

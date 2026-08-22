@@ -90,10 +90,12 @@ class PublicEventController extends Controller
             'guest_email' => $validated['email'],
             'guest_phone' => $validated['phone'] ?? null,
             'note' => $validated['note'] ?? null,
-            'consents' => array_filter([
+            // Ohne array_filter: Ein NICHT gesetzter Haken faellt sonst aus dem
+            // Array, und der Widerruf wird nie verbucht.
+            'consents' => [
                 'privacy' => true,
                 'newsletter' => (bool) ($validated['newsletter'] ?? false),
-            ]),
+            ],
             'ip' => $request->ip(),
         ]);
 

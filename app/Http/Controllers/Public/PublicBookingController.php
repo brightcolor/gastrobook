@@ -108,13 +108,17 @@ class PublicBookingController extends Controller
     {
         $tenant = Tenant::where('slug', $tenantSlug)->where('status', 'active')->firstOrFail();
 
-        $location = Location::withoutGlobalScope('tenant')
+        // Kein sole(): Bei mehreren Standorten waere das ein 500 statt einer
+        // verstaendlichen Antwort.
+        $bookable = Location::withoutGlobalScope('tenant')
             ->where('tenant_id', $tenant->id)
             ->where('is_active', true)
             ->where('online_booking_enabled', true)
-            ->sole();
+            ->get();
 
-        return $this->store($request, $tenantSlug, $location->slug);
+        abort_unless($bookable->count() === 1, 404);
+
+        return $this->store($request, $tenantSlug, $bookable->first()->slug);
     }
 
     /** Public branding logo for a location (falls back to the tenant logo). */
@@ -493,10 +497,14 @@ class PublicBookingController extends Controller
                 'table_ids' => $tableIds,
                 'table_chosen_by_guest' => $tableIds !== [],
                 'email_confirmation_required' => $needsConfirm,
-                'consents' => array_filter([
+                // Ohne array_filter: Ein NICHT gesetzter Haken faellt sonst aus
+                // dem Array, und der Widerruf wird nie verbucht - der Gast
+                // bleibt im Verteiler, und in der Einwilligungshistorie fehlt
+                // der Eintrag, den Art. 7 Abs. 3 verlangt.
+                'consents' => [
                     'privacy' => true,
                     'newsletter' => (bool) ($validated['newsletter'] ?? false),
-                ]),
+                ],
                 'ip' => $request->ip(),
             ]);
         } catch (ValidationException $e) {
@@ -710,6 +718,13 @@ class PublicBookingController extends Controller
         $location = $reservation->location()->withoutGlobalScope('tenant')->first();
         $settings = $location->effectiveSettings();
 
+        // Der Grund landet in einer varchar(255)-Spalte. Ungeprueft brach die
+        // Stornierung auf PostgreSQL mit einem Serverfehler ab - der Gast sah
+        // eine Fehlerseite, die Buchung blieb stehen, und der Betrieb hielt
+        // einen Tisch fuer jemanden frei, der nicht kommt. Ein laengerer
+        // Erklaertext ist dabei der normale Weg dorthin, kein Angriff.
+        $validated = $request->validate(['reason' => ['nullable', 'string', 'max:255']]);
+
         if (! $reservation->status->isActive()) {
             return back()->withErrors(['status' => __('Diese Reservierung kann nicht mehr storniert werden.')]);
         }
@@ -736,7 +751,7 @@ class PublicBookingController extends Controller
             ReservationStatus::CancelledByGuest,
             null,
             'guest',
-            $request->input('reason')
+            $validated['reason'] ?? null
         );
 
         // Within the cancellation deadline → request a deposit refund per policy
@@ -825,10 +840,16 @@ class PublicBookingController extends Controller
             abort(422);
         }
 
+        $settings = $location->effectiveSettings();
+
         $validated = $request->validate([
-            'date' => ['required', 'date_format:Y-m-d'],
+            // after_or_equal fehlte hier. Aus einem Datum in der Vergangenheit
+            // wird eine Ablauffrist, die schon vorbei ist: Der Eintrag wird vom
+            // naechsten Aufraeumlauf abgeraeumt und nie einem Angebot
+            // zugeordnet - der Gast bekommt trotzdem die volle Zusage.
+            'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'time' => ['nullable', 'date_format:H:i'],
-            'party_size' => ['required', 'integer', 'min:1', 'max:100'],
+            'party_size' => ['required', 'integer', 'min:'.$settings->min_party_online, 'max:'.$settings->max_party_online],
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email:rfc'],
             'phone' => ['nullable', 'string', 'max:40'],
@@ -1005,8 +1026,18 @@ JS;
             ->where('is_active', true)
             ->where('online_booking_enabled', true);
 
-        $location = (clone $base)->where('slug', $tenantSlug)->first()
-            ?? $base->sole();
+        // sole() wirft bei mehreren Treffern eine Ausnahme, die als 500 endet -
+        // nicht als 404. Betroffen waren genau die Adressen, die ein Betrieb
+        // auf seiner eigenen Website einbindet: Waechst er von einem auf zwei
+        // Standorte, lieferte das eingebundene Skript ab sofort einen
+        // Serverfehler, und der Reservierungsknopf verschwand von der Seite.
+        $location = (clone $base)->where('slug', $tenantSlug)->first();
+
+        if ($location === null) {
+            $bookable = $base->get();
+            abort_unless($bookable->count() === 1, 404);
+            $location = $bookable->first();
+        }
 
         return [$tenant->slug, $location->slug];
     }

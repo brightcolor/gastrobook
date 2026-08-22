@@ -169,30 +169,88 @@ if ($companions) {
 </div>
 
 @if($confetti)
-<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+{{-- Selbst gezeichnet statt von einem fremden CDN geladen. Die alte Fassung
+     baute beim Laden dieser Seite eine Verbindung zu einem Drittanbieter auf –
+     mit der IP jedes Gastes, der gerade gebucht hat, ohne Einwilligung und ohne
+     Integritätsprüfung, auf einer Seite, die Buchungscode und Verwaltungstoken
+     im Link trägt. --}}
 <script>
 (function () {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
     var brand = getComputedStyle(document.documentElement).getPropertyValue('--brand').trim() || '#0f766e';
     var colors = [brand, '#ffffff', '#fcd34d', '#f9a8d4'];
 
-    function burst(origin) {
-        confetti({
-            particleCount: 80,
-            spread: 70,
-            origin: origin,
-            colors: colors,
-            scalar: 1.1,
-            gravity: 0.9,
-            ticks: 220,
-        });
+    var canvas = document.createElement('canvas');
+    canvas.setAttribute('aria-hidden', 'true');
+    Object.assign(canvas.style, {
+        position: 'fixed', inset: '0', width: '100%', height: '100%',
+        pointerEvents: 'none', zIndex: '60',
+    });
+    document.body.appendChild(canvas);
+
+    var ctx = canvas.getContext('2d');
+    var dpr = window.devicePixelRatio || 1;
+    function resize() {
+        canvas.width = window.innerWidth * dpr;
+        canvas.height = window.innerHeight * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    var parts = [];
+    function burst(x, y, count) {
+        for (var i = 0; i < count; i++) {
+            var winkel = (-Math.PI / 2) + (Math.random() - 0.5) * 1.3;
+            var tempo = 5 + Math.random() * 7;
+            parts.push({
+                x: x * window.innerWidth,
+                y: y * window.innerHeight,
+                vx: Math.cos(winkel) * tempo,
+                vy: Math.sin(winkel) * tempo,
+                drehung: Math.random() * Math.PI,
+                dreh: (Math.random() - 0.5) * 0.3,
+                groesse: 5 + Math.random() * 5,
+                farbe: colors[i % colors.length],
+                leben: 1,
+            });
+        }
     }
 
-    // Main burst from center-top, then two side bursts
-    setTimeout(function () { burst({ x: 0.5, y: 0.3 }); }, 120);
-    setTimeout(function () {
-        burst({ x: 0.25, y: 0.45 });
-        burst({ x: 0.75, y: 0.45 });
-    }, 320);
+    var laeuft = true;
+    function frame() {
+        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+        for (var i = parts.length - 1; i >= 0; i--) {
+            var p = parts[i];
+            p.vy += 0.22;          // Schwerkraft
+            p.vx *= 0.99;          // Luftwiderstand
+            p.x += p.vx;
+            p.y += p.vy;
+            p.drehung += p.dreh;
+            p.leben -= 0.006;
+            if (p.leben <= 0 || p.y > window.innerHeight + 40) {
+                parts.splice(i, 1);
+                continue;
+            }
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, p.leben);
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.drehung);
+            ctx.fillStyle = p.farbe;
+            ctx.fillRect(-p.groesse / 2, -p.groesse / 4, p.groesse, p.groesse / 2);
+            ctx.restore();
+        }
+        if (parts.length > 0 && laeuft) {
+            requestAnimationFrame(frame);
+        } else {
+            laeuft = false;
+            canvas.remove();
+        }
+    }
+
+    setTimeout(function () { burst(0.5, 0.3, 80); requestAnimationFrame(frame); }, 120);
+    setTimeout(function () { burst(0.25, 0.45, 50); burst(0.75, 0.45, 50); }, 320);
 })();
 </script>
 @endif

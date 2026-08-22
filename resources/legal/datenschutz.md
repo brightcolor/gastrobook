@@ -225,6 +225,11 @@ verarbeiten (insb. Zahlungsdienstleister), erfolgt dies auf Basis eines
 Angemessenheitsbeschlusses oder geeigneter Garantien gemäß Art. 46 DSGVO
 (EU-Standardvertragsklauseln).
 
+**Keine externen Inhalte:** Die Buchungsseiten laden Schriften, Skripte und
+Bilder ausschließlich vom Server dieser Anwendung. Es werden keine
+Inhaltsnetzwerke (CDN) oder sonstigen fremden Adressen eingebunden — Ihre
+IP-Adresse wird beim Seitenaufruf also an keinen Dritten übermittelt.
+
 ## 13. Cookies, Sitzung und Server-Logs
 
 - Wir setzen nur **technisch notwendige** Cookies (Sitzung, Schutz vor

@@ -2,6 +2,11 @@
 @section('title', 'Tisch verfügbar')
 @section('content')
 <div class="rounded-2xl bg-white p-6 shadow-sm">
+    @if($errors->any())
+        <div class="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            {{ $errors->first() }}
+        </div>
+    @endif
     @if($offer && $offer->status === 'open' && $offer->offer_expires_at->isFuture())
         <div class="text-center text-5xl">🎉</div>
         <h1 class="mt-3 text-center text-2xl font-bold">Ein Tisch ist frei!</h1>

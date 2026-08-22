@@ -63,6 +63,8 @@ class GuestProfileService
     public function recordConsent(Guest $guest, string $type, bool $granted, string $channel, ?string $ip = null): GuestConsent
     {
         if ($type === 'marketing' || $type === 'newsletter') {
+            $warEingetragen = (bool) $guest->marketing_consent;
+
             $guest->update([
                 'marketing_consent' => $granted,
                 'marketing_consent_at' => $granted ? now() : $guest->marketing_consent_at,
@@ -70,7 +72,12 @@ class GuestProfileService
 
             // Push to the tenant's newsletter system (MailWizz etc.) after commit;
             // the job re-checks consent and skips when no integration is configured.
-            if ($type === 'newsletter' && $guest->email) {
+            //
+            // Beim Widerruf nur, wenn vorher eine Einwilligung stand: Wer nie
+            // zugestimmt hat, ist dort auch nicht eingetragen - ein Austragen
+            // waere ein Aufruf ins Leere mit der Adresse eines Gastes, der
+            // dem Anbieter nie bekannt war.
+            if ($type === 'newsletter' && $guest->email && ($granted || $warEingetragen)) {
                 SyncNewsletterSubscriber::dispatch($guest->id, $granted)->afterCommit();
             }
         }

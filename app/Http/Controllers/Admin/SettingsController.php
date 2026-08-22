@@ -859,9 +859,21 @@ class SettingsController extends Controller
             'postal_code' => ['nullable', 'string', 'max:20'],
             'city' => ['nullable', 'string', 'max:100'],
             'public_intro' => ['nullable', 'string', 'max:1000'],
+            // Die Buchungsseite verlangt vom Gast ein Pflichthaekchen auf die
+            // Datenschutzhinweise. Ohne diese Felder gab es keinen Weg, dorthin
+            // zu verlinken - der Gast bestaetigte, etwas gelesen zu haben, das
+            // auf der Seite gar nicht erreichbar war.
+            'imprint_url' => ['nullable', 'url', 'max:255'],
+            'privacy_url' => ['nullable', 'url', 'max:255'],
+            'terms_url' => ['nullable', 'url', 'max:255'],
         ]);
 
-        $tenant->update(['name' => $validated['business_name']]);
+        $tenant->update([
+            'name' => $validated['business_name'],
+            'imprint_url' => $validated['imprint_url'] ?? null,
+            'privacy_url' => $validated['privacy_url'] ?? null,
+            'terms_url' => $validated['terms_url'] ?? null,
+        ]);
 
         // Slug stays fixed on rename so existing booking links keep working.
         $location->update([

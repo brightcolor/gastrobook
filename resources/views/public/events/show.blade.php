@@ -67,7 +67,7 @@
             <div class="space-y-2 border-t border-stone-100 pt-4 text-sm">
                 <label class="flex items-start gap-2">
                     <input type="checkbox" name="privacy_accepted" value="1" required class="mt-1">
-                    <span>Ich akzeptiere die @if($tenant->privacy_url)<a href="{{ $tenant->privacy_url }}" target="_blank" rel="noopener" class="underline">Datenschutzhinweise</a>@else Datenschutzhinweise @endif. *</span>
+                    <span>@if($tenant->privacy_url)Ich akzeptiere die <a href="{{ $tenant->privacy_url }}" target="_blank" rel="noopener" class="underline">Datenschutzhinweise</a>.@else Ich bin damit einverstanden, dass meine Angaben zur Bearbeitung dieser Buchung gespeichert und verarbeitet werden.@endif *</span>
                 </label>
                 <label class="flex items-start gap-2">
                     <input type="checkbox" name="newsletter" value="1" class="mt-1">
