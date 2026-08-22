@@ -52,9 +52,17 @@ class RefundController extends Controller
     public function retry(Refund $refund)
     {
         abort_if($refund->tenant_id !== $this->context->tenantId(), 404);
-        abort_unless($refund->status === 'failed', 422);
-        $refund->update(['status' => 'approved', 'error' => null]);
-        $this->refunds->process($refund);
+
+        // Bedingtes Update statt Lesen-Pruefen-Schreiben: Der gelesene Status
+        // war bis zum Schreiben laengst veraltet. Drueckten zwei Leute den
+        // Knopf, setzte der zweite das 'processing' des ersten - der gerade
+        // beim Anbieter unterwegs war - wieder auf 'approved' zurueck und
+        // loeste damit eine zweite echte Erstattung aus.
+        if (! $this->refunds->reopen($refund)) {
+            return back()->withErrors(['status' => __('Diese Rückerstattung lässt sich gerade nicht erneut versuchen. Bitte die Seite neu laden.')]);
+        }
+
+        $this->refunds->process($refund->refresh());
 
         return back()->with('success', __('Rückerstattung erneut versucht.'));
     }

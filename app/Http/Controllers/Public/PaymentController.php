@@ -18,7 +18,9 @@ use App\Services\RefundService;
 use App\Services\ReservationLifecycleService;
 use App\Services\WebhookDispatchService;
 use App\Support\PaymentReference;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PaymentController extends Controller
 {
@@ -52,7 +54,7 @@ class PaymentController extends Controller
             return $this->providerChooser($available, route('pay.event', ['code' => $code, 'token' => $token]), $manageUrl, $booking->amount_minor, $event->currency);
         }
 
-        $intent = PaymentIntent::withoutGlobalScopes()->firstOrCreate(
+        $intent = $this->openIntent(
             ['tenant_id' => $booking->tenant_id, 'event_booking_id' => $booking->id, 'type' => 'prepayment', 'status' => 'pending'],
             ['provider' => $key, 'amount_minor' => $booking->amount_minor, 'currency' => $event->currency, 'expires_at' => now()->addHour()]
         );
@@ -71,7 +73,7 @@ class PaymentController extends Controller
             return $this->alreadySettled($intent, $manageUrl, $booking->tenant_id);
         }
 
-        $intent->update(['provider_intent_id' => $session['id']]);
+        $this->rememberSession($intent, (string) $session['id']);
         $booking->update(['payment_status' => 'pending']);
 
         $this->audit->log('payment.checkout_started', $intent, null, [
@@ -104,7 +106,7 @@ class PaymentController extends Controller
             return $this->providerChooser($available, route('pay.reservation', ['code' => $code, 'token' => $token]), $manageUrl, $reservation->payment_amount_minor, $currency);
         }
 
-        $intent = PaymentIntent::withoutGlobalScopes()->firstOrCreate(
+        $intent = $this->openIntent(
             ['tenant_id' => $reservation->tenant_id, 'reservation_id' => $reservation->id, 'type' => 'deposit', 'status' => 'pending'],
             ['provider' => $key, 'amount_minor' => $reservation->payment_amount_minor, 'currency' => $currency, 'expires_at' => $reservation->payment_due_at ?? now()->addHour()]
         );
@@ -128,7 +130,7 @@ class PaymentController extends Controller
                 'cancel_url' => $manageUrl,
                 'reference' => PaymentReference::forBooking($tenant->slug, 'res', $reservation->code),
                 // Der Standortname steht dem Gast näher als der Firmenname des
-                // Mandanten – er hat bei „Sternenwald" gebucht, nicht bei der
+                // Mandanten – er hat beim Restaurant gebucht, nicht bei der
                 // Betreibergesellschaft.
                 'statement_name' => PaymentReference::statementName($location?->name ?? $tenant->name),
             ]);
@@ -136,7 +138,7 @@ class PaymentController extends Controller
             return $this->alreadySettled($intent, $manageUrl, $reservation->tenant_id);
         }
 
-        $intent->update(['provider_intent_id' => $session['id']]);
+        $this->rememberSession($intent, (string) $session['id']);
         $reservation->update(['payment_status' => 'pending']);
 
         $this->audit->log('payment.checkout_started', $intent, null, [
@@ -154,7 +156,7 @@ class PaymentController extends Controller
         $paymentIntent = PaymentIntent::withoutGlobalScopes()->findOrFail($intent);
         $orderId = (string) $request->query('token'); // PayPal appends the order id
 
-        abort_unless($orderId !== '' && hash_equals((string) $paymentIntent->provider_intent_id, $orderId), 403);
+        $this->abortOnUnknownSession($paymentIntent, $orderId, 'paypal');
 
         $tenant = Tenant::findOrFail($paymentIntent->tenant_id);
         $provider = $this->payments->provider($tenant, 'paypal');
@@ -190,7 +192,7 @@ class PaymentController extends Controller
 
         // Wie bei PayPal: Ohne die Sitzungskennung aus dem Ruecksprung geht
         // hier nichts. Sie ist nur dem Gast bekannt, der wirklich bezahlt hat.
-        abort_unless($sessionId !== '' && hash_equals((string) $paymentIntent->provider_intent_id, $sessionId), 403);
+        $this->abortOnUnknownSession($paymentIntent, $sessionId, 'stripe');
 
         $tenant = Tenant::findOrFail($paymentIntent->tenant_id);
         $provider = $this->payments->provider($tenant, 'stripe');
@@ -215,6 +217,88 @@ class PaymentController extends Controller
         }
 
         return redirect()->to($manageUrl.($paymentIntent->status === 'paid' ? '?paid=1' : ''));
+    }
+
+    /**
+     * Höchstens so viele Sitzungskennungen je Vorgang. Wer öfter auf „Jetzt
+     * bezahlen" klickt, hat ein anderes Problem als diese Grenze.
+     */
+    private const MAX_SESSIONS = 20;
+
+    /**
+     * Den offenen Zahlungsvorgang holen oder anlegen - genau einen.
+     *
+     * firstOrCreate ist ein SELECT gefolgt von einem INSERT und damit nicht
+     * atomar. Zwei zeitgleiche Aufrufe desselben Bezahllinks - Doppelklick,
+     * zwei Tabs - fanden beide nichts und legten beide an. Ergebnis: zwei
+     * bezahlbare Sitzungen ueber denselben Betrag, und die Erstattung findet
+     * die Doppelzahlung nicht, weil sie nur EINEN bezahlten Vorgang sucht.
+     *
+     * Der eindeutige Index auf payment_intents faengt das jetzt ab. Der zweite
+     * Aufrufer laeuft in die Verletzung und nimmt die Zeile des ersten.
+     *
+     * @param  array<string, mixed>  $schluessel
+     * @param  array<string, mixed>  $vorgaben
+     */
+    private function openIntent(array $schluessel, array $vorgaben): PaymentIntent
+    {
+        try {
+            return PaymentIntent::withoutGlobalScopes()->firstOrCreate($schluessel, $vorgaben);
+        } catch (UniqueConstraintViolationException) {
+            return PaymentIntent::withoutGlobalScopes()->where($schluessel)->firstOrFail();
+        }
+    }
+
+    /**
+     * Die Kennung einer neu erzeugten Anbietersitzung merken.
+     *
+     * Ein Vorgang hat nur EIN Feld provider_intent_id, aber der Gast kann den
+     * Bezahllink mehrfach oeffnen - jedes Mal entsteht beim Anbieter eine neue,
+     * bezahlbare Sitzung. Wurde die Kennung schlicht ueberschrieben, endete der
+     * Rueckweg aus der aelteren Sitzung mit 403, obwohl bezahlt wurde: Ohne
+     * eingerichteten Webhook war das Geld kassiert und im System nie
+     * angekommen, und die Reservierung verfiel nach Fristablauf.
+     */
+    private function rememberSession(PaymentIntent $intent, string $sessionId): void
+    {
+        $metadata = $intent->metadata ?? [];
+        $bekannt = array_values(array_filter(
+            array_map('strval', $metadata['sessions'] ?? []),
+            fn (string $id) => $id !== '' && $id !== $sessionId
+        ));
+        $bekannt[] = $sessionId;
+        $metadata['sessions'] = array_slice($bekannt, -self::MAX_SESSIONS);
+
+        $intent->update([
+            'provider_intent_id' => $sessionId,
+            'metadata' => $metadata,
+        ]);
+    }
+
+    /**
+     * Den Rueckweg abweisen, wenn die Sitzungskennung nicht zu diesem Vorgang
+     * gehoert - aber nicht stumm: Ohne Eintrag faellt ein solcher Fall
+     * niemandem auf, und genau dahinter kann eine kassierte, nie verbuchte
+     * Zahlung stecken.
+     */
+    private function abortOnUnknownSession(PaymentIntent $intent, string $sessionId, string $provider): void
+    {
+        $metadata = $intent->metadata ?? [];
+        $bekannt = array_map('strval', $metadata['sessions'] ?? []);
+        $bekannt[] = (string) $intent->provider_intent_id;
+
+        foreach ($bekannt as $id) {
+            if ($sessionId !== '' && $id !== '' && hash_equals($id, $sessionId)) {
+                return;
+            }
+        }
+
+        $this->audit->log('payment.unknown_return_session', $intent, null, [
+            'provider' => $provider,
+            'session' => mb_substr($sessionId, 0, 64),
+        ], null, null, $intent->tenant_id);
+
+        abort(403);
     }
 
     /**
@@ -344,18 +428,76 @@ class PaymentController extends Controller
             'event' => $event['type'],
         ], null, null, $intent->tenant_id);
 
+        $objekt = is_array($event['data']['object'] ?? null) ? $event['data']['object'] : [];
+
         match ($event['type']) {
-            'checkout.session.completed' => $this->handlePaid(
-                $intent,
-                $tenant,
-                (string) ($event['data']['object']['id'] ?? ''),
-                $event['data']['object']['payment_intent'] ?? null,
-            ),
+            // `completed` heisst NICHT bezahlt. Bei Lastschrift und
+            // Sofortueberweisung meldet Stripe die Sitzung sofort als
+            // abgeschlossen, mit payment_status 'unpaid' - das Geld kommt Tage
+            // spaeter oder gar nicht. Wer hier ohne Pruefung bucht, bestaetigt
+            // einen Tisch fuer eine Zahlung, die nie ankommt, und kann sie
+            // spaeter nicht einmal erstatten, weil sie nie als offen gilt.
+            'checkout.session.completed',
+            'checkout.session.async_payment_succeeded' => $this->handleCheckoutSession($intent, $tenant, $objekt),
+            'checkout.session.async_payment_failed' => $this->handleAsyncFailed($intent, $objekt),
             'checkout.session.expired' => $this->handleExpired($intent),
             default => null,
         };
 
         return response()->json(['received' => true]);
+    }
+
+    /**
+     * Eine Checkout-Sitzung aus dem Webhook, aber nur wenn sie auch bezahlt ist.
+     *
+     * @param  array<string, mixed>  $objekt
+     */
+    private function handleCheckoutSession(PaymentIntent $intent, Tenant $tenant, array $objekt): void
+    {
+        if (($objekt['payment_status'] ?? null) !== 'paid') {
+            $this->audit->log('payment.awaiting_settlement', $intent, null, [
+                'provider' => 'stripe',
+                'payment_status' => $objekt['payment_status'] ?? null,
+            ], null, null, $intent->tenant_id);
+
+            return;
+        }
+
+        $this->handlePaid(
+            $intent,
+            $tenant,
+            (string) ($objekt['id'] ?? ''),
+            $objekt['payment_intent'] ?? null,
+        );
+    }
+
+    /**
+     * Die verzoegerte Zahlung ist gescheitert. Der Vorgang wird wieder
+     * geoeffnet, damit der Gast einen zweiten Anlauf nehmen kann - und damit
+     * der Fristablauf den Tisch wieder freigeben darf.
+     *
+     * @param  array<string, mixed>  $objekt
+     */
+    private function handleAsyncFailed(PaymentIntent $intent, array $objekt): void
+    {
+        if ($intent->status === 'paid') {
+            // Verbucht ist verbucht. Das gehoert auf den Tisch des Betriebs,
+            // nicht in einen automatischen Rueckbau.
+            $this->audit->log('payment.async_failed_after_settlement', $intent, null, [
+                'provider' => 'stripe',
+                'session' => $objekt['id'] ?? null,
+            ], null, null, $intent->tenant_id);
+
+            return;
+        }
+
+        $intent->update(['status' => 'failed']);
+        $this->reopenPayment($intent);
+
+        $this->audit->log('payment.async_failed', $intent, null, [
+            'provider' => 'stripe',
+            'session' => $objekt['id'] ?? null,
+        ], null, null, $intent->tenant_id);
     }
 
     private function handlePaid(PaymentIntent $intent, Tenant $tenant, string $sessionId, ?string $refundRef = null): void
@@ -391,10 +533,19 @@ class PaymentController extends Controller
         }
 
         if ($intent->reservation_id) {
-            $reservation = Reservation::withoutGlobalScope('tenant')->find($intent->reservation_id);
-            if ($reservation !== null) {
-                $reservation->update(['payment_status' => 'paid']);
+            // Unter Sperre lesen und schreiben: Der Fristablauf arbeitet auf
+            // derselben Zeile. Ohne gemeinsame Sperre beanspruchten die beiden
+            // Schreiber nie dasselbe Objekt - der spaetere gewann, und bei
+            // ungluecklicher Reihenfolge stand "verfallen" auf einer bezahlten
+            // Buchung.
+            $reservation = DB::transaction(function () use ($intent) {
+                $reservation = Reservation::withoutGlobalScopes()->lockForUpdate()->find($intent->reservation_id);
+                $reservation?->update(['payment_status' => 'paid']);
 
+                return $reservation;
+            });
+
+            if ($reservation !== null) {
                 if ($reservation->status === ReservationStatus::PaymentPending) {
                     $this->lifecycle->transition($reservation, ReservationStatus::Confirmed, null, 'system', 'payment_received');
                 } elseif (! $reservation->status->isActive()) {
@@ -429,6 +580,35 @@ class PaymentController extends Controller
     {
         if ($intent->status === 'pending') {
             $intent->update(['status' => 'expired']);
+            $this->reopenPayment($intent);
+        }
+    }
+
+    /**
+     * Die Zahlung wieder als offen kennzeichnen.
+     *
+     * Der Start des Bezahlvorgangs setzt `payment_status` auf 'pending'. Bis
+     * hierher gab es keinen einzigen Weg zurueck: Schloss der Gast den Tab bei
+     * Stripe, blieb der Wert fuer immer stehen. Stornieren wies ihn danach
+     * dauerhaft mit "Deine Zahlung wird gerade verarbeitet" ab, und der
+     * Fristablauf griff bei der Vorgabe ohne Auto-Storno auch nicht - der
+     * Tisch blieb bis zum Termin gesperrt, und der Gast bekam am Ende noch die
+     * Erinnerungsmail zu einer Buchung, die er loswerden wollte.
+     */
+    private function reopenPayment(PaymentIntent $intent): void
+    {
+        if ($intent->reservation_id) {
+            Reservation::withoutGlobalScopes()
+                ->whereKey($intent->reservation_id)
+                ->where('payment_status', 'pending')
+                ->update(['payment_status' => 'required']);
+        }
+
+        if ($intent->event_booking_id) {
+            EventBooking::withoutGlobalScopes()
+                ->whereKey($intent->event_booking_id)
+                ->where('payment_status', 'pending')
+                ->update(['payment_status' => 'required']);
         }
     }
 }

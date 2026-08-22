@@ -55,6 +55,12 @@
                             @if($refund->status === 'failed' && $refund->error)
                                 <div class="mt-1 text-xs text-red-600">{{ $refund->error }}</div>
                             @endif
+                            @if($refund->isStalled())
+                                <div class="mt-1 text-xs text-red-600">
+                                    Hängt seit {{ $refund->updated_at->diffForHumans(null, true) }}. Bitte erst beim
+                                    Zahlungsanbieter nachsehen, ob die Erstattung doch gelaufen ist.
+                                </div>
+                            @endif
                         </td>
                         <td class="px-4 py-3 text-xs text-stone-500">{{ $refund->created_at->format('d.m.Y H:i') }}</td>
                         <td class="px-4 py-3 text-right">
@@ -68,8 +74,9 @@
                                     @csrf
                                     <button class="rounded-lg border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50">Ablehnen</button>
                                 </form>
-                            @elseif($refund->status === 'failed')
-                                <form method="POST" action="{{ route('admin.refunds.retry', $refund) }}" class="inline">
+                            @elseif($refund->status === 'failed' || $refund->isStalled())
+                                <form method="POST" action="{{ route('admin.refunds.retry', $refund) }}" class="inline"
+                                      onsubmit="return confirm('Erneut versuchen? Wenn die Erstattung beim Anbieter bereits gelaufen ist, geht das Geld ein zweites Mal raus.')">
                                     @csrf
                                     <button class="rounded-lg border border-stone-200 px-3 py-1.5 text-xs hover:border-teal-600">Erneut versuchen</button>
                                 </form>

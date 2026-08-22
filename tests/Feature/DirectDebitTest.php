@@ -40,7 +40,11 @@ class DirectDebitTest extends TestCase
         return [$setup, $owner];
     }
 
-    private function fakeGoCardless(): void
+    /**
+     * @param  array<int, array<string, string>>  $vorhandeneAbos  was GoCardless
+     *                                                             zu diesem Mandat schon kennt
+     */
+    private function fakeGoCardless(array $vorhandeneAbos = []): void
     {
         Http::fake([
             'api-sandbox.gocardless.com/redirect_flows/*/actions/complete' => Http::response([
@@ -50,7 +54,13 @@ class DirectDebitTest extends TestCase
                 'redirect_flows' => ['id' => 'RE123', 'redirect_url' => 'https://pay-sandbox.gocardless.com/flow/RE123'],
             ], 200),
             'api-sandbox.gocardless.com/subscriptions/*/actions/cancel' => Http::response(['subscriptions' => ['id' => 'SB123', 'status' => 'cancelled']], 200),
-            'api-sandbox.gocardless.com/subscriptions' => Http::response(['subscriptions' => ['id' => 'SB123']], 200),
+            // Vor dem Anlegen wird nachgesehen, ob zum Mandat schon ein Abo
+            // laeuft. GET liefert eine Liste, POST das angelegte Abo.
+            'api-sandbox.gocardless.com/subscriptions*' => function ($request) use (&$vorhandeneAbos) {
+                return $request->method() === 'GET'
+                    ? Http::response(['subscriptions' => $vorhandeneAbos], 200)
+                    : Http::response(['subscriptions' => ['id' => 'SB123']], 200);
+            },
             'api-sandbox.gocardless.com/mandates/*/actions/cancel' => Http::response([], 200),
         ]);
     }
@@ -103,6 +113,69 @@ class DirectDebitTest extends TestCase
         // No /subscriptions POST should have happened.
         Http::assertNotSent(fn ($r) => str_ends_with($r->url(), '/subscriptions'));
         $this->assertSame('SBOLD', BillingProfile::where('tenant_id', $setup['tenant']->id)->first()->gocardless_subscription_id);
+    }
+
+    /**
+     * Der Aufruf beim Anbieter stand vorher INNERHALB der Transaktion. Bricht
+     * die danach ab, bleibt bei GoCardless ein monatlich einziehendes Abo
+     * stehen, von dem die Anwendung nichts weiss - der naechste Versuch legt
+     * ein zweites an, der Kunde wird doppelt eingezogen, und das erste ist
+     * nirgends kuendbar.
+     *
+     * Hier der Fall danach: Das Mandat steht schon, das Abo bei GoCardless
+     * auch. Ein erneuter Durchlauf darf kein zweites anlegen.
+     */
+    public function test_an_existing_subscription_for_the_mandate_is_adopted_not_duplicated(): void
+    {
+        Mail::fake();
+        $this->fakeGoCardless([['id' => 'SBALT', 'status' => 'active']]);
+        [$setup, $owner] = $this->paidTenant();
+        // Stand nach einem abgebrochenen Durchlauf: Mandat da, Abo bei
+        // GoCardless da, lokal noch nicht festgeschrieben.
+        BillingProfile::where('tenant_id', $setup['tenant']->id)->update([
+            'gocardless_status' => 'pending', 'gocardless_mandate_id' => 'MD123',
+        ]);
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->get('/admin/billing/direct-debit/setup');
+        $this->actingAs($owner)->get('/admin/billing/direct-debit/complete?redirect_flow_id=RE123')
+            ->assertRedirect(route('admin.billing.show'));
+
+        Http::assertNotSent(fn ($r) => $r->method() === 'POST' && str_ends_with($r->url(), '/subscriptions'));
+
+        $profile = BillingProfile::where('tenant_id', $setup['tenant']->id)->first();
+        $this->assertSame('SBALT', $profile->gocardless_subscription_id);
+        $this->assertSame('active', $profile->gocardless_status);
+    }
+
+    /**
+     * Scheitert nur das Kuendigen des Mandats, ist die Kuendigung trotzdem
+     * durch - es wird nichts mehr abgebucht. Vorher sprang der catch an, das
+     * Profil blieb auf "aktiv", und der Kunde kam nie mehr heraus: nicht
+     * kuendbar, weil der erste Aufruf ab dann immer fehlschlug, und nicht neu
+     * einrichtbar, weil "es besteht bereits ein aktives Mandat".
+     */
+    public function test_a_failing_mandate_cancellation_does_not_undo_the_cancellation(): void
+    {
+        Mail::fake();
+        $this->fakeGoCardless();
+        Http::fake([
+            'api-sandbox.gocardless.com/subscriptions/*/actions/cancel' => Http::response(['subscriptions' => ['id' => 'SB123']], 200),
+            'api-sandbox.gocardless.com/mandates/*/actions/cancel' => Http::response(['error' => 'nope'], 500),
+        ]);
+
+        [$setup, $owner] = $this->paidTenant();
+        BillingProfile::where('tenant_id', $setup['tenant']->id)->update([
+            'gocardless_status' => 'active', 'gocardless_subscription_id' => 'SB123', 'gocardless_mandate_id' => 'MD123',
+        ]);
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->post('/admin/billing/direct-debit/cancel')->assertRedirect();
+
+        $profile = BillingProfile::where('tenant_id', $setup['tenant']->id)->first();
+        $this->assertSame('cancelled', $profile->gocardless_status);
+        $this->assertNull($profile->gocardless_subscription_id);
+        $this->assertFalse($profile->hasActiveDirectDebit());
     }
 
     public function test_cancel_stops_subscription_and_notifies_both(): void

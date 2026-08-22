@@ -101,20 +101,64 @@ class GoCardlessService
     /**
      * Create a recurring monthly subscription against a mandate. Returns its id.
      */
-    public function createSubscription(string $mandateId, int $amountMinor, string $currency, string $name): string
+    /**
+     * Ein laufendes Abo zu diesem Mandat, falls es eines gibt.
+     *
+     * Ein Abo ist ein monatlicher Einzug – zwei davon heissen doppelt
+     * abgebucht, und das zweite taucht in der Anwendung nirgends auf, ist also
+     * auch nicht kuendbar. Vor dem Anlegen wird darum nachgesehen.
+     */
+    public function activeSubscriptionFor(string $mandateId): ?string
     {
-        $subscription = $this->client()->post('/subscriptions', [
-            'subscriptions' => [
-                'amount' => $amountMinor,
-                'currency' => strtoupper($currency),
-                'interval_unit' => 'monthly',
-                'day_of_month' => 1,
-                'name' => mb_substr($name, 0, 100),
-                'links' => ['mandate' => $mandateId],
-            ],
-        ])->throw()->json('subscriptions');
+        $subscriptions = $this->client()
+            ->get('/subscriptions', ['mandate' => $mandateId, 'limit' => 50])
+            ->throw()
+            ->json('subscriptions') ?? [];
 
-        return (string) $subscription['id'];
+        foreach ($subscriptions as $subscription) {
+            if (! is_array($subscription) || empty($subscription['id'])) {
+                continue;
+            }
+            if (in_array($subscription['status'] ?? '', ['customer_approval_denied', 'cancelled', 'finished'], true)) {
+                continue;
+            }
+
+            return (string) $subscription['id'];
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  string|null  $idempotencyKey  verhindert, dass ein Wiederholungs-
+     *                                       versuch ein zweites Abo anlegt
+     */
+    public function createSubscription(string $mandateId, int $amountMinor, string $currency, string $name, ?string $idempotencyKey = null): string
+    {
+        $antwort = $this->client()
+            ->when($idempotencyKey !== null, fn (PendingRequest $r) => $r->withHeaders(['Idempotency-Key' => $idempotencyKey]))
+            ->post('/subscriptions', [
+                'subscriptions' => [
+                    'amount' => $amountMinor,
+                    'currency' => strtoupper($currency),
+                    'interval_unit' => 'monthly',
+                    'day_of_month' => 1,
+                    'name' => mb_substr($name, 0, 100),
+                    'links' => ['mandate' => $mandateId],
+                ],
+            ]);
+
+        // GoCardless beantwortet einen wiederholten Aufruf mit demselben
+        // Schluessel nicht mit einem zweiten Abo, sondern mit 409 und der
+        // Kennung des vorhandenen. Genau das wollen wir hier.
+        $konflikt = $antwort->status() === 409
+            ? ($antwort->json('error.errors.0.links.conflicting_resource_id') ?? null)
+            : null;
+        if ($konflikt !== null) {
+            return (string) $konflikt;
+        }
+
+        return (string) $antwort->throw()->json('subscriptions')['id'];
     }
 
     public function cancelSubscription(string $subscriptionId): void

@@ -269,17 +269,33 @@ class ReservationLifecycleService
         ?string $note = null,
         ?CarbonInterface $seatedAt = null,
     ): Reservation {
-        $from = $reservation->status;
-
-        if (! $from->canTransitionTo($to)) {
+        if (! $reservation->status->canTransitionTo($to)) {
             throw ValidationException::withMessages([
                 'status' => __('Statuswechsel von :from nach :to ist nicht erlaubt.', [
-                    'from' => $from->value, 'to' => $to->value,
+                    'from' => $reservation->status->value, 'to' => $to->value,
                 ]),
             ]);
         }
 
-        return DB::transaction(function () use ($reservation, $from, $to, $actor, $actorType, $reason, $note, $seatedAt) {
+        return DB::transaction(function () use ($reservation, $to, $actor, $actorType, $reason, $note, $seatedAt) {
+            // Der Ausgangsstatus wird INNERHALB der Transaktion unter Sperre
+            // frisch gelesen. Vorher stammte er aus dem uebergebenen Objekt und
+            // war womoeglich Minuten alt: Der Fristablauf las "wartet auf
+            // Zahlung", waehrend der Zahlungseingang die Buchung bereits
+            // bestaetigt hatte, und schrieb sie danach auf "verfallen" - Geld
+            // beim Betrieb, kein Tisch beim Gast.
+            $gesperrt = Reservation::withoutGlobalScopes()->lockForUpdate()->find($reservation->id);
+            $from = $gesperrt?->status ?? $reservation->status;
+            $reservation->setAttribute('status', $from);
+
+            if (! $from->canTransitionTo($to)) {
+                throw ValidationException::withMessages([
+                    'status' => __('Statuswechsel von :from nach :to ist nicht erlaubt.', [
+                        'from' => $from->value, 'to' => $to->value,
+                    ]),
+                ]);
+            }
+
             $updates = ['status' => $to];
 
             match ($to) {

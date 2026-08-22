@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
+use App\Services\RefundService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
@@ -46,5 +47,20 @@ class Refund extends Model
     public function amountFormatted(): string
     {
         return number_format($this->amount_minor / 100, 2, ',', '.').' '.$this->currency;
+    }
+
+    /**
+     * Beansprucht, aber seit einer Viertelstunde ruehrt sich nichts.
+     *
+     * Der Anbieteraufruf steht hinter dem Statuswechsel. Stirbt der Prozess
+     * dazwischen - Worker-Timeout, Neustart beim Ausrollen -, bleibt die Zeile
+     * auf "in Bearbeitung" stehen. Ohne diese Kennzeichnung sieht sie im
+     * Betrieb aus wie eine, die gerade laeuft, und niemand sucht das Geld.
+     */
+    public function isStalled(): bool
+    {
+        return $this->status === 'processing'
+            && $this->updated_at !== null
+            && $this->updated_at->lt(now()->subMinutes(RefundService::STALE_PROCESSING_MINUTES));
     }
 }

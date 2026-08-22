@@ -12,6 +12,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Gibt Tische wieder frei, deren E-Mail-Bestätigung nie kam.
@@ -65,23 +66,27 @@ class ExpireUnconfirmedReservations implements ShouldQueue
 
         foreach ($offen as $reservation) {
             // Zwischen Laden und Verarbeiten kann der Gast doch noch bestätigt
-            // haben, oder der Betrieb hat von Hand zugesagt.
-            $reservation->refresh();
+            // haben, oder der Betrieb hat von Hand zugesagt. Unter Sperre
+            // gelesen, sonst committet die Bestätigung zwischen Lesen und
+            // Schreiben und der Lauf setzt sie danach auf "verfallen".
+            DB::transaction(function () use ($reservation, $lifecycle) {
+                $gesperrt = Reservation::withoutGlobalScopes()->lockForUpdate()->find($reservation->id);
 
-            if (! in_array($reservation->status, [
-                ReservationStatus::Requested,
-                ReservationStatus::PaymentPending,
-            ], true)) {
-                continue;
-            }
+                if ($gesperrt === null || ! in_array($gesperrt->status, [
+                    ReservationStatus::Requested,
+                    ReservationStatus::PaymentPending,
+                ], true)) {
+                    return;
+                }
 
-            $lifecycle->transition(
-                $reservation,
-                ReservationStatus::Expired,
-                null,
-                'system',
-                'email_confirmation_missing',
-            );
+                $lifecycle->transition(
+                    $gesperrt,
+                    ReservationStatus::Expired,
+                    null,
+                    'system',
+                    'email_confirmation_missing',
+                );
+            });
         }
     }
 }

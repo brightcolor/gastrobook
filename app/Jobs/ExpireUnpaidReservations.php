@@ -43,7 +43,7 @@ class ExpireUnpaidReservations implements ShouldQueue
      * schützt. Ein Checkout bei Stripe oder PayPal dauert selten länger als
      * ein paar Minuten.
      */
-    private const CHECKOUT_GRACE_MINUTES = 15;
+    public const CHECKOUT_GRACE_MINUTES = 15;
 
     /**
      * Mindestabstand zwischen Zahlungsaufforderung und Erinnerung.
@@ -149,25 +149,34 @@ class ExpireUnpaidReservations implements ShouldQueue
         foreach ($abgelaufen as $reservation) {
             // Zwischen dem Laden und hier kann die Zahlung eingegangen sein –
             // der Webhook setzt dann payment_status auf 'paid' und den Status
-            // auf Confirmed. Ohne diese Prüfung würde der Lauf eine bezahlte,
-            // bestätigte Reservierung wieder auf 'expired' schreiben.
-            $reservation->refresh();
+            // auf Confirmed. Ein blosses refresh() reichte dafuer nicht: Es
+            // liest ohne Sperre, und der Zahlungseingang kann zwischen Lesen
+            // und Schreiben committen. Dann stuende am Ende "verfallen" auf
+            // einer bezahlten Buchung - Geld beim Betrieb, kein Tisch beim
+            // Gast, keine Erstattung.
+            $verfallen = DB::transaction(function () use ($reservation, $lifecycle) {
+                $gesperrt = Reservation::withoutGlobalScopes()->lockForUpdate()->find($reservation->id);
 
-            if ($reservation->status !== ReservationStatus::PaymentPending) {
-                continue;
-            }
+                if ($gesperrt === null || $gesperrt->status !== ReservationStatus::PaymentPending) {
+                    return false;
+                }
 
-            DB::transaction(function () use ($reservation, $lifecycle) {
-                $reservation->update(['payment_status' => 'expired']);
+                $gesperrt->update(['payment_status' => 'expired']);
 
                 $lifecycle->transition(
-                    $reservation,
+                    $gesperrt,
                     ReservationStatus::Expired,
                     null,
                     'system',
                     'payment_deadline_exceeded',
                 );
+
+                return true;
             });
+
+            if (! $verfallen) {
+                continue;
+            }
 
             $frisch = $reservation->refresh();
 

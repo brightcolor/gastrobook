@@ -60,7 +60,7 @@ final class PaymentReference
      * Was auf dem Kontoauszug des Gastes erscheinen soll.
      *
      * Höchstens 22 Zeichen, und die Anbieter akzeptieren nur einen engen
-     * Zeichenvorrat. Ein Gast, der „Sternenwald Wismar" auf der Abrechnung
+     * Zeichenvorrat. Ein Gast, der den Namen des Betriebs auf der Abrechnung
      * liest, erkennt die Buchung wieder und meldet sie nicht als unbekannt.
      */
     public static function statementName(string $name): string

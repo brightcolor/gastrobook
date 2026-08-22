@@ -1,5 +1,83 @@
 # Changelog
 
+## [1.118.0] – 2026-08-22
+
+### Der Zahlungsweg von oben bis unten nachgezogen
+Zehn Fehler aus derselben Vollprüfung, alle auf dem Weg, auf dem Geld fliesst.
+
+**Lastschrift und Sofortüberweisung galten sofort als bezahlt.** Bei diesen
+Zahlarten meldet der Anbieter die Bezahlseite als abgeschlossen, während das
+Geld noch unterwegs ist – oder nie ankommt. Die Anwendung buchte das trotzdem
+als Zahlungseingang: Bestätigungsmail an den Gast, Tisch belegt, und wenn die
+Zahlung Tage später scheiterte, änderte sich nichts mehr. Erstatten liess sich
+der Vorgang auch nicht, weil er nie als offen galt. Jetzt zählt nur eine
+Zahlung, die der Anbieter auch als bezahlt meldet; die spätere Erfolgs- oder
+Fehlermeldung wird verarbeitet und gibt den Tisch im Fehlerfall wieder frei.
+
+**Wer den Bezahlvorgang abbrach, wurde seine Buchung nie mehr los.** Ein Klick
+auf „Jetzt bezahlen" setzte die Buchung auf „Zahlung läuft" – und es gab
+keinen Weg zurück. Stornieren antwortete ab dann dauerhaft mit „Deine Zahlung
+wird gerade verarbeitet", und der automatische Verfall greift bei der
+Standardeinstellung nicht. Der Tisch blieb bis zum Termin gesperrt, und der
+Gast bekam am Ende noch die Erinnerungsmail zu einer Buchung, die er loswerden
+wollte. Jetzt gibt eine abgelaufene Bezahlsitzung die Buchung wieder frei, und
+Stornieren blockiert nur noch, solange wirklich ein Bezahlvorgang läuft.
+
+**Eine bezahlte Buchung konnte kurz danach als verfallen enden.** Der Lauf,
+der die Zahlungsfrist überwacht, las den Stand ohne Sperre. Ging die Zahlung
+in genau diesem Moment ein, gewann der spätere Schreibvorgang: Am Ende stand
+„verfallen" auf einer bezahlten, bestätigten Buchung. Geld beim Betrieb, kein
+Tisch beim Gast, keine Erstattung. Beide Seiten arbeiten jetzt unter derselben
+Sperre.
+
+**Zwei Klicks auf den Bezahllink erzeugten zwei bezahlbare Vorgänge.** Wer in
+beiden zahlte, zahlte doppelt – im System stand eine Anzahlung, und die
+Erstattung fand die zweite Zahlung nicht. Die Datenbank lässt pro Buchung jetzt
+nur noch einen offenen Zahlungsvorgang zu.
+
+**Zahlte der Gast in einem älteren Tab, kam das Geld nie an.** Der Rückweg
+prüfte nur die zuletzt erzeugte Bezahlsitzung und wies alles andere ab –
+obwohl bezahlt worden war. Jetzt kennt ein Vorgang alle seine Sitzungen. Wird
+doch einmal eine unbekannte Kennung vorgelegt, steht das im Protokoll statt
+kommentarlos abgewiesen zu werden.
+
+**Der Knopf „Erneut versuchen" konnte eine zweite echte Erstattung auslösen.**
+Zwei Klicks kurz hintereinander drehten den Stand einer gerade laufenden
+Auszahlung zurück und gaben sie ein zweites Mal frei.
+
+**Erstattungen konnten für immer in „in Bearbeitung" hängenbleiben.** Stirbt
+der Prozess zwischen dem Beanspruchen und dem Anbieteraufruf – Zeitlimit,
+Neustart beim Ausrollen –, erreichte die Zeile danach niemand mehr. Der Gast
+bekam sein Geld nie, und im Betrieb sah es aus, als liefe es noch. Solche
+Zeilen sind jetzt als hängend gekennzeichnet und lassen sich erneut anstossen,
+mit dem ausdrücklichen Hinweis, vorher beim Anbieter nachzusehen.
+
+**Mehrere Erstattungen konnten zusammen mehr auszahlen als eingegangen war.**
+Geprüft wurde nur die einzelne Erstattung gegen den Zahlbetrag, nie die Summe.
+Zwei Erstattungen zu je der Hälfte galten auch danach als „teilweise
+erstattet", obwohl alles zurückgeflossen war.
+
+**Zahlte jemand auf eine Buchung, die es nicht mehr gibt, passierte nichts.**
+Bei der Standardeinstellung „keine Erstattungen" behielt der Betrieb das Geld,
+der Gast hatte keinen Tisch, und ausser einem Protokolleintrag geschah nichts.
+Für so eine Zahlung gibt es keine Kulanzentscheidung zu treffen – sie steht
+jetzt in voller Höhe in der Liste der Rückerstattungen, und der Betrieb bekommt
+eine Nachricht.
+
+**Ein SEPA-Abo konnte doppelt angelegt werden.** Das Abo wurde innerhalb der
+Datenbanktransaktion beim Anbieter angelegt. Brach die Transaktion danach ab,
+blieb das Abo bestehen, ohne dass die Anwendung davon wusste – der nächste
+Einrichtungsversuch legte ein zweites an, und der Kunde wurde monatlich doppelt
+eingezogen. Jetzt wird erst das Mandat festgeschrieben und danach das Abo
+angelegt, mit Nachschlagen beim Anbieter und einem Wiedererkennungsschlüssel.
+Ausserdem hängt das Kündigen nicht mehr am zweiten Schritt: Scheitert nur das
+Kündigen des Mandats, ist die Lastschrift trotzdem beendet – vorher liess sich
+dieser Zustand weder kündigen noch neu einrichten.
+
+**Ein fehlgeschlagenes Lastschrift-Ereignis wurde stumm verworfen.** Es galt
+als erledigt, bevor es verarbeitet war; die Wiederholung des Anbieters lief in
+die Doppelprüfung. Ein fehlgeschlagener Einzug wäre nie aufgefallen.
+
 ## [1.117.0] – 2026-08-22
 
 ### Drei schwere Fehler aus einer Vollprüfung

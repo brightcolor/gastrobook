@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Public;
 
 use App\Enums\ReservationStatus;
 use App\Http\Controllers\Controller;
+use App\Jobs\ExpireUnpaidReservations;
 use App\Models\Event;
 use App\Models\FloorZone;
 use App\Models\Location;
+use App\Models\PaymentIntent;
 use App\Models\Reservation;
 use App\Models\RestaurantTable;
 use App\Models\Service;
@@ -659,6 +661,22 @@ class PublicBookingController extends Controller
         ]);
     }
 
+    /**
+     * Laeuft gerade wirklich ein Bezahlvorgang?
+     *
+     * Dieselbe Kulanzfrist wie in ExpireUnpaidReservations: Ein Vorgang, den
+     * seit einer Viertelstunde niemand mehr angefasst hat, ist kein laufender
+     * Vorgang mehr, sondern ein geschlossener Tab.
+     */
+    private function hasFreshCheckout(Reservation $reservation): bool
+    {
+        return PaymentIntent::withoutGlobalScopes()
+            ->where('reservation_id', $reservation->id)
+            ->where('status', 'pending')
+            ->where('updated_at', '>', now()->subMinutes(ExpireUnpaidReservations::CHECKOUT_GRACE_MINUTES))
+            ->exists();
+    }
+
     public function cancel(Request $request, string $code, string $token)
     {
         $reservation = $this->findByCodeAndToken($code, $token);
@@ -672,7 +690,13 @@ class PublicBookingController extends Controller
         // Payment in flight: the Stripe webhook has not arrived yet.
         // Block cancellation until payment is confirmed or the deadline expires,
         // so we never end up with money received on a cancelled reservation.
-        if ($reservation->payment_status === 'pending') {
+        //
+        // Massgeblich ist ein FRISCHER Bezahlvorgang, nicht das Feld allein:
+        // `payment_status` bleibt auf 'pending' stehen, wenn der Gast den Tab
+        // beim Anbieter einfach schliesst. Wer nur das Feld prueft, sperrt die
+        // Stornierung fuer immer - dieselbe Kulanzfrist benutzt der
+        // Fristablauf.
+        if ($reservation->payment_status === 'pending' && $this->hasFreshCheckout($reservation)) {
             return back()->withErrors(['status' => __('Deine Zahlung wird gerade verarbeitet. Bitte warte kurz und versuche es erneut.')]);
         }
 

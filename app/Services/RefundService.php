@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Mail\TemplatedMail;
 use App\Models\EventBooking;
+use App\Models\Location;
 use App\Models\PaymentIntent;
 use App\Models\Refund;
 use App\Models\Reservation;
@@ -13,6 +15,7 @@ use App\Models\User;
 use App\Services\Payments\PaymentProviderManager;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 /**
  * Flexible deposit refunds: off / manual (staff approval) / auto, each either
@@ -89,7 +92,16 @@ class RefundService
 
         $settings = $location->effectiveSettings();
         $mode = $settings->refund_mode;
-        if ($mode === 'off') {
+
+        // Eine Zahlung, die auf einer toten Reservierung landet, ist
+        // gegenstandslos - da gibt es keine Kulanzentscheidung zu treffen. Die
+        // Erstattungsregeln des Betriebs beschreiben, was bei einer STORNIERUNG
+        // zurueckgeht; hier gibt es gar keine Buchung mehr. Vorher stieg dieser
+        // Weg bei der Vorgabe 'off' wortlos aus: Der Betrieb behielt das Geld,
+        // der Gast hatte keinen Tisch, und niemand erfuhr davon.
+        $gegenstandslos = $source === 'late_payment_auto_refund';
+
+        if ($mode === 'off' && ! $gegenstandslos) {
             return null;
         }
 
@@ -119,7 +131,7 @@ class RefundService
                 ->where('reservation_id', $reservation->id)
                 ->whereNotIn('status', ['rejected', 'failed'])
                 ->first(),
-            function () use ($reservation, $intent, $settings, $mode, $source, $actor) {
+            function () use ($reservation, $intent, $settings, $mode, $source, $actor, $gegenstandslos) {
                 Reservation::withoutGlobalScope('tenant')->lockForUpdate()->find($reservation->id);
 
                 $existing = Refund::withoutGlobalScopes()
@@ -130,7 +142,10 @@ class RefundService
                     return $existing;
                 }
 
-                $percent = max(0, min(100, (int) $settings->refund_percent));
+                // Der Stornoprozentsatz ist Kulanz bei einer Stornierung. Fuer
+                // eine gegenstandslose Zahlung gilt er nicht - der Gast bekaeme
+                // sonst die Haelfte fuer eine Buchung, die es nie gab.
+                $percent = $gegenstandslos ? 100 : max(0, min(100, (int) $settings->refund_percent));
                 $amount = (int) round($intent->amount_minor * $percent / 100);
                 if ($amount <= 0) {
                     return null;
@@ -143,6 +158,9 @@ class RefundService
                     'provider' => $intent->provider,
                     'amount_minor' => $amount,
                     'currency' => $intent->currency,
+                    // Hat der Betrieb Erstattungen nie eingeschaltet, wird hier
+                    // kein Geld ohne ihn bewegt - aber der Fall landet
+                    // sichtbar in der Erstattungsliste statt nur im Auditlog.
                     'status' => $mode === 'auto' ? 'approved' : 'pending',
                     'source' => $source,
                     'reason' => 'cancellation',
@@ -156,6 +174,10 @@ class RefundService
                 return $refund;
             }
         );
+
+        if ($refund !== null && $gegenstandslos) {
+            $this->notifyOperator($location, $refund, $reservation);
+        }
 
         if ($refund === null) {
             return null;
@@ -194,6 +216,41 @@ class RefundService
         $this->audit->log('refund.rejected', $refund, null, null, null, $actor, $refund->tenant_id);
 
         return $refund->fresh();
+    }
+
+    /**
+     * Wie lange eine beanspruchte Erstattung laufen darf, bevor sie als
+     * haengengeblieben gilt.
+     *
+     * process() setzt 'processing' in einer eigenen, sofort committeten
+     * Anweisung und ruft erst danach den Anbieter. Stirbt der Prozess
+     * dazwischen - Worker-Timeout, OOM, Neustart beim Ausrollen -, bleibt die
+     * Zeile stehen: Kein Lauf und kein Knopf erreichte sie danach noch, und
+     * der Gast bekam sein Geld nie.
+     */
+    public const STALE_PROCESSING_MINUTES = 15;
+
+    /**
+     * Eine gescheiterte oder haengengebliebene Erstattung wieder freigeben.
+     *
+     * Als bedingtes Update, nicht als Lesen-Pruefen-Schreiben: Sonst dreht ein
+     * zweiter Aufruf den Stand eines gerade laufenden Anbieteraufrufs zurueck
+     * und gibt damit eine zweite echte Erstattung frei.
+     *
+     * Gibt zurueck, ob dieser Aufruf die Erstattung beansprucht hat.
+     */
+    public function reopen(Refund $refund): bool
+    {
+        return Refund::withoutGlobalScopes()
+            ->whereKey($refund->id)
+            ->where(function ($q) {
+                $q->where('status', 'failed')
+                    // Haengengeblieben: beansprucht, aber seit einer
+                    // Viertelstunde ruehrt sich nichts mehr.
+                    ->orWhere(fn ($q) => $q->where('status', 'processing')
+                        ->where('updated_at', '<', now()->subMinutes(self::STALE_PROCESSING_MINUTES)));
+            })
+            ->update(['status' => 'approved', 'error' => null]) === 1;
     }
 
     /**
@@ -239,6 +296,25 @@ class RefundService
                 return false;
             }
 
+            // Deckel ueber ALLE Erstattungen dieses Vorgangs, nicht nur ueber
+            // diese eine Zeile. Ein Fehlversuch darf eine zweite Zeile
+            // erlauben - aber 'failed' wird auch dann gesetzt, wenn die
+            // Erstattung beim Anbieter in Wahrheit lief (Zeitueberschreitung).
+            // Ohne diese Summe zahlten zwei Zeilen zu je 50 % zusammen 100 %
+            // aus, waehrend der Vorgang weiter auf "teilweise erstattet" stand.
+            $bereits = $this->alreadyRefundedMinor($refund);
+            $offen = $intent !== null ? max(0, (int) $intent->amount_minor - $bereits) : $refund->amount_minor;
+
+            if ($refund->amount_minor > $offen) {
+                $refund->update([
+                    'status' => 'failed',
+                    'error' => 'Es sind bereits '.number_format($bereits / 100, 2, ',', '.').' '.$refund->currency
+                        .' zu dieser Zahlung erstattet. Mehr als der gezahlte Betrag geht nicht zurueck.',
+                ]);
+
+                return false;
+            }
+
             $result = $provider->refund($reference, $refund->amount_minor, $refund->currency);
         } catch (\Throwable $e) {
             report($e);
@@ -255,7 +331,11 @@ class RefundService
             return false;
         }
 
-        $fully = $intent === null || $refund->amount_minor >= $intent->amount_minor;
+        // "Voll erstattet" ergibt sich aus der Summe aller Erstattungen zu
+        // diesem Vorgang, nicht aus dieser einen Zeile: Zweimal die Haelfte
+        // sind auch voll erstattet.
+        $fully = $intent === null
+            || ($bereits + $refund->amount_minor) >= (int) $intent->amount_minor;
 
         $refund->update([
             'status' => 'completed',
@@ -411,6 +491,62 @@ class RefundService
         } catch (UniqueConstraintViolationException) {
             return $vorhandene();
         }
+    }
+
+    /**
+     * Was zu diesem Zahlungsvorgang schon zurueckgegangen ist - ohne die
+     * eigene Zeile.
+     *
+     * 'processing' zaehlt mit: Dort ist das Geld womoeglich schon unterwegs.
+     * 'failed' zaehlt nicht mit, sonst waere nach einem Fehlversuch kein
+     * zweiter Anlauf mehr moeglich.
+     */
+    private function alreadyRefundedMinor(Refund $refund): int
+    {
+        if ($refund->payment_intent_id === null) {
+            return 0;
+        }
+
+        return (int) Refund::withoutGlobalScopes()
+            ->where('payment_intent_id', $refund->payment_intent_id)
+            ->whereKeyNot($refund->id)
+            ->whereIn('status', ['completed', 'processing'])
+            ->sum('amount_minor');
+    }
+
+    /**
+     * Den Betrieb ueber eine Zahlung informieren, die ins Leere lief.
+     *
+     * Ein Auditeintrag allein reicht dafuer nicht: Dort sieht niemand nach,
+     * solange er nicht weiss, dass es etwas zu sehen gibt. Hier liegt Geld
+     * eines Gastes fuer eine Buchung, die es nicht mehr gibt.
+     */
+    private function notifyOperator(Location $location, Refund $refund, Reservation $reservation): void
+    {
+        $to = $location->effectiveSettings()->owner_notification_email ?: $location->email;
+        if (! $to) {
+            return;
+        }
+
+        $tenant = Tenant::find($refund->tenant_id);
+
+        Mail::to($to)->queue(new TemplatedMail(
+            'Zahlung ohne gültige Reservierung – '.$reservation->code,
+            implode("\n", [
+                'Zu der Reservierung '.$reservation->code.' ist eine Zahlung eingegangen,',
+                'obwohl die Buchung nicht mehr gültig ist ('.__('reservations.status.'.$reservation->status->value, [], 'de').').',
+                '',
+                'Betrag:  '.$refund->amountFormatted(),
+                'Gast:    '.$reservation->guest_name_snapshot,
+                'E-Mail:  '.($reservation->guest_email_snapshot ?: '—'),
+                '',
+                $refund->status === 'approved'
+                    ? 'Die Rückerstattung wurde automatisch angestossen.'
+                    : 'Die Rückerstattung liegt zur Freigabe in der Liste der Rückerstattungen.',
+            ]),
+            $tenant?->mail_from_name,
+            $tenant?->mail_reply_to,
+        ));
     }
 
     private function processingMode(Refund $refund): string

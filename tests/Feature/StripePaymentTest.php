@@ -113,7 +113,7 @@ class StripePaymentTest extends TestCase
 
         [$body, $signature] = $this->signedWebhook([
             'type' => 'checkout.session.completed',
-            'data' => ['object' => ['id' => 'cs_1', 'metadata' => ['payment_intent_id' => (string) $intent->id]]],
+            'data' => ['object' => ['id' => 'cs_1', 'payment_status' => 'paid', 'metadata' => ['payment_intent_id' => (string) $intent->id]]],
         ]);
 
         $this->call('POST', '/webhooks/stripe', [], [], [], [
@@ -182,7 +182,7 @@ class StripePaymentTest extends TestCase
 
         [$body, $signature] = $this->signedWebhook([
             'type' => 'checkout.session.completed',
-            'data' => ['object' => ['id' => 'cs_res', 'metadata' => ['payment_intent_id' => (string) $intent->id]]],
+            'data' => ['object' => ['id' => 'cs_res', 'payment_status' => 'paid', 'metadata' => ['payment_intent_id' => (string) $intent->id]]],
         ]);
 
         $this->call('POST', '/webhooks/stripe', [], [], [], [

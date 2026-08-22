@@ -40,8 +40,18 @@ class GoCardlessWebhookController extends Controller
         }
 
         foreach ($events['events'] as $event) {
-            if (is_array($event) && $this->markSeen($event)) {
+            if (! is_array($event) || ! $this->markSeen($event)) {
+                continue;
+            }
+
+            // Ein Fehler in einem Ereignis darf die uebrigen desselben Pakets
+            // nicht mitreissen - vorher brach die Schleife ab, und alles
+            // dahinter blieb unverarbeitet, war aber schon abgehakt.
+            try {
                 $this->handleEvent($event);
+            } catch (\Throwable $e) {
+                report($e);
+                $this->forgetSeen($event);
             }
         }
 
@@ -70,6 +80,23 @@ class GoCardlessWebhookController extends Controller
         } catch (QueryException) {
             // Unique constraint violation = already processed.
             return false;
+        }
+    }
+
+    /**
+     * Die Merkung wieder loeschen, wenn die Verarbeitung gescheitert ist.
+     *
+     * Sonst gilt ein Ereignis als erledigt, das nie verarbeitet wurde: Die
+     * Wiederholung von GoCardless liefe in die Doppelpruefung und waere
+     * endgueltig weg. Ein fehlgeschlagener Einzug wuerde damit nie bemerkt.
+     *
+     * @param  array<string,mixed>  $event
+     */
+    private function forgetSeen(array $event): void
+    {
+        $eventId = $event['id'] ?? null;
+        if (is_string($eventId) && $eventId !== '') {
+            DB::table('gocardless_webhook_events')->where('event_id', $eventId)->delete();
         }
     }
 

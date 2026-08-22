@@ -120,7 +120,14 @@ class DirectDebitController extends Controller
 
         // Claim-once: lock the billing profile and bail if a mandate is already
         // active, so a double return from GoCardless can't create two subscriptions.
-        $subscriptionId = DB::transaction(function () use ($tenant, $plan, $result) {
+        //
+        // In der Transaktion wird NUR das Mandat festgeschrieben. Das Abo
+        // anzulegen ist ein Aufruf nach draussen, den niemand zurueckrollen
+        // kann: Bricht die Transaktion danach ab, bleibt bei GoCardless ein
+        // monatlich einziehendes Abo stehen, von dem die Anwendung nichts
+        // weiss - der naechste Einrichtungsversuch legt ein zweites an, der
+        // Kunde wird doppelt eingezogen, und das erste ist nirgends kuendbar.
+        $profile = DB::transaction(function () use ($tenant, $result) {
             $profile = BillingProfile::where('tenant_id', $tenant->id)->lockForUpdate()->first();
             if ($profile === null) {
                 $profile = new BillingProfile(['tenant_id' => $tenant->id]);
@@ -130,31 +137,49 @@ class DirectDebitController extends Controller
                 return null; // already set up
             }
 
-            $subscriptionId = $this->gocardless->createSubscription(
-                $result['mandate_id'],
-                (int) $plan->price_monthly_minor,
-                $plan->currency ?? 'EUR',
-                'Swayy '.$tenant->name,
-            );
-
             $profile->fill([
                 'gocardless_customer_id' => $result['customer_id'],
                 'gocardless_mandate_id' => $result['mandate_id'],
-                'gocardless_subscription_id' => $subscriptionId,
-                'gocardless_status' => 'active',
-                'payment_status' => 'active',
+                'gocardless_status' => 'pending',
             ])->save();
 
-            // An active paying customer is no longer trialing/locked.
-            $tenant->update(['status' => 'active', 'trial_ends_at' => null]);
-
-            return $subscriptionId;
+            return $profile;
         });
 
-        if ($subscriptionId === null) {
+        if ($profile === null) {
             return redirect()->route('admin.billing.show')
                 ->with('success', __('Lastschrift ist bereits aktiv.'));
         }
+
+        try {
+            // Zweifach abgesichert gegen ein zweites Abo: erst nachsehen, ob
+            // zu diesem Mandat schon eines laeuft, und den Anlagevorgang mit
+            // einem festen Schluessel fahren, den GoCardless wiedererkennt.
+            $subscriptionId = $this->gocardless->activeSubscriptionFor($result['mandate_id'])
+                ?? $this->gocardless->createSubscription(
+                    $result['mandate_id'],
+                    (int) $plan->price_monthly_minor,
+                    $plan->currency ?? 'EUR',
+                    'Swayy '.$tenant->name,
+                    'swayy-sub-'.$result['mandate_id'],
+                );
+        } catch (\Throwable $e) {
+            Log::warning('GoCardless subscription failed', ['tenant' => $tenant->id, 'error' => $e->getMessage()]);
+
+            return redirect()->route('admin.billing.show')
+                ->withErrors(['billing' => __('Das Mandat steht, aber das Abo konnte nicht angelegt werden. Bitte erneut versuchen.')]);
+        }
+
+        DB::transaction(function () use ($tenant, $profile, $subscriptionId) {
+            $profile->update([
+                'gocardless_subscription_id' => $subscriptionId,
+                'gocardless_status' => 'active',
+                'payment_status' => 'active',
+            ]);
+
+            // An active paying customer is no longer trialing/locked.
+            $tenant->update(['status' => 'active', 'trial_ends_at' => null]);
+        });
 
         $this->audit->log('billing.directdebit.activated', $tenant, null, [
             'subscription_id' => $subscriptionId,
@@ -189,11 +214,15 @@ class DirectDebitController extends Controller
             return back()->withErrors(['billing' => __('Es besteht kein aktives Lastschriftmandat.')]);
         }
 
+        // Der lokale Stand haengt am ERSTEN Schritt, nicht an beiden. Vorher
+        // sprang der catch auch dann an, wenn nur das Kuendigen des Mandats
+        // scheiterte - das Abo war weg, das Profil stand weiter auf "aktiv",
+        // und der naechste Versuch lief gegen ein bereits gekuendigtes Abo.
+        // Damit kam der Kunde ohne Eingriff in der Datenbank nie mehr heraus:
+        // nicht kuendbar, weil der erste Aufruf immer fehlschlug, und nicht neu
+        // einrichtbar, weil "es besteht bereits ein aktives Mandat".
         try {
             $this->gocardless->cancelSubscription($profile->gocardless_subscription_id);
-            if ($profile->gocardless_mandate_id) {
-                $this->gocardless->cancelMandate($profile->gocardless_mandate_id);
-            }
         } catch (\Throwable $e) {
             Log::warning('GoCardless cancel failed', ['tenant' => $tenant->id, 'error' => $e->getMessage()]);
 
@@ -205,6 +234,18 @@ class DirectDebitController extends Controller
             'gocardless_subscription_id' => null,
             'payment_status' => 'cancelled',
         ]);
+
+        // Das Mandat ist der zweite, unabhaengige Schritt. Bleibt es stehen,
+        // wird trotzdem nichts mehr abgebucht - das Abo ist gekuendigt. Also
+        // nur vermerken, nicht die ganze Kuendigung daran aufhaengen.
+        if ($profile->gocardless_mandate_id) {
+            try {
+                $this->gocardless->cancelMandate($profile->gocardless_mandate_id);
+                $profile->update(['gocardless_mandate_id' => null]);
+            } catch (\Throwable $e) {
+                Log::warning('GoCardless mandate cancel failed', ['tenant' => $tenant->id, 'error' => $e->getMessage()]);
+            }
+        }
 
         $this->audit->log('billing.directdebit.cancelled', $tenant, null, null, null, $request->user(), $tenant->id);
 

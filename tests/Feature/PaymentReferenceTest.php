@@ -92,7 +92,7 @@ class PaymentReferenceTest extends TestCase
      */
     public function test_the_statement_name_is_trimmed_and_cleaned(): void
     {
-        $this->assertSame('Sternenwald Wismar', PaymentReference::statementName('Sternenwald Wismar'));
+        $this->assertSame('Waldhaus Beispiel', PaymentReference::statementName('Waldhaus Beispiel'));
         $this->assertLessThanOrEqual(22, mb_strlen(PaymentReference::statementName(str_repeat('Name ', 20))));
 
         // Nur der Zeichenvorrat, den die Anbieter annehmen - wie genau ein
