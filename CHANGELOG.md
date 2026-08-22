@@ -1,5 +1,40 @@
 # Changelog
 
+## [1.119.0] – 2026-08-22
+
+### Grenzen, die nur galten, wenn die Anwendung den Tisch selbst suchte
+Sobald eine Buchung einen Tisch mitbrachte – über den öffentlichen Tischplan
+oder die interne Maske –, lief sie an mehreren Prüfungen vorbei. Dieselbe
+Anfrage ohne Tisch wurde abgelehnt, mit Tisch ging sie durch.
+
+**Vorlaufzeit, Buchungshorizont, Platzlimit und Pufferzeit gelten jetzt auf
+beiden Wegen.** Vorher liess sich mit gewähltem Tisch eine Uhrzeit buchen, die
+heute schon vorbei war, ein Jahr im Voraus reservieren, das Platzlimit
+überschreiten und ein Tisch direkt im Anschluss an eine laufende Buchung
+belegen – ohne die Wende- und Reinigungszeit dazwischen.
+
+**Der Tischplan lässt sich wieder wirklich abschalten.** Die Ansicht war
+abgesichert, das Formularfeld nicht: Wer die Anfrage von Hand schickte, konnte
+sich trotzdem einen Tisch aussuchen und damit die gesamte Tischzuteilung
+aushebeln. Ist der öffentliche Tischplan aus, wird die Tischwahl jetzt
+verworfen und wie bisher automatisch zugeteilt.
+
+**Salontermine liessen sich in der Vergangenheit anlegen.** Im Salonpfad fehlte
+die Datumsgrenze, und Vorlaufzeit wie Buchungshorizont wurden dort nie geprüft
+– die passenden Fehlermeldungen standen zwar im Code, waren aber unerreichbar.
+Ein Termin von gestern zählt als aktiv und verstopft den Kalender.
+
+**Zwei Gäste konnten dieselbe Mitarbeiterin auf denselben Termin buchen.** Die
+Prüfung lief vor dem Anlegen, das Anlegen selbst übersprang sie. Die Sperre
+bestimmte damit nur, wer zuerst schreibt – beide Anfragen beruhten auf
+demselben veralteten „ist frei". Geprüft wird jetzt unter der Sperre.
+
+**Zeiten nach Mitternacht buchten die falsche Nacht.** Bei Öffnungszeiten über
+Mitternacht – etwa 18:00 bis 02:00 – bot die Seite „00:00" beim gewählten Tag
+an, die Buchung landete aber 24 Stunden früher. Jeder angebotene Zeitpunkt
+trägt sein Datum jetzt selbst mit. In der Liste stehen diese Zeiten unter
+„Nach Mitternacht" statt ganz oben unter „Vormittag".
+
 ## [1.118.0] – 2026-08-22
 
 ### Der Zahlungsweg von oben bis unten nachgezogen

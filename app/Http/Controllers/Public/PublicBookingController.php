@@ -194,6 +194,11 @@ class PublicBookingController extends Controller
         $response = [
             'date' => $validated['date'],
             'slots' => array_map(fn ($s) => $s['time'], $available),
+            // Je Uhrzeit das tatsaechliche Datum. Bei einem Fenster ueber
+            // Mitternacht gehoert "00:30" zum Folgetag; ohne diese Angabe baut
+            // das Formular daraus den angefragten Tag 00:30 und bucht die
+            // Nacht davor - 24 Stunden vor dem angeklickten Slot.
+            'slot_dates' => array_column($available, 'date', 'time'),
         ];
 
         if ($available === []) {
@@ -423,6 +428,9 @@ class PublicBookingController extends Controller
             'privacy_accepted' => ['accepted'],
             'newsletter' => ['nullable', 'boolean'],
             'table_id' => ['nullable', 'integer'],
+            // Das Datum des angeklickten Slots. Weicht nur bei Fenstern ueber
+            // Mitternacht vom Datum im Kalender ab - dann aber entscheidend.
+            'slot_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:today'],
         ];
         foreach (['email' => 'email:rfc', 'phone' => 'string|max:40'] as $field => $rule) {
             $fieldRule = $settings->fieldRule($field);
@@ -435,11 +443,20 @@ class PublicBookingController extends Controller
 
         $validated = $request->validate($rules);
 
-        $startLocal = CarbonImmutable::parse($validated['date'].' '.$validated['time'], $location->timezone);
+        $startLocal = CarbonImmutable::parse(
+            ($validated['slot_date'] ?? $validated['date']).' '.$validated['time'],
+            $location->timezone
+        );
 
         // Optional: guest picked a specific table on the public floor plan.
+        //
+        // Nur wenn der Tischplan auch oeffentlich ist. Die Ansicht selbst ist
+        // laengst abgesichert, dieses Feld war es nicht: Ein Betrieb, der den
+        // Tischplan bewusst ausgeschaltet laesst, geht davon aus, dass Gaeste
+        // keinen Tisch aussuchen - per Formular ging es trotzdem, samt
+        // Aushebeln der gesamten Tischzuteilung.
         $tableIds = [];
-        if (! empty($validated['table_id'])) {
+        if (! empty($validated['table_id']) && $settings->public_floorplan_enabled) {
             $party = (int) $validated['party_size'];
             $table = $location->tables()
                 ->where('is_active', true)
@@ -512,7 +529,11 @@ class PublicBookingController extends Controller
             'service_ids' => ['required', 'array', 'min:1'],
             'service_ids.*' => ['integer'],
             'staff_member_id' => ['nullable', 'integer'],
-            'date' => ['required', 'date_format:Y-m-d'],
+            // after_or_equal fehlte hier - im Restaurantpfad steht es laengst.
+            // Ohne die Grenze liess sich ein Termin an einem Datum in der
+            // Vergangenheit anlegen; er zaehlt als aktiv und verstopft den
+            // Kalender der Mitarbeiterin.
+            'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'time' => ['required', 'date_format:H:i'],
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email:rfc'],
@@ -557,6 +578,12 @@ class PublicBookingController extends Controller
             $startLocal,
             $startUtc,
             $startUtc->addMinutes($duration),
+            [],
+            // Vorlaufzeit und Buchungshorizont galten hier nie: Die beiden
+            // Zweige der Fehlermeldung unten waren toter Code, weil
+            // bookingBlockReason sie gar nicht kannte. Ein Termin "in zwei
+            // Minuten" ging trotz 60 Minuten Vorlauf durch.
+            ['online' => true],
         );
         // Manche Salons pflegen nur Arbeitszeiten je Mitarbeiter und gar keine
         // Öffnungszeiten des Standorts. Dort ist "ausserhalb der Öffnungszeiten"

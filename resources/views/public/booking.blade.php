@@ -437,6 +437,10 @@ details > summary::-webkit-details-marker { display: none; }
                         <p class="col-span-full text-sm text-stone-400">{{ $du ? 'Wähle zuerst deine' : 'Wählen Sie zuerst Ihre' }} Personenzahl.</p>
                     </div>
                     <input type="hidden" name="time" id="timeInput" value="{{ old('time') }}" required>
+                    {{-- Das Datum des angeklickten Slots. Bei Öffnungszeiten über
+                         Mitternacht gehört „00:30" zum Folgetag, nicht zum Tag im
+                         Kalender daneben. --}}
+                    <input type="hidden" name="slot_date" id="slotDateInput" value="{{ old('slot_date') }}">
                     <div id="alternatives" class="hidden rounded-xl bg-amber-50 p-3 text-sm text-amber-900"></div>
                     @error('time')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
 
@@ -614,6 +618,7 @@ details > summary::-webkit-details-marker { display: none; }
         const fpCanvas      = document.getElementById('floorplanCanvas');
         const roomTabsEl    = document.getElementById('roomTabs');
         const tableIdInput  = document.getElementById('tableId');
+        const slotDateInput = document.getElementById('slotDateInput');
         const zoneStage     = document.getElementById('zoneStage');
         const planStage     = document.getElementById('planStage');
         const zoneCards     = document.getElementById('zoneCards');
@@ -688,6 +693,9 @@ details > summary::-webkit-details-marker { display: none; }
             if (zoneBackRow) zoneBackRow.classList.add('hidden');
         }
 
+        // Datum je Uhrzeit aus der Slot-Antwort. Leer = das Datum im Kalender.
+        let slotDates = {};
+
         function makeSlotBtn(time) {
             const btn = document.createElement('button');
             btn.type = 'button'; btn.textContent = time; btn.dataset.time = time;
@@ -696,7 +704,9 @@ details > summary::-webkit-details-marker { display: none; }
                 document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('border-brand', 'bg-brand', 'text-white'));
                 btn.classList.add('border-brand', 'bg-brand', 'text-white');
                 timeInput.value = time;
-                sp2Summary.textContent = fmtDate(dateInput.value) + ' · ' + time + ' Uhr';
+                const echtesDatum = slotDates[time] || dateInput.value;
+                if (slotDateInput) slotDateInput.value = echtesDatum;
+                sp2Summary.textContent = fmtDate(echtesDatum) + ' · ' + time + ' Uhr';
                 stepState('sp2', 'done');
                 stepState('sp3', 'active');
                 loadFp();
@@ -711,10 +721,18 @@ details > summary::-webkit-details-marker { display: none; }
                 { label: 'Mittag',     test: h => h >= 12 && h < 14 },
                 { label: 'Nachmittag', test: h => h >= 14 && h < 18 },
                 { label: 'Abend',      test: h => h >= 18 },
+                // Nach Mitternacht: gehört zum Abend davor, nicht an den
+                // Anfang des Tages. Sonst steht „00:30" ganz oben unter
+                // „Vormittag" und liest sich wie halb eins mittags.
+                { label: 'Nach Mitternacht', test: h => h < 6 },
             ];
+            // Die Zeiten nach Mitternacht gehören nur in ihre eigene Gruppe.
+            const nachMitternacht = t => parseInt(t.split(':')[0], 10) < 6;
             let any = false;
             groups.forEach(g => {
-                const times = slots.filter(t => g.test(parseInt(t.split(':')[0], 10)));
+                const times = slots.filter(t => g.label === 'Nach Mitternacht'
+                    ? nachMitternacht(t)
+                    : (!nachMitternacht(t) && g.test(parseInt(t.split(':')[0], 10))));
                 if (!times.length) return;
                 const lbl = document.createElement('p');
                 lbl.className = 'slot-group-label'; lbl.textContent = g.label;
@@ -736,6 +754,8 @@ details > summary::-webkit-details-marker { display: none; }
             if (!partyInput.value || !dateInput.value) return;
             slotContainer.innerHTML = '<p class="col-span-full animate-pulse text-sm text-stone-400">Verfügbare Zeiten werden geladen…</p>';
             altBox.classList.add('hidden'); resetFp();
+            slotDates = {};
+            if (slotDateInput) slotDateInput.value = '';
             try {
                 const res = await fetch(slotsUrl + '?date=' + dateInput.value + '&party_size=' + partyInput.value, {headers: {Accept: 'application/json'}});
                 const data = await res.json();
@@ -772,6 +792,7 @@ details > summary::-webkit-details-marker { display: none; }
                     }
                     return;
                 }
+                slotDates = data.slot_dates || {};
                 renderSlots(data.slots);
             } catch (e) {
                 slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-stone-50 px-3 py-2.5 text-sm text-stone-500">Kurze Unterbrechung – bitte Seite neu laden.</p>';

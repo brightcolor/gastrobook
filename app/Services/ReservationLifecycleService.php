@@ -73,6 +73,26 @@ class ReservationLifecycleService
             // weit der Betrieb geoeffnet hat.
             $adHoc = (bool) ($data['ad_hoc'] ?? false);
 
+            // Salon: die Person selbst pruefen, und zwar HIER, unter der
+            // Sperre. Aufrufer pruefen vorher und rufen dann mit
+            // skip_availability_check auf - dann sagt die Sperre zwar, wer
+            // zuerst schreibt, aber beide Anfragen beruhen auf demselben
+            // veralteten "ist frei". Zwei Gaeste auf denselben Termin bei
+            // derselben Stylistin kamen so beide durch.
+            $staffMemberId = $data['staff_member_id'] ?? null;
+            if ($staffMemberId !== null) {
+                $staff = StaffMember::withoutGlobalScope('tenant')->find($staffMemberId);
+                $frei = $staff !== null && $this->salonAvailability->canStaffTake(
+                    $staff, $duration, $startUtc, $location
+                );
+
+                if (! $frei) {
+                    throw ValidationException::withMessages([
+                        'start_at' => __('Dieser Zeitpunkt ist leider gerade vergeben – bitte wählen Sie eine andere Zeit.'),
+                    ]);
+                }
+            }
+
             if (! ($data['skip_availability_check'] ?? false)) {
                 if ($tableIds === []) {
                     $check = $this->availability->checkExact($location, $startLocal, $data['party_size'], [
@@ -96,7 +116,11 @@ class ReservationLifecycleService
                     // table would let staff/guests book a closed day or a
                     // blacked-out time. Overbooking still goes via the
                     // skip_availability_check flag (permission-gated upstream).
-                    $blockReason = $this->availability->bookingBlockReason($location, $startLocal, $startUtc, $endUtc, $tableIds, $adHoc);
+                    $blockReason = $this->availability->bookingBlockReason($location, $startLocal, $startUtc, $endUtc, $tableIds, [
+                        'ad_hoc' => $adHoc,
+                        'online' => $online,
+                        'party_size' => $data['party_size'],
+                    ]);
                     if ($blockReason !== null) {
                         throw ValidationException::withMessages([
                             'start_at' => $this->availabilityMessage($blockReason),
@@ -104,7 +128,16 @@ class ReservationLifecycleService
                     }
 
                     // Conflict check; overbooking requires permission upstream.
-                    $busy = $this->tableAssignment->busyTableIds($location, $startUtc, $endUtc, null);
+                    // Mit Pufferzeit wie in der automatischen Zuteilung: Ohne
+                    // sie belegt ein gewaehlter Tisch die Minute, in der der
+                    // vorige Gast noch abraeumt.
+                    $puffer = (int) $settings->buffer_minutes;
+                    $busy = $this->tableAssignment->busyTableIds(
+                        $location,
+                        $startUtc->subMinutes($puffer),
+                        $endUtc->addMinutes($puffer),
+                        null
+                    );
                     $conflicts = array_intersect($tableIds, $busy);
                     if ($conflicts !== []) {
                         throw ValidationException::withMessages([

@@ -25,7 +25,7 @@ class ReservationAvailabilityService
      * All slots for a local date with availability flags.
      *
      * @param  array{online?: bool}  $options
-     * @return array<int, array{time: string, start_utc: string, available: bool, reason: ?string}>
+     * @return array<int, array{time: string, date: string, start_utc: string, available: bool, reason: ?string}>
      */
     public function slotsFor(Location $location, CarbonImmutable $localDate, int $partySize, array $options = []): array
     {
@@ -55,6 +55,12 @@ class ReservationAvailabilityService
 
             $results[] = [
                 'time' => $startLocal->format('H:i'),
+                // Das TATSAECHLICHE lokale Datum des Slots, nicht der
+                // angefragte Tag. Bei einem Fenster ueber Mitternacht
+                // (18:00-02:00) gehoert der Slot "00:30" zum Folgetag. Wer nur
+                // die Uhrzeit weiterreicht, baut daraus spaeter den
+                // angefragten Tag 00:30 - also die Nacht davor.
+                'date' => $startLocal->toDateString(),
                 'start_utc' => $startUtc->toIso8601String(),
                 'available' => $available,
                 'reason' => $reason,
@@ -157,7 +163,9 @@ class ReservationAvailabilityService
                 ->take($perDay);
 
             foreach ($daySlots as $s) {
-                $out[] = ['date' => $day->toDateString(), 'time' => $s['time']];
+                // Das Datum des Slots, nicht der Tag der Suche: Bei einem
+                // Fenster ueber Mitternacht gehoert "00:30" zum Folgetag.
+                $out[] = ['date' => $s['date'], 'time' => $s['time']];
                 if (count($out) >= $limit) {
                     break;
                 }
@@ -176,7 +184,7 @@ class ReservationAvailabilityService
      * blackouts, which the plain busy-table check does not cover.
      *
      * @param  array<int>  $tableIds  chosen tables (for room-specific blackouts)
-     * @param  bool  $adHoc  seating starting now, off the public slot grid
+     * @param  array{ad_hoc?: bool, online?: bool, party_size?: ?int, exclude_reservation_id?: ?int}  $options
      */
     public function bookingBlockReason(
         Location $location,
@@ -184,9 +192,32 @@ class ReservationAvailabilityService
         CarbonImmutable $startUtc,
         CarbonImmutable $endUtc,
         array $tableIds = [],
-        bool $adHoc = false
+        array $options = []
     ): ?string {
         $duration = (int) $startUtc->diffInMinutes($endUtc);
+        $adHoc = (bool) ($options['ad_hoc'] ?? false);
+        $online = (bool) ($options['online'] ?? false);
+        $settings = $location->effectiveSettings();
+
+        // Zeitgrenzen zuerst. Ohne sie war jeder Weg, der einen Tisch
+        // mitbringt, von Vorlaufzeit und Buchungshorizont ausgenommen: Der Gast
+        // konnte per Formular eine Uhrzeit buchen, die heute schon vorbei war,
+        // oder ein Jahr im Voraus - obwohl dieselbe Anfrage ohne Tisch
+        // abgelehnt wurde.
+        //
+        // Die Reihenfolge ist Absicht: Salons ohne gepflegte Oeffnungszeiten
+        // lassen "ausserhalb der Oeffnungszeiten" beim Aufrufer fallen. Stuende
+        // die Pruefung davor, fiele die Vorlaufzeit dort gleich mit weg.
+        if ($online && ! $adHoc) {
+            $nowLocal = CarbonImmutable::now($location->timezone);
+
+            if ($startLocal->lt($nowLocal->addMinutes($settings->min_lead_minutes))) {
+                return 'lead_time';
+            }
+            if ($startLocal->gt($nowLocal->addDays($settings->max_advance_days))) {
+                return 'too_far_ahead';
+            }
+        }
 
         if (! $this->startIsBookable($location, $startLocal, $duration, $adHoc)) {
             return 'outside_opening_hours';
@@ -214,6 +245,27 @@ class ReservationAvailabilityService
                 ->all();
             if ($blockedRooms !== [] && $location->tables()->whereIn('id', $tableIds)->whereIn('room_id', $blockedRooms)->exists()) {
                 return 'blackout';
+            }
+        }
+
+        // Platzlimit. Es steckte bisher nur in checkSlotDetailed, also im Weg
+        // ohne gewaehlten Tisch. Im Modus "Plaetze" oder "gemischt" lief der
+        // Deckenzaehler damit gar nicht, sobald jemand einen Tisch mitbrachte.
+        $partySize = $options['party_size'] ?? null;
+        if ($partySize !== null && in_array($settings->capacity_mode, ['person', 'hybrid'], true)) {
+            $maxCovers = $this->effectiveMaxCovers($location, $startUtc, $endUtc, $settings->max_covers_per_slot);
+
+            if ($maxCovers !== null) {
+                $belegt = (int) $location->reservations()
+                    ->whereIn('status', ReservationStatus::activeStatuses())
+                    ->when($options['exclude_reservation_id'] ?? null, fn ($q, $id) => $q->where('reservations.id', '!=', $id))
+                    ->where('start_at', '<', $endUtc)
+                    ->where('end_at', '>', $startUtc)
+                    ->sum('party_size');
+
+                if ($belegt + $partySize > $maxCovers) {
+                    return 'covers_full';
+                }
             }
         }
 
