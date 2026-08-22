@@ -2,11 +2,14 @@
 
 namespace App\Services;
 
+use App\Models\AuditLog;
 use App\Models\EventBooking;
 use App\Models\Guest;
 use App\Models\GuestMergeLog;
 use App\Models\NotificationLog;
+use App\Models\Reservation;
 use App\Models\ReservationAttachment;
+use App\Models\ReservationNote;
 use App\Models\Tenant;
 use App\Models\WaitlistEntry;
 use Illuminate\Support\Facades\DB;
@@ -43,7 +46,16 @@ class GuestPrivacyService
                 'channel' => $c->channel,
                 'recorded_at' => $c->recorded_at?->toIso8601String(),
             ])->all(),
-            'notes' => $guest->notes()->withoutGlobalScope('tenant')->where('is_sensitive', false)->pluck('body')->all(),
+            // ALLE Notizen, auch die als sensibel markierten. Der Filter stammt
+            // aus der Sichtbarkeitsregel der Oberflaeche - die schuetzt vor
+            // Mitarbeitern, nicht vor dem Betroffenen. Die Auskunft umfasst
+            // alles, was ueber ihn gespeichert ist, gerade das Heiklere. Die
+            // Kennzeichnung kommt mit, damit der Betrieb sieht, was er
+            // herausgibt.
+            'notes' => $guest->notes()->withoutGlobalScope('tenant')->get()->map(fn ($n) => [
+                'body' => $n->body,
+                'is_sensitive' => (bool) $n->is_sensitive,
+            ])->all(),
             'event_bookings' => EventBooking::withoutGlobalScopes()
                 ->where('guest_id', $guest->id)
                 ->get()
@@ -88,9 +100,19 @@ class GuestPrivacyService
                 'guest_phone_snapshot' => null,
                 'guest_note' => null,
                 'allergy_note' => null,
+                // Die interne Notiz an der Reservierung blieb bisher stehen.
+                // Sie ist genau die Stelle, an der der Betrieb notiert, was er
+                // ueber den Gast weiss - Loeschung heisst auch hier Loeschung.
+                'internal_note' => null,
             ]);
 
             $guest->notes()->withoutGlobalScope('tenant')->delete();
+
+            // Notizen, die Mitarbeiter an den Reservierungen dieses Gastes
+            // hinterlassen haben, fuehren denselben Klartext.
+            ReservationNote::withoutGlobalScopes()
+                ->whereIn('reservation_id', $guest->reservations()->withoutGlobalScope('tenant')->select('reservations.id'))
+                ->delete();
 
             // Eventbuchungen und Wartelisteneintraege fuehren eigene Klartext-
             // spalten. Ohne diesen Schritt steht der Gast nach der "Loeschung"
@@ -127,11 +149,18 @@ class GuestPrivacyService
 
             // Same for files on this guest's reservations – a menu agreement or
             // a signed contract carries the name that is being erased here.
+            // Die Dateien werden erst NACH dem Commit von der Platte genommen.
+            // Ein Dateisystem kennt kein Rollback: Bricht ein spaeterer Schritt
+            // dieser Transaktion ab, stuende sonst eine Anhangszeile auf einen
+            // Pfad, den es nicht mehr gibt - und der Gast gaelte weiter als
+            // nicht anonymisiert.
             $attachments = ReservationAttachment::withoutGlobalScopes()
                 ->whereIn('reservation_id', $guest->reservations()->withoutGlobalScope('tenant')->select('reservations.id'))
                 ->get();
             foreach ($attachments as $attachment) {
-                Storage::disk($attachment->disk)->delete($attachment->path);
+                $disk = $attachment->disk;
+                $path = $attachment->path;
+                DB::afterCommit(fn () => Storage::disk($disk)->delete($path));
                 $attachment->delete();
             }
 
@@ -157,6 +186,22 @@ class GuestPrivacyService
                     })
                     ->update(['recipient' => '-', 'subject' => null]);
             }
+
+            // Das Aenderungsprotokoll haelt die vollstaendige Historie im
+            // Klartext: Vorname, Nachname, E-Mail, Telefon, Geburtstag und
+            // Allergien stehen in old_values/new_values und werden im Betrieb
+            // auch angezeigt. Nach der "Loeschung" las sie dort jeder weiter.
+            // Aktion, Zeitpunkt und Benutzer bleiben nachweisbar - nur die
+            // Werte fallen weg.
+            AuditLog::withoutGlobalScopes()
+                ->where('entity_type', Guest::class)
+                ->where('entity_id', $guest->id)
+                ->update(['old_values' => null, 'new_values' => null]);
+
+            AuditLog::withoutGlobalScopes()
+                ->where('entity_type', Reservation::class)
+                ->whereIn('entity_id', $guest->reservations()->withoutGlobalScope('tenant')->select('reservations.id'))
+                ->update(['old_values' => null, 'new_values' => null]);
 
             $guest->update([
                 'first_name' => null,

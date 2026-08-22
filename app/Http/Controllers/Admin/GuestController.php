@@ -8,6 +8,7 @@ use App\Models\Tag;
 use App\Services\AuditLogger;
 use App\Services\GuestMergeService;
 use App\Services\GuestPrivacyService;
+use App\Support\Csv;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -179,9 +180,9 @@ class GuestController extends Controller
 
         return response()->streamDownload(function () use ($guests) {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['Vorname', 'Nachname', 'E-Mail', 'Telefon', 'Besuche', 'No-Shows', 'VIP', 'Marketing-Einwilligung', 'Letzter Besuch'], ';');
+            Csv::write($out, ['Vorname', 'Nachname', 'E-Mail', 'Telefon', 'Besuche', 'No-Shows', 'VIP', 'Marketing-Einwilligung', 'Letzter Besuch'], ';');
             foreach ($guests as $g) {
-                fputcsv($out, [
+                Csv::write($out, [
                     $g->first_name, $g->last_name, $g->email, $g->phone,
                     $g->visit_count, $g->no_show_count, $g->is_vip ? 'ja' : 'nein',
                     $g->marketing_consent ? 'ja' : 'nein',

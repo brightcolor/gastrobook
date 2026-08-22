@@ -103,7 +103,17 @@ class AccountController extends Controller
         try {
             $imported = $importer->import($tenant, $decoded);
         } catch (\RuntimeException $e) {
+            // RuntimeException wirft der Importer selbst - das sind
+            // verstaendliche Saetze fuer den Betrieb.
             return back()->withErrors(['file' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            // Alles andere ist eine Datenbank- oder Programmiermeldung. Sie
+            // enthaelt die fehlgeschlagene Anweisung samt der eingesetzten
+            // Werte - also Gastdaten aus der Datei - und gehoert nicht ins
+            // Formular. Ins Log gehoert sie sehr wohl.
+            report($e);
+
+            return back()->withErrors(['file' => 'Der Import ist fehlgeschlagen. Die Datei wurde nicht übernommen; im Serverprotokoll stehen die Einzelheiten.']);
         }
 
         $this->audit->log('account.imported', $tenant, null, $imported, null, $user, $tenant->id);

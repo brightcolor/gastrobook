@@ -38,6 +38,7 @@ use App\Models\Tenant;
 use App\Models\WaitlistEntry;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -60,8 +61,23 @@ class AccountImportService
         'code', 'manage_token', 'token', 'secret',
     ];
 
+    /**
+     * Zeitstempel, die nach dem Speichern nachgetragen werden.
+     *
+     * Sie stehen in DROP, weil sie nicht massenzuweisbar sein sollen - aber
+     * verworfen gehoeren sie nicht: Ohne created_at traegt jede Buchung den
+     * Importtag als Buchungszeitpunkt, und ohne deleted_at entsteht jede weich
+     * geloeschte Zeile im Ziel als AKTIVER Datensatz neu. Ein Tisch, den der
+     * Betrieb aus dem Raum genommen hat, stuende danach wieder im Tischplan
+     * und waere online buchbar.
+     */
+    private const CARRY = ['created_at', 'updated_at', 'deleted_at'];
+
     /** @var array<string, array<int|string, int>> old id → new id, per entity */
     private array $map = [];
+
+    /** @var array<string, array<int, string>> Tabellenname → Spalten */
+    private array $columns = [];
 
     /**
      * Validate the payload and report what an import would create.
@@ -118,7 +134,7 @@ class AccountImportService
             // muss vorher importiert sein – sonst steht in der Fremdschluessel-
             // spalte die ID der QUELLinstallation: entweder eine Verletzung, die
             // die ganze Transaktion abbricht, oder eine stille Falschverknuepfung.
-            $done['events'] = $this->simple($tenant, $data, 'events', Event::class, ['location_id' => 'locations']);
+            $done['events'] = $this->simple($tenant, $data, 'events', Event::class, ['location_id' => 'locations', 'room_id' => 'rooms']);
             $done['deposit_rules'] = $this->simple($tenant, $data, 'deposit_rules', DepositRule::class, [
                 'location_id' => 'locations',
                 'room_id' => 'rooms',
@@ -126,7 +142,12 @@ class AccountImportService
                 'service_id' => 'services',
             ]);
 
-            $done['guests'] = $this->simple($tenant, $data, 'guests', Guest::class);
+            // Die drei preferred_-Spalten sind echte Fremdschluessel. Ungemappt
+            // steht dort die ID der Quellinstallation: entweder eine Verletzung,
+            // die den ganzen Import abbricht, oder - auf einer geteilten
+            // Installation - ein stiller Zeiger auf den Tisch eines FREMDEN
+            // Betriebs.
+            $done['guests'] = $this->guests($tenant, $data);
             $done['guest_notes'] = $this->simple($tenant, $data, 'guest_notes', GuestNote::class, ['guest_id' => 'guests']);
             $done['guest_consents'] = $this->simple($tenant, $data, 'guest_consents', GuestConsent::class, ['guest_id' => 'guests']);
 
@@ -239,10 +260,15 @@ class AccountImportService
     private function tables(Tenant $tenant, array $data): int
     {
         $count = 0;
+        $ersatz = [];
+
         foreach ($data['tables'] ?? [] as $row) {
             $attrs = $this->attrs($row);
             $attrs['location_id'] = $this->mapped('locations', $row['location_id'] ?? null);
             $attrs['room_id'] = $this->mapped('rooms', $row['room_id'] ?? null);
+            // Selbstverweis: zeigt auf einen Tisch, den es hier noch nicht gibt.
+            // Wird nach dem Durchlauf nachgetragen.
+            unset($attrs['backup_table_id']);
             if ($attrs['location_id'] === null) {
                 continue;
             }
@@ -250,14 +276,69 @@ class AccountImportService
             $table = new RestaurantTable($attrs);
             $table->tenant_id = $tenant->id;
             $table->save();
+            $this->carryTimestamps($table, $row);
 
             $this->remember('tables', $row['id'] ?? null, $table->id);
-            // name lookup (per location) for reservation assignment
-            $this->map['table_names'][$attrs['location_id'].'|'.$table->name] = $table->id;
+
+            if (! empty($row['backup_table_id'])) {
+                $ersatz[$table->id] = $row['backup_table_id'];
+            }
+
+            // Name lookup (per location) als RUECKFALL fuer aeltere Dateien.
+            // Nicht ueberschreiben und Papierkorbzeilen heraushalten: Zwei
+            // Tische duerfen denselben Namen tragen - durch weiches Loeschen
+            // sogar der Normalfall ("T2" geloescht, "T2" neu). Gewann die
+            // zuletzt gelesene Zeile den Schluessel, landeten die
+            // Reservierungen BEIDER Tische am selben neuen Tisch.
+            $schluessel = $attrs['location_id'].'|'.$table->name;
+            if (empty($row['deleted_at']) && ! isset($this->map['table_names'][$schluessel])) {
+                $this->map['table_names'][$schluessel] = $table->id;
+            }
+
             $count++;
         }
 
+        foreach ($ersatz as $neueId => $alteErsatzId) {
+            RestaurantTable::withoutGlobalScopes()->withTrashed()
+                ->whereKey($neueId)
+                ->update(['backup_table_id' => $this->mapped('tables', $alteErsatzId)]);
+        }
+
         return $count;
+    }
+
+    /**
+     * Die Tische einer Reservierung oder Kombination auflösen.
+     *
+     * Bevorzugt ueber die Quell-IDs. Der Name ist nur der Rueckfall fuer
+     * Dateien aelterer Fassungen - er ist nicht eindeutig.
+     *
+     * @param  array<string, mixed>  $row
+     * @return array<int, int>
+     */
+    private function resolveTables(array $row, int $locationId): array
+    {
+        $ids = [];
+
+        foreach ($row['table_ids'] ?? [] as $alteId) {
+            $neu = $this->mapped('tables', $alteId);
+            if ($neu !== null) {
+                $ids[] = $neu;
+            }
+        }
+
+        if ($ids !== []) {
+            return array_values(array_unique($ids));
+        }
+
+        foreach ($row['table_names'] ?? [] as $name) {
+            $id = $this->map['table_names'][$locationId.'|'.$name] ?? null;
+            if ($id !== null) {
+                $ids[] = $id;
+            }
+        }
+
+        return array_values(array_unique($ids));
     }
 
     private function combinations(Tenant $tenant, array $data): int
@@ -274,14 +355,9 @@ class AccountImportService
             $combo = new TableCombination($attrs);
             $combo->tenant_id = $tenant->id;
             $combo->save();
+            $this->carryTimestamps($combo, $row);
 
-            $ids = [];
-            foreach ($row['table_names'] ?? [] as $name) {
-                $id = $this->map['table_names'][$locationId.'|'.$name] ?? null;
-                if ($id !== null) {
-                    $ids[] = $id;
-                }
-            }
+            $ids = $this->resolveTables($row, $locationId);
             if ($ids !== []) {
                 $combo->tables()->sync($ids);
             }
@@ -291,7 +367,47 @@ class AccountImportService
         return $count;
     }
 
-    /** Reservations relink tables and tags by name. */
+    /**
+     * Gaeste samt ihrer Markierungen.
+     *
+     * Die drei preferred_-Spalten sind echte Fremdschluessel. Ungemappt stuende
+     * dort die ID der Quellinstallation: entweder eine Verletzung, die den
+     * ganzen Import abbricht, oder - auf einer geteilten Installation - ein
+     * stiller Zeiger auf den Tisch eines FREMDEN Betriebs. Laesst sich der
+     * Verweis nicht aufloesen, faellt nur die Vorliebe weg, nicht der Gast.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function guests(Tenant $tenant, array $data): int
+    {
+        $tagIds = Tag::withoutGlobalScopes()->where('tenant_id', $tenant->id)->pluck('id', 'name');
+        $count = 0;
+
+        foreach ($data['guests'] ?? [] as $row) {
+            $attrs = $this->attrs($row);
+            $attrs['preferred_location_id'] = $this->mapped('locations', $row['preferred_location_id'] ?? null);
+            $attrs['preferred_room_id'] = $this->mapped('rooms', $row['preferred_room_id'] ?? null);
+            $attrs['preferred_table_id'] = $this->mapped('tables', $row['preferred_table_id'] ?? null);
+
+            $guest = new Guest($attrs);
+            $guest->tenant_id = $tenant->id;
+            $guest->save();
+            $this->carryTimestamps($guest, $row);
+
+            $this->remember('guests', $row['id'] ?? null, $guest->id);
+
+            $names = array_filter($row['tag_names'] ?? [], fn ($n) => $tagIds->has($n));
+            if ($names !== []) {
+                $guest->tags()->sync($tagIds->only($names)->values()->all());
+            }
+
+            $count++;
+        }
+
+        return $count;
+    }
+
+    /** Reservations relink tables, tags and services. */
     private function reservations(Tenant $tenant, array $data): int
     {
         $tagIds = Tag::withoutGlobalScopes()->where('tenant_id', $tenant->id)->pluck('id', 'name');
@@ -315,16 +431,11 @@ class AccountImportService
             $reservation->tenant_id = $tenant->id;
             // code + manage_token are regenerated by the model's creating hook.
             $reservation->save();
+            $this->carryTimestamps($reservation, $row);
 
             $this->remember('reservations', $row['id'] ?? null, $reservation->id);
 
-            $tableIds = [];
-            foreach ($row['table_names'] ?? [] as $name) {
-                $id = $this->map['table_names'][$locationId.'|'.$name] ?? null;
-                if ($id !== null) {
-                    $tableIds[] = $id;
-                }
-            }
+            $tableIds = $this->resolveTables($row, $locationId);
             if ($tableIds !== []) {
                 $reservation->tables()->sync($tableIds);
             }
@@ -332,6 +443,24 @@ class AccountImportService
             $names = array_filter($row['tag_names'] ?? [], fn ($n) => $tagIds->has($n));
             if ($names !== []) {
                 $reservation->tags()->sync($tagIds->only($names)->values()->all());
+            }
+
+            // Die Zusammenstellung eines Salontermins samt Preis- und
+            // Dauerschnappschuss. In der Reservierungszeile steht nur die
+            // ERSTE Leistung.
+            $leistungen = [];
+            foreach ($row['services'] ?? [] as $eintrag) {
+                $neu = $this->mapped('services', $eintrag['service_id'] ?? null);
+                if ($neu !== null) {
+                    $leistungen[$neu] = [
+                        'sort_order' => $eintrag['sort_order'] ?? 0,
+                        'duration_minutes' => $eintrag['duration_minutes'] ?? null,
+                        'price_minor' => $eintrag['price_minor'] ?? null,
+                    ];
+                }
+            }
+            if ($leistungen !== []) {
+                $reservation->services()->sync($leistungen);
             }
 
             $count++;
@@ -369,6 +498,7 @@ class AccountImportService
             $refund = new Refund($attrs);
             $refund->tenant_id = $tenant->id;
             $refund->save();
+            $this->carryTimestamps($refund, $row);
 
             $this->remember('refunds', $row['id'] ?? null, $refund->id);
             $count++;
@@ -386,8 +516,12 @@ class AccountImportService
      *                                      A match reuses the existing record instead of
      *                                      creating a duplicate — the target business may
      *                                      already have tags or templates of its own.
+     * @param  array<int, string>  $optional  Spalten, deren unaufloesbarer Verweis die
+     *                                        Zeile NICHT verwirft, sondern nur geleert
+     *                                        wird. Ein Gast ohne Lieblingstisch ist
+     *                                        immer noch ein Gast.
      */
-    private function simple(Tenant $tenant, array $data, string $section, string $modelClass, array $relations = [], array $unique = []): int
+    private function simple(Tenant $tenant, array $data, string $section, string $modelClass, array $relations = [], array $unique = [], array $optional = []): int
     {
         $count = 0;
         foreach ($data[$section] ?? [] as $row) {
@@ -397,7 +531,7 @@ class AccountImportService
             foreach ($relations as $column => $entity) {
                 $new = $this->mapped($entity, $row[$column] ?? null);
                 // A required parent that cannot be resolved means the row is orphaned.
-                if ($new === null && ! empty($row[$column])) {
+                if ($new === null && ! empty($row[$column]) && ! in_array($column, $optional, true)) {
                     $skip = true;
                     break;
                 }
@@ -424,6 +558,7 @@ class AccountImportService
             $model = new $modelClass($attrs);
             $model->tenant_id = $tenant->id;
             $model->save();
+            $this->carryTimestamps($model, $row);
 
             $this->remember($section, $row['id'] ?? null, $model->getKey());
             $count++;
@@ -439,9 +574,41 @@ class AccountImportService
             unset($row[$key]);
         }
         // export-only helper fields
-        unset($row['table_names'], $row['tag_names']);
+        unset($row['table_names'], $row['table_ids'], $row['tag_names'], $row['services']);
 
         return $row;
+    }
+
+    /**
+     * Zeitstempel aus der Datei nachtragen.
+     *
+     * Nach dem Speichern und ohne Modellereignisse: Die Zeitstempel stehen
+     * bewusst nicht in der Massenzuweisung, sollen aber erhalten bleiben -
+     * sonst kippt der Buchungszeitpunkt jeder uebernommenen Reservierung auf
+     * den Importtag, und weich Geloeschtes steht im Ziel wieder aktiv da.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    private function carryTimestamps(Model $model, array $row): void
+    {
+        $werte = [];
+        foreach (self::CARRY as $spalte) {
+            if (! empty($row[$spalte]) && $this->hasColumn($model, $spalte)) {
+                $werte[$spalte] = $row[$spalte];
+            }
+        }
+
+        if ($werte !== []) {
+            $model->forceFill($werte)->saveQuietly();
+        }
+    }
+
+    private function hasColumn(Model $model, string $column): bool
+    {
+        $tabelle = $model->getTable();
+        $this->columns[$tabelle] ??= Schema::getColumnListing($tabelle);
+
+        return in_array($column, $this->columns[$tabelle], true);
     }
 
     private function remember(string $entity, mixed $oldId, int $newId): void

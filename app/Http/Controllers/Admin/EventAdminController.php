@@ -8,6 +8,7 @@ use App\Models\EventBooking;
 use App\Services\AuditLogger;
 use App\Services\EventBookingService;
 use App\Services\PlanLimitService;
+use App\Support\Csv;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -265,9 +266,9 @@ class EventAdminController extends Controller
 
         return response()->streamDownload(function () use ($bookings) {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['Buchungsnr.', 'Name', 'E-Mail', 'Telefon', 'Tickets', 'Status', 'Notiz'], ';');
+            Csv::write($out, ['Buchungsnr.', 'Name', 'E-Mail', 'Telefon', 'Tickets', 'Status', 'Notiz'], ';');
             foreach ($bookings as $b) {
-                fputcsv($out, [
+                Csv::write($out, [
                     $b->code, $b->guest_name, $b->guest_email, $b->guest_phone,
                     $b->ticket_count, $b->status, $b->note,
                 ], ';');

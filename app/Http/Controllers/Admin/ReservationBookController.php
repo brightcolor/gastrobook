@@ -13,6 +13,7 @@ use App\Services\ReservationAvailabilityService;
 use App\Services\ReservationLifecycleService;
 use App\Services\SalonAvailabilityService;
 use App\Services\TableAssignmentService;
+use App\Support\Csv;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -703,9 +704,9 @@ class ReservationBookController extends Controller
 
         return response()->streamDownload(function () use ($reservations) {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['Code', 'Datum', 'Wochentag', 'Uhrzeit', 'Personen', 'Name', 'E-Mail', 'Telefon', 'Status', 'Quelle', 'Tische', 'Gebucht am', 'Notiz'], ';');
+            Csv::write($out, ['Code', 'Datum', 'Wochentag', 'Uhrzeit', 'Personen', 'Name', 'E-Mail', 'Telefon', 'Status', 'Quelle', 'Tische', 'Gebucht am', 'Notiz'], ';');
             foreach ($reservations as $r) {
-                fputcsv($out, [
+                Csv::write($out, [
                     $r->code,
                     $r->reservation_date->format('d.m.Y'),
                     $r->localStart()->translatedFormat('l'),

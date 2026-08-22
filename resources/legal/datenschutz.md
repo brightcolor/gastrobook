@@ -248,6 +248,15 @@ Angemessenheitsbeschlusses oder geeigneter Garantien gemäß Art. 46 DSGVO
   für Zahlungs-/Rechnungsbelege) bleiben unberührt.
 - **Einwilligungsnachweise** werden für die Dauer der Nachweisbarkeit
   aufbewahrt.
+- Die Anonymisierung erfasst neben dem Gästeprofil auch die Angaben in den
+  Reservierungen, internen Notizen, Eventbuchungen und Wartelisteneinträgen,
+  das Versandprotokoll, Dateianhänge sowie die im **Auditprotokoll**
+  gespeicherten Alt- und Neuwerte. Im Auditprotokoll bleiben Aktion, Zeitpunkt
+  und handelnde Person erhalten — das ist zur Erfüllung der Rechenschaftspflicht
+  erforderlich (Art. 5 Abs. 2 DSGVO); die personenbezogenen Werte selbst werden
+  entfernt.
+- Die automatische Anonymisierung läuft unabhängig davon, ob der Zugang des
+  Betriebs noch aktiv, gesperrt oder gekündigt ist.
 
 ## 14a. Umzug des Betriebs zu einem anderen System
 
@@ -274,7 +283,10 @@ Sie haben das Recht auf **Auskunft** (Art. 15), **Berichtigung** (Art. 16),
 **Löschung** (Art. 17), **Einschränkung** (Art. 18), **Datenübertragbarkeit**
 (Art. 20) und **Widerspruch** (Art. 21) sowie das Recht, erteilte
 **Einwilligungen zu widerrufen** (Art. 7 Abs. 3). Auf Wunsch stellen wir Ihre
-Daten in einem gängigen Format bereit oder anonymisieren Ihr Profil.
+Daten in einem gängigen Format bereit oder anonymisieren Ihr Profil. Die
+Auskunft umfasst dabei **alle** zu Ihrer Person gespeicherten Angaben,
+einschließlich interner Vermerke, die im Betrieb nur eingeschränkt sichtbar
+sind.
 
 Zudem haben Sie das Recht auf **Beschwerde bei einer Aufsichtsbehörde**
 (Art. 77 DSGVO). Zuständig ist die Datenschutzaufsichtsbehörde Ihres

@@ -95,7 +95,7 @@ class AccountExportService
             'special_opening_hours' => $this->rows(SpecialOpeningHour::withoutGlobalScopes()->whereIn('location_id', $locationIds)),
             'blackout_periods' => $this->rows(BlackoutPeriod::withoutGlobalScopes()->whereIn('location_id', $locationIds)),
 
-            'guests' => $this->rows(Guest::withoutGlobalScopes()->withTrashed()->where('tenant_id', $tenant->id)),
+            'guests' => $this->guests($tenant),
             'guest_notes' => $this->rows(GuestNote::withoutGlobalScopes()->where('tenant_id', $tenant->id)),
             'guest_consents' => $this->rows(GuestConsent::withoutGlobalScopes()->where('tenant_id', $tenant->id)),
 
@@ -149,17 +149,54 @@ class AccountExportService
     {
         return TableCombination::withoutGlobalScopes()
             ->whereIn('location_id', $locationIds)
-            ->with('tables:id,name')
+            ->with(['tables' => fn ($q) => $q->withTrashed()->select('restaurant_tables.id', 'restaurant_tables.name')])
             ->get()
             ->map(function ($c) {
                 $row = $this->clean($c);
+                $row['table_ids'] = $c->tables->pluck('id')->all();
                 $row['table_names'] = $c->tables->pluck('name')->all();
 
                 return $row;
             })->all();
     }
 
-    /** Reservations carry their table assignment by name so it survives a move. */
+    /**
+     * Gaeste mit ihren Markierungen.
+     *
+     * Tags haengen polymorph an Gaesten UND Reservierungen. Fuer die
+     * Reservierungen wurden sie mitgegeben, fuer die Gaeste nicht - genau die
+     * Markierungen, mit denen ein Betrieb seine Gaeste steuert (Stammgast,
+     * Allergiker, Hausverbot), waren nach dem Umzug fort, waehrend die Tags
+     * selbst als leere Huellen dastanden.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function guests(Tenant $tenant): array
+    {
+        $out = [];
+
+        Guest::withoutGlobalScopes()
+            ->withTrashed()
+            ->where('tenant_id', $tenant->id)
+            ->with('tags:id,name')
+            ->chunk(500, function ($chunk) use (&$out) {
+                foreach ($chunk as $guest) {
+                    $row = $this->clean($guest);
+                    $row['tag_names'] = $guest->tags->pluck('name')->all();
+                    $out[] = $row;
+                }
+            });
+
+        return $out;
+    }
+
+    /**
+     * Reservations carry their table assignment so it survives a move.
+     *
+     * Die Quell-IDs sind massgeblich, die Namen nur der Rueckfall fuer aeltere
+     * Dateien: Zwei Tische duerfen denselben Namen tragen, und durch weiches
+     * Loeschen ist das sogar der Normalfall.
+     */
     private function reservations(Tenant $tenant): array
     {
         $out = [];
@@ -167,12 +204,31 @@ class AccountExportService
         Reservation::withoutGlobalScopes()
             ->withTrashed()
             ->where('tenant_id', $tenant->id)
-            ->with(['tables:restaurant_tables.id,name', 'tags:id,name'])
+            // withTrashed auf der Tischbeziehung: Ein weich geloeschter Tisch
+            // haengt weiter an alten Reservierungen. Ohne ihn verlieren genau
+            // diese Buchungen beim Umzug ihre Tischzuordnung.
+            ->with([
+                'tables' => fn ($q) => $q->withTrashed()->select('restaurant_tables.id', 'restaurant_tables.name'),
+                'tags:id,name',
+                'services:id',
+            ])
             ->chunk(500, function ($chunk) use (&$out) {
                 foreach ($chunk as $reservation) {
                     $row = $this->clean($reservation);
+                    $row['table_ids'] = $reservation->tables->pluck('id')->all();
                     $row['table_names'] = $reservation->tables->pluck('name')->all();
                     $row['tag_names'] = $reservation->tags->pluck('name')->all();
+                    // Die Zusammenstellung eines Salontermins samt Preis- und
+                    // Dauerschnappschuss. In der Reservierungszeile steht nur
+                    // die ERSTE Leistung - aus "Schnitt + Farbe + Toenung"
+                    // waere nach dem Umzug ein "Schnitt" geworden, waehrend
+                    // die Zeit weiter fuer alle drei belegt ist.
+                    $row['services'] = $reservation->services->map(fn ($service) => [
+                        'service_id' => $service->id,
+                        'sort_order' => $service->pivot->sort_order,
+                        'duration_minutes' => $service->pivot->duration_minutes,
+                        'price_minor' => $service->pivot->price_minor,
+                    ])->all();
                     $out[] = $row;
                 }
             });

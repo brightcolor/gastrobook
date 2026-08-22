@@ -1,5 +1,71 @@
 # Changelog
 
+## [1.121.0] – 2026-08-22
+
+### Umzug und Löschung
+Weiter aus der Vollprüfung: was beim Wechsel auf ein anderes System erhalten
+bleiben muss, und wie weit eine Löschung reicht.
+
+**Gelöschte Tische, Leistungen und Mitarbeiter standen nach dem Umzug wieder
+aktiv da.** Der Export nimmt sie bewusst mit, weil alte Buchungen daran hängen –
+der Import warf die Löschmarkierung weg. Ein Tisch, den der Betrieb aus dem Raum
+genommen hatte, stand danach wieder im Tischplan, war online buchbar und wurde
+von der Tischvergabe wieder belegt.
+
+**Reservierungen konnten am falschen gleichnamigen Tisch landen.** Verknüpft
+wurde über den Tischnamen, und der ist nicht eindeutig – durch weiches Löschen
+sogar regelmässig doppelt („T2" gelöscht, „T2" neu). Alle Buchungen beider
+Tische hingen danach am selben. Verknüpft wird jetzt über die Kennung, der Name
+ist nur noch der Rückfall für ältere Dateien. Ausserdem verloren Buchungen an
+einem gelöschten Tisch ihre Zuordnung beim Export ganz.
+
+**Der Buchungszeitpunkt kippte auf den Importtag.** Jede übernommene Buchung
+zeigte danach das Umzugsdatum als „Gebucht am", und der Statusverlauf stand in
+beliebiger Reihenfolge, weil alle Schritte dieselbe Sekunde trugen. Nebenwirkung:
+Die Aufbewahrungsuhr der Gästeprofile begann von vorn.
+
+**Der Lieblingstisch eines Gastes zeigte ins Leere – oder auf einen fremden
+Betrieb.** Die hinterlegten Vorlieben trugen die Kennungen der alten Anlage
+weiter. Auf einer frischen Installation brach der Import daran ab, auf einer
+geteilten zeigte das Profil still auf Standort, Raum oder Tisch eines anderen
+Betriebs. Dasselbe galt für den Raum eines Events und den Ersatztisch.
+
+**Gast-Markierungen gingen verloren.** Stammgast, Allergiker, Hausverbot – nach
+dem Umzug trug kein Gast mehr eine Markierung, während die Markierungen selbst
+als leere Hüllen dastanden.
+
+**Salontermine verloren ihre Zusammenstellung.** Aus „Schnitt + Farbe + Tönung"
+wurde ein „Schnitt", während die Zeit weiter für alle drei belegt war und die
+vereinbarten Preise fehlten.
+
+**Ein fehlgeschlagener Import zeigte die rohe Datenbankmeldung im Formular** –
+samt der eingesetzten Werte, also Gastdaten aus der Datei. Sie steht jetzt im
+Serverprotokoll, im Formular steht ein Satz.
+
+### Löschung reicht weiter
+**Das Änderungsprotokoll blieb bei einer Anonymisierung unangetastet.** Dort
+stehen Vorname, Nachname, E-Mail, Telefon, Geburtstag und Allergien im Klartext,
+und der Betrieb zeigt sie auch an – nach der „Löschung" las sie dort jeder
+weiter. Die Werte werden jetzt entfernt; Aktion, Zeitpunkt und handelnde Person
+bleiben nachweisbar, wie es die Rechenschaftspflicht verlangt.
+
+**Interne Notizen an der Reservierung blieben stehen.** Genau dort notiert der
+Betrieb, was er über den Gast weiss.
+
+**Die Auskunft nach Art. 15 liess sensible Notizen weg.** Der Filter stammte aus
+der Sichtbarkeitsregel gegenüber Mitarbeitern – gegenüber dem Betroffenen gilt
+er nicht. Der Auskunftsexport enthält jetzt alle Notizen, mit ihrer
+Kennzeichnung.
+
+**Anhänge wurden innerhalb der Transaktion von der Platte genommen.** Brach ein
+späterer Schritt ab, waren die Dateien weg und der Gast galt weiter als nicht
+anonymisiert. Sie werden jetzt erst nach dem erfolgreichen Abschluss gelöscht.
+
+**CSV-Exporte führten Gasteingaben als Formel aus.** Tabellenkalkulationen
+behandeln eine Zelle, die mit `=`, `+`, `-` oder `@` beginnt, als Formel – in
+einem Export stehen dort Name, Notiz und Telefonnummer. Betroffen waren die
+Gäste-, Reservierungs- und Teilnehmerlisten.
+
 ## [1.120.0] – 2026-08-22
 
 ### Schranken zwischen Betrieben, Standorten und Rollen
