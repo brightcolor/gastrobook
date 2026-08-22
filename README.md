@@ -140,7 +140,7 @@ Seite; Hinweise dazu in [`docs/handbuch/00-import-hinweis.md`](docs/handbuch/00-
 | Stornolink / Änderungslink mit Secret-Token und Fristprüfung | ✅ |
 | Online-Umbuchung durch den Gast (Frist, Re-Check Tisch/Mitarbeiter) | ✅ |
 | Kundenkonto per Magic-Link (passwortlos): Termine ansehen, umbuchen, stornieren | ✅ |
-| E-Mail-Bestätigung aktivierbar (Gast bestätigt Adresse beim ersten Buchen) | ✅ |
+| E-Mail-Bestätigung aktivierbar (Gast bestätigt **jede** Buchung per Klick; unbestätigte geben den Tisch nach 24 h wieder frei) | ✅ |
 | E-Mail-Vorlagen (pro Tenant/Standort überschreibbar, Platzhalter, DE/EN) | ✅ |
 | Reminder- & Feedback-Follow-up-Jobs (Scheduler) | ✅ |
 | Feedback-Booster (intern erfassen, positives Feedback → externes Portal) | ✅ |
@@ -457,7 +457,7 @@ Ein PayPal- oder Stripe-Konto wird selten nur für Swayy genutzt. Damit sich von
 
 **Alles aus Swayy findest du also über den Präfix `swayy:`.** Der Reservierungscode in der Kennung führt direkt zur Buchung.
 
-Zur `invoice_id`: PayPal erzwingt deren Eindeutigkeit — ein willkommener Nebeneffekt, weil eine zweite Zahlung zum selben Vorgang abgewiesen wird. Damit das keinen Gast aussperrt, wiederholt `PayPalProvider` die Anfrage bei `DUPLICATE_INVOICE_ID` einmal ohne Rechnungsnummer.
+Zur `invoice_id`: PayPal erzwingt deren Eindeutigkeit und weist eine zweite Zahlung zum selben Vorgang ab — genau das ist der Zweck, eine Anzahlung soll einmal fliessen. Meldet PayPal `DUPLICATE_INVOICE_ID`, wirft `PayPalProvider` eine `PaymentAlreadySettledException`; der Gast landet mit einem Hinweis zurueck auf seiner Verwaltungsseite und der Betrieb bekommt `payment.already_settled_at_provider` ins Auditlog. **Nicht** ohne Rechnungsnummer wiederholen — das liesse den Gast doppelt zahlen.
 
 **Verrechnungs- und No-Show-Hinweis:** Gäste sehen an jeder Zahlungsstelle (Eventseite, Bestätigungs-/Verwaltungsseite, E-Mail) den Hinweis: *„Die Vorauszahlung wird bei Ihrem Besuch vollständig mit der Rechnung verrechnet. Bei Nichterscheinen (No-Show) erfolgt keine Rückerstattung."* Damit ist die Einbehaltung bei No-Show transparent vereinbart (AGB-Hinterlegung pro Tenant empfohlen).
 
@@ -532,7 +532,7 @@ php artisan queue:work        # Mails, Webhooks
 php artisan schedule:work     # lokal; Produktion: Cron-Eintrag jede Minute
 ```
 
-Geplante Jobs: Reservierungs-Reminder (alle 15 min), Feedback-Follow-ups (stündlich), Wartelisten-Expiry (alle 10 min), unbezahlte Reservierungen abräumen (alle 10 min), DSGVO-Retention (täglich 03:30).
+Geplante Jobs: Reservierungs-Reminder (alle 15 min), Feedback-Follow-ups (stündlich), Wartelisten-Expiry (alle 10 min), offene Anzahlungen erinnern und abräumen (alle 5 min, `ExpireUnpaidReservations`), unbestätigte Buchungen abräumen (stündlich, `ExpireUnconfirmedReservations`), Marketing-Kampagnen (täglich 09:00), DSGVO-Retention (täglich 03:30).
 
 Im Docker-Setup laufen `queue` und `scheduler` als **eigene Container** (`docker-compose.yml`). Die meisten Mails (Buchungsbestätigung, Erinnerung, Billing-Benachrichtigung) werden **über die Queue** verschickt – ohne laufenden `queue`-Container kommen sie nicht an. **Ausnahme:** der Passwort-Reset wird bewusst **synchron** versendet (unabhängig von der Queue).
 

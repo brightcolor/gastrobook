@@ -127,7 +127,16 @@ class GuestPortalController extends Controller
                 ->where('reservation_id', $reservation->id)
                 ->where('template_key', 'payment_pending')
                 ->exists()) {
-            app(ReservationLifecycleService::class)->sendGuestMail($reservation, 'payment_pending');
+
+            // Erst hier startet die Zahlungsfrist. Beim Anlegen blieb sie leer,
+            // weil sie sonst gelaufen wäre, während die Aufforderung noch
+            // zurückgehalten wurde.
+            if ($reservation->payment_due_at === null) {
+                $frist = (int) ($reservation->depositRule()->withoutGlobalScope('tenant')->first()?->payment_deadline_minutes ?? 60);
+                $reservation->update(['payment_due_at' => now()->addMinutes($frist)]);
+            }
+
+            app(ReservationLifecycleService::class)->sendGuestMail($reservation->refresh(), 'payment_pending');
         }
 
         return view('public.portal.verified', ['reservation' => $reservation]);

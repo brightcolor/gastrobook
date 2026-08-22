@@ -9,6 +9,7 @@ use App\Models\PaymentIntent;
 use App\Models\Reservation;
 use App\Models\Tenant;
 use App\Services\AuditLogger;
+use App\Services\Payments\PaymentAlreadySettledException;
 use App\Services\Payments\PaymentProvider;
 use App\Services\Payments\PaymentProviderManager;
 use App\Services\Payments\PayPalProvider;
@@ -57,14 +58,18 @@ class PaymentController extends Controller
         );
         $intent->update(['provider' => $key]);
 
-        $session = $available[$key]->createCheckout($intent, [
-            'description' => $event->title.' – '.$booking->ticket_count.' Ticket(s)',
-            'customer_email' => $booking->guest_email,
-            'success_url' => $this->successUrl($key, $intent, $manageUrl),
-            'cancel_url' => $manageUrl,
-            'reference' => PaymentReference::forBooking($tenant->slug, 'event', $booking->code),
-            'statement_name' => PaymentReference::statementName($tenant->name),
-        ]);
+        try {
+            $session = $available[$key]->createCheckout($intent, [
+                'description' => $event->title.' – '.$booking->ticket_count.' Ticket(s)',
+                'customer_email' => $booking->guest_email,
+                'success_url' => $this->successUrl($key, $intent, $manageUrl),
+                'cancel_url' => $manageUrl,
+                'reference' => PaymentReference::forBooking($tenant->slug, 'event', $booking->code),
+                'statement_name' => PaymentReference::statementName($tenant->name),
+            ]);
+        } catch (PaymentAlreadySettledException $e) {
+            return $this->alreadySettled($intent, $manageUrl, $booking->tenant_id);
+        }
 
         $intent->update(['provider_intent_id' => $session['id']]);
         $booking->update(['payment_status' => 'pending']);
@@ -107,17 +112,21 @@ class PaymentController extends Controller
 
         $location = $reservation->location()->withoutGlobalScope('tenant')->first();
 
-        $session = $available[$key]->createCheckout($intent, [
-            'description' => __('Anzahlung Reservierung :code – :location', ['code' => $reservation->code, 'location' => $location?->name ?? '']),
-            'customer_email' => $reservation->guest_email_snapshot,
-            'success_url' => $this->successUrl($key, $intent, $manageUrl),
-            'cancel_url' => $manageUrl,
-            'reference' => PaymentReference::forBooking($tenant->slug, 'res', $reservation->code),
-            // Der Standortname steht dem Gast näher als der Firmenname des
-            // Mandanten – er hat bei „Sternenwald" gebucht, nicht bei der
-            // Betreibergesellschaft.
-            'statement_name' => PaymentReference::statementName($location?->name ?? $tenant->name),
-        ]);
+        try {
+            $session = $available[$key]->createCheckout($intent, [
+                'description' => __('Anzahlung Reservierung :code – :location', ['code' => $reservation->code, 'location' => $location?->name ?? '']),
+                'customer_email' => $reservation->guest_email_snapshot,
+                'success_url' => $this->successUrl($key, $intent, $manageUrl),
+                'cancel_url' => $manageUrl,
+                'reference' => PaymentReference::forBooking($tenant->slug, 'res', $reservation->code),
+                // Der Standortname steht dem Gast näher als der Firmenname des
+                // Mandanten – er hat bei „Sternenwald" gebucht, nicht bei der
+                // Betreibergesellschaft.
+                'statement_name' => PaymentReference::statementName($location?->name ?? $tenant->name),
+            ]);
+        } catch (PaymentAlreadySettledException $e) {
+            return $this->alreadySettled($intent, $manageUrl, $reservation->tenant_id);
+        }
 
         $intent->update(['provider_intent_id' => $session['id']]);
         $reservation->update(['payment_status' => 'pending']);
@@ -198,6 +207,25 @@ class PaymentController extends Controller
         }
 
         return redirect()->to($manageUrl.($paymentIntent->status === 'paid' ? '?paid=1' : ''));
+    }
+
+    /**
+     * Der Anbieter kennt zu diesem Vorgang bereits eine abgeschlossene
+     * Zahlung. Den Gast nicht noch einmal zur Kasse schicken – stattdessen
+     * zurück auf seine Verwaltungsseite und den Betrieb im Auditlog
+     * benachrichtigen, damit jemand nachsieht, wo das Geld geblieben ist.
+     */
+    private function alreadySettled(PaymentIntent $intent, string $manageUrl, int $tenantId)
+    {
+        $this->audit->log('payment.already_settled_at_provider', $intent, null, [
+            'provider' => $intent->provider,
+            'amount_minor' => $intent->amount_minor,
+        ], null, null, $tenantId);
+
+        return redirect()->to($manageUrl)->with(
+            'payment_already_settled',
+            __('Zu dieser Buchung liegt beim Zahlungsanbieter bereits eine Zahlung vor. Bitte zahle nicht erneut – wir prüfen das und melden uns.')
+        );
     }
 
     /**
@@ -324,16 +352,29 @@ class PaymentController extends Controller
 
     private function handlePaid(PaymentIntent $intent, Tenant $tenant, string $sessionId, ?string $refundRef = null): void
     {
-        if ($intent->status === 'paid') {
-            return; // idempotent
-        }
-
         $updates = ['status' => 'paid', 'provider_intent_id' => $sessionId ?: $intent->provider_intent_id];
         if ($refundRef) {
             // Stripe payment_intent id, needed to issue a refund later
             $updates['metadata'] = array_merge($intent->metadata ?? [], ['refund_ref' => $refundRef]);
         }
-        $intent->update($updates);
+
+        // Genau einmal, und zwar wirklich: Seit der Rückweg des Gastes die
+        // Zahlung selbst abschliesst, laufen hier ZWEI Schreiber gegeneinander –
+        // der Browser des Gastes und der Webhook des Anbieters, im Normalfall
+        // sekundengleich. Ein gelesener Status ist bis zum Schreiben längst
+        // veraltet; das Fenster ist der HTTP-Roundtrip zum Anbieter breit.
+        // Ohne diese Sperre entstünden zwei Statuswechsel, zwei ausgehende
+        // Webhooks und zwei Bestätigungsmails an denselben Gast.
+        $beansprucht = PaymentIntent::withoutGlobalScopes()
+            ->whereKey($intent->id)
+            ->where('status', '!=', 'paid')
+            ->update($updates);
+
+        if ($beansprucht === 0) {
+            return;
+        }
+
+        $intent->refresh();
 
         if ($intent->event_booking_id) {
             EventBooking::withoutGlobalScopes()

@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Enums\ReservationStatus;
+use App\Http\Controllers\Public\PaymentController;
 use App\Models\AuditLog;
 use App\Models\IntegrationConnection;
+use App\Models\NotificationLog;
 use App\Models\PaymentIntent;
 use App\Models\Reservation;
 use App\Models\Tenant;
@@ -15,6 +17,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use ReflectionMethod;
 use Tests\Concerns\CreatesTenants;
 use Tests\TestCase;
 
@@ -188,6 +191,55 @@ class StripeReturnTest extends TestCase
         $this->get(route('pay.stripe.return', ['intent' => $intent->id]))->assertForbidden();
 
         Http::assertNothingSent();
+    }
+
+    /**
+     * Der Wettlauf, den der Rueckweg erst geschaffen hat: Browser des Gastes
+     * und Webhook des Anbieters treffen sekundengleich ein. Beide lesen
+     * denselben Stand, beide wollen schreiben.
+     *
+     * Nachgebildet mit ZWEI getrennt geladenen Objekten desselben Vorgangs -
+     * so sieht der zweite Aufruf denselben veralteten Status wie ein
+     * paralleler Prozess. Ohne bedingtes Update entstuenden hier zwei
+     * Statuswechsel und zwei Bestaetigungsmails an denselben Gast.
+     */
+    public function test_two_simultaneous_writers_confirm_the_booking_only_once(): void
+    {
+        Mail::fake();
+        Http::fake([
+            'api.stripe.com/v1/checkout/sessions/*' => Http::response([
+                'id' => self::SESSION,
+                'payment_status' => 'paid',
+                'payment_intent' => 'pi_test_999',
+            ], 200),
+        ]);
+
+        $setup = $this->createTenantSetup();
+        $this->connectStripe($setup);
+        [$reservation, $intent] = $this->pendingPayment($setup);
+        $this->clearTenantContext();
+
+        // Zwei Objekte, beide mit status = pending im Speicher.
+        $ersterSchreiber = PaymentIntent::withoutGlobalScopes()->findOrFail($intent->id);
+        $zweiterSchreiber = PaymentIntent::withoutGlobalScopes()->findOrFail($intent->id);
+
+        $controller = app(PaymentController::class);
+        $handlePaid = new ReflectionMethod($controller, 'handlePaid');
+        $tenant = $setup['tenant']->fresh();
+
+        $handlePaid->invoke($controller, $ersterSchreiber, $tenant, self::SESSION, 'pi_test_999');
+        $handlePaid->invoke($controller, $zweiterSchreiber, $tenant, self::SESSION, 'pi_test_999');
+
+        $this->assertSame(ReservationStatus::Confirmed, $reservation->fresh()->status);
+
+        // Genau ein Statuswechsel, nicht zwei.
+        $this->assertSame(1, $reservation->statusHistories()->where('to_status', 'confirmed')->count());
+
+        // Und genau eine Bestaetigungsmail.
+        $this->assertSame(1, NotificationLog::withoutGlobalScopes()
+            ->where('reservation_id', $reservation->id)
+            ->where('template_key', 'reservation_confirmed')
+            ->count());
     }
 
     /**

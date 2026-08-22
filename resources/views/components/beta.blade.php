@@ -11,4 +11,4 @@
 --}}
 <sup class="ml-px align-super text-[0.55em] font-semibold leading-none tracking-normal opacity-70"
      style="font-family:ui-sans-serif,system-ui,'Segoe UI',sans-serif"
-     title="Beta-Version" aria-label="Beta">β</sup>
+     title="Beta-Version" aria-hidden="true">β</sup><span class="sr-only"> Beta</span>

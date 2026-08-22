@@ -30,22 +30,26 @@ final class PaymentReference
      */
     public static function forBooking(string $tenantSlug, string $type, string $code): string
     {
-        return mb_substr(
-            self::PREFIX.':'.$tenantSlug.':'.$type.':'.$code,
-            0,
-            // PayPal erlaubt 127 Zeichen in custom_id; Stripe-Metadatenwerte
-            // dürfen 500 lang sein. Die kleinere Grenze gilt für beide.
-            127
-        );
+        // PayPal erlaubt 127 Zeichen in custom_id, Stripe-Metadatenwerte 500 –
+        // die kleinere Grenze gilt für beide. Gekürzt wird notfalls der
+        // Mandantenname, nie der Buchungscode: Der ist der Teil, über den man
+        // die Zahlung später wiederfindet.
+        $schwanz = ':'.$type.':'.$code;
+        $kopf = self::PREFIX.':'.$tenantSlug;
+        $platz = 127 - mb_strlen($schwanz);
+
+        return mb_substr($kopf, 0, max($platz, 0)).$schwanz;
     }
 
     /**
      * Rechnungsnummer: `SWAYY-42`.
      *
-     * PayPal erzwingt die Eindeutigkeit und lehnt eine zweite abgeschlossene
-     * Zahlung mit derselben Nummer ab – ein Nebeneffekt, der doppelte
-     * Anzahlungen verhindert. Falls PayPal deshalb einen laufenden Vorgang
-     * blockiert, weicht PayPalProvider auf eine Order ohne Rechnungsnummer aus.
+     * PayPal erzwingt die Eindeutigkeit und lehnt eine zweite Zahlung mit
+     * derselben Nummer ab. Das ist kein Hindernis, sondern der Zweck: Eine
+     * Anzahlung soll genau einmal fliessen. Meldet PayPal
+     * `DUPLICATE_INVOICE_ID`, wirft PayPalProvider eine
+     * PaymentAlreadySettledException – ein zweiter Anlauf ohne Rechnungsnummer
+     * wuerde den Gast doppelt zahlen lassen.
      */
     public static function invoice(PaymentIntent $intent): string
     {
@@ -64,6 +68,6 @@ final class PaymentReference
         $sauber = preg_replace('/[^A-Za-z0-9 .-]/', ' ', Str::ascii($name)) ?? '';
         $sauber = trim((string) preg_replace('/\s+/', ' ', $sauber));
 
-        return mb_substr($sauber, 0, 22) ?: 'Reservierung';
+        return rtrim(mb_substr($sauber, 0, 22)) ?: 'Reservierung';
     }
 }

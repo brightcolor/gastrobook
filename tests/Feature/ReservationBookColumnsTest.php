@@ -66,17 +66,23 @@ class ReservationBookColumnsTest extends TestCase
         $this->makeOn($setup, $spaeter, 'GastSpaeter');
         $this->clearTenantContext();
 
-        $antwort = $this->actingAs($admin)->get('/admin/reservations?range=all')->assertOk();
+        $inhalt = (string) $this->actingAs($admin)->get('/admin/reservations?range=all')->assertOk()->getContent();
 
-        // „Heute" taugt nicht als Nachweis – so heisst auch der Filterknopf
-        // darueber. „Morgen" gibt es dort nicht, und das ferne Datum erst recht
-        // nicht.
-        $antwort->assertSee('Morgen');
-        $antwort->assertSee($spaeter->translatedFormat('D, d.m.'));
+        // Weder „Heute" noch „Morgen" taugen als Nachweis: Beide stehen auch
+        // ausserhalb der Tabelle – „Heute" auf dem Zeitraum-Filterknopf,
+        // „Morgen" im Erklaertext der Spaltenueberschrift. Ein assertSee darauf
+        // waere auch dann gruen, wenn die ganze Spalte fehlte.
+        // Geprueft wird deshalb im Tabellenkoerper.
+        $koerper = mb_substr($inhalt, (int) mb_strpos($inhalt, '<tbody'));
 
-        // Gegenprobe: Ohne die neue Spalte stuende das Datum nirgends.
+        $this->assertStringContainsString('Heute', $koerper);
+        $this->assertStringContainsString('Morgen', $koerper);
+        $this->assertStringContainsString($spaeter->translatedFormat('D, d.m.'), $koerper);
+
+        // Und die Beschriftung selbst, unabhaengig vom Rendern.
         $this->assertSame('Heute', $this->reservationLabel($setup, $heute));
         $this->assertSame('Morgen', $this->reservationLabel($setup, $heute->addDay()));
+        $this->assertSame($spaeter->translatedFormat('D, d.m.'), $this->reservationLabel($setup, $spaeter));
     }
 
     public function test_the_book_shows_when_each_booking_came_in(): void

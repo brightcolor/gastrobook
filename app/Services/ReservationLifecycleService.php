@@ -157,7 +157,15 @@ class ReservationLifecycleService
             if ($rule !== null && $online && $rule->amountFor($data['party_size']) > 0) {
                 $paymentStatus = 'required';
                 $paymentAmount = $rule->amountFor($data['party_size']);
-                $paymentDueAt = now()->addMinutes($rule->payment_deadline_minutes);
+                // Die Frist erst starten, wenn der Gast von ihr erfahren kann.
+                // Verlangt der Standort eine Bestätigung der Adresse, wird die
+                // Zahlungsaufforderung bis zum Klick zurückgehalten – eine ab
+                // jetzt laufende Stunde wäre abgelaufen, bevor die Mail
+                // überhaupt gelesen wurde. GuestPortalController::verify()
+                // setzt sie beim Bestätigen.
+                $paymentDueAt = $emailConfirm
+                    ? null
+                    : now()->addMinutes($rule->payment_deadline_minutes);
                 if ($rule->type !== 'card_guarantee') {
                     $status = ReservationStatus::PaymentPending;
                 }

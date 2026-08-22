@@ -1,5 +1,49 @@
 # Changelog
 
+## [1.116.0] – 2026-08-22
+
+### Nachgezogen aus einer Code-Durchsicht
+Eine externe Durchsicht der letzten fünf Versionen hat einen schweren und vier
+weitere Fehler gefunden. Alle behoben.
+
+**Eine Zahlung konnte zweimal verarbeitet werden.** Seit der Rückweg von Stripe
+die Zahlung selbst abschliesst, treffen zwei Schreiber aufeinander – der
+Browser des Gastes und die Meldung des Anbieters, im Normalfall sekundengleich.
+Die bisherige Prüfung las den Status und schrieb ihn danach; dazwischen lag ein
+kompletter Aufruf zum Anbieter. Trafen beide zusammen, entstanden zwei
+Statuswechsel, **zwei Bestätigungsmails an denselben Gast** und zwei ausgehende
+Meldungen an die Kasse des Betriebs. Jetzt beansprucht der erste Schreiber den
+Vorgang mit einem bedingten Schreibvorgang; der zweite merkt es und hört auf.
+
+**Bei PayPal konnte eine Anzahlung doppelt kassiert werden.** Lehnte PayPal
+einen Bezahlvorgang ab, weil zur Rechnungsnummer bereits kassiert worden war,
+hat die Anwendung es kurzerhand ohne Rechnungsnummer erneut versucht – und
+damit genau den Schutz ausgehebelt, den die Nummer bietet. Der Gast zahlt jetzt
+nicht mehr ein zweites Mal: Er kommt mit einem Hinweis zurück auf seine
+Buchungsseite, und der Betrieb bekommt einen Eintrag ins Protokoll, damit
+jemand nachsieht, wo das Geld liegt.
+
+**Die Zahlungsfrist lief, bevor der Gast von ihr erfahren konnte.** Verlangt ein
+Betrieb die Bestätigung der E-Mail-Adresse und zugleich eine Anzahlung, wurde
+die Aufforderung bis zum Bestätigungsklick zurückgehalten – die Frist lief
+trotzdem ab dem Buchen. Wer abends bucht und morgens liest, hatte den Tisch
+längst verloren. Die Frist startet jetzt mit dem Klick.
+
+**Weiteres**
+- Die Bestätigungsseite behauptete bei einer längst abgelaufenen Buchung, sie
+  werde bearbeitet. Sie sagt jetzt, dass der Platz wieder frei ist – mit einem
+  Knopf zum Neubuchen.
+- Keine Zahlungserinnerung mehr an Gäste, die nie eine Aufforderung bekommen
+  haben.
+- Unbestätigte Buchungen mit Anzahlung geben den Tisch jetzt ebenfalls wieder
+  frei; bisher griff der Aufräumlauf nur bei reinen Anfragen.
+- Zwei Indizes auf den Bestätigungslinks, und verbrauchte Links werden nach
+  einer Woche entfernt – die Tabelle wächst seit 1.114.0 mit jeder Buchung.
+- Auf dem Kontoauszug wird der Betriebsname sauber abgeschnitten; in der
+  Zahlungskennung überlebt jetzt die Buchungsnummer statt des Betriebsnamens.
+- Handbuch: Spaltenübersicht des Reservierungsbuchs und Inhalt des CSV-Exports
+  ergänzt. README an zwei Stellen richtiggestellt.
+
 ## [1.115.1] – 2026-08-21
 
 ### Beta-Zeichen am Wortzeichen

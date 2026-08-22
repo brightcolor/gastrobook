@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Enums\ReservationStatus;
+use App\Models\AuditLog;
 use App\Models\IntegrationConnection;
 use App\Models\PaymentIntent;
 use App\Models\Reservation;
@@ -139,10 +140,12 @@ class PaymentReferenceTest extends TestCase
     }
 
     /**
-     * PayPal erzwingt die Eindeutigkeit der Rechnungsnummer. Das darf niemals
-     * dazu fuehren, dass ein Gast gar nicht mehr zahlen kann.
+     * PayPal meldet DUPLICATE_INVOICE_ID nur, wenn zu dieser Nummer bereits
+     * kassiert wurde. Ein zweiter Anlauf ohne Rechnungsnummer - der
+     * naheliegende Reflex - liesse den Gast ein zweites Mal zahlen. Also darf
+     * genau das NICHT passieren.
      */
-    public function test_a_duplicate_invoice_number_falls_back_to_an_order_without_one(): void
+    public function test_a_duplicate_invoice_number_does_not_send_the_guest_to_pay_again(): void
     {
         $versuche = 0;
 
@@ -151,17 +154,10 @@ class PaymentReferenceTest extends TestCase
             'api-m.sandbox.paypal.com/v2/checkout/orders' => function () use (&$versuche) {
                 $versuche++;
 
-                if ($versuche === 1) {
-                    return Http::response([
-                        'name' => 'UNPROCESSABLE_ENTITY',
-                        'details' => [['issue' => 'DUPLICATE_INVOICE_ID']],
-                    ], 422);
-                }
-
                 return Http::response([
-                    'id' => 'ORDER2',
-                    'links' => [['rel' => 'approve', 'href' => 'https://paypal.test/approve']],
-                ], 201);
+                    'name' => 'UNPROCESSABLE_ENTITY',
+                    'details' => [['issue' => 'DUPLICATE_INVOICE_ID']],
+                ], 422);
             },
         ]);
 
@@ -170,21 +166,20 @@ class PaymentReferenceTest extends TestCase
         $reservation = $this->reservationAwaitingPayment($setup);
         $this->clearTenantContext();
 
-        $this->get(route('pay.reservation', ['code' => $reservation->code, 'token' => $reservation->manage_token]))
-            ->assertRedirect('https://paypal.test/approve');
+        $antwort = $this->get(route('pay.reservation', ['code' => $reservation->code, 'token' => $reservation->manage_token]));
 
-        $this->assertSame(2, $versuche, 'Der zweite Versuch ohne Rechnungsnummer blieb aus.');
+        // Zurueck auf die eigene Verwaltungsseite, nicht zu PayPal.
+        $antwort->assertRedirect(route('booking.manage', [
+            'code' => $reservation->code, 'token' => $reservation->manage_token,
+        ]));
+        $antwort->assertSessionHas('payment_already_settled');
 
-        // Der zweite Versuch traegt keine Rechnungsnummer mehr, die Kennung aber schon.
-        Http::assertSent(function (Request $request) {
-            if (! str_contains($request->url(), '/v2/checkout/orders')) {
-                return false;
-            }
+        $this->assertSame(1, $versuche, 'Es wurde ein zweiter Bezahlvorgang angelegt.');
 
-            $einheit = $request->data()['purchase_units'][0];
-
-            return ! isset($einheit['invoice_id']) && str_starts_with($einheit['custom_id'], 'swayy:');
-        });
+        // Der Betrieb muss davon erfahren - sonst sucht niemand nach dem Geld.
+        $this->assertSame(1, AuditLog::where('tenant_id', $setup['tenant']->id)
+            ->where('action', 'payment.already_settled_at_provider')
+            ->count());
     }
 
     // ── Stripe ────────────────────────────────────────────────────────────

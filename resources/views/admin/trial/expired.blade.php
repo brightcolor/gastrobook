@@ -16,7 +16,7 @@
             <a href="{{ route('home') }}" class="inline-flex items-center gap-2.5 text-2xl font-semibold"
                style="font-family:'Fraunces Variable',Georgia,serif">
                 <img src="/logo-mark.svg" alt="" class="h-9 w-9" style="border-radius:0.85rem">
-                Swayy
+                Swayy<x-beta />
             </a>
         </div>
 

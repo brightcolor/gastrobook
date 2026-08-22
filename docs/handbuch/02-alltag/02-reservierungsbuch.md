@@ -19,6 +19,22 @@ Ist ein Filter aktiv, steht das als Hinweis über der Liste, mit einem Knopf
 „Filter löschen". So erklärt sich die häufigste Verwirrung von selbst („bei mir
 fehlen Buchungen!").
 
+## Was in der Liste steht
+
+| Spalte | Inhalt |
+|---|---|
+| **Wann** | Tag über der Uhrzeit. Für die nächsten Tage steht dort „Heute", „Morgen" oder „Gestern", sonst Wochentag und Datum |
+| **Gast** | Name, dazu ⭐ bei Stammgästen, ⚠️ bei Allergien und ein Hinweis bei erhöhtem No-Show-Risiko |
+| **Pers.** | Für wie viele Gäste der Tisch reserviert ist |
+| **Tisch** | Zugewiesene Tische, im Salon die Mitarbeiterin |
+| **Status** | Der Bearbeitungsstand |
+| **Quelle** | Woher die Buchung kam |
+| **Gebucht** | Wann die Buchung bei euch eingegangen ist |
+
+Die Spalte **Gebucht** ist nützlicher, als sie klingt: Sie zeigt, was langfristig
+geplant war und was kurzfristig reinkam. Wer im August fünf Adventssonntage
+bucht, fällt dort sofort auf.
+
 ## Eine Buchung von Hand anlegen
 
 **Neue Reservierung**, dann Datum, Uhrzeit, Personenzahl, Name. Alles Weitere ist
@@ -81,3 +97,7 @@ Buchungen eine Stunde brachliegt, in die noch jemand passt.
 
 Der Knopf **Export** gibt den gefilterten Zeitraum als CSV-Datei aus, die sich in
 Excel öffnen lässt. Braucht das Recht für Berichte.
+
+Enthalten sind Buchungscode, Datum, **Wochentag**, Uhrzeit, Personenzahl, Name,
+E-Mail, Telefon, Status, Quelle, Tische, **Zeitpunkt der Buchung** und die
+Gastnotiz.

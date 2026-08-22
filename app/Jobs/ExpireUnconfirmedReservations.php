@@ -35,7 +35,15 @@ class ExpireUnconfirmedReservations implements ShouldQueue
     public function handle(ReservationLifecycleService $lifecycle): void
     {
         $offen = Reservation::withoutGlobalScopes()
-            ->where('status', ReservationStatus::Requested->value)
+            // Beide Zustände, in denen eine Buchung auf die Bestätigung der
+            // Adresse warten kann: als reine Anfrage, oder – wenn zusätzlich
+            // eine Anzahlung fällig ist – als PaymentPending. Im zweiten Fall
+            // läuft noch keine Zahlungsfrist (die startet erst mit dem Klick),
+            // ExpireUnpaidReservations greift dort also nicht.
+            ->whereIn('status', [
+                ReservationStatus::Requested->value,
+                ReservationStatus::PaymentPending->value,
+            ])
             // Genau die Buchungen, deren Bestätigungslink abgelaufen ist und
             // nie angeklickt wurde.
             ->whereIn('id', GuestAuthToken::withoutGlobalScopes()
@@ -60,7 +68,10 @@ class ExpireUnconfirmedReservations implements ShouldQueue
             // haben, oder der Betrieb hat von Hand zugesagt.
             $reservation->refresh();
 
-            if ($reservation->status !== ReservationStatus::Requested) {
+            if (! in_array($reservation->status, [
+                ReservationStatus::Requested,
+                ReservationStatus::PaymentPending,
+            ], true)) {
                 continue;
             }
 

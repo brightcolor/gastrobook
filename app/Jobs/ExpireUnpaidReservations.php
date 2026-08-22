@@ -77,6 +77,15 @@ class ExpireUnpaidReservations implements ShouldQueue
                     ->whereColumn('notification_logs.reservation_id', 'reservations.id')
                     ->where('notification_logs.template_key', 'payment_reminder');
             })
+            // An eine Aufforderung erinnern, die nie ankam, ist Unsinn. Wartet
+            // die Buchung noch auf die Bestätigung der Adresse, wurde die
+            // Zahlungsaufforderung bewusst zurückgehalten.
+            ->whereExists(function ($q) {
+                $q->selectRaw('1')
+                    ->from('notification_logs')
+                    ->whereColumn('notification_logs.reservation_id', 'reservations.id')
+                    ->where('notification_logs.template_key', 'payment_pending');
+            })
             ->orderBy('id')
             ->limit(self::MAX_PER_RUN)
             ->get();

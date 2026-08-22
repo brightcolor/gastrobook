@@ -67,6 +67,12 @@ $statusBadge = match($sv) {
     </div>
 
     {{-- Zahlung --}}
+    @if(session('payment_already_settled'))
+        <div class="mt-4 rounded-xl bg-amber-50 p-3.5 text-sm text-amber-900">
+            <span class="text-base">⚠️</span> {{ session('payment_already_settled') }}
+        </div>
+    @endif
+
     @if(request()->boolean('paid') || $reservation->payment_status === 'paid')
         <div class="mt-4 flex items-center gap-2 rounded-xl bg-emerald-50 p-3.5 text-sm font-semibold text-emerald-900">
             <span class="text-base">✅</span> Anzahlung erhalten – vielen Dank!

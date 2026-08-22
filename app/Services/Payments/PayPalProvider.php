@@ -51,13 +51,15 @@ class PayPalProvider implements PaymentProvider
     {
         $response = $this->postOrder($intent, $options, PaymentReference::invoice($intent));
 
-        // PayPal erzwingt die Eindeutigkeit der Rechnungsnummer. Das ist als
-        // Schutz vor doppelten Anzahlungen gewollt – darf aber niemals dazu
-        // führen, dass ein Gast gar nicht mehr zahlen kann, etwa weil ein
-        // früherer Versuch zu demselben Vorgang schon abgeschlossen wurde.
-        // In diesem Fall noch einmal ohne Rechnungsnummer.
+        // PayPal meldet DUPLICATE_INVOICE_ID nur, wenn zu dieser Nummer bereits
+        // kassiert wurde. Ein zweiter Anlauf ohne Rechnungsnummer – der
+        // naheliegende Reflex – liesse den Gast ein zweites Mal zahlen und
+        // höbe genau den Schutz auf, für den die Nummer da ist. Also
+        // durchreichen statt umgehen.
         if (! $response->successful() && $this->isDuplicateInvoice($response->body())) {
-            $response = $this->postOrder($intent, $options, null);
+            throw new PaymentAlreadySettledException(
+                'PayPal kennt zu Vorgang '.$intent->id.' bereits eine abgeschlossene Zahlung.'
+            );
         }
 
         if (! $response->successful()) {
