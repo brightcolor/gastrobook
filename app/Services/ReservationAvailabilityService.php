@@ -81,14 +81,7 @@ class ReservationAvailabilityService
         $endUtc = $startUtc->addMinutes($duration);
         $nowLocal = CarbonImmutable::now($location->timezone);
 
-        // Must be on a generated slot grid inside opening windows. Fenster ueber
-        // Mitternacht beginnen am Vortag – deshalb beide Tage einbeziehen.
-        $validStarts = array_merge(
-            $this->timeSlots->slotStarts($location, $startLocal->startOfDay()->subDay(), $duration),
-            $this->timeSlots->slotStarts($location, $startLocal->startOfDay(), $duration),
-        );
-        $onGrid = collect($validStarts)->contains(fn ($s) => $s->equalTo($startLocal));
-        if (! $onGrid) {
+        if (! $this->startIsBookable($location, $startLocal, $duration, (bool) ($options['ad_hoc'] ?? false))) {
             return ['available' => false, 'reason' => 'outside_opening_hours', 'table_ids' => [], 'duration' => $duration];
         }
 
@@ -183,25 +176,19 @@ class ReservationAvailabilityService
      * blackouts, which the plain busy-table check does not cover.
      *
      * @param  array<int>  $tableIds  chosen tables (for room-specific blackouts)
+     * @param  bool  $adHoc  seating starting now, off the public slot grid
      */
     public function bookingBlockReason(
         Location $location,
         CarbonImmutable $startLocal,
         CarbonImmutable $startUtc,
         CarbonImmutable $endUtc,
-        array $tableIds = []
+        array $tableIds = [],
+        bool $adHoc = false
     ): ?string {
         $duration = (int) $startUtc->diffInMinutes($endUtc);
 
-        // Opening / special hours (a closed day yields no slot grid).
-        // Auch hier den Vortag mitnehmen: Ein Fenster 18:00–02:00 erzeugt seine
-        // Starts nach Mitternacht am Vortag.
-        $validStarts = array_merge(
-            $this->timeSlots->slotStarts($location, $startLocal->startOfDay()->subDay(), $duration),
-            $this->timeSlots->slotStarts($location, $startLocal->startOfDay(), $duration),
-        );
-        $onGrid = collect($validStarts)->contains(fn ($s) => $s->equalTo($startLocal));
-        if (! $onGrid) {
+        if (! $this->startIsBookable($location, $startLocal, $duration, $adHoc)) {
             return 'outside_opening_hours';
         }
 
@@ -231,6 +218,54 @@ class ReservationAvailabilityService
         }
 
         return null;
+    }
+
+    /**
+     * Is this start time bookable at all, before any table or capacity check?
+     *
+     * Normally the answer is "only if it is one of the generated slot starts" –
+     * that keeps public bookings on the grid the guest was shown. Fenster ueber
+     * Mitternacht beginnen am Vortag, deshalb zaehlen beide Tage.
+     *
+     * Ad-hoc-Belegungen entstehen dagegen an der Uhr und nicht am Raster: Ein
+     * Walk-in um 19:07:23 trifft keinen Rasterpunkt, und kurz vor Feierabend
+     * gibt es gar keinen mehr, weil slotStarts bei `closes - duration` endet.
+     * Fuer sie zaehlt nur, ob der Betrieb zu diesem Zeitpunkt geoeffnet hat.
+     */
+    private function startIsBookable(Location $location, CarbonImmutable $startLocal, int $duration, bool $adHoc): bool
+    {
+        if ($adHoc) {
+            return $this->withinOpeningWindow($location, $startLocal);
+        }
+
+        $validStarts = array_merge(
+            $this->timeSlots->slotStarts($location, $startLocal->startOfDay()->subDay(), $duration),
+            $this->timeSlots->slotStarts($location, $startLocal->startOfDay(), $duration),
+        );
+
+        return collect($validStarts)->contains(fn ($s) => $s->equalTo($startLocal));
+    }
+
+    /**
+     * Does the local time fall inside an opening window of that day?
+     *
+     * Anders als slotStarts wird die Dauer nicht verlangt: Wer um 22:45 noch
+     * hereinkommt, bekommt einen Tisch, auch wenn um 23:00 geschlossen wird.
+     */
+    public function withinOpeningWindow(Location $location, CarbonImmutable $startLocal): bool
+    {
+        $windows = array_merge(
+            $this->timeSlots->windowsForDate($location, $startLocal->startOfDay()->subDay()),
+            $this->timeSlots->windowsForDate($location, $startLocal->startOfDay()),
+        );
+
+        foreach ($windows as $window) {
+            if ($startLocal->gte($window['opens']) && $startLocal->lt($window['closes'])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -266,11 +301,16 @@ class ReservationAvailabilityService
     ): array {
         $settings = $location->effectiveSettings();
 
-        if ($online && $startLocal->lt($nowLocal->addMinutes($settings->min_lead_minutes))) {
+        // Vorlaufzeit und Buchungshorizont schuetzen die oeffentliche Buchung
+        // vor sich selbst. Eine Belegung "ab jetzt" kommt vom Betrieb und steht
+        // per Definition davor - der Gast steht bereits in der Tuer.
+        $adHoc = (bool) ($options['ad_hoc'] ?? false);
+
+        if ($online && ! $adHoc && $startLocal->lt($nowLocal->addMinutes($settings->min_lead_minutes))) {
             return [false, 'lead_time', []];
         }
 
-        if ($online && $startLocal->gt($nowLocal->addDays($settings->max_advance_days))) {
+        if ($online && ! $adHoc && $startLocal->gt($nowLocal->addDays($settings->max_advance_days))) {
             return [false, 'too_far_ahead', []];
         }
 

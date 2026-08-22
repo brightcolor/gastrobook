@@ -11,6 +11,7 @@ use App\Models\Reservation;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\Payments\PaymentProviderManager;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -101,45 +102,60 @@ class RefundService
             return null;
         }
 
-        // Wrap duplicate-check + insert in a transaction with a pessimistic
-        // lock so that two concurrent calls (e.g. guest double-clicks cancel,
-        // or a webhook fires at the same time) cannot both pass the check and
-        // each create a separate Refund row (= double refund to the guest).
-        $refund = DB::transaction(function () use ($reservation, $intent, $settings, $mode, $source, $actor) {
-            $existing = Refund::withoutGlobalScopes()
+        // Zwei gleichzeitige Aufrufe (Gast klickt zweimal auf Stornieren, oder
+        // Gast und Mitarbeiter sagen dieselbe Buchung gleichzeitig ab) duerfen
+        // nicht beide eine Erstattungszeile anlegen - sonst geht das Geld
+        // zweimal raus.
+        //
+        // Gesperrt wird die RESERVIERUNG, nicht die noch nicht vorhandene
+        // Erstattungszeile: SELECT ... FOR UPDATE sperrt nur Zeilen, die es
+        // schon gibt. Beim ersten Durchlauf trifft die Abfrage auf refunds
+        // nichts, ein Praedikatsperre gibt es in READ COMMITTED nicht - beide
+        // Aufrufer bekaemen null und wuerden beide einfuegen. Die
+        // Reservierungszeile existiert dagegen immer und traegt die
+        // Serialisierung.
+        $refund = $this->createOnce(
+            fn () => Refund::withoutGlobalScopes()
                 ->where('reservation_id', $reservation->id)
                 ->whereNotIn('status', ['rejected', 'failed'])
-                ->lockForUpdate()
-                ->first();
-            if ($existing !== null) {
-                return $existing;
+                ->first(),
+            function () use ($reservation, $intent, $settings, $mode, $source, $actor) {
+                Reservation::withoutGlobalScope('tenant')->lockForUpdate()->find($reservation->id);
+
+                $existing = Refund::withoutGlobalScopes()
+                    ->where('reservation_id', $reservation->id)
+                    ->whereNotIn('status', ['rejected', 'failed'])
+                    ->first();
+                if ($existing !== null) {
+                    return $existing;
+                }
+
+                $percent = max(0, min(100, (int) $settings->refund_percent));
+                $amount = (int) round($intent->amount_minor * $percent / 100);
+                if ($amount <= 0) {
+                    return null;
+                }
+
+                $refund = Refund::create([
+                    'tenant_id' => $reservation->tenant_id,
+                    'reservation_id' => $reservation->id,
+                    'payment_intent_id' => $intent->id,
+                    'provider' => $intent->provider,
+                    'amount_minor' => $amount,
+                    'currency' => $intent->currency,
+                    'status' => $mode === 'auto' ? 'approved' : 'pending',
+                    'source' => $source,
+                    'reason' => 'cancellation',
+                    'requested_by' => $actor?->id,
+                ]);
+
+                $this->audit->log('refund.requested', $refund, null, [
+                    'amount_minor' => $amount, 'mode' => $mode,
+                ], null, $actor, $reservation->tenant_id);
+
+                return $refund;
             }
-
-            $percent = max(0, min(100, (int) $settings->refund_percent));
-            $amount = (int) round($intent->amount_minor * $percent / 100);
-            if ($amount <= 0) {
-                return null;
-            }
-
-            $refund = Refund::create([
-                'tenant_id' => $reservation->tenant_id,
-                'reservation_id' => $reservation->id,
-                'payment_intent_id' => $intent->id,
-                'provider' => $intent->provider,
-                'amount_minor' => $amount,
-                'currency' => $intent->currency,
-                'status' => $mode === 'auto' ? 'approved' : 'pending',
-                'source' => $source,
-                'reason' => 'cancellation',
-                'requested_by' => $actor?->id,
-            ]);
-
-            $this->audit->log('refund.requested', $refund, null, [
-                'amount_minor' => $amount, 'mode' => $mode,
-            ], null, $actor, $reservation->tenant_id);
-
-            return $refund;
-        });
+        );
 
         if ($refund === null) {
             return null;
@@ -297,41 +313,50 @@ class RefundService
             return null;
         }
 
-        $refund = DB::transaction(function () use ($booking, $intent, $settings, $mode, $source, $actor) {
-            $existing = Refund::withoutGlobalScopes()
+        // Dieselbe Sperre wie bei der Reservierung, aus demselben Grund: Die
+        // Buchungszeile existiert, die Erstattungszeile noch nicht.
+        $refund = $this->createOnce(
+            fn () => Refund::withoutGlobalScopes()
                 ->where('event_booking_id', $booking->id)
                 ->whereNotIn('status', ['rejected', 'failed'])
-                ->lockForUpdate()
-                ->first();
-            if ($existing !== null) {
-                return $existing;
+                ->first(),
+            function () use ($booking, $intent, $settings, $mode, $source, $actor) {
+                EventBooking::withoutGlobalScopes()->lockForUpdate()->find($booking->id);
+
+                $existing = Refund::withoutGlobalScopes()
+                    ->where('event_booking_id', $booking->id)
+                    ->whereNotIn('status', ['rejected', 'failed'])
+                    ->first();
+                if ($existing !== null) {
+                    return $existing;
+                }
+
+                $percent = max(0, min(100, (int) $settings->refund_percent));
+                $amount = (int) round($intent->amount_minor * $percent / 100);
+                if ($amount <= 0) {
+                    return null;
+                }
+
+                $refund = Refund::create([
+                    'tenant_id' => $booking->tenant_id,
+                    'event_booking_id' => $booking->id,
+                    'payment_intent_id' => $intent->id,
+                    'provider' => $intent->provider,
+                    'amount_minor' => $amount,
+                    'currency' => $intent->currency,
+                    'status' => $mode === 'auto' ? 'approved' : 'pending',
+                    'source' => $source,
+                    'reason' => 'cancellation',
+                    'requested_by' => $actor?->id,
+                ]);
+
+                $this->audit->log('refund.requested', $refund, null, [
+                    'amount_minor' => $amount, 'mode' => $mode, 'event_booking_id' => $booking->id,
+                ], null, $actor, $booking->tenant_id);
+
+                return $refund;
             }
-
-            $percent = max(0, min(100, (int) $settings->refund_percent));
-            $amount = (int) round($intent->amount_minor * $percent / 100);
-            if ($amount <= 0) {
-                return null;
-            }
-
-            $refund = Refund::create([
-                'tenant_id' => $booking->tenant_id,
-                'event_booking_id' => $booking->id,
-                'payment_intent_id' => $intent->id,
-                'provider' => $intent->provider,
-                'amount_minor' => $amount,
-                'currency' => $intent->currency,
-                'status' => $mode === 'auto' ? 'approved' : 'pending',
-                'source' => $source,
-                'reason' => 'cancellation',
-                'requested_by' => $actor?->id,
-            ]);
-
-            $this->audit->log('refund.requested', $refund, null, [
-                'amount_minor' => $amount, 'mode' => $mode, 'event_booking_id' => $booking->id,
-            ], null, $actor, $booking->tenant_id);
-
-            return $refund;
-        });
+        );
 
         if ($refund === null) {
             return null;
@@ -363,6 +388,29 @@ class RefundService
             });
 
         return $count;
+    }
+
+    /**
+     * Genau eine Erstattungszeile anlegen, auch bei zwei gleichzeitigen Laeufen.
+     *
+     * Die Serialisierung traegt die Sperre auf der Reservierung bzw. der
+     * Eventbuchung in $anlegen. Der eindeutige Index auf refunds ist der
+     * Rueckhalt darunter: Er faengt jeden Weg ab, der die Sperre nicht nimmt.
+     *
+     * Der catch steht AUSSERHALB der Transaktion. In PostgreSQL bricht ein
+     * Datenbankfehler die laufende Transaktion ab; ein try/catch darin waere
+     * kein Netz, sondern nur eine spaetere Fehlermeldung an anderer Stelle.
+     *
+     * @param  callable(): ?Refund  $vorhandene
+     * @param  callable(): ?Refund  $anlegen
+     */
+    private function createOnce(callable $vorhandene, callable $anlegen): ?Refund
+    {
+        try {
+            return DB::transaction($anlegen);
+        } catch (UniqueConstraintViolationException) {
+            return $vorhandene();
+        }
     }
 
     private function processingMode(Refund $refund): string

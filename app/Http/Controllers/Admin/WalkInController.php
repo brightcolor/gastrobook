@@ -9,6 +9,7 @@ use App\Services\TableAssignmentService;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class WalkInController extends Controller
 {
@@ -101,15 +102,30 @@ class WalkInController extends Controller
             }
         }
 
-        $reservation = $this->lifecycle->create($location, [
-            'party_size' => (int) $validated['party_size'],
-            'start_local' => $nowLocal,
-            'source' => 'walk_in',
-            'guest_name' => ($validated['name'] ?? null) ?: __('Walk-in'),
-            'guest_phone' => $validated['phone'] ?? null,
-            'table_ids' => [$table->id],
-            'skip_availability_check' => $shared,
-        ], $request->user());
+        try {
+            $reservation = $this->lifecycle->create($location, [
+                'party_size' => (int) $validated['party_size'],
+                'start_local' => $nowLocal,
+                'source' => 'walk_in',
+                'guest_name' => ($validated['name'] ?? null) ?: __('Walk-in'),
+                'guest_phone' => $validated['phone'] ?? null,
+                'table_ids' => [$table->id],
+                'skip_availability_check' => $shared,
+                // Die Uhrzeit ist die echte Wanduhrzeit und trifft das Slot-Raster
+                // nie. Geprueft wird darum nur, ob der Betrieb gerade offen hat.
+                'ad_hoc' => true,
+            ], $request->user());
+        } catch (ValidationException $e) {
+            // Der Tischplan schickt diese Anfrage per fetch. Ohne diesen Zweig
+            // beantwortet Laravel den Fehlschlag mit einer Weiterleitung –
+            // JSON-Ausnahmen sind nur fuer api/* eingeschaltet –, und am
+            // Tresen erscheint gar keine Meldung.
+            $message = collect($e->errors())->flatten()->first() ?? __('Der Walk-in konnte nicht platziert werden.');
+
+            return $request->wantsJson()
+                ? response()->json(['message' => $message], 422)
+                : back()->withErrors($e->errors());
+        }
 
         if ($request->wantsJson()) {
             return response()->json([

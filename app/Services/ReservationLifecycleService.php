@@ -44,6 +44,7 @@ class ReservationLifecycleService
      *     consents?: array<string,bool>, ip?: ?string, event_id?: ?int,
      *     skip_availability_check?: bool, duration_minutes?: ?int,
      *     service_id?: ?int, service_ids?: array<int>, staff_member_id?: ?int,
+     *     ad_hoc?: bool,
      * } $data
      */
     public function create(Location $location, array $data, ?User $actor = null): Reservation
@@ -66,6 +67,12 @@ class ReservationLifecycleService
             // ueberlappende Buchungen starten selten sekundengleich.
             $this->lockSlot($location, $startLocal);
 
+            // Belegungen "ab jetzt" (Walk-in, Gast von der Warteliste
+            // uebernehmen) entstehen an der Uhr, nicht am Slot-Raster. Ohne
+            // dieses Kennzeichen scheitern sie an der Rasterpruefung, egal wie
+            // weit der Betrieb geoeffnet hat.
+            $adHoc = (bool) ($data['ad_hoc'] ?? false);
+
             if (! ($data['skip_availability_check'] ?? false)) {
                 if ($tableIds === []) {
                     $check = $this->availability->checkExact($location, $startLocal, $data['party_size'], [
@@ -75,6 +82,7 @@ class ReservationLifecycleService
                         'duration' => $duration,
                         'online' => $online,
                         'room_id' => $data['room_id'] ?? null,
+                        'ad_hoc' => $adHoc,
                     ]);
                     if (! $check['available']) {
                         throw ValidationException::withMessages([
@@ -88,7 +96,7 @@ class ReservationLifecycleService
                     // table would let staff/guests book a closed day or a
                     // blacked-out time. Overbooking still goes via the
                     // skip_availability_check flag (permission-gated upstream).
-                    $blockReason = $this->availability->bookingBlockReason($location, $startLocal, $startUtc, $endUtc, $tableIds);
+                    $blockReason = $this->availability->bookingBlockReason($location, $startLocal, $startUtc, $endUtc, $tableIds, $adHoc);
                     if ($blockReason !== null) {
                         throw ValidationException::withMessages([
                             'start_at' => $this->availabilityMessage($blockReason),
@@ -470,6 +478,12 @@ class ReservationLifecycleService
         return DB::transaction(function () use ($reservation, $location, $newStartLocal, $startUtc, $endUtc, $duration, $partySize, $actor, $actorType) {
             $tableIds = null;
 
+            // Dieselbe Sperre wie bei der Neuanlage. Ohne sie pruefen zwei
+            // gleichzeitige Umbuchungen beide "frei" und landen auf demselben
+            // Tisch - oder eine Umbuchung schiebt sich in den Platz, den eine
+            // gerade laufende Neuanlage schon fuer sich geprueft hat.
+            $this->lockSlot($location, $newStartLocal);
+
             // Moving a booking has to respect opening hours, special hours and
             // blackouts just like creating one. Without this a guest could
             // reschedule straight into a closed day – finding a free table says
@@ -530,6 +544,8 @@ class ReservationLifecycleService
                 }
             }
 
+            $anzahlung = $this->depositAfterReschedule($reservation, $location, $newStartLocal, $partySize, $actorType, $actor);
+
             $old = [
                 'start_at' => $reservation->start_at->toIso8601String(),
                 'end_at' => $reservation->end_at->toIso8601String(),
@@ -541,7 +557,7 @@ class ReservationLifecycleService
                 'start_at' => $startUtc,
                 'end_at' => $endUtc,
                 'party_size' => $partySize,
-            ]);
+            ] + $anzahlung);
             if ($tableIds !== null) {
                 $reservation->tables()->sync($tableIds);
             }
@@ -561,15 +577,123 @@ class ReservationLifecycleService
                 'end_at' => $endUtc->toIso8601String(),
             ], null, $actor, $reservation->tenant_id);
 
-            DB::afterCommit(function () use ($reservation, $location) {
+            DB::afterCommit(function () use ($reservation, $location, $anzahlung) {
                 $this->webhooks->dispatch($location->tenant, 'reservation.updated', $this->webhookPayload($reservation));
                 if ($reservation->guest_email_snapshot) {
-                    $this->sendGuestMail($reservation, 'reservation_confirmed');
+                    // Verlangt der neue Zeitpunkt eine Anzahlung, die vorher
+                    // keine war, ist die Zahlungsaufforderung die richtige
+                    // Nachricht - eine Bestaetigung waere schlicht falsch.
+                    $this->sendGuestMail(
+                        $reservation,
+                        ($anzahlung['payment_status'] ?? null) === 'required' ? 'payment_pending' : 'reservation_confirmed'
+                    );
                 }
             });
 
             return $reservation->refresh();
         });
+    }
+
+    /**
+     * Die Anzahlungspflicht fuer den NEUEN Zeitpunkt, als Feldsatz zum
+     * Mitschreiben beim Umbuchen.
+     *
+     * Ohne diesen Schritt konnte ein Gast die Anzahlung vollstaendig umgehen:
+     * fuer zwei Personen an einem Dienstag buchen, nichts zahlen, danach per
+     * Aenderungslink auf zwoelf Personen am Samstagabend umbuchen. Die
+     * Reservierung behielt Betrag, Regel und Frist der alten Buchung - also
+     * womoeglich gar keine.
+     *
+     * Regeln:
+     *  - Noch nicht gezahlt: Betrag und Regel gelten neu. Entfaellt die
+     *    Anzahlung, wird die Buchung bestaetigt; entsteht eine, laeuft die
+     *    Frist ab jetzt und der Gast bekommt die Aufforderung.
+     *  - Bereits gezahlt und der neue Zeitpunkt verlangt mehr: Der Gast kommt
+     *    nicht durch, der Betrieb schon - dort steht die Differenz im
+     *    Protokoll, damit sie jemand einsammeln kann.
+     *  - Bereits gezahlt und der neue Zeitpunkt verlangt gleich viel oder
+     *    weniger: Es bleibt, wie es ist. Ob zu viel Gezahltes zurueckgeht,
+     *    entscheidet der Betrieb, nicht der Aenderungslink.
+     *
+     * @return array<string, mixed>
+     */
+    private function depositAfterReschedule(
+        Reservation $reservation,
+        Location $location,
+        CarbonImmutable $newStartLocal,
+        int $partySize,
+        string $actorType,
+        ?User $actor
+    ): array {
+        $serviceIds = $reservation->services()->withoutGlobalScopes()->pluck('services.id')->all();
+        if ($serviceIds === [] && $reservation->service_id) {
+            $serviceIds = [(int) $reservation->service_id];
+        }
+
+        $regel = $this->payments->requirementFor(
+            $location,
+            $newStartLocal,
+            $partySize,
+            $reservation->event_id,
+            $reservation->tables()->first()?->room_id,
+            array_values(array_map('intval', $serviceIds)),
+        );
+        $neuerBetrag = $regel !== null ? $regel->amountFor($partySize) : 0;
+
+        $bezahlt = in_array($reservation->payment_status, ['paid', 'partially_refunded'], true);
+
+        if ($bezahlt) {
+            $gedeckt = (int) $reservation->payment_amount_minor;
+            if ($neuerBetrag <= $gedeckt) {
+                return [];
+            }
+
+            if ($actorType === 'guest') {
+                throw ValidationException::withMessages([
+                    'time' => __('Für diesen Zeitpunkt ist eine höhere Anzahlung nötig. Bitte wenden Sie sich an den Betrieb.'),
+                ]);
+            }
+
+            $this->audit->log('reservation.deposit_shortfall', $reservation, null, [
+                'covered_minor' => $gedeckt,
+                'required_minor' => $neuerBetrag,
+                'deposit_rule_id' => $regel?->id,
+            ], null, $actor, $reservation->tenant_id);
+
+            return [];
+        }
+
+        // Eine Regel ueber 0 Euro haelt keine Buchung auf - genauso wie bei der
+        // Neuanlage. Der Gast bekaeme sonst eine Aufforderung ueber 0,00 EUR.
+        if ($neuerBetrag <= 0) {
+            $felder = [
+                'payment_status' => 'not_required',
+                'payment_amount_minor' => null,
+                'currency' => null,
+                'payment_due_at' => null,
+                'deposit_rule_id' => null,
+            ];
+            if ($reservation->status === ReservationStatus::PaymentPending) {
+                $felder['status'] = ReservationStatus::Confirmed;
+                $felder['confirmed_at'] = now();
+            }
+
+            return $felder;
+        }
+
+        $felder = [
+            'payment_status' => 'required',
+            'payment_amount_minor' => $neuerBetrag,
+            'currency' => $location->currency,
+            'payment_due_at' => now()->addMinutes($regel->payment_deadline_minutes),
+            'deposit_rule_id' => $regel->id,
+        ];
+        if ($regel->type !== 'card_guarantee') {
+            $felder['status'] = ReservationStatus::PaymentPending;
+            $felder['confirmed_at'] = null;
+        }
+
+        return $felder;
     }
 
     /**

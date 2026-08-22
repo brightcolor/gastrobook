@@ -108,7 +108,15 @@ class PaymentController extends Controller
             ['tenant_id' => $reservation->tenant_id, 'reservation_id' => $reservation->id, 'type' => 'deposit', 'status' => 'pending'],
             ['provider' => $key, 'amount_minor' => $reservation->payment_amount_minor, 'currency' => $currency, 'expires_at' => $reservation->payment_due_at ?? now()->addHour()]
         );
-        $intent->update(['provider' => $key]);
+        // Ein wiederverwendeter Vorgang traegt den Betrag von damals. Nach einer
+        // Umbuchung stimmt der nicht mehr - der Gast zahlte sonst die Anzahlung
+        // fuer zwei Personen am Dienstag, obwohl zwoelf am Samstag dastehen.
+        $intent->update([
+            'provider' => $key,
+            'amount_minor' => $reservation->payment_amount_minor,
+            'currency' => $currency,
+            'expires_at' => $reservation->payment_due_at ?? now()->addHour(),
+        ]);
 
         $location = $reservation->location()->withoutGlobalScope('tenant')->first();
 

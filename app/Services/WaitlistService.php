@@ -146,6 +146,10 @@ class WaitlistService
                 'guest_email' => $entry->guest_email,
                 'guest_phone' => $entry->guest_phone,
                 'guest_note' => $entry->note,
+                // Die Zeit stammt aus dem Angebot des Betriebs, nicht aus dem
+                // oeffentlichen Raster. "Jetzt platzieren" faellt sonst an der
+                // Rasterpruefung und an der Vorlaufzeit durch.
+                'ad_hoc' => true,
             ]);
 
             $offer->update(['status' => 'accepted']);

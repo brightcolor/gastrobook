@@ -1,5 +1,55 @@
 # Changelog
 
+## [1.117.0] – 2026-08-22
+
+### Drei schwere Fehler aus einer Vollprüfung
+Eine Durchsicht der gesamten Anwendung hat drei Fehler gefunden, die still
+Geld oder Arbeitszeit kosten. Alle drei sind behoben.
+
+**Walk-ins liessen sich überhaupt nicht platzieren.** Wer Laufkundschaft am
+Tresen eintrug, bekam „Zu dieser Uhrzeit haben wir leider geschlossen" – zu
+jeder Uhrzeit, auch mitten im Betrieb. Der Grund: Geprüft wurde gegen das
+Raster der Online-Zeitfenster, und die echte Uhrzeit mit Sekunden trifft ein
+Raster aus halben Stunden praktisch nie. Für Belegungen ab jetzt zählt
+jetzt nur noch, ob der Betrieb geöffnet hat. Damit klappt auch der Gast, der
+zehn Minuten vor Feierabend hereinkommt – dafür gab es vorher gar keinen
+gültigen Zeitpunkt mehr. Derselbe Fehler steckte im Knopf „Gast von der
+Warteliste übernehmen"; auch der geht wieder.
+
+Schlägt ein Walk-in doch fehl, erscheint die Begründung jetzt am Tischplan.
+Bisher beantwortete die Anwendung den Fehlschlag mit einer Weiterleitung, die
+der Tischplan nicht anzeigen kann – am Tresen blieb der Bildschirm stumm.
+
+**Eine Erstattung konnte doppelt ausgezahlt werden.** Zwei gleichzeitige
+Stornierungen derselben Buchung – der Gast klickt zweimal, oder Gast und
+Betrieb sagen zeitgleich ab – konnten zwei Erstattungen anlegen und zweimal
+Geld an den Anbieter schicken. Die vorhandene Absicherung griff nur, wenn es
+bereits eine Erstattung gab; beim ersten Mal lief sie ins Leere. Jetzt
+serialisiert eine Sperre auf der Buchung selbst, und die Datenbank lässt pro
+Buchung nur noch eine offene Erstattung zu. Ein Fehlversuch beim Anbieter
+blockiert einen neuen Anlauf weiterhin nicht.
+
+**Umbuchen umging die Anzahlung vollständig.** Ein Gast konnte für zwei
+Personen an einem ruhigen Dienstag buchen – ohne Anzahlung – und die Buchung
+danach per Änderungslink auf zwölf Personen am Samstagabend schieben. Betrag,
+Regel und Frist blieben stehen, der Betrieb bekam nichts. Umbuchen bewertet
+die Anzahlungspflicht jetzt neu:
+
+- Ist noch nichts gezahlt, gelten Betrag und Frist des neuen Zeitpunkts. Wird
+  eine Anzahlung fällig, geht die Aufforderung raus; entfällt sie, wird die
+  Buchung bestätigt statt weiter auf eine Zahlung zu warten, die niemand mehr
+  verlangt.
+- Ist bereits gezahlt und der neue Zeitpunkt verlangt mehr, kommt der Gast
+  nicht durch. Der Betrieb schon – dort steht die Differenz im Protokoll.
+- Verlangt der neue Zeitpunkt weniger, bleibt die Zahlung stehen. Ob etwas
+  zurückgeht, entscheidet der Betrieb.
+
+Ein bereits offener Bezahlvorgang trug ausserdem den Betrag von vor der
+Umbuchung. Er wird beim nächsten Aufruf des Bezahllinks nachgezogen.
+
+**Zwei gleichzeitige Umbuchungen konnten denselben Tisch belegen.** Die
+Umbuchung nahm die Sperre nicht, die die Neuanlage längst nimmt.
+
 ## [1.116.0] – 2026-08-22
 
 ### Nachgezogen aus einer Code-Durchsicht
