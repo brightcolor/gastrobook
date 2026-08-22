@@ -21,7 +21,8 @@
         <p class="mx-auto mt-4 max-w-sm leading-relaxed text-stone-500">
             Danke, <strong class="text-stone-700">{{ $billingRequest->contact_name }}</strong>.
             Ihr Swayy-Konto ist freigeschaltet — Sie können sofort weitermachen.
-            Die Zahlungsdetails klären wir separat mit Ihnen.
+            Die Zahlungsdetails klären wir separat mit Ihnen; sobald die
+            Abrechnung steht, läuft Ihr Konto unbefristet weiter.
         </p>
 
         <a href="{{ route('admin.dashboard') }}"

@@ -549,13 +549,31 @@ class RefundService
         ));
     }
 
+    /**
+     * Sofort auszahlen oder im Sammellauf?
+     *
+     * Der Standort einer Eventbuchung haengt am Event, nicht an einer
+     * Reservierung. Ohne diesen Zweig lief jede Event-Erstattung sofort raus,
+     * auch wenn der Betrieb Erstattungen bewusst gebuendelt und zeitversetzt
+     * fahren laesst - etwa um eine Ruecknahme vor dem Auszahlen zu ermoeglichen.
+     */
     private function processingMode(Refund $refund): string
     {
-        $reservation = $refund->reservation_id
-            ? Reservation::withoutGlobalScope('tenant')->find($refund->reservation_id)
-            : null;
-        $location = $reservation?->location()->withoutGlobalScope('tenant')->first();
+        if ($refund->reservation_id) {
+            $reservation = Reservation::withoutGlobalScope('tenant')->find($refund->reservation_id);
+            $location = $reservation?->location()->withoutGlobalScope('tenant')->first();
 
-        return $location?->effectiveSettings()->refund_processing ?? 'immediate';
+            return $location?->effectiveSettings()->refund_processing ?? 'immediate';
+        }
+
+        if ($refund->event_booking_id) {
+            $booking = EventBooking::withoutGlobalScopes()->find($refund->event_booking_id);
+            $event = $booking?->event()->withoutGlobalScopes()->first();
+            $location = $event?->location()->withoutGlobalScope('tenant')->first();
+
+            return $location?->effectiveSettings()->refund_processing ?? 'immediate';
+        }
+
+        return 'immediate';
     }
 }

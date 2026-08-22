@@ -1,5 +1,95 @@
 # Changelog
 
+## [1.123.0] – 2026-08-23
+
+### Die Läufe im Hintergrund
+Sie verschicken Post und Geld, ohne dass jemand zusieht — jeder Fehler dort
+fällt erst auf, wenn ein Gast anruft. Letzter Teil der Vollprüfung.
+
+**Erinnerungen und Feedback-Anfragen konnten doppelt rausgehen.** Beide Läufe
+verschickten erst und buchten danach aus. Starb der Prozess dazwischen — der
+Worker bricht nach 60 Sekunden ab —, bekam der Gast beim nächsten Anlauf alles
+erneut: Erinnerungsmail, Erinnerungs-SMS und eine zweite Bewertungsanfrage mit
+eigenem Link. Die SMS kostet den Betrieb bei jedem Versand echtes Geld. Jetzt
+wird der Platz erst beansprucht und dann verschickt.
+
+**Ein einziger Betrieb konnte alle Feedback-Anfragen lahmlegen.** Wer die
+Funktion abschaltet, wurde erst nach dem Laden aussortiert und blieb damit
+dauerhaft in der Auswahl — als älteste Einträge belegten seine Buchungen das
+ganze Fenster, und kein anderer Betrieb bekam noch eine Anfrage.
+
+**Eine Erinnerung folgte der Bestätigung auf dem Fuss.** Wer kurzfristig bucht,
+liegt sofort innerhalb der Vorwarnzeit — die Erinnerung ging dann fünfzehn
+Minuten nach der Buchungsbestätigung raus. Dasselbe bei der Zahlungserinnerung,
+wenn der Standort die Bestätigung der E-Mail-Adresse verlangt: Gerechnet wurde
+ab dem Buchungszeitpunkt statt ab der Aufforderung, und die Halbzeit lag damit
+bereits in der Vergangenheit.
+
+**Ein Webhook-Ziel wurde nach vier Ereignissen abgeschaltet statt nach zwanzig.**
+Gezählt wurde jeder einzelne Zustellversuch. Ein Empfänger, der einen halben
+Abend nicht erreichbar ist, verschwand damit stillschweigend — und nichts
+schaltete ihn wieder ein.
+
+**Ein Webhook aus der Wartelisten-Annahme ging nie raus.** Der Auftrag lag in
+der Warteschlange, bevor die Daten geschrieben waren; der Bearbeiter fand nichts
+und kehrte still zurück. Kein Fehler, keine Wiederholung. Das gilt jetzt für
+alle Webhooks, unabhängig vom Aufrufer.
+
+**Ein ausgefallener Kampagnenlauf verlor seine Empfänger endgültig.** Geburtstage
+und Wiederbuchungen arbeiteten auf einem Fenster von genau einem Tag, das mit dem
+Ausführungstag weiterwanderte. Ein Lauf holt jetzt drei Tage nach, ohne jemandem
+zweimal zu schreiben.
+
+**Die Warnung vor Ablauf der Testphase übersprang Betriebe.** Ab mehr als tausend
+gleichzeitig betroffenen wurde jede zweite Seite ausgelassen.
+
+### Weiteres aus derselben Prüfung
+**Ein Salontermin am Telefon entstand stillschweigend ohne Mitarbeiterin**, wenn
+zum gewünschten Zeitpunkt niemand frei war. Er tauchte in keinem Kalender auf und
+wurde von niemandem bedient, während die Oberfläche „angelegt" meldete.
+
+**„Tisch teilen" rechnete kommende Reservierungen nicht mit.** Die Anzeige meldete
+freie Plätze an einem Tisch, an dem in zwanzig Minuten eine bestätigte Buchung
+beginnt — der reservierte Gast stand dann vor einem belegten Tisch.
+
+**Nach einer manuellen Bestätigung blieb die Anzahlungsforderung stehen.**
+Bestätigt der Betrieb telefonisch und erlässt die Anzahlung oder kassiert bar,
+sah der Gast in seiner Ansicht weiter „Jetzt bezahlen" — und das Geld musste
+danach wieder zurück.
+
+**Ein Fehlklick beim Einchecken liess sich nicht zurücknehmen.** Der einzige
+Ausweg war „Abgeschlossen", und der trägt einen Besuch in ein Gastprofil ein,
+dessen Gast nie da war. Zurück auf „Bestätigt" oder „Abgesagt" geht jetzt, und
+der Check-in-Zeitstempel fällt dabei weg.
+
+**Manuell gewählte Tische ignorierten die Wende- und Reinigungszeit** — auch beim
+Verschieben im Tischplan.
+
+**Zwei überlappende Buchungen an der 06:00-Grenze liefen aneinander vorbei.** Die
+Sperre hängt am Betriebstag; eine Buchung um 05:30 und eine um 06:00 bekamen
+verschiedene Schlüssel und konnten denselben Tisch belegen.
+
+**Ein Wartelistenangebot hielt den Platz nicht.** Zwei Gästen liess sich dasselbe
+Fenster anbieten — beide bekamen „Ein Tisch ist frei geworden", nur der schnellere
+bekam einen. Ein überschneidendes Angebot wird jetzt abgelehnt, und Fehlschläge
+zeigt die Oberfläche an, statt in eine Fehlerseite zu laufen.
+
+**Event-Erstattungen liefen immer sofort raus**, auch bei einem Betrieb, der
+Erstattungen bewusst gebündelt fahren lässt.
+
+**Die Webhook-Schnittstelle prüfte das Tarifmerkmal nicht.** Der gleichwertige Weg
+über die Verwaltung tat es seit jeher.
+
+**Die Selbstfreischaltung nach Ablauf der Testphase gilt jetzt befristet.** Ein
+Klick auf den eigenen Bestätigungslink hob die Sperre bisher dauerhaft auf, ohne
+dass irgendwo eine Zahlung hinterlegt oder auch nur erwartet war. Der Zugang
+bleibt 21 Tage offen; endgültig freigeschaltet wird er wie bisher durch den
+Plattformbetreiber, der dabei auch den Tarif umstellt.
+
+**Eine Migration verwies auf eine Spalte, die erst danach entsteht.** Auf einer
+frischen Installation mit MySQL wäre der Start damit in einer Neustartschleife
+geendet.
+
 ## [1.122.0] – 2026-08-23
 
 ### Die Verwaltungsseite war kaputt

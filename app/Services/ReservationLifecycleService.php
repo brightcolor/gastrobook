@@ -344,12 +344,27 @@ class ReservationLifecycleService
                 default => null,
             };
 
+            // Zurueck aus 'seated': Der Check-in war ein Fehlklick, also faellt
+            // auch der Zeitstempel wieder weg - sonst steht die Buchung
+            // dauerhaft als "war da" im Verlauf.
+            if ($from === ReservationStatus::Seated && $to !== ReservationStatus::Completed) {
+                $updates['seated_at'] = null;
+            }
+
             // When an admin manually confirms a reservation that previously
             // failed payment (e.g. waived fee, collected offline), clear the
             // failed payment status so the record isn't perpetually misleading.
+            //
+            // 'required' gehoert genauso dazu: Bestaetigt der Betrieb
+            // telefonisch und erlaesst die Anzahlung oder kassiert bar, blieb
+            // die Forderung sonst stehen - der Gast sah in seiner Ansicht
+            // weiter "Jetzt bezahlen" und konnte Geld ueberweisen, das der
+            // Betrieb danach wieder zurueckbuchen muss. 'pending' bleibt
+            // unangetastet: Dort laeuft gerade ein Vorgang.
             if ($to === ReservationStatus::Confirmed
-                && $reservation->payment_status === 'failed') {
+                && in_array($reservation->payment_status, ['failed', 'required'], true)) {
                 $updates['payment_status'] = 'not_required';
+                $updates['payment_due_at'] = null;
             }
 
             $reservation->update($updates);
@@ -450,10 +465,15 @@ class ReservationLifecycleService
         [$old, $conflicts] = DB::transaction(function () use ($reservation, $location, $tableIds, $allowConflict, $actor) {
             $this->lockSlot($location, CarbonImmutable::parse($reservation->localStart()));
 
+            // Mit Pufferzeit, wie die automatische Zuteilung. Ohne sie stossen
+            // zwei Buchungen auf die Minute aneinander, waehrend die Automatik
+            // denselben Tisch gesperrt haette - der Tisch ist beim Eintreffen
+            // des zweiten Gastes noch nicht abgeraeumt.
+            $puffer = (int) $location->effectiveSettings()->buffer_minutes;
             $busy = $this->tableAssignment->busyTableIds(
                 $location,
-                CarbonImmutable::parse($reservation->start_at),
-                CarbonImmutable::parse($reservation->end_at),
+                CarbonImmutable::parse($reservation->start_at)->subMinutes($puffer),
+                CarbonImmutable::parse($reservation->end_at)->addMinutes($puffer),
                 $reservation->id
             );
 
@@ -858,9 +878,21 @@ class ReservationLifecycleService
             return;
         }
 
-        $betriebstag = $startLocal->hour < 6 ? $startLocal->subDay() : $startLocal;
-        $lockKey = crc32("swayy_booking_{$location->id}_{$betriebstag->toDateString()}");
-        DB::statement('SELECT pg_advisory_xact_lock(?)', [$lockKey]);
+        // BEIDE moeglichen Betriebstage, in fester Reihenfolge - sonst faellt
+        // die Serialisierung an der 06:00-Grenze auseinander: Eine Buchung um
+        // 05:30 laeuft unter dem Schluessel des Vortags, eine um 06:00 unter
+        // dem des laufenden Tags. Bei zwei Stunden Dauer ueberlappen die
+        // beiden, halten sich aber gegenseitig nicht auf. Die feste Reihenfolge
+        // (frueherer Tag zuerst) verhindert, dass zwei Anfragen sich
+        // gegenseitig blockieren.
+        $tage = [$startLocal->subDay()->toDateString(), $startLocal->toDateString()];
+        sort($tage);
+
+        foreach ($tage as $tag) {
+            DB::statement('SELECT pg_advisory_xact_lock(?)', [
+                crc32("swayy_booking_{$location->id}_{$tag}"),
+            ]);
+        }
     }
 
     public function sendGuestMail(Reservation $reservation, string $templateKey, array $extra = []): void

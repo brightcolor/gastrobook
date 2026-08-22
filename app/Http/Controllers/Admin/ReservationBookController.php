@@ -425,6 +425,17 @@ class ReservationBookController extends Controller
                     }
                 } else {
                     $staff = $this->salonAvailability->firstAvailableStaffForServices($services, $startLocal->utc(), $location);
+
+                    // Findet sich niemand, gilt dasselbe wie bei ausdruecklicher
+                    // Wahl: abbrechen. Vorher wanderte das null unbeanstandet
+                    // durch - der Termin entstand ohne Zuordnung, tauchte in
+                    // keinem Mitarbeiterkalender auf und wurde von niemandem
+                    // bedient, waehrend die Oberflaeche "angelegt" meldete.
+                    if ($staff === null && ! $force) {
+                        return back()->withErrors([
+                            'staff_member_id' => __('Zu diesem Zeitpunkt ist niemand verfügbar. Bitte eine andere Zeit wählen oder eine Person ausdrücklich zuweisen.'),
+                        ])->withInput();
+                    }
                 }
 
                 $salon = [

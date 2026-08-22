@@ -80,6 +80,27 @@ class WaitlistService
             ->where('status', 'open')
             ->update(['status' => 'superseded']);
 
+        // Kein zweites Angebot auf dasselbe Fenster. Der Platz wird durch ein
+        // Angebot nicht gehalten - wer zweiter klickt, bekaeme statt eines
+        // Tisches eine Fehlermeldung, obwohl ihm per Mail ausdruecklich "Ein
+        // Tisch ist frei geworden" zugesagt wurde.
+        $konkurrenz = WaitlistOffer::withoutGlobalScopes()
+            ->where('status', 'open')
+            ->where('offer_expires_at', '>', now())
+            ->where('waitlist_entry_id', '!=', $entry->id)
+            ->whereIn('waitlist_entry_id', WaitlistEntry::withoutGlobalScopes()
+                ->where('location_id', $entry->location_id)
+                ->select('id'))
+            ->where('offered_start_at', '<', $endUtc)
+            ->where('offered_end_at', '>', $startUtc)
+            ->exists();
+
+        if ($konkurrenz) {
+            throw ValidationException::withMessages([
+                'time' => __('Für diesen Zeitraum liegt bereits ein offenes Angebot bei einem anderen Gast.'),
+            ]);
+        }
+
         $offer = WaitlistOffer::create([
             'tenant_id' => $entry->tenant_id,
             'waitlist_entry_id' => $entry->id,

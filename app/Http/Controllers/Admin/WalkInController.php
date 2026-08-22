@@ -85,9 +85,16 @@ class WalkInController extends Controller
         // the remaining capacity.
         if ($shared) {
             $nowUtc = $nowLocal->utc();
+            // Das gesamte geplante Fenster des Walk-ins, nicht nur der
+            // Augenblick: Eine bestaetigte Reservierung, die in zwanzig
+            // Minuten an diesem Tisch beginnt, ging vorher nicht in die
+            // Rechnung ein. Die Meldung "nur noch n Plaetze frei" war dann
+            // schlicht falsch, und der reservierte Gast stand vor einem
+            // belegten Tisch.
+            $endeUtc = $nowUtc->addMinutes($location->effectiveSettings()->durationFor((int) $validated['party_size']));
             $occupied = (int) $location->reservations()
                 ->whereIn('status', ReservationStatus::activeStatuses())
-                ->where('start_at', '<=', $nowUtc)
+                ->where('start_at', '<', $endeUtc)
                 ->where('end_at', '>', $nowUtc)
                 ->whereHas('tables', fn ($q) => $q->where('restaurant_tables.id', $table->id))
                 ->sum('party_size');

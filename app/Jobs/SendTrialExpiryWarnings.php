@@ -32,7 +32,24 @@ class SendTrialExpiryWarnings implements ShouldQueue
             ->whereBetween('trial_ends_at', [now()->addDays(4), now()->addDays(6)])
             ->whereNull('trial_warning_sent_at')
             ->with(['users' => fn ($q) => $q->wherePivot('role', 'tenant_owner')])
+            // lazyById statt each(): each() blaettert per LIMIT/OFFSET, und die
+            // Schleife nimmt jeden verarbeiteten Mandanten aus der
+            // Ergebnismenge. Die zweite Seite haette damit genau so viele
+            // uebersprungen, wie gerade abgearbeitet wurden - deren Inhaber
+            // bekaemen nie eine Warnung vor Ablauf der Testphase.
+            ->lazyById(200)
             ->each(function (Tenant $tenant) use ($ownerEmail): void {
+                // Erst beanspruchen, dann versenden - ein Abbruch dazwischen
+                // schickte die Warnung sonst beim naechsten Lauf erneut.
+                $beansprucht = Tenant::query()
+                    ->whereKey($tenant->id)
+                    ->whereNull('trial_warning_sent_at')
+                    ->update(['trial_warning_sent_at' => now()]);
+
+                if ($beansprucht === 0) {
+                    return;
+                }
+
                 // Send to each owner of this tenant
                 foreach ($tenant->users as $owner) {
                     Mail::to($owner->email, $owner->name)
@@ -44,8 +61,6 @@ class SendTrialExpiryWarnings implements ShouldQueue
                     Mail::to($ownerEmail)
                         ->queue(new TrialExpiryWarningMail($tenant, 'Admin'));
                 }
-
-                $tenant->update(['trial_warning_sent_at' => now()]);
             });
     }
 }

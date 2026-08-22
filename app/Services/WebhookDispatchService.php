@@ -37,7 +37,14 @@ class WebhookDispatchService
                 'status' => 'pending',
             ]);
 
-            DeliverWebhook::dispatch($delivery->id);
+            // afterCommit hier, nicht beim Aufrufer: Die Queue steht in
+            // Produktion auf Redis mit after_commit=false. Wird dieser Dienst
+            // aus einer offenen Transaktion gerufen, liegt der Job schon in
+            // Redis, waehrend die Zeile noch nicht committet ist - der Worker
+            // laeuft in einem eigenen Container, findet sie nicht und kehrt
+            // still zurueck. Kein Fehler, keine Wiederholung, der Webhook geht
+            // nie raus. So ist die Stelle unabhaengig vom Aufrufer sicher.
+            DeliverWebhook::dispatch($delivery->id)->afterCommit();
         }
     }
 }

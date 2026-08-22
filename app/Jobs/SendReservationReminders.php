@@ -21,6 +21,11 @@ class SendReservationReminders implements ShouldQueue
     /** Obergrenze aus SettingsController: reminder_hours_before => max:168. */
     private const MAX_LEAD_HOURS = 168;
 
+    /**
+     * Mindestabstand zwischen Buchung und Erinnerung.
+     */
+    private const MIN_GAP_MINUTES = 60;
+
     public function handle(ReservationLifecycleService $lifecycle, SmsManager $sms): void
     {
         $reservations = Reservation::withoutGlobalScopes()
@@ -36,15 +41,38 @@ class SendReservationReminders implements ShouldQueue
             ->filter(function (Reservation $r) {
                 $settings = $r->location?->effectiveSettings();
 
-                return $settings
-                    && $settings->reminder_enabled
-                    && now()->gte($r->start_at->copy()->subHours($settings->reminder_hours_before));
+                if (! $settings || ! $settings->reminder_enabled) {
+                    return false;
+                }
+
+                // Mindestabstand zur Buchungsbestaetigung. Wer kurzfristig
+                // bucht, liegt sofort innerhalb der Vorwarnzeit - die
+                // Erinnerung ging dann fuenfzehn Minuten nach der Bestaetigung
+                // raus und liest sich wie ein Fehler.
+                if ($r->created_at->copy()->addMinutes(self::MIN_GAP_MINUTES)->isFuture()) {
+                    return false;
+                }
+
+                return now()->gte($r->start_at->copy()->subHours($settings->reminder_hours_before));
             });
 
         // Cache one SMS provider per tenant to avoid repeated credential decryption
         $smsProviders = [];
 
         foreach ($reservations as $reservation) {
+            // Erst beanspruchen, dann versenden. Stirbt der Lauf zwischen SMS
+            // und Ausbuchen - der Worker schiesst nach 60 Sekunden ab -, bekam
+            // der Gast beim naechsten Zustellversuch Mail UND SMS erneut, und
+            // die SMS kostet den Betrieb bei jedem Versand echtes Geld.
+            $beansprucht = Reservation::withoutGlobalScopes()
+                ->whereKey($reservation->id)
+                ->whereNull('reminder_sent_at')
+                ->update(['reminder_sent_at' => now()]);
+
+            if ($beansprucht === 0) {
+                continue;
+            }
+
             $settings = $reservation->location->effectiveSettings();
 
             // Mail reminder
@@ -65,8 +93,6 @@ class SendReservationReminders implements ShouldQueue
                     }
                 }
             }
-
-            $reservation->update(['reminder_sent_at' => now()]);
         }
     }
 

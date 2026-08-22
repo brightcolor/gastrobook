@@ -19,6 +19,12 @@ use Illuminate\View\View;
 
 class BillingRequestController extends Controller
 {
+    /**
+     * Wie lange ein bestaetigter Abrechnungsantrag den Zugang offen haelt,
+     * bis der Plattformbetreiber ihn endgueltig freischaltet.
+     */
+    private const GRACE_DAYS = 21;
+
     public function __construct(
         private readonly TenantContext $context,
         private readonly AuditLogger $audit,
@@ -95,8 +101,17 @@ class BillingRequestController extends Controller
 
         $billingRequest->update(['confirmed_at' => now()]);
 
-        // Immediately reactivate — billing is settled manually outside the app
-        $billingRequest->tenant->update(['status' => 'active', 'trial_ends_at' => null]);
+        // Sofort wieder freischalten, aber BEFRISTET. Die Abrechnung laeuft von
+        // Hand ausserhalb der Anwendung; endgueltig freigeschaltet wird der
+        // Betrieb erst in activate() durch den Plattformbetreiber, der dabei
+        // auch den Tarif umstellt. Vorher setzte dieser Klick trial_ends_at auf
+        // null - ein beliebiges Mitglied konnte sich damit ueber eine selbst
+        // angegebene Mailadresse unbefristet freischalten, ohne dass irgendwo
+        // eine Zahlung hinterlegt oder auch nur erwartet war.
+        $billingRequest->tenant->update([
+            'status' => 'active',
+            'trial_ends_at' => now()->addDays(self::GRACE_DAYS),
+        ]);
 
         // Notify owner
         $ownerEmail = config('swayy.owner_email');

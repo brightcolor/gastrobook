@@ -109,8 +109,20 @@ class DeliverWebhook implements ShouldQueue
         return mb_substr($clean, 0, 2000, 'UTF-8');
     }
 
+    /**
+     * Gezaehlt werden gescheiterte EREIGNISSE, nicht Versuche.
+     *
+     * Vorher zaehlte jeder einzelne Versuch mit. Bei fuenf Versuchen je
+     * Ereignis war die Abschaltschwelle von 20 damit nach vier Ereignissen
+     * erreicht - ein Endpunkt, der einen halben Abend nicht erreichbar ist,
+     * wurde stillschweigend abgeschaltet, und nichts schaltete ihn wieder ein.
+     */
     private function registerFailure($endpoint): void
     {
+        if ($this->attempts() < $this->tries) {
+            return;
+        }
+
         $endpoint->increment('failure_count');
         if ($endpoint->failure_count >= self::DISABLE_AFTER_FAILURES) {
             $endpoint->update(['is_active' => false, 'disabled_at' => now()]);

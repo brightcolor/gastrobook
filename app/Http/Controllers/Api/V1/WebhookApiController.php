@@ -21,7 +21,7 @@ class WebhookApiController extends Controller
 
     public function index(Request $request)
     {
-        abort_unless($request->user()->tokenCan('webhooks:manage'), 403);
+        $this->authorizeWebhooks($request);
 
         return response()->json(['data' => WebhookEndpoint::all()->map(fn ($e) => [
             'id' => $e->id, 'url' => $e->url, 'events' => $e->events,
@@ -31,7 +31,7 @@ class WebhookApiController extends Controller
 
     public function store(Request $request)
     {
-        abort_unless($request->user()->tokenCan('webhooks:manage'), 403);
+        $this->authorizeWebhooks($request);
 
         $validated = $request->validate([
             'url' => [
@@ -69,7 +69,7 @@ class WebhookApiController extends Controller
 
     public function destroy(Request $request, WebhookEndpoint $endpoint)
     {
-        abort_unless($request->user()->tokenCan('webhooks:manage'), 403);
+        $this->authorizeWebhooks($request);
 
         // Siehe GuestApiController::show – das Binding passiert vor
         // ResolveApiTenant, der globale Scope greift hier also nicht.
@@ -79,5 +79,20 @@ class WebhookApiController extends Controller
         $endpoint->delete();
 
         return response()->json([], 204);
+    }
+
+    /**
+     * Umfang UND Tarifmerkmal.
+     *
+     * Der gleichwertige Weg ueber die Verwaltung prueft webhooks_enabled seit
+     * jeher; hier fehlte es. Ein Betrieb, dem das Merkmal abgeschaltet wurde,
+     * konnte ueber die Schnittstelle weiter Endpunkte anlegen - ausgeliefert
+     * wurde danach nichts, die Oberflaeche zeigte aber Endpunkte, die nie
+     * zustellen.
+     */
+    private function authorizeWebhooks(Request $request): void
+    {
+        abort_unless($request->user()->tokenCan('webhooks:manage'), 403);
+        abort_unless($this->context->tenant()?->hasFeature('webhooks_enabled'), 403, 'Webhooks sind in diesem Tarif nicht enthalten.');
     }
 }

@@ -6,8 +6,11 @@ namespace App\Jobs;
 
 use App\Enums\ReservationStatus;
 use App\Models\DepositRule;
+use App\Models\NotificationLog;
 use App\Models\Reservation;
 use App\Services\ReservationLifecycleService;
+use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -91,10 +94,18 @@ class ExpireUnpaidReservations implements ShouldQueue
             ->get();
 
         foreach ($offen as $reservation) {
+            // Bezugsgroesse ist der Zeitpunkt der AUFFORDERUNG, nicht der der
+            // Buchung. Verlangt der Standort die Bestaetigung der Adresse,
+            // startet die Frist erst mit dem Klick - der kann Stunden spaeter
+            // kommen. Aus created_at gerechnet lag die Halbzeit dann schon in
+            // der Vergangenheit, und die Erinnerung ging der Aufforderung
+            // fuenf Minuten hinterher.
+            $aufgefordert = $this->requestedAt($reservation) ?? $reservation->created_at;
+
             // Die Frist DIESER Buchung, nicht die der Regel von heute: Wer die
             // Regel zwischenzeitlich von 60 auf 15 Minuten stellt, würde sonst
             // rückwirkend die Halbzeit aller offenen Buchungen verschieben.
-            $frist = (int) $reservation->created_at->diffInMinutes($reservation->payment_due_at);
+            $frist = (int) $aufgefordert->diffInMinutes($reservation->payment_due_at);
             $halbzeit = $reservation->payment_due_at->copy()->subMinutes(intdiv(max($frist, 2), 2));
 
             if ($halbzeit->isFuture()) {
@@ -104,12 +115,29 @@ class ExpireUnpaidReservations implements ShouldQueue
             // Bei sehr kurzen Fristen läge die Halbzeit fast auf der
             // Buchungsmail. Eine Erinnerung, die der Aufforderung auf dem Fuß
             // folgt, liest sich wie ein Fehler.
-            if ($reservation->created_at->addMinutes(self::MIN_REMINDER_GAP_MINUTES)->isFuture()) {
+            if ($aufgefordert->copy()->addMinutes(self::MIN_REMINDER_GAP_MINUTES)->isFuture()) {
                 continue;
             }
 
             $lifecycle->sendGuestMail($reservation, 'payment_reminder');
         }
+    }
+
+    /**
+     * Wann die Zahlungsaufforderung rausging.
+     *
+     * Steht als Zeitstempel im Versandprotokoll - dieselbe Zeile, auf deren
+     * Vorhandensein die Abfrage oben ohnehin schon prueft.
+     */
+    private function requestedAt(Reservation $reservation): ?CarbonInterface
+    {
+        $wert = NotificationLog::withoutGlobalScopes()
+            ->where('reservation_id', $reservation->id)
+            ->where('template_key', 'payment_pending')
+            ->orderByDesc('id')
+            ->value('created_at');
+
+        return $wert === null ? null : CarbonImmutable::parse($wert);
     }
 
     /**

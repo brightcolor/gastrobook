@@ -86,6 +86,13 @@ class DepositLifecycleTest extends TestCase
             'payment_due_at' => $gebucht->copy()->addMinutes($fristMinuten),
         ])->saveQuietly();
 
+        // Die Zahlungsaufforderung ging beim Anlegen raus - ihr Zeitstempel ist
+        // die Bezugsgroesse fuer die Halbzeit und muss mitaltern.
+        NotificationLog::withoutGlobalScopes()
+            ->where('reservation_id', $reservation->id)
+            ->where('template_key', 'payment_pending')
+            ->update(['created_at' => $gebucht]);
+
         $reservation->refresh();
     }
 

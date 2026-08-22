@@ -53,7 +53,12 @@ enum ReservationStatus: string
             self::PaymentFailed->value => [self::PaymentPending->value, self::Confirmed->value, self::CancelledByRestaurant->value, self::Expired->value],
             self::Confirmed->value => [self::Seated->value, self::PartiallyArrived->value, self::CancelledByGuest->value, self::CancelledByRestaurant->value, self::NoShow->value, self::Completed->value],
             self::PartiallyArrived->value => [self::Seated->value, self::Completed->value, self::NoShow->value],
-            self::Seated->value => [self::Completed->value],
+            // Korrekturwege aus 'seated', analog zu NoShow -> Completed: Wer
+            // im Buch die falsche Zeile ancheckt, muss das zuruecknehmen
+            // koennen. Der einzige bisherige Ausweg 'completed' traegt einen
+            // Besuch ins Gastprofil ein, dessen Gast nie da war - damit rechnet
+            // die Stammgast-Erkennung weiter.
+            self::Seated->value => [self::Completed->value, self::Confirmed->value, self::CancelledByRestaurant->value],
             self::Waitlisted->value => [self::WaitlistOffered->value, self::Confirmed->value, self::CancelledByGuest->value, self::Expired->value],
             self::WaitlistOffered->value => [self::Confirmed->value, self::Waitlisted->value, self::CancelledByGuest->value, self::Expired->value],
             self::Completed->value => [],

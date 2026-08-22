@@ -8,6 +8,7 @@ use App\Services\WaitlistService;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class WaitlistAdminController extends Controller
 {
@@ -76,13 +77,17 @@ class WaitlistAdminController extends Controller
         $startLocal = CarbonImmutable::parse($entry->desired_date->toDateString().' '.$validated['time'], $location->timezone);
         $duration = $location->effectiveSettings()->durationFor($entry->party_size);
 
-        $this->waitlist->offer(
-            $entry,
-            $startLocal->utc(),
-            $startLocal->utc()->addMinutes($duration),
-            $request->user(),
-            (int) ($validated['valid_minutes'] ?? 60)
-        );
+        try {
+            $this->waitlist->offer(
+                $entry,
+                $startLocal->utc(),
+                $startLocal->utc()->addMinutes($duration),
+                $request->user(),
+                (int) ($validated['valid_minutes'] ?? 60)
+            );
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
 
         return back()->with('success', __('Angebot versendet.'));
     }
@@ -92,13 +97,20 @@ class WaitlistAdminController extends Controller
         $location = $this->context->location();
         abort_if($entry->location_id !== $location?->id, 404);
 
-        $offer = $entry->offers()->where('status', 'open')->latest()->first();
-        if ($offer === null) {
-            $duration = $location->effectiveSettings()->durationFor($entry->party_size);
-            $offer = $this->waitlist->offer($entry, now()->toImmutable(), now()->toImmutable()->addMinutes($duration), $request->user(), 15);
-        }
+        // Beide Aufrufe koennen scheitern - ein ueberschneidendes Angebot, ein
+        // inzwischen belegter Tisch. Ohne diesen Zweig bekaeme das Personal
+        // eine Fehlerseite statt einer Meldung.
+        try {
+            $offer = $entry->offers()->where('status', 'open')->latest()->first();
+            if ($offer === null) {
+                $duration = $location->effectiveSettings()->durationFor($entry->party_size);
+                $offer = $this->waitlist->offer($entry, now()->toImmutable(), now()->toImmutable()->addMinutes($duration), $request->user(), 15);
+            }
 
-        $reservation = $this->waitlist->acceptOffer($offer);
+            $reservation = $this->waitlist->acceptOffer($offer);
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
 
         return redirect()->route('admin.reservations.show', $reservation)
             ->with('success', __('Gast von der Warteliste übernommen.'));
