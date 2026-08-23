@@ -48,6 +48,18 @@ class SecurityHeaders
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin', false);
         $response->headers->set('Permissions-Policy', 'geolocation=(), microphone=(), camera=()', false);
 
+        // Nur ueber HTTPS, und nur dann sinnvoll: Der Browser merkt sich die
+        // Vorgabe fuer diese Adresse. Ueber eine unverschluesselte Verbindung
+        // gesendet, ignoriert er sie ohnehin - und eine oertliche Installation
+        // laeuft oft bewusst ohne TLS.
+        //
+        // Ohne Subdomains und ohne preload: Beides ist eine Einbahnstrasse,
+        // die auch Nachbarn dieser Domain betrifft. Das gehoert entschieden,
+        // nicht mitgeliefert.
+        if ($request->isSecure()) {
+            $response->headers->set('Strict-Transport-Security', 'max-age=31536000', false);
+        }
+
         if ($this->isEmbeddable($request)) {
             // Ausdruecklich offen. Ohne diese Zeile setzt kein Header die
             // Einbettung frei - sie ist die Erlaubnis, nicht ihr Fehlen.

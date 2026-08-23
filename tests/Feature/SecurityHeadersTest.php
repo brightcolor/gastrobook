@@ -86,6 +86,21 @@ class SecurityHeadersTest extends TestCase
     }
 
     /**
+     * HSTS nur ueber HTTPS. Ueber eine unverschluesselte Verbindung ignoriert
+     * der Browser die Vorgabe ohnehin - und eine oertliche Installation laeuft
+     * oft bewusst ohne TLS.
+     */
+    public function test_hsts_is_sent_over_https_only(): void
+    {
+        $this->get('http://localhost/')
+            ->assertOk()
+            ->assertHeaderMissing('Strict-Transport-Security');
+
+        $antwort = $this->get('https://localhost/')->assertOk();
+        $this->assertSame('max-age=31536000', $antwort->headers->get('Strict-Transport-Security'));
+    }
+
+    /**
      * Der Wächter gegen DNS-Rebinding liefert jetzt die geprueften Adressen
      * mit, damit der Aufruf sie festnageln kann. Ohne diesen Ausdruck loest
      * curl den Namen selbst noch einmal auf.

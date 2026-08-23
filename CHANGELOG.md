@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.127.1] – 2026-08-23
+
+Die Anwendung verlangt jetzt selbst HTTPS für ein Jahr im Voraus (nur über eine
+verschlüsselte Verbindung gesendet, ohne Subdomains und ohne Voreintrag – beides
+ist eine Einbahnstrasse und gehört entschieden, nicht mitgeliefert). Damit
+braucht es dafür keinen Eintrag mehr im vorgelagerten Webserver.
+
 ## [1.127.0] – 2026-08-23
 
 ### Sicherheitsprüfung: Schutz gehört in die Anwendung
