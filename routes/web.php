@@ -122,7 +122,11 @@ Route::get('/konto/verify/{token}', [GuestPortalController::class, 'verify'])->n
 Route::get('/konto/{tenantSlug}', [GuestPortalController::class, 'request'])->name('guest.portal.request');
 Route::post('/konto/{tenantSlug}', [GuestPortalController::class, 'sendLink'])
     ->middleware('throttle:5,10')->name('guest.portal.link');
-Route::get('/konto/{tenantSlug}/login/{token}', [GuestPortalController::class, 'login'])->name('guest.portal.login');
+// Gedrosselt wie jeder andere Anmeldeweg: Der Schluessel ist zwar 48 Zeichen
+// lang und praktisch nicht zu raten, aber er war der einzige Zugang ohne
+// zweite Ebene - und der Nachbarpfad daneben hat sie.
+Route::get('/konto/{tenantSlug}/login/{token}', [GuestPortalController::class, 'login'])
+    ->middleware('throttle:booking-slots')->name('guest.portal.login');
 Route::get('/konto/{tenantSlug}/start', [GuestPortalController::class, 'dashboard'])->name('guest.portal.dashboard');
 Route::post('/konto/{tenantSlug}/logout', [GuestPortalController::class, 'logout'])->name('guest.portal.logout');
 

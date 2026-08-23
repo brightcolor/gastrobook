@@ -89,11 +89,15 @@ class AccountController extends Controller
         );
 
         $request->validate([
-            'file' => ['required', 'file', 'mimetypes:application/json,text/plain', 'max:51200'],
+            // 20 MB, weil PHP und beide nginx genau so viel durchlassen
+            // (docker/php.ini). Die frueheren 50 MB waren eine Zusage, die
+            // keine Schicht darunter eingehalten haette: Alles ueber 2 MB
+            // verschwand vorher, ohne dass diese Meldung je erschien.
+            'file' => ['required', 'file', 'mimetypes:application/json,text/plain', 'max:20480'],
             'confirm' => ['required', 'accepted'],
         ], [
             'confirm.accepted' => 'Bitte bestätige, dass die Daten zum aktuellen Betrieb hinzugefügt werden.',
-            'file.max' => 'Die Datei ist zu groß (max. 50 MB).',
+            'file.max' => 'Die Datei ist zu groß (max. 20 MB).',
         ]);
 
         $decoded = json_decode((string) file_get_contents($request->file('file')->getRealPath()), true);

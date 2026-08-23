@@ -38,10 +38,11 @@ class DeliverWebhook implements ShouldQueue
             return;
         }
 
-        // SSRF guard: re-check at delivery time (defeats DNS-rebinding) that the
-        // target resolves to a public address. Disable the endpoint so we don't
-        // keep retrying a forbidden target.
-        if (! OutboundUrlGuard::isAllowed($endpoint->url)) {
+        // SSRF guard: re-check at delivery time that the target resolves to a
+        // public address. Disable the endpoint so we don't keep retrying a
+        // forbidden target.
+        $ips = OutboundUrlGuard::publicIpsFor($endpoint->url);
+        if ($ips === null) {
             $delivery->update(['status' => 'failed', 'response_body' => 'blocked: non-public URL']);
             $endpoint->update(['is_active' => false, 'disabled_at' => now()]);
 
@@ -52,8 +53,16 @@ class DeliverWebhook implements ShouldQueue
         $signature = hash_hmac('sha256', $body, $endpoint->secret);
 
         try {
+            // Die Anfrage auf die eben geprueften Adressen festnageln. Ohne das
+            // loest curl den Namen selbst noch einmal auf - und eine Domain mit
+            // kurzer Lebensdauer kann zwischen Pruefung und Aufruf auf eine
+            // interne Adresse umschwenken. Die Pruefung darueber traefe dann
+            // eine andere Adresse als die Anfrage.
+            $pin = OutboundUrlGuard::resolveOption($endpoint->url, $ips);
+
             $response = Http::timeout(10)
                 ->withoutRedirecting()
+                ->when($pin !== [], fn ($client) => $client->withOptions(['curl' => [CURLOPT_RESOLVE => $pin]]))
                 ->withHeaders([
                     'Content-Type' => 'application/json',
                     'X-Gastrobook-Event' => $delivery->event,

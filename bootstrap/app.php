@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsureTrialActive;
 use App\Http\Middleware\RequirePermission;
 use App\Http\Middleware\RequireValidLicense;
 use App\Http\Middleware\ResolveTenantContext;
+use App\Http\Middleware\SecurityHeaders;
 use App\Support\TrustedHosts;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -26,6 +27,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'license' => RequireValidLicense::class,
             'trial' => EnsureTrialActive::class,
         ]);
+
+        // Sicherheitsheader aus der Anwendung heraus. Auf swayy.de setzt sie
+        // zusaetzlich der vorgelagerte nginx - eine Selbstinstallation nach
+        // README hat den aber nicht und stand bisher ganz ohne Klickschutz da.
+        $middleware->append(SecurityHeaders::class);
 
         // Already-logged-in visitors hitting a "guest" page (e.g. /login) should
         // land in the app, not on the public marketing homepage – otherwise a

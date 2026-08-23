@@ -22,9 +22,25 @@ class OutboundUrlGuard
      */
     public static function isAllowed(string $url): bool
     {
+        return self::publicIpsFor($url) !== null;
+    }
+
+    /**
+     * Die geprueften Adressen - oder null, wenn die URL nicht erlaubt ist.
+     *
+     * Der Aufrufer soll die Anfrage auf GENAU diese Adressen festnageln. Sonst
+     * loest der HTTP-Client den Namen ein zweites Mal auf, und zwischen beiden
+     * Aufloesungen kann eine Angreiferdomain mit kurzer Lebensdauer auf eine
+     * interne Adresse umschwenken (DNS-Rebinding). Die Pruefung hier waere dann
+     * nur noch Zierde.
+     *
+     * @return list<string>|null
+     */
+    public static function publicIpsFor(string $url): ?array
+    {
         $parts = parse_url($url);
         if ($parts === false || ($parts['scheme'] ?? null) !== 'https' || empty($parts['host'])) {
-            return false;
+            return null;
         }
 
         $host = $parts['host'];
@@ -32,21 +48,41 @@ class OutboundUrlGuard
         // Reject URLs that embed credentials – not expected for webhooks and a
         // common confused-deputy trick.
         if (isset($parts['user']) || isset($parts['pass'])) {
-            return false;
+            return null;
         }
 
         $ips = self::resolve($host);
         if ($ips === []) {
-            return false; // unresolvable host → refuse rather than let the HTTP client try
+            return null; // unresolvable host → refuse rather than let the HTTP client try
         }
 
         foreach ($ips as $ip) {
             if (! self::isPublicIp($ip)) {
-                return false;
+                return null;
             }
         }
 
-        return true;
+        return $ips;
+    }
+
+    /**
+     * Der curl-Ausdruck, der Namen auf die geprueften Adressen festnagelt.
+     *
+     * Leer, wenn im Host schon eine IP steht - dann gibt es nichts aufzuloesen.
+     *
+     * @param  list<string>  $ips
+     * @return list<string>
+     */
+    public static function resolveOption(string $url, array $ips): array
+    {
+        $parts = parse_url($url);
+        $host = $parts['host'] ?? '';
+
+        if ($host === '' || $ips === [] || filter_var($host, FILTER_VALIDATE_IP) !== false) {
+            return [];
+        }
+
+        return [$host.':'.($parts['port'] ?? 443).':'.implode(',', $ips)];
     }
 
     /**

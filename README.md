@@ -309,6 +309,9 @@ Funktioniert problemlos – die App vertraut `X-Forwarded-*`-Headern (in `bootst
    Für den Healthcheck des `web`-Containers zusätzlich `SWAYY_HEALTH_HOST` auf denselben Hostnamen setzen (`SWAYY_HEALTH_HOST=buchung.example.com`), sonst prüft er nur, ob nginx überhaupt antwortet.
 2. **Sitzt der Proxy nicht im privaten Netz**, seine Adresse in `TRUSTED_PROXIES` eintragen (Komma-Liste, CIDR erlaubt). Voreingestellt sind Loopback und die privaten Bereiche – damit ist der mitgelieferte nginx abgedeckt, ein externer Load Balancer oder Cloudflare aber nicht. Ohne Eintrag ignoriert die App dessen `X-Forwarded-Proto` und erzeugt `http`-Links.
 3. Der Proxy muss `X-Forwarded-Proto` setzen (Standard bei Traefik/Caddy; bei nginx `proxy_set_header X-Forwarded-Proto $scheme;` etc.). Für das **Live-Board (SSE)** Pufferung aus lassen (nginx: `proxy_buffering off;` für die App, oder den Header `X-Accel-Buffering: no` durchreichen – wird von der App bereits gesetzt).
+4. **Keine pauschalen Frame-Header am Proxy.** Die Anwendung setzt sie selbst und unterscheidet dabei: Adminbereich und alle Seiten mit Zugriffstoken verbieten die Einbettung (`frame-ancestors 'none'`), die öffentlichen Buchungsseiten und die Widget-Skripte erlauben sie ausdrücklich – genau dafür sind sie da. Ein `add_header X-Frame-Options SAMEORIGIN always;` am Proxy legt die Einbett-Widgets (`embed.js`, `popup.js`) bei jedem Kunden still, ohne dass es irgendwo auffällt.
+
+**Uploadgrenzen:** Die Anwendung erlaubt 8 MB je Anhang, 4 MB je Eventbild und 20 MB je Kontoimport; PHP ist im Image passend eingestellt (`docker/php.ini`), der mitgelieferte nginx auf 20 MB. Ein davorliegender Proxy braucht mindestens denselben Wert (nginx: `client_max_body_size 21m;`), sonst scheitern Uploads dort, bevor die Anwendung eine Meldung zeigen kann.
 
 Den Host-Port am besten nur lokal binden und den Proxy davorsetzen, z. B. in der `.env`: `SWAYY_PORT=127.0.0.1:8080` (dann lauscht nur der Proxy nach außen).
 

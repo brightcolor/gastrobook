@@ -36,6 +36,7 @@ COPY docker/entrypoint.sh /entrypoint.sh
 # Eigener FPM-Pool: die Voreinstellung von 5 Prozessen reicht nicht, weil das
 # Live-Board je offenem Bildschirm dauerhaft einen davon belegt.
 COPY docker/www.conf /usr/local/etc/php-fpm.d/zz-swayy.conf
+COPY docker/php.ini /usr/local/etc/php/conf.d/zz-swayy.ini
 
 ENV SWAYY_FPM_MAX_CHILDREN=30
 

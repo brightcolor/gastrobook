@@ -1,5 +1,46 @@
 # Changelog
 
+## [1.127.0] – 2026-08-23
+
+### Sicherheitsprüfung: Schutz gehört in die Anwendung
+
+Eine Prüfung der ganzen Anwendung gegen die üblichen Angriffsklassen. Das
+meiste hat gehalten – Mandantentrennung, SSRF-Schutz beim Webhook-Versand,
+Uploads, Formelinjektion in CSV-Exporten, Escaping in Mails und Widgets,
+Drosselung der Anmeldung. Fünf Punkte sind nachgezogen.
+
+**Der Klickschutz lag ausserhalb der Anwendung – und legte die Einbett-Widgets
+still.** Er kam vom vorgelagerten Webserver, pauschal für alles. Zwei Folgen:
+Wer die Anwendung selbst betreibt, hatte gar keinen – auch nicht im
+Adminbereich, wo Stornierung und Erstattung liegen. Und die Einbett-Skripte
+(`embed.js`, `popup.js`) bauen genau das iframe auf, das derselbe Header
+verbot: Bei jedem Kunden, der sie eingebunden hat, blieb die Fläche leer.
+
+Die Anwendung setzt die Header jetzt selbst und unterscheidet dabei:
+Adminbereich, Anmeldung und alle Seiten mit Zugriffstoken verbieten die
+Einbettung, die öffentlichen Buchungsseiten und die Widget-Skripte erlauben sie
+ausdrücklich.
+
+**Die Uploadgrenzen der Anwendung lagen bis zum Fünfundzwanzigfachen über denen
+des Servers.** Erlaubt waren 8 MB je Anhang, 4 MB je Eventbild und 50 MB je
+Kontoimport – PHP verwarf alles über 2 MB, bevor die Anwendung die Datei
+überhaupt sah. Die Meldung lautete dann „Bitte eine Datei wählen", oberhalb von
+8 MB verschwand der ganze Vorgang samt Sicherheitsmerkmal und die Seite meldete
+eine abgelaufene Sitzung. Alle Schichten stehen jetzt auf demselben Wert; der
+Kontoimport nimmt 20 MB, weil so viel auch wirklich durchgeht.
+
+**Der Schutz gegen umgelenkte Namensauflösung war unvollständig.** Die
+Webhook-Adresse wurde vor dem Versand geprüft, danach löste der Aufruf den
+Namen selbst noch einmal auf – dazwischen kann eine Angreiferdomain auf eine
+interne Adresse umschwenken. Der Aufruf hält jetzt genau die Adressen fest, die
+geprüft wurden.
+
+**Der Anmeldelink für das Gästekonto war der einzige Zugang ohne Drosselung.**
+
+**Und das Sitzungsmerkmal ist jetzt ausdrücklich auf „nur über HTTPS" gesetzt**
+statt es dem Zufall des Anfrageschemas zu überlassen; der Webserver verlangt
+zusätzlich HTTPS für ein Jahr im Voraus.
+
 ## [1.126.0] – 2026-08-23
 
 ### Die Erstattung, die die nächste blockierte
