@@ -139,6 +139,7 @@ details > summary::-webkit-details-marker { display: none; }
                                 <p class="col-span-full text-sm text-stone-400">{{ $du ? 'Wähle' : 'Wählen Sie' }} zuerst eine Leistung.</p>
                             </div>
                             <input type="hidden" name="time" id="salonTimeInput" value="{{ old('time') }}" required>
+                            <input type="hidden" name="slot_date" id="salonSlotDateInput" value="{{ old('slot_date') }}">
                         </div>
                     </div>
                 </div>
@@ -211,7 +212,10 @@ details > summary::-webkit-details-marker { display: none; }
             const staffInput     = document.getElementById('staffMemberId');
             const dateInput      = document.getElementById('salonDate');
             const timeInput      = document.getElementById('salonTimeInput');
+            const slotDateInput  = document.getElementById('salonSlotDateInput');
             const slotContainer  = document.getElementById('salonSlotContainer');
+            // Kalendertag je Uhrzeit - siehe makeSalonSlot().
+            let salonSlotDates   = {};
             const staffButtons   = document.getElementById('staffButtons');
             const serviceInputs  = document.getElementById('serviceInputs');
             const summaryBox     = document.getElementById('serviceSummary');
@@ -334,7 +338,12 @@ details > summary::-webkit-details-marker { display: none; }
                     document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('border-brand', 'bg-brand', 'text-white'));
                     btn.classList.add('border-brand', 'bg-brand', 'text-white');
                     timeInput.value = time;
-                    ss2Summary.textContent = fmtDate(dateInput.value) + ' · ' + time + ' Uhr';
+                    // Wie im Restaurantpfad: Der Kalendertag des Slots, nicht
+                    // der ausgewaehlte Tag. Bei Arbeitszeiten ueber Mitternacht
+                    // gehoert 00:30 zum naechsten Kalendertag.
+                    const echterTag = salonSlotDates[time] || dateInput.value;
+                    if (slotDateInput) slotDateInput.value = echterTag;
+                    ss2Summary.textContent = fmtDate(echterTag) + ' · ' + time + ' Uhr';
                     sStep('ss2', 'done');
                     sStep('ss3', 'active');
                 });
@@ -364,6 +373,8 @@ details > summary::-webkit-details-marker { display: none; }
                 if (!selected.length || !dateInput.value) return;
                 slotContainer.innerHTML = '<p class="col-span-full animate-pulse text-sm text-stone-400">Lade Termine…</p>';
                 timeInput.value = '';
+                salonSlotDates = {};
+                if (slotDateInput) slotDateInput.value = '';
                 try {
                     const params = new URLSearchParams();
                     params.set('date', dateInput.value);
@@ -371,6 +382,7 @@ details > summary::-webkit-details-marker { display: none; }
                     selected.forEach(id => params.append('service_ids[]', id));
                     const res = await fetch(slotsUrl + '?' + params.toString(), {headers: {Accept: 'application/json'}});
                     const data = await res.json();
+                    salonSlotDates = data.slot_dates || {};
                     if (!data.slots || !data.slots.length) {
                         slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-red-50 px-3 py-2.5 text-sm font-medium text-red-700">An diesem Tag sind leider keine Termine verfügbar.</p>';
                         return;
@@ -743,20 +755,18 @@ details > summary::-webkit-details-marker { display: none; }
             if (!any) slots.forEach(t => slotContainer.appendChild(makeSlotBtn(t)));
         }
 
-        async function pickNextSlot(date, time) {
-            dateInput.value = date;
+        // serviceTag ist der Tag, dessen Oeffnungsfenster den Slot enthaelt -
+        // nicht sein Kalendertag. Nur unter ihm steht er in der Auswahl.
+        async function pickNextSlot(serviceTag, time) {
+            dateInput.value = serviceTag;
             await loadSlots();
             const btn = slotContainer.querySelector('.slot-btn[data-time="' + time + '"]');
-            if (btn) {
-                btn.click();
-            } else {
-                timeInput.value = time;
-                // Ohne diese Zeile ginge das Slot-Datum verloren und die Buchung
-                // landete bei Fenstern ueber Mitternacht wieder 24 Stunden zu
-                // frueh.
-                if (slotDateInput) slotDateInput.value = slotDates[time] || dateInput.value;
-                loadFp();
-            }
+            // Allein der Knopf weiss, zu welchem Kalendertag der Slot gehoert.
+            // Fehlt er, ist der Termin zwischen den beiden Abfragen weggegangen:
+            // Dann bleibt die Auswahl offen - eine Uhrzeit ohne passendes Datum
+            // zu setzen, hiesse den Gast auf eine Nacht zu buchen, die er nicht
+            // gewaehlt hat.
+            if (btn) btn.click();
         }
 
         async function loadSlots() {
@@ -804,7 +814,9 @@ details > summary::-webkit-details-marker { display: none; }
                             b.type = 'button';
                             b.className = 'rounded-xl border-2 border-stone-200 px-2 py-2.5 text-center transition-all hover:border-brand hover:bg-brand/5 active:scale-[0.97]';
                             b.innerHTML = '<span class="block text-[10px] font-semibold uppercase tracking-wide text-stone-400">' + fmtDate(s.date) + '</span><span class="block text-base font-bold">' + s.time + '</span>';
-                            b.addEventListener('click', () => pickNextSlot(s.date, s.time));
+                            // Der Servicetag, nicht der Kalendertag: Nur unter
+                            // ihm steht dieser Slot in der Auswahl.
+                            b.addEventListener('click', () => pickNextSlot(s.from_date || s.date, s.time));
                             slotContainer.appendChild(b);
                         });
                     }
@@ -1111,13 +1123,15 @@ details > summary::-webkit-details-marker { display: none; }
                 loadSlots().then(() => {
                     if (oldTime) {
                         const btn = slotContainer.querySelector('.slot-btn[data-time="' + oldTime + '"]');
-                        if (btn) {
-                            btn.classList.add('border-brand', 'bg-brand', 'text-white');
-                            timeInput.value = oldTime;
-                            sp2Summary.textContent = fmtDate(dateInput.value) + ' · ' + oldTime + ' Uhr';
-                            document.getElementById('sp2').dataset.state = 'done';
-                            document.getElementById('sp3').dataset.state = 'active';
-                        }
+                        // Den Knopf wirklich druecken, nicht nur so aussehen
+                        // lassen: Sein Handler ist die einzige Stelle, die das
+                        // Slot-Datum setzt. Nachgebaut wurden hier nur Farbe
+                        // und Uhrzeit - loadSlots() hatte das Datum kurz zuvor
+                        // geleert, und die Buchung ging nach einem Eingabefehler
+                        // bei Fenstern ueber Mitternacht 24 Stunden zu frueh
+                        // raus. Aus demselben Grund stimmt jetzt auch die
+                        // Zusammenfassung, die vorher den Kalendertag zeigte.
+                        if (btn) btn.click();
                     }
                 });
             }

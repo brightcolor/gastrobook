@@ -29,7 +29,17 @@ class BladePhpBlockTest extends TestCase
      */
     private function compileError(string $template): ?string
     {
-        $php = Blade::compileString($template);
+        try {
+            $php = Blade::compileString($template);
+            // Escapte Direktiven (@@php) und @verbatim-Bloecke sollen als Text
+            // stehen bleiben - sie landen unveraendert in der Ausgabe und sind
+            // KEIN verschluckter Block. Fuer die Ueberlebenspruefung darum aus
+            // einer Kopie der Quelle entfernen; die Syntaxpruefung unten laeuft
+            // weiter ueber das echte Kompilat.
+            $ohneText = Blade::compileString($this->withoutLiteralDirectives($template));
+        } catch (\Throwable $e) {
+            return 'laesst sich nicht uebersetzen: '.mb_substr($e->getMessage(), 0, 200);
+        }
 
         // Zwei Pruefungen, weil eine allein nicht reicht.
         //
@@ -38,7 +48,7 @@ class BladePhpBlockTest extends TestCase
         // tut schlicht nichts - `php -l` schweigt, die Seite bricht erst zur
         // Laufzeit an einer nicht gesetzten Variablen. Ueberlebt eine
         // Direktive die Uebersetzung, wurde sie also verschluckt.
-        if (preg_match('/@(php|endphp)/', $php) === 1) {
+        if (preg_match('/@(php|endphp)\b/', $ohneText) === 1) {
             return 'Direktive @php/@endphp hat die Uebersetzung ueberlebt - ein Block hat sie verschluckt.';
         }
 
@@ -51,6 +61,20 @@ class BladePhpBlockTest extends TestCase
         @unlink($datei);
 
         return $code === 0 ? null : implode(' ', $ausgabe);
+    }
+
+    /**
+     * Alles, was als TEXT stehen bleiben soll, aus der Quelle nehmen.
+     *
+     * `@@php` ist die escapte Direktive und wird zu einem literalen `@php` in
+     * der Ausgabe; `@verbatim` haelt seinen ganzen Inhalt davon frei. Beides
+     * sieht nach der Uebersetzung aus wie ein verschluckter Block.
+     */
+    private function withoutLiteralDirectives(string $template): string
+    {
+        $ohne = preg_replace('/@verbatim.*?@endverbatim/s', '', $template) ?? $template;
+
+        return str_replace(['@@php', '@@endphp'], '', $ohne);
     }
 
     public function test_every_view_compiles_to_valid_php(): void
@@ -102,6 +126,10 @@ class BladePhpBlockTest extends TestCase
             'nur Block' => $block,
             'Block vor Kurzform' => $block."\n".$kurz,
             'zwei Bloecke' => $block."\n".$block,
+            // Text, kein Block: Beides soll in der Ausgabe stehen bleiben und
+            // darf den Detektor nicht ausloesen.
+            'escapte Direktive' => 'Schreibe @@php fuer einen Block.',
+            'verbatim' => "@verbatim\n@php\n\$x = 1;\n@endphp\n@endverbatim",
         ];
 
         foreach ($muss_laufen as $name => $vorlage) {

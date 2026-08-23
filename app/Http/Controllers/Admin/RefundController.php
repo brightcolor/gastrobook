@@ -59,7 +59,17 @@ class RefundController extends Controller
         // beim Anbieter unterwegs war - wieder auf 'approved' zurueck und
         // loeste damit eine zweite echte Erstattung aus.
         if (! $this->refunds->reopen($refund)) {
-            return back()->withErrors(['status' => __('Diese Rückerstattung lässt sich gerade nicht erneut versuchen. Bitte die Seite neu laden.')]);
+            // Ein alter Fehlversuch ist etwas anderes als ein gerade laufender.
+            // "Seite neu laden" hilft dort nicht - und der Knopf darf ihn auch
+            // nicht mehr auslösen, weil der Wiederholungsschutz des Anbieters
+            // nach 24 Stunden abgelaufen ist.
+            $zuAlt = $refund->status === 'failed'
+                && $refund->updated_at !== null
+                && $refund->updated_at->lt(now()->subHours(RefundService::RETRY_WINDOW_HOURS));
+
+            return back()->withErrors(['status' => $zuAlt
+                ? __('Dieser Fehlversuch liegt zu lange zurück. Bitte beim Zahlungsanbieter nachsehen, ob die Rückerstattung doch gelaufen ist, und sie nötigenfalls dort auslösen.')
+                : __('Diese Rückerstattung lässt sich gerade nicht erneut versuchen. Bitte die Seite neu laden.')]);
         }
 
         $this->refunds->process($refund->refresh());

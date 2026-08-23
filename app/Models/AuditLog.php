@@ -103,6 +103,24 @@ class AuditLog extends Model
             'payment.succeeded' => 'Zahlung eingegangen',
             'payment.checkout_started' => 'Bezahlvorgang gestartet',
             'payment.forfeited' => 'Anzahlung einbehalten (No-Show)',
+            // Ohne diese Zeilen stand im Protokoll "Zahlung Amount Mismatch" -
+            // der Rueckfall setzt aus dem Aktionsnamen zusammen, und der ist
+            // englisch. Gerade die Geldwege liest jemand, der wissen will, was
+            // schiefging.
+            'payment.amount_mismatch' => 'Zahlung mit falschem Betrag',
+            'payment.late_on_inactive_reservation' => 'Zahlung auf ungültige Buchung',
+            'payment.confirm_failed' => 'Zahlung verbucht, Bestätigung fehlgeschlagen',
+            'payment.awaiting_settlement' => 'Zahlung noch nicht gutgeschrieben',
+            'payment.async_failed' => 'Verzögerte Zahlung gescheitert',
+            'payment.async_failed_after_settlement' => 'Zahlung gescheitert, obwohl verbucht',
+            'payment.already_settled_at_provider' => 'Beim Anbieter bereits bezahlt',
+            'payment.return_not_yet_paid' => 'Rücksprung ohne Zahlungseingang',
+            'payment.stale_session_expired' => 'Alte Bezahlsitzung abgelaufen',
+            'payment.unknown_return_session' => 'Rücksprung mit unbekannter Sitzung',
+            'payment.webhook_received' => 'Meldung des Zahlungsanbieters',
+            'user.locations_changed' => 'Standortfreigabe geändert',
+            'user.role_changed' => 'Rolle geändert',
+            'user.self_deleted' => 'Konto selbst gelöscht',
             'account.exported' => 'Alle Daten exportiert',
         ];
         if (isset($overrides[$this->action])) {

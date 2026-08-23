@@ -14,7 +14,11 @@ class TableAssignmentService
     /**
      * Find the best table (or combination) for a party in a UTC time window.
      *
-     * @param  array{online?: bool, accessible?: bool, outdoor?: ?bool, room_id?: ?int, exclude_reservation_id?: ?int}  $options
+     * `busy_table_ids` sperrt zusaetzliche Tische, ohne dass eine Reservierung
+     * dahintersteht - fuer Zusagen, die noch keine Buchung sind. Ein offenes
+     * Wartelistenangebot haelt so den Tisch, den es verspricht.
+     *
+     * @param  array{online?: bool, accessible?: bool, outdoor?: ?bool, room_id?: ?int, exclude_reservation_id?: ?int, busy_table_ids?: array<int, int>}  $options
      * @return ?array{table_ids: array<int>, names: array<string>, reason: string}
      */
     public function findTables(
@@ -29,7 +33,10 @@ class TableAssignmentService
         $windowStart = $startUtc->subMinutes($buffer);
         $windowEnd = $endUtc->addMinutes($buffer);
 
-        $busyTableIds = $this->busyTableIds($location, $windowStart, $windowEnd, $options['exclude_reservation_id'] ?? null);
+        $busyTableIds = array_merge(
+            $this->busyTableIds($location, $windowStart, $windowEnd, $options['exclude_reservation_id'] ?? null),
+            array_map('intval', $options['busy_table_ids'] ?? []),
+        );
         $blockedRoomIds = $this->blockedRoomIds($location, $windowStart, $windowEnd);
 
         $tables = $location->tables()

@@ -34,6 +34,18 @@ class Reservation extends Model
 {
     use BelongsToTenant, HasFactory, SoftDeletes;
 
+    /**
+     * Zahlungsstaende, bei denen Geld geflossen ist.
+     *
+     * Solche Buchungen faellt keine Frist mehr an - was danach mit dem Geld
+     * passiert, entscheidet der Betrieb, nicht ein Aufraeumlauf. Die Liste
+     * steht hier, weil beide Fristlaeufe sie brauchen; als zwei Kopien wich
+     * frueher oder spaeter eine von der anderen ab.
+     *
+     * @var array<int, string>
+     */
+    public const SETTLED_PAYMENT_STATUSES = ['paid', 'refunded', 'partially_refunded', 'forfeited'];
+
     protected $fillable = [
         'tenant_id', 'location_id', 'guest_id', 'event_id', 'service_id', 'staff_member_id',
         'code', 'manage_token', 'party_size', 'reservation_date',

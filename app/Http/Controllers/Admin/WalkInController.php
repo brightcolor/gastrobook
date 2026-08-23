@@ -82,18 +82,6 @@ class WalkInController extends Controller
         $nowLocal = CarbonImmutable::now($location->timezone);
         $shared = (bool) ($validated['shared'] ?? false);
 
-        // "Tisch teilen" setzt skip_availability_check und ueberspringt damit
-        // den ganzen Pruefblock - auch die Frage, ob der Betrieb ueberhaupt
-        // offen hat. Die gehoert aber hierher: Ein geteilter Walk-in um 03:30
-        // ging vorher durch, ein normaler nicht.
-        if ($shared && ! $this->availability->withinOpeningWindow($location, $nowLocal)) {
-            $message = __('Zu dieser Uhrzeit haben wir leider geschlossen.');
-
-            return $request->wantsJson()
-                ? response()->json(['message' => $message], 422)
-                : back()->withErrors(['party_size' => $message]);
-        }
-
         // Table sharing: seat a second, separate group at the same table as long
         // as free seats remain. Bypasses the "table busy" check, but only within
         // the remaining capacity.
@@ -106,6 +94,29 @@ class WalkInController extends Controller
             // schlicht falsch, und der reservierte Gast stand vor einem
             // belegten Tisch.
             $endeUtc = $nowUtc->addMinutes($location->effectiveSettings()->durationFor((int) $validated['party_size']));
+
+            // "Tisch teilen" setzt skip_availability_check und ueberspringt
+            // damit den GANZEN Pruefblock: Oeffnungszeiten, Sperrzeiten und das
+            // Platzlimit. Alle drei gehoeren hierher - ein geteilter Walk-in um
+            // 03:30, an einem privat gebuchten Abend oder ueber dem Deckel ging
+            // vorher durch, ein normaler nicht.
+            $grund = $this->availability->bookingBlockReason(
+                $location,
+                $nowLocal,
+                $nowUtc,
+                $endeUtc,
+                [$table->id],
+                ['ad_hoc' => true, 'online' => false, 'party_size' => (int) $validated['party_size']],
+            );
+
+            if ($grund !== null) {
+                $message = $this->lifecycle->availabilityMessage($grund);
+
+                return $request->wantsJson()
+                    ? response()->json(['message' => $message], 422)
+                    : back()->withErrors(['party_size' => $message]);
+            }
+
             $occupied = (int) $location->reservations()
                 ->whereIn('status', ReservationStatus::activeStatuses())
                 ->where('start_at', '<', $endeUtc)

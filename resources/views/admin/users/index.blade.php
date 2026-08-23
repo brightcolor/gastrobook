@@ -39,8 +39,9 @@
                                             </label>
                                             @foreach($locations as $l)
                                                 <label class="flex items-center gap-2">
+                                                    {{-- Aus der vorgeladenen Beziehung, nicht per Abfrage je Kästchen. --}}
                                                     <input type="checkbox" name="location_ids[]" value="{{ $l->id }}"
-                                                           @checked($m->user?->allowedLocations()->where('locations.id', $l->id)->exists())>
+                                                           @checked($m->user?->allowedLocations->contains('id', $l->id))>
                                                     {{ $l->name }}
                                                 </label>
                                             @endforeach

@@ -80,7 +80,7 @@ class ExpireUnconfirmedReservations implements ShouldQueue
                         ReservationStatus::Requested,
                         ReservationStatus::PaymentPending,
                     ], true)
-                    || in_array($gesperrt->payment_status, ['paid', 'refunded', 'partially_refunded', 'forfeited'], true)) {
+                    || in_array($gesperrt->payment_status, Reservation::SETTLED_PAYMENT_STATUSES, true)) {
                     return;
                 }
 

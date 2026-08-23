@@ -946,7 +946,13 @@ class ReservationLifecycleService
         ];
     }
 
-    private function availabilityMessage(string $reason): string
+    /**
+     * Die Meldung zu einem Ablehnungsgrund - oeffentlich, damit jeder Weg, der
+     * bookingBlockReason selbst aufruft, dieselbe Formulierung zeigt. Der
+     * geteilte Walk-in hatte seine eigene, und die beschrieb nur einen der
+     * moeglichen Gruende.
+     */
+    public function availabilityMessage(string $reason): string
     {
         return match ($reason) {
             'lead_time' => __('Für diesen Zeitpunkt ist es leider etwas zu kurzfristig – bitte wählen Sie einen Termin etwas weiter in der Zukunft.'),

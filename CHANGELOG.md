@@ -1,5 +1,89 @@
 # Changelog
 
+## [1.125.0] – 2026-08-23
+
+### Kassiertes Geld, das liegen blieb – und Zusagen ohne Deckung
+
+Eine weitere Durchsicht der letzten Versionen, diesmal auf den Geldweg, die
+Warteliste und die Verfügbarkeit. Wieder waren einige der Funde erst mit den
+vorherigen Korrekturen entstanden.
+
+**Ein unpassender Betrag wurde kassiert und dann liegen gelassen.** Seit v1.124.0
+verweigert die Anwendung die Buchung, wenn der beim Anbieter kassierte Betrag
+nicht zur hinterlegten Anzahlung passt – aber das Geld war trotzdem eingezogen.
+Es gab keine Erstattung, keine Meldung an den Betrieb, und der Hinweis für den
+Gast wurde zwar erzeugt, aber von keiner Ansicht ausgegeben: Er sah eine
+unveränderte Seite mit dem Knopf „Jetzt Anzahlung bezahlen". Danach verfiel die
+Buchung still an ihrer Frist. Jetzt wird der kassierte Betrag automatisch
+zurückerstattet, der Betrieb per E-Mail informiert, und der Hinweis steht auf
+der Verwaltungsseite – bei Reservierungen wie bei Eventbuchungen.
+
+**PayPal prüfte den Betrag gar nicht.** Der Abgleich gab es nur für Stripe. Und
+verglichen wurde bisher nur die Zahl, nie die Währung – sechzig ist nicht
+sechzig, wenn das eine Euro und das andere Złoty sind.
+
+**Wartelisten-Angebote wurden falsch gegengerechnet.** Die Prüfung addierte die
+Personen aller offenen Angebote auf die eigene Gruppe und suchte dann *einen*
+Platz für die Summe. Das ging in beide Richtungen schief: Zwei Vierergruppen
+brauchen keinen Achtertisch – der zweite Gast wurde abgewiesen, während ein
+Vierertisch leer stand. Und zwei Zweiergruppen passen nicht deshalb beide an
+einen Zehnertisch, weil vier kleiner ist als zehn – beide bekamen die Mail „Ein
+Tisch ist frei geworden", und wer zweiter klickte, bekam eine Fehlermeldung.
+Jedes Angebot hält jetzt fest, welche Tische es verspricht; das nächste rechnet
+sie als belegt.
+
+**Nach einem Eingabefehler buchte das Formular eine Nacht zu früh.** Bei
+Öffnungszeiten über Mitternacht gehört 00:30 zum Kalendertag danach. Das Formular
+merkt sich das seit v1.123.0 – aber beim Wiederaufbau nach einem Eingabefehler
+ging die Angabe verloren, und der Knopf „nächster freier Termin" traf sogar den
+Tag *dahinter*. Der Salonpfad kannte das Verfahren gar nicht.
+
+**Ein geteilter Walk-in übersprang mehr als nur die Tischsuche.** Seit v1.124.0
+gelten für ihn wieder die Öffnungszeiten, aber Sperrzeiten und das Platzlimit
+liefen weiter an ihm vorbei. Ein geteilter Tisch ging an einem für eine
+Privatfeier geschlossenen Abend also durch, ein normaler nicht.
+
+**Ein alter Erstattungs-Fehlversuch liess sich erneut auslösen.** Der Schutz
+gegen die doppelte Auszahlung ist ein Wiedererkennungsschlüssel beim
+Zahlungsanbieter, und der hält 24 Stunden. Danach löste derselbe Knopf eine
+zweite echte Rückzahlung aus – ausgerechnet in dem Fall, der die Erstattung
+überhaupt als gescheitert markiert hat: Sie lief, nur die Antwort kam nicht an.
+Der Knopf gilt jetzt zwanzig Stunden und weist danach mit einer eigenen Meldung
+auf den Zahlungsanbieter.
+
+**Ein Fehler beim Bestätigen zog die Zahlung mit zurück.** Der Statuswechsel nach
+dem Zahlungseingang verschickt Mails und Webhooks; scheiterte dabei etwas, wurde
+auch der bereits verbuchte Zahlungsstand zurückgenommen. Der steht jetzt fest,
+bevor der Wechsel überhaupt beginnt.
+
+**Zahlungen auf Eventbuchungen** werden unter derselben Sperre verbucht wie die
+auf Reservierungen – eine Absage unmittelbar davor galt sonst als nicht
+geschehen. Und wie dort meldet sich der Betrieb jetzt auch bei einer Zahlung auf
+eine abgesagte Eventbuchung.
+
+**Weitere Korrekturen**
+
+- Ein Angebot lässt sich für einen Termin nach Mitternacht aussprechen; bisher
+  landete es 24 Stunden zu früh.
+- Ein entfernter Wartelisteneintrag schliesst sein offenes Angebot mit. Vorher
+  hielt es bis zu acht Stunden Tische für einen Gast frei, den niemand mehr
+  erwartete – und sein Annehmen-Link funktionierte weiter.
+- Die Standortfreigabe eines Mitglieds prüft jetzt, dass ein Standort auch zum
+  eigenen Betrieb gehört, und rührt die Freigaben desselben Menschen bei einem
+  anderen Betrieb nicht an.
+- Die Benutzerverwaltung stellte pro Mitglied und Standort eine eigene Abfrage –
+  bei elf Mitgliedern und zehn Standorten hundert zusätzliche für eine Seite.
+- Das Protokoll zeigt die Vorgänge rund um Zahlungen in Klartext statt in
+  englischen Bruchstücken.
+- Der Abbruch einer verzögerten Zahlung setzt nur noch einen wirklich offenen
+  Vorgang auf „gescheitert"; eine bereits erstattete Zahlung blieb sonst als
+  Fehlversuch stehen.
+- Ein Import bricht nicht mehr komplett ab, weil eine als optional geführte
+  Spalte in Wirklichkeit einen Wert verlangt: Ein Test hält die Liste jetzt gegen
+  das Datenbankschema.
+- Verwaltungsseiten für Eventbuchungen, Einladungen, Adressbestätigung und
+  Abrechnungsfreigabe werden jetzt beim Testen wirklich gerendert.
+
 ## [1.124.0] – 2026-08-23
 
 ### Nachgezogen aus vier Gegenprüfungen

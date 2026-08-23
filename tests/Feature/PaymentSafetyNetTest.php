@@ -6,6 +6,9 @@ namespace Tests\Feature;
 
 use App\Enums\ReservationStatus;
 use App\Jobs\ExpireUnpaidReservations;
+use App\Mail\TemplatedMail;
+use App\Models\Event;
+use App\Models\EventBooking;
 use App\Models\IntegrationConnection;
 use App\Models\PaymentIntent;
 use App\Models\Refund;
@@ -321,12 +324,12 @@ class PaymentSafetyNetTest extends TestCase
     }
 
     /**
-     * Und der Weg danach muss durchlaufen: handlePaid schreibt den
-     * Zahlungsstand, gibt die Sperre frei und wechselt erst danach den Status.
-     * Faellt die Buchung in diesem Spalt auf "verfallen", scheitert der
-     * Statuswechsel - ohne Erstattung, ohne Meldung, mit dem Geld beim Betrieb.
+     * Und der Weg als Ganzes, von aussen: Der Gast kommt vom Anbieter zurueck,
+     * die Buchung wird bestaetigt, und der Fristablauf direkt danach laesst sie
+     * stehen. Der Fall trennt nichts, was die beiden Tests darueber nicht schon
+     * trennen - er haelt nur den ganzen Weg zusammen.
      */
-    public function test_a_payment_completes_even_when_the_deadline_run_fires_in_between(): void
+    public function test_a_paid_booking_is_confirmed_and_survives_the_deadline_run(): void
     {
         Mail::fake();
         Http::fake([
@@ -357,6 +360,93 @@ class PaymentSafetyNetTest extends TestCase
         $frisch = $reservation->fresh();
         $this->assertSame(ReservationStatus::Confirmed, $frisch->status);
         $this->assertSame('paid', $frisch->payment_status);
+    }
+
+    /**
+     * Eine abgelaufene ALTE Sitzung darf den Vorgang nicht mitreissen: Der Gast
+     * hat den Bezahllink zweimal geoeffnet, die erste Sitzung verfaellt nach
+     * einer Stunde, waehrend er in der zweiten gerade bezahlt.
+     */
+    public function test_an_expired_stale_session_leaves_the_payment_alone(): void
+    {
+        Mail::fake();
+        $setup = $this->createTenantSetup();
+        $this->connectStripe($setup);
+        $reservation = $this->awaitingPayment($setup, 'pending');
+        $intent = PaymentIntent::withoutGlobalScopes()->create([
+            'tenant_id' => $setup['tenant']->id,
+            'reservation_id' => $reservation->id,
+            'provider' => 'stripe', 'provider_intent_id' => 'cs_neu',
+            'type' => 'deposit', 'amount_minor' => 4000, 'currency' => 'EUR', 'status' => 'pending',
+            'metadata' => ['sessions' => ['cs_alt', 'cs_neu']],
+        ]);
+        $this->clearTenantContext();
+
+        $this->postWebhook([
+            'type' => 'checkout.session.expired',
+            'data' => ['object' => ['id' => 'cs_alt', 'metadata' => ['payment_intent_id' => (string) $intent->id]]],
+        ]);
+
+        $this->assertSame('pending', $intent->fresh()->status);
+        $this->assertSame('pending', $reservation->fresh()->payment_status);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'payment.stale_session_expired']);
+
+        // Die AKTUELLE Sitzung schliesst den Vorgang dagegen sehr wohl.
+        $this->postWebhook([
+            'type' => 'checkout.session.expired',
+            'data' => ['object' => ['id' => 'cs_neu', 'metadata' => ['payment_intent_id' => (string) $intent->id]]],
+        ]);
+
+        $this->assertSame('expired', $intent->fresh()->status);
+        $this->assertSame('required', $reservation->fresh()->payment_status);
+    }
+
+    /**
+     * Zahlung auf eine abgesagte Eventbuchung: Sie darf nicht stillschweigend
+     * als bezahlt gelten. Das Geld ist da, die Buchung nicht - also zurueck
+     * damit, und der Betrieb erfaehrt davon.
+     */
+    public function test_a_payment_on_a_cancelled_event_booking_is_refunded(): void
+    {
+        Mail::fake();
+        $setup = $this->createTenantSetup();
+        $setup['location']->settings->update(['owner_notification_email' => 'betrieb@example.test']);
+        $this->connectStripe($setup);
+
+        $start = CarbonImmutable::now($setup['location']->timezone)->addDays(7)->setTime(19, 0);
+        $event = Event::withoutGlobalScope('tenant')->create([
+            'tenant_id' => $setup['tenant']->id, 'location_id' => $setup['location']->id,
+            'title' => 'Weinprobe', 'slug' => 'weinprobe',
+            'starts_at' => $start->utc(), 'ends_at' => $start->addHours(4)->utc(),
+            'capacity' => 10, 'price_minor' => 4000, 'currency' => 'EUR',
+            'is_public' => true, 'status' => 'published',
+        ]);
+        $booking = EventBooking::create([
+            'tenant_id' => $setup['tenant']->id, 'event_id' => $event->id,
+            'ticket_count' => 1, 'guest_name' => 'Eva Event', 'guest_email' => 'eva@example.test',
+            'status' => 'cancelled', 'payment_status' => 'pending', 'amount_minor' => 4000,
+        ]);
+        $intent = PaymentIntent::withoutGlobalScopes()->create([
+            'tenant_id' => $setup['tenant']->id, 'event_booking_id' => $booking->id,
+            'provider' => 'stripe', 'provider_intent_id' => 'cs_event',
+            'type' => 'prepayment', 'amount_minor' => 4000, 'currency' => 'EUR', 'status' => 'pending',
+        ]);
+        $this->clearTenantContext();
+
+        $this->postWebhook([
+            'type' => 'checkout.session.completed',
+            'data' => ['object' => [
+                'id' => 'cs_event', 'payment_status' => 'paid', 'payment_intent' => 'pi_event',
+                'amount_total' => 4000, 'currency' => 'eur',
+                'metadata' => ['payment_intent_id' => (string) $intent->id],
+            ]],
+        ]);
+
+        $refund = Refund::withoutGlobalScopes()->sole();
+        $this->assertSame($booking->id, $refund->event_booking_id);
+        $this->assertSame(4000, $refund->amount_minor);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'payment.late_on_inactive_reservation']);
+        Mail::assertQueued(TemplatedMail::class, fn (TemplatedMail $mail) => $mail->hasTo('betrieb@example.test'));
     }
 
     public function test_the_deadline_run_still_expires_an_unpaid_booking(): void
@@ -404,6 +494,40 @@ class PaymentSafetyNetTest extends TestCase
         $this->assertTrue(app(RefundService::class)->reopen($refund->fresh()));
         $this->assertTrue(app(RefundService::class)->process($refund->fresh()));
         $this->assertSame('completed', $refund->fresh()->status);
+
+        // Genau hier haengt der Schutz gegen die doppelte Auszahlung: Der
+        // Schluessel haengt an DIESER Zeile, also liefert ein zweiter Anlauf
+        // beim Anbieter das vorhandene Ergebnis statt einer zweiten Zahlung.
+        Http::assertSent(fn ($request) => $request->hasHeader('Idempotency-Key', 'swayy-refund-'.$refund->id));
+    }
+
+    /**
+     * Ein Fehlversuch von vorgestern darf der Knopf nicht mehr anfassen.
+     *
+     * Der Wiederholungsschluessel beim Anbieter haelt 24 Stunden. Danach ist
+     * er vergessen, und derselbe Aufruf loest eine ZWEITE echte Erstattung aus -
+     * ausgerechnet in dem Fall, der die Zeile ueberhaupt auf 'failed' gesetzt
+     * hat: Die Erstattung lief, nur die Antwort kam nicht an.
+     */
+    public function test_an_old_failed_refund_is_not_retried(): void
+    {
+        $setup = $this->createTenantSetup();
+        $refund = Refund::withoutGlobalScopes()->create([
+            'tenant_id' => $setup['tenant']->id, 'provider' => 'stripe',
+            'amount_minor' => 4000, 'currency' => 'EUR', 'status' => 'failed',
+            'source' => 'staff', 'reason' => 'cancellation',
+        ]);
+
+        $refund->forceFill(['updated_at' => now()->subHours(2)])->saveQuietly();
+        $this->assertTrue(app(RefundService::class)->reopen($refund->fresh()));
+
+        // Ueber den Abfragebauer, nicht ueber das Modell: Das haelt in seinen
+        // Attributen noch 'failed' und schriebe darum gar nichts.
+        Refund::withoutGlobalScopes()->whereKey($refund->id)
+            ->update(['status' => 'failed', 'updated_at' => now()->subHours(30)]);
+
+        $this->assertFalse(app(RefundService::class)->reopen($refund->fresh()));
+        $this->assertSame('failed', $refund->fresh()->status);
     }
 
     /**
@@ -584,11 +708,99 @@ class PaymentSafetyNetTest extends TestCase
         $this->clearTenantContext();
 
         $this->get(route('pay.stripe.return', ['intent' => $intent->id]).'?session_id=cs_alt')
-            ->assertRedirect();
+            ->assertRedirect()
+            ->assertSessionHas('payment_amount_mismatch');
 
         $this->assertSame('pending', $intent->fresh()->status);
         $this->assertSame(ReservationStatus::PaymentPending, $reservation->fresh()->status);
         $this->assertDatabaseHas('audit_logs', ['action' => 'payment.amount_mismatch']);
+    }
+
+    /**
+     * Und das Geld bleibt nicht liegen.
+     *
+     * Der Abgleich verhinderte die falsche Verbuchung - mehr nicht. Kassiert
+     * war der Betrag trotzdem: keine Erstattung, keine Meldung an den Betrieb,
+     * nur eine Zeile im Auditlog, in die niemand sieht. Die Buchung verfiel
+     * danach still an ihrer Frist, und der Gast hatte weder Tisch noch Geld.
+     */
+    public function test_a_payment_over_the_wrong_amount_is_refunded_and_reported(): void
+    {
+        Mail::fake();
+        Http::fake([
+            'api.stripe.com/v1/checkout/sessions/*' => Http::response([
+                'id' => 'cs_alt', 'payment_status' => 'paid', 'payment_intent' => 'pi_alt',
+                'amount_total' => 1000, 'currency' => 'eur',
+            ], 200),
+        ]);
+
+        $setup = $this->createTenantSetup();
+        $setup['location']->settings->update(['owner_notification_email' => 'betrieb@example.test']);
+        $this->connectStripe($setup);
+        $reservation = $this->awaitingPayment($setup);
+        $intent = PaymentIntent::withoutGlobalScopes()->create([
+            'tenant_id' => $setup['tenant']->id,
+            'reservation_id' => $reservation->id,
+            'provider' => 'stripe', 'provider_intent_id' => 'cs_neu',
+            'type' => 'deposit',
+            'amount_minor' => 6000, 'currency' => 'EUR', 'status' => 'pending',
+            'metadata' => ['sessions' => ['cs_alt', 'cs_neu']],
+        ]);
+        $this->clearTenantContext();
+
+        $this->get(route('pay.stripe.return', ['intent' => $intent->id]).'?session_id=cs_alt');
+
+        $refund = Refund::withoutGlobalScopes()->sole();
+        $this->assertSame(RefundService::MISMATCH, $refund->source);
+        // Zurueck geht, was kassiert wurde - nicht, was am Vorgang steht.
+        $this->assertSame(1000, $refund->amount_minor);
+        $this->assertSame($reservation->id, $refund->reservation_id);
+        // Und die Referenz auf die Belastung, ohne die der Anbieter nichts
+        // zurueckzahlen kann.
+        $this->assertSame('pi_alt', $intent->fresh()->metadata['refund_ref']);
+
+        Mail::assertQueued(TemplatedMail::class, fn (TemplatedMail $mail) => $mail->hasTo('betrieb@example.test'));
+
+        // Ein zweiter Anlauf - der Webhook kommt hinter dem Rueckweg an - legt
+        // keine zweite Erstattung an.
+        $this->get(route('pay.stripe.return', ['intent' => $intent->id]).'?session_id=cs_alt');
+        $this->assertSame(1, Refund::withoutGlobalScopes()->count());
+    }
+
+    /**
+     * Der Hinweis muss auch ankommen.
+     *
+     * Er wurde in die Sitzung geschrieben, aber von keiner Ansicht ausgegeben -
+     * der Gast sah eine unveraenderte Seite mit dem Knopf "Jetzt Anzahlung
+     * bezahlen" und keinen Grund, warum seine Zahlung nicht gezaehlt hat.
+     */
+    public function test_the_mismatch_warning_is_shown_on_the_manage_page(): void
+    {
+        Mail::fake();
+        Http::fake([
+            'api.stripe.com/v1/checkout/sessions/*' => Http::response([
+                'id' => 'cs_alt', 'payment_status' => 'paid', 'payment_intent' => 'pi_alt',
+                'amount_total' => 1000, 'currency' => 'eur',
+            ], 200),
+        ]);
+
+        $setup = $this->createTenantSetup();
+        $this->connectStripe($setup);
+        $reservation = $this->awaitingPayment($setup);
+        $intent = PaymentIntent::withoutGlobalScopes()->create([
+            'tenant_id' => $setup['tenant']->id,
+            'reservation_id' => $reservation->id,
+            'provider' => 'stripe', 'provider_intent_id' => 'cs_neu',
+            'type' => 'deposit',
+            'amount_minor' => 6000, 'currency' => 'EUR', 'status' => 'pending',
+            'metadata' => ['sessions' => ['cs_alt', 'cs_neu']],
+        ]);
+        $this->clearTenantContext();
+
+        $this->followingRedirects()
+            ->get(route('pay.stripe.return', ['intent' => $intent->id]).'?session_id=cs_alt')
+            ->assertOk()
+            ->assertSee('Der gezahlte Betrag passt nicht', false);
     }
 
     public function test_a_payment_over_the_right_amount_settles_normally(): void

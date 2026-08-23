@@ -83,36 +83,54 @@ class WaitlistService
         // einem abgelehnten Anlauf ganz ohne Angebot da - der Link in seiner
         // Mail waere tot, und niemand erfuehre davon.
         return DB::transaction(function () use ($entry, $startUtc, $endUtc, $actor, $validMinutes, $sofort) {
-            if (! $sofort) {
-                $this->assertCapacityLeft($entry, $startUtc, $endUtc);
-            }
+            $tische = $sofort ? [] : $this->assertCapacityLeft($entry, $startUtc, $endUtc);
 
             WaitlistOffer::withoutGlobalScopes()
                 ->where('waitlist_entry_id', $entry->id)
                 ->where('status', 'open')
                 ->update(['status' => 'superseded']);
 
-            return $this->createOffer($entry, $startUtc, $endUtc, $actor, $validMinutes);
+            return $this->createOffer($entry, $startUtc, $endUtc, $actor, $validMinutes, $tische);
         });
     }
 
     /**
-     * Ist zu diesem Fenster ueberhaupt noch Platz?
+     * Ist zu diesem Fenster ueberhaupt noch Platz - fuer DIESEN Gast?
      *
-     * Gemessen an der KAPAZITAET, nicht an anderen Angeboten: Ein Betrieb mit
-     * vierzig Tischen darf denselben Abend mehreren Wartenden anbieten. Die
-     * offenen Angebote anderer zaehlen dabei als schon vergeben mit - sonst
-     * sagt der Betrieb denselben Tisch zweimal zu, und wer zweiter klickt,
-     * bekommt statt eines Tisches eine Fehlermeldung.
+     * Gemessen an der Kapazitaet, nicht an der blossen Zahl offener Angebote:
+     * Ein Betrieb mit vierzig Tischen darf denselben Abend mehreren Wartenden
+     * anbieten. Was andere offene Angebote versprochen haben, gilt dabei als
+     * belegt.
+     *
+     * Entscheidend ist, WIE es als belegt gilt. Die Plaetze der anderen auf die
+     * eigene Gruppe zu addieren und nach EINEM Platz fuer die Summe zu fragen,
+     * bildet die Wirklichkeit nicht ab: Zwei Vierergruppen brauchen keinen
+     * Achtertisch - und zwei Zweiergruppen passen nicht deshalb beide an einen
+     * Zehnertisch, weil vier kleiner ist als zehn. Die erste Rechnung wies
+     * Gaeste ab, obwohl ein Tisch leer stand; die zweite versprach zweien
+     * denselben Tisch, und wer zweiter klickte, bekam eine Fehlermeldung.
+     *
+     * Deshalb: Die zugesagten TISCHE gelten als belegt, gefragt wird nach einem
+     * Platz fuer die eigene Gruppe. Nur wo es gar keine Tische gibt (reine
+     * Personenzaehlung), sind Plaetze additiv - dort zaehlen sie als
+     * `extra_covers` mit.
+     *
+     * Die Pruefung ist beratend, nicht bindend: Sie haelt keine Sperre, zwei
+     * gleichzeitige Angebote koennen also beide durchkommen. Der verbindliche
+     * Halt sitzt in acceptOffer, das ueber lifecycle->create unter der
+     * Slot-Sperre nochmal vollstaendig prueft. Schlimmstenfalls entsteht hier
+     * eine Zusage zu viel - kein doppelt belegter Tisch.
+     *
+     * @return array<int, int> Die Tische, die dieses Angebot verspricht.
      */
-    private function assertCapacityLeft(WaitlistEntry $entry, CarbonImmutable $startUtc, CarbonImmutable $endUtc): void
+    private function assertCapacityLeft(WaitlistEntry $entry, CarbonImmutable $startUtc, CarbonImmutable $endUtc): array
     {
         $location = $entry->location()->withoutGlobalScope('tenant')->first();
         if ($location === null) {
-            return;
+            return [];
         }
 
-        $vergeben = (int) WaitlistOffer::withoutGlobalScopes()
+        $offene = WaitlistOffer::withoutGlobalScopes()
             ->join('waitlist_entries', 'waitlist_entries.id', '=', 'waitlist_offers.waitlist_entry_id')
             ->where('waitlist_offers.status', 'open')
             ->where('waitlist_offers.offer_expires_at', '>', now())
@@ -120,16 +138,26 @@ class WaitlistService
             ->where('waitlist_entries.location_id', $location->id)
             ->where('waitlist_offers.offered_start_at', '<', $endUtc)
             ->where('waitlist_offers.offered_end_at', '>', $startUtc)
-            ->sum('waitlist_entries.party_size');
+            ->get(['waitlist_offers.table_ids', 'waitlist_entries.party_size as entry_party_size']);
+
+        // Ein Angebot ohne festgehaltene Tische sperrt keine: Bei reiner
+        // Personenzaehlung gibt es keine, und "Gast steht schon da" haelt auch
+        // keine frei. Die Plaetze zaehlen in beiden Faellen ueber extra_covers.
+        $belegt = $offene->flatMap(fn (WaitlistOffer $o) => $o->table_ids ?? [])->unique()->values()->all();
+        $vergeben = (int) $offene->sum('entry_party_size');
 
         $check = $this->availability->checkExact(
             $location,
             CarbonImmutable::parse($startUtc)->setTimezone($location->timezone),
-            $entry->party_size + $vergeben,
+            $entry->party_size,
             [
+                // Die Dauer stammt vom aufrufenden Fenster, nicht aus der
+                // Gruppengroesse - der Aufrufer hat sie bereits gerechnet.
                 'duration' => (int) $startUtc->diffInMinutes($endUtc),
                 'online' => false,
                 'ad_hoc' => true,
+                'busy_table_ids' => $belegt,
+                'extra_covers' => $vergeben,
             ],
         );
 
@@ -138,15 +166,23 @@ class WaitlistService
                 'time' => __('Für diesen Zeitraum ist gerade nichts mehr frei – bitte zuerst einen Tisch freigeben.'),
             ]);
         }
+
+        return $check['table_ids'];
     }
 
-    private function createOffer(WaitlistEntry $entry, CarbonImmutable $startUtc, CarbonImmutable $endUtc, ?User $actor, int $validMinutes): WaitlistOffer
+    /**
+     * @param  array<int, int>  $tableIds
+     */
+    private function createOffer(WaitlistEntry $entry, CarbonImmutable $startUtc, CarbonImmutable $endUtc, ?User $actor, int $validMinutes, array $tableIds = []): WaitlistOffer
     {
         $offer = WaitlistOffer::create([
             'tenant_id' => $entry->tenant_id,
             'waitlist_entry_id' => $entry->id,
             'offered_start_at' => $startUtc,
             'offered_end_at' => $endUtc,
+            // Festhalten, was versprochen wurde: Das naechste Angebot rechnet
+            // diese Tische als belegt und verspricht sie nicht ein zweites Mal.
+            'table_ids' => $tableIds ?: null,
             'offer_expires_at' => now()->addMinutes($validMinutes),
             'status' => 'open',
             'created_by' => $actor?->id,
@@ -168,12 +204,16 @@ class WaitlistService
                 'link' => $link,
                 'location' => $location->name,
             ];
-            Mail::to($entry->guest_email)->queue(new TemplatedMail(
+            // afterCommit, weil das Anlegen des Angebots in einer Transaktion
+            // laeuft: Die Queue liegt auf Redis, nicht in derselben Datenbank.
+            // Ein Arbeiter koennte die Mail also verschicken, bevor - oder
+            // ohne dass - das Angebot ueberhaupt existiert.
+            Mail::to($entry->guest_email)->queue((new TemplatedMail(
                 __('Ein Tisch ist frei geworden – :location', ['location' => $location->name]),
                 $du
                     ? __("Hallo :name,\n\nfür :date um :time Uhr ist ein Tisch für :party Personen frei geworden.\n\nBitte bestätige innerhalb von :minutes Minuten:\n:link\n\n:location", $vars)
                     : __("Hallo :name,\n\nfür :date um :time Uhr ist ein Tisch für :party Personen frei geworden.\n\nBitte bestätigen Sie innerhalb von :minutes Minuten:\n:link\n\n:location", $vars),
-            ));
+            ))->afterCommit());
         }
 
         $this->audit->log('waitlist.offered', $entry, null, ['offer_id' => $offer->id], null, $actor, $entry->tenant_id);

@@ -53,13 +53,6 @@ class ExpireUnpaidReservations implements ShouldQueue
      */
     private const MIN_REMINDER_GAP_MINUTES = 10;
 
-    /**
-     * Zahlungsstaende, bei denen Geld geflossen ist. Solche Buchungen faellt
-     * die Frist nicht mehr an - was danach mit dem Geld passiert, entscheidet
-     * der Betrieb, nicht ein Aufraeumlauf.
-     */
-    private const SETTLED = ['paid', 'refunded', 'partially_refunded', 'forfeited'];
-
     public function handle(ReservationLifecycleService $lifecycle): void
     {
         $this->remind($lifecycle);
@@ -203,7 +196,7 @@ class ExpireUnpaidReservations implements ShouldQueue
                 // beim Gast, keine Erstattung, keine Meldung.
                 if ($gesperrt === null
                     || $gesperrt->status !== ReservationStatus::PaymentPending
-                    || in_array($gesperrt->payment_status, self::SETTLED, true)) {
+                    || in_array($gesperrt->payment_status, Reservation::SETTLED_PAYMENT_STATUSES, true)) {
                     return false;
                 }
 

@@ -27,7 +27,11 @@ class UserManagementController extends Controller
 
         return view('admin.users.index', [
             'tenant' => $tenant,
-            'memberships' => $tenant->memberships()->with('user')->get(),
+            // Die zugeteilten Standorte gleich mitladen: Die Ansicht fragte sie
+            // je Mitglied UND je Standort einzeln ab - bei elf Mitgliedern und
+            // zehn Standorten waren das hundert zusaetzliche Abfragen fuer eine
+            // einzige Seite.
+            'memberships' => $tenant->memberships()->with('user.allowedLocations:id')->get(),
             'invitations' => Invitation::whereNull('accepted_at')->where('expires_at', '>', now())->get(),
             'roles' => $this->assignableRoles(request(), $tenant),
             'locations' => $tenant->locations()->get(),
@@ -83,7 +87,7 @@ class UserManagementController extends Controller
             }
 
             if (! $membership->wasRecentlyCreated) {
-                return back()->with('success', __('Dieser Benutzer gehört bereits zum Betrieb. Rolle und Standorte änderst du unten in der Liste.'));
+                return back()->with('success', __('Dieser Benutzer gehört bereits zum Betrieb. Rolle und Standorte ändern Sie unten in der Liste.'));
             }
 
             $this->audit->log('user.added', $user, null, ['role' => $validated['role']]);

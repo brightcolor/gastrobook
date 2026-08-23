@@ -163,10 +163,20 @@ class PaymentController extends Controller
         $manageUrl = $this->manageUrlFor($paymentIntent);
 
         if ($paymentIntent->status !== 'paid' && $provider instanceof PayPalProvider) {
-            $captureId = $provider->captureOrder($orderId);
-            if ($captureId !== null) {
+            $capture = $provider->captureOrderDetails($orderId);
+            if ($capture !== null) {
+                // Derselbe Abgleich wie bei Stripe: Ein wiederverwendeter
+                // Vorgang traegt nach einer Umbuchung einen anderen Betrag als
+                // die Bestellung, die der Gast noch offen hatte.
+                if (! $this->amountMatches($paymentIntent, $capture['amount_minor'], 'paypal', $capture['id'], $capture['currency'])) {
+                    return redirect()->to($manageUrl)->with(
+                        'payment_amount_mismatch',
+                        __('Der gezahlte Betrag passt nicht zur hinterlegten Anzahlung. Wir erstatten ihn zurück und melden uns – bitte zahle nicht sofort erneut.')
+                    );
+                }
+
                 // Store the capture id so the payment can later be refunded
-                $paymentIntent->update(['metadata' => array_merge($paymentIntent->metadata ?? [], ['refund_ref' => $captureId])]);
+                $paymentIntent->update(['metadata' => array_merge($paymentIntent->metadata ?? [], ['refund_ref' => $capture['id']])]);
                 $this->handlePaid($paymentIntent, $tenant, $orderId);
 
                 return redirect()->to($manageUrl.'?paid=1');
@@ -202,10 +212,10 @@ class PaymentController extends Controller
             $session = $provider->fetchSession($sessionId);
 
             if ($session !== null && $session['paid']) {
-                if (! $this->amountMatches($paymentIntent, $session['amount_minor'] ?? null, 'stripe')) {
+                if (! $this->amountMatches($paymentIntent, $session['amount_minor'] ?? null, 'stripe', $session['charge_reference'] ?? null, $session['currency'] ?? null)) {
                     return redirect()->to($manageUrl)->with(
                         'payment_amount_mismatch',
-                        __('Der gezahlte Betrag passt nicht zur aktuellen Anzahlung. Wir prüfen das und melden uns – bitte zahle nicht erneut.')
+                        __('Der gezahlte Betrag passt nicht zur hinterlegten Anzahlung. Wir erstatten ihn zurück und melden uns – bitte zahle nicht sofort erneut.')
                     );
                 }
 
@@ -471,7 +481,8 @@ class PaymentController extends Controller
         }
 
         $betrag = $objekt['amount_total'] ?? null;
-        if (! $this->amountMatches($intent, is_numeric($betrag) ? (int) $betrag : null, 'stripe')) {
+        $belastung = $objekt['payment_intent'] ?? null;
+        if (! $this->amountMatches($intent, is_numeric($betrag) ? (int) $betrag : null, 'stripe', is_string($belastung) ? $belastung : null, is_string($objekt['currency'] ?? null) ? $objekt['currency'] : null)) {
             return;
         }
 
@@ -496,10 +507,19 @@ class PaymentController extends Controller
      * Meldet der Anbieter keinen Betrag, wird nicht blockiert: Dann ist die
      * Pruefung nicht moeglich, und ein stiller Abbruch waere schlimmer als die
      * fehlende Kontrolle.
+     *
+     * Abgewiesen heisst nicht folgenlos: Das Geld ist kassiert. Vorher endete
+     * dieser Weg mit einer Zeile im Auditlog - keine Erstattung, keine Meldung
+     * an den Betrieb, und die Buchung verfiel still an ihrer Zahlungsfrist.
      */
-    private function amountMatches(PaymentIntent $intent, ?int $charged, string $provider): bool
+    private function amountMatches(PaymentIntent $intent, ?int $charged, string $provider, ?string $chargeRef = null, ?string $currency = null): bool
     {
-        if ($charged === null || $charged === (int) $intent->amount_minor) {
+        // Die Waehrung gehoert dazu: 60 ist nicht 60, wenn das eine Euro und
+        // das andere Zloty sind. Der Vergleich lief bisher nur ueber die Zahl.
+        $waehrungPasst = $currency === null
+            || mb_strtoupper($currency) === mb_strtoupper((string) $intent->currency);
+
+        if ($charged === null || ($charged === (int) $intent->amount_minor && $waehrungPasst)) {
             return true;
         }
 
@@ -507,7 +527,11 @@ class PaymentController extends Controller
             'provider' => $provider,
             'expected_minor' => (int) $intent->amount_minor,
             'charged_minor' => $charged,
+            'expected_currency' => (string) $intent->currency,
+            'charged_currency' => $currency,
         ], null, null, $intent->tenant_id);
+
+        $this->refunds->requestForMismatch($intent, $charged, $chargeRef);
 
         return false;
     }
@@ -532,9 +556,13 @@ class PaymentController extends Controller
             return;
         }
 
+        // Nur ein noch OFFENER Vorgang wird auf gescheitert gesetzt. "Alles
+        // ausser bezahlt" traf auch 'refunded' und 'partially_refunded' - eine
+        // erstattete Zahlung stuende danach als Fehlversuch da, und
+        // reopenPayment stellte die Buchung wieder auf "Zahlung offen".
         $beansprucht = PaymentIntent::withoutGlobalScopes()
             ->whereKey($intent->id)
-            ->where('status', '!=', 'paid')
+            ->where('status', 'pending')
             ->update(['status' => 'failed']);
 
         if ($beansprucht === 0) {
@@ -576,11 +604,22 @@ class PaymentController extends Controller
         $intent->refresh();
 
         if ($intent->event_booking_id) {
-            $booking = EventBooking::withoutGlobalScopes()->find($intent->event_booking_id);
+            // Unter Sperre lesen und schreiben, wie bei der Reservierung: Der
+            // Rueckweg des Gastes und der Webhook des Anbieters laufen
+            // sekundengleich, und eine Absage kann dazwischen liegen. Ohne
+            // Sperre las dieser Zweig einen Stand von vorher - eine Absage
+            // unmittelbar vor der Zahlung galt dann als gar nicht passiert,
+            // und die Buchung stand bezahlt da, ohne Erstattung und ohne
+            // Meldung.
+            $booking = DB::transaction(function () use ($intent) {
+                $booking = EventBooking::withoutGlobalScopes()->lockForUpdate()->find($intent->event_booking_id);
+
+                $booking?->update(['payment_status' => 'paid']);
+
+                return $booking;
+            });
 
             if ($booking !== null) {
-                $booking->update(['payment_status' => 'paid']);
-
                 // Dieselbe Behandlung wie bei der Reservierung: Eine Zahlung
                 // auf eine abgesagte Buchung ist gegenstandslos. Vorher galt
                 // sie stillschweigend als bezahlt - keine Erstattung, keine
@@ -602,11 +641,11 @@ class PaymentController extends Controller
             // Schreiber nie dasselbe Objekt - der spaetere gewann, und bei
             // ungluecklicher Reihenfolge stand "verfallen" auf einer bezahlten
             // Buchung.
-            // Zahlungsstand UND Statuswechsel unter derselben Sperre. Lag der
-            // Wechsel ausserhalb, stand die Buchung dazwischen auf
-            // "wartet auf Zahlung" UND "bezahlt" - und der Fristablauf schrieb
-            // sie in genau diesem Spalt auf "verfallen". Der Wechsel danach
-            // scheiterte, weil "verfallen" endgueltig ist.
+            // Der Zahlungsstand zuerst, unter Sperre und fuer sich. Er ist die
+            // Schutzmarke: Der Fristablauf liest ihn unter derselben Sperre und
+            // laesst jede Buchung stehen, an der Geld haengt. Vorher stand die
+            // Buchung dazwischen auf "wartet auf Zahlung" UND "bezahlt" und
+            // wurde in genau diesem Spalt auf "verfallen" geschrieben.
             $reservation = DB::transaction(function () use ($intent) {
                 $reservation = Reservation::withoutGlobalScopes()->lockForUpdate()->find($intent->reservation_id);
 
@@ -616,16 +655,30 @@ class PaymentController extends Controller
 
                 $reservation->update(['payment_status' => 'paid']);
 
-                if ($reservation->status === ReservationStatus::PaymentPending) {
-                    $this->lifecycle->transition($reservation, ReservationStatus::Confirmed, null, 'system', 'payment_received');
-                }
-
                 return $reservation;
             });
 
             if ($reservation !== null) {
                 if ($reservation->status === ReservationStatus::PaymentPending) {
-                    // Der Wechsel oben hat ihn bereits erledigt.
+                    // Der Statuswechsel steht BEWUSST hinter dem Commit: Er
+                    // verschickt Mails und Webhooks, und ein Fehler dabei darf
+                    // den verbuchten Zahlungsstand nicht mitreissen. Innerhalb
+                    // der Transaktion abgefangen brauchte es das gar nicht -
+                    // ein Datenbankfehler bricht sie ohnehin ganz ab, und der
+                    // Commit scheiterte danach trotzdem.
+                    try {
+                        $this->lifecycle->transition($reservation, ReservationStatus::Confirmed, null, 'system', 'payment_received');
+                    } catch (\Throwable $e) {
+                        report($e);
+                        // Nur die Fehlerklasse, nicht die Meldung: Ein
+                        // Datenbankfehler traegt die eingesetzten Werte im
+                        // Text - im Zweifel Name, Mailadresse und Telefonnummer
+                        // des Gastes. Die Einzelheiten stehen im Anwendungslog.
+                        $this->audit->log('payment.confirm_failed', $reservation, null, [
+                            'payment_intent_id' => $intent->id,
+                            'error' => $e::class,
+                        ], null, null, $intent->tenant_id);
+                    }
                 } elseif (! $reservation->status->isActive()) {
                     // Late webhook: payment arrived after the reservation was cancelled,
                     // rejected, or expired. We must not resurrect a terminal reservation.

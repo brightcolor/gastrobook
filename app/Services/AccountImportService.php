@@ -118,10 +118,12 @@ class AccountImportService
             $done['rooms'] = $this->rooms($tenant, $data);
             $done['tables'] = $this->tables($tenant, $data);
             $done['table_combinations'] = $this->combinations($tenant, $data);
-            $done['floor_zones'] = $this->simple($tenant, $data, 'floor_zones', FloorZone::class, ['location_id' => 'locations', 'room_id' => 'rooms'], optional: ['room_id']);
+            // room_id ist hier PFLICHT - eine Zone ohne Raum laesst die Datenbank
+            // nicht zu. Ein unaufloesbarer Verweis verwirft darum die Zone.
+            $done['floor_zones'] = $this->simple($tenant, $data, 'floor_zones', FloorZone::class, ['location_id' => 'locations', 'room_id' => 'rooms']);
             $done['opening_hours'] = $this->simple($tenant, $data, 'opening_hours', OpeningHour::class, ['location_id' => 'locations']);
             $done['special_opening_hours'] = $this->simple($tenant, $data, 'special_opening_hours', SpecialOpeningHour::class, ['location_id' => 'locations']);
-            $done['blackout_periods'] = $this->simple($tenant, $data, 'blackout_periods', BlackoutPeriod::class, ['location_id' => 'locations', 'room_id' => 'rooms'], optional: ['room_id']);
+            $done['blackout_periods'] = $this->simple($tenant, $data, 'blackout_periods', BlackoutPeriod::class, ['location_id' => 'locations', 'room_id' => 'rooms'], optional: $this->optionalFor('blackout_periods'));
             $done['tags'] = $this->simple($tenant, $data, 'tags', Tag::class, [], ['name', 'scope']);
             $done['table_blocks'] = $this->simple($tenant, $data, 'table_blocks', TableBlock::class, ['location_id' => 'locations', 'restaurant_table_id' => 'tables']);
             $done['notification_templates'] = $this->simple($tenant, $data, 'notification_templates', NotificationTemplate::class, ['location_id' => 'locations'], ['location_id', 'key', 'locale']);
@@ -137,13 +139,13 @@ class AccountImportService
             // room_id ist optional: Ein Event ohne aufloesbaren Raum ist immer
             // noch ein Event. Ohne diese Angabe verwuerfe der Import die ganze
             // Zeile - schlimmer als der falsche Verweis, den er ersetzt.
-            $done['events'] = $this->simple($tenant, $data, 'events', Event::class, ['location_id' => 'locations', 'room_id' => 'rooms'], optional: ['room_id']);
+            $done['events'] = $this->simple($tenant, $data, 'events', Event::class, ['location_id' => 'locations', 'room_id' => 'rooms'], optional: $this->optionalFor('events'));
             $done['deposit_rules'] = $this->simple($tenant, $data, 'deposit_rules', DepositRule::class, [
                 'location_id' => 'locations',
                 'room_id' => 'rooms',
                 'event_id' => 'events',
                 'service_id' => 'services',
-            ], optional: ['room_id', 'event_id', 'service_id']);
+            ], optional: $this->optionalFor('deposit_rules'));
 
             // Die drei preferred_-Spalten sind echte Fremdschluessel. Ungemappt
             // steht dort die ID der Quellinstallation: entweder eine Verletzung,
@@ -162,15 +164,17 @@ class AccountImportService
                 'event_id' => 'events',
                 'reservation_id' => 'reservations',
                 'guest_id' => 'guests',
-            ], optional: ['reservation_id', 'guest_id']);
+            ], optional: $this->optionalFor('event_bookings'));
             $done['waitlist_entries'] = $this->simple($tenant, $data, 'waitlist_entries', WaitlistEntry::class, [
                 'location_id' => 'locations',
                 'guest_id' => 'guests',
                 'reservation_id' => 'reservations',
-            ], optional: ['guest_id', 'reservation_id']);
-            $done['payments'] = $this->simple($tenant, $data, 'payments', PaymentIntent::class, ['reservation_id' => 'reservations', 'event_booking_id' => 'event_bookings'], optional: ['reservation_id', 'event_booking_id']);
+            ], optional: $this->optionalFor('waitlist_entries'));
+            $done['payments'] = $this->simple($tenant, $data, 'payments', PaymentIntent::class, ['reservation_id' => 'reservations', 'event_booking_id' => 'event_bookings'], optional: $this->optionalFor('payments'));
             $done['refunds'] = $this->refunds($tenant, $data);
-            $done['feedback_requests'] = $this->simple($tenant, $data, 'feedback_requests', FeedbackRequest::class, ['location_id' => 'locations', 'reservation_id' => 'reservations'], optional: ['reservation_id']);
+            // reservation_id ist PFLICHT - eine Feedback-Anfrage ohne Buchung gibt
+            // es nicht.
+            $done['feedback_requests'] = $this->simple($tenant, $data, 'feedback_requests', FeedbackRequest::class, ['location_id' => 'locations', 'reservation_id' => 'reservations']);
             $done['feedback_responses'] = $this->simple($tenant, $data, 'feedback_responses', FeedbackResponse::class, ['location_id' => 'locations', 'feedback_request_id' => 'feedback_requests']);
 
             $done['marketing_campaigns'] = $this->simple($tenant, $data, 'marketing_campaigns', MarketingCampaign::class, ['location_id' => 'locations']);
@@ -179,7 +183,7 @@ class AccountImportService
             $done['marketing_sends'] = $this->simple($tenant, $data, 'marketing_sends', MarketingSend::class, [
                 'marketing_campaign_id' => 'marketing_campaigns',
                 'guest_id' => 'guests',
-            ], optional: ['guest_id']);
+            ]);
 
             return array_filter($done);
         });
@@ -533,6 +537,40 @@ class AccountImportService
      *                                        wird. Ein Gast ohne Lieblingstisch ist
      *                                        immer noch ein Gast.
      */
+    /**
+     * Spalten, in denen nach dem Umschluesseln NULL stehen kann.
+     *
+     * Ein Verweis, der sich in der Zielinstallation nicht aufloesen laesst,
+     * wird geleert, statt die ganze Zeile zu verwerfen - eine Buchung ohne
+     * Raum ist immer noch eine Buchung. Das geht aber nur, wenn die Spalte
+     * NULL zulaesst: Sonst scheitert das Einfuegen, und weil der ganze Import
+     * in EINER Transaktion laeuft, reisst eine einzige Zeile ihn komplett mit.
+     *
+     * Die Liste steht hier als Daten, damit ein Test sie gegen das Schema
+     * halten kann - AccountImportNullableTest tut das fuer jeden Eintrag.
+     *
+     * @var array<string, array{0: class-string<Model>, 1: array<int, string>}>
+     */
+    public const NULLABLE_AFTER_MAPPING = [
+        'blackout_periods' => [BlackoutPeriod::class, ['room_id']],
+        'events' => [Event::class, ['room_id']],
+        'deposit_rules' => [DepositRule::class, ['room_id', 'event_id', 'service_id']],
+        'guests' => [Guest::class, ['preferred_location_id', 'preferred_room_id', 'preferred_table_id']],
+        'reservations' => [Reservation::class, ['guest_id', 'event_id', 'service_id', 'staff_member_id', 'deposit_rule_id']],
+        'event_bookings' => [EventBooking::class, ['reservation_id', 'guest_id']],
+        'waitlist_entries' => [WaitlistEntry::class, ['guest_id', 'reservation_id']],
+        'payments' => [PaymentIntent::class, ['reservation_id', 'event_booking_id']],
+        'refunds' => [Refund::class, ['reservation_id', 'event_booking_id', 'payment_intent_id']],
+    ];
+
+    /**
+     * @return array<int, string>
+     */
+    private function optionalFor(string $section): array
+    {
+        return self::NULLABLE_AFTER_MAPPING[$section][1] ?? [];
+    }
+
     private function simple(Tenant $tenant, array $data, string $section, string $modelClass, array $relations = [], array $unique = [], array $optional = []): int
     {
         $count = 0;

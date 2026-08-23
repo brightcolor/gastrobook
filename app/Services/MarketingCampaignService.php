@@ -264,21 +264,24 @@ class MarketingCampaignService
     }
 
     /**
-     * Alle Schluessel, die ein nachholender Lauf schon vergeben haben koennte.
+     * Vorfilter: welche Schluessel dieser Lauf voraussichtlich schon vergeben hat.
+     *
+     * Das Fenster darf zu ENG sein, nie zu weit. Massgeblich ist die Sperre in
+     * run(): Dort wird der Schluessel des Gastes per firstOrCreate beansprucht,
+     * und wer ihn nicht bekommt, wird uebersprungen. Ein zu enges Fenster laedt
+     * hoechstens einen Gast zu viel, der dann dort abprallt.
+     *
+     * Ein zu weites dagegen schliesst Gaeste stillschweigend AUS: Der Versuch,
+     * den Jahreswechsel abzudecken, indem auch der Schluessel des Vorjahres
+     * geprueft wurde, unterdrueckte jeden Geburtstagsgruss im Folgejahr - das
+     * ganze Jahr ueber, fuer jeden Gast. Der 31.12.-Fall braucht das nicht: Der
+     * Gast wird am 1. Januar geladen, bekommt seinen Vorjahresschluessel und
+     * prallt an der vorhandenen Sperre ab.
      *
      * @return array<int, string>
      */
     private function referenceWindow(MarketingCampaign $campaign, CarbonImmutable $today): array
     {
-        if ($campaign->type === 'birthday') {
-            // Beide Jahre: Das Nachholfenster greift ueber den Jahreswechsel
-            // zurueck, und der Schluessel eines nachgeholten Geburtstags traegt
-            // das alte Jahr.
-            $ziel = $today->addDays((int) $campaign->offset_days);
-
-            return ['b-'.$ziel->year, 'b-'.($ziel->year - 1)];
-        }
-
         if ($campaign->type !== 'rebooking') {
             return [$this->reference($campaign, $today)];
         }

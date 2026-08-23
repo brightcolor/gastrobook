@@ -286,9 +286,22 @@ class PublicBookingController extends Controller
             $staffInfo[$id] = array_values(array_filter($staffSlots, fn ($s) => $s['available']));
         }
 
+        // Der Kalendertag je Uhrzeit, wie im Restaurantpfad: Bei Arbeitszeiten
+        // ueber Mitternacht gehoert "00:30" zum Folgetag. Ohne diese Angabe
+        // setzte das Formular den gewaehlten Tag ein und buchte den Termin
+        // 24 Stunden zu frueh.
+        $slotDates = [];
+        foreach ($available as $s) {
+            if (! empty($s['start_utc'])) {
+                $slotDates[$s['time']] = CarbonImmutable::parse($s['start_utc'])
+                    ->setTimezone($location->timezone)->toDateString();
+            }
+        }
+
         return response()->json([
             'date' => $validated['date'],
             'slots' => array_map(fn ($s) => $s['time'], $available),
+            'slot_dates' => $slotDates,
             'staff_slots' => $staffInfo,
         ]);
     }
@@ -544,6 +557,9 @@ class PublicBookingController extends Controller
             // Vergangenheit anlegen; er zaehlt als aktiv und verstopft den
             // Kalender der Mitarbeiterin.
             'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:'.CarbonImmutable::now($location->timezone)->toDateString()],
+            // Der Kalendertag des gewaehlten Slots. Bei Arbeitszeiten ueber
+            // Mitternacht ist er ein anderer als der gewaehlte Tag.
+            'slot_date' => ['nullable', 'date_format:Y-m-d'],
             'time' => ['required', 'date_format:H:i'],
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email:rfc'],
@@ -559,7 +575,10 @@ class PublicBookingController extends Controller
         }
 
         $duration = $this->salonAvailability->combinedDuration($services);
-        $startLocal = CarbonImmutable::parse($validated['date'].' '.$validated['time'], $location->timezone);
+        $startLocal = CarbonImmutable::parse(
+            ($validated['slot_date'] ?? $validated['date']).' '.$validated['time'],
+            $location->timezone
+        );
         $startUtc = $startLocal->utc();
 
         // Resolve staff member (explicit choice or gap-optimised auto-assign).

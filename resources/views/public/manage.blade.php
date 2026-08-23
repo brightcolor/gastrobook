@@ -71,11 +71,13 @@ $statusBadge = match($sv) {
     </div>
 
     {{-- Zahlung --}}
-    @if(session('payment_already_settled'))
-        <div class="mt-4 rounded-xl bg-amber-50 p-3.5 text-sm text-amber-900">
-            <span class="text-base">⚠️</span> {{ session('payment_already_settled') }}
-        </div>
-    @endif
+    @foreach(['payment_already_settled', 'payment_amount_mismatch'] as $zahlungshinweis)
+        @if(session($zahlungshinweis))
+            <div class="mt-4 rounded-xl bg-amber-50 p-3.5 text-sm text-amber-900">
+                <span class="text-base">⚠️</span> {{ session($zahlungshinweis) }}
+            </div>
+        @endif
+    @endforeach
 
     {{-- Allein der Zahlungsstand aus der Datenbank. Der URL-Parameter ?paid=1
          ist frei setzbar: Er meldete eine Anzahlung, die nie eingegangen war,

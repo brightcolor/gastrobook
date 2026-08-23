@@ -120,6 +120,20 @@ class PayPalProvider implements PaymentProvider
      */
     public function captureOrder(string $orderId): ?string
     {
+        return $this->captureOrderDetails($orderId)['id'] ?? null;
+    }
+
+    /**
+     * Wie captureOrder, aber mit dem kassierten Betrag.
+     *
+     * Ohne ihn liess sich auf diesem Weg nicht pruefen, ob wirklich die
+     * hinterlegte Anzahlung bezahlt wurde. Bei Stripe wird das seit dem
+     * Abgleich geprueft; PayPal nahm jeden Betrag an, den der Anbieter meldete.
+     *
+     * @return array{id: string, amount_minor: int|null, currency: string|null}|null
+     */
+    public function captureOrderDetails(string $orderId): ?array
+    {
         $response = Http::withToken($this->accessToken())
             ->withHeaders(['Content-Type' => 'application/json'])
             ->timeout(15)
@@ -129,7 +143,22 @@ class PayPalProvider implements PaymentProvider
             return null;
         }
 
-        return $response->json('purchase_units.0.payments.captures.0.id');
+        $id = $response->json('purchase_units.0.payments.captures.0.id');
+        if (! is_string($id) || $id === '') {
+            return null;
+        }
+
+        // PayPal meldet Betraege als Dezimalzeichenkette ("12.50"). Der Umweg
+        // ueber round() statt (int) ist Absicht: (int)(12.50 * 100) ergibt in
+        // Gleitkomma 1249.
+        $wert = $response->json('purchase_units.0.payments.captures.0.amount.value');
+        $waehrung = $response->json('purchase_units.0.payments.captures.0.amount.currency_code');
+
+        return [
+            'id' => $id,
+            'amount_minor' => is_numeric($wert) ? (int) round((float) $wert * 100) : null,
+            'currency' => is_string($waehrung) ? $waehrung : null,
+        ];
     }
 
     /**

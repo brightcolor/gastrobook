@@ -163,9 +163,14 @@ class ReservationAvailabilityService
                 ->take($perDay);
 
             foreach ($daySlots as $s) {
-                // Das Datum des Slots, nicht der Tag der Suche: Bei einem
-                // Fenster ueber Mitternacht gehoert "00:30" zum Folgetag.
-                $out[] = ['date' => $s['date'], 'time' => $s['time']];
+                // Zwei Daten, weil es zwei sind: `date` ist der Kalendertag des
+                // Slots - bei einem Fenster ueber Mitternacht gehoert "00:30"
+                // zum Folgetag, und der Gast will das so lesen. `from_date` ist
+                // der Tag, dessen Oeffnungsfenster ihn enthaelt; nur damit
+                // laesst sich die Auswahl wieder aufbauen. Wer den Kalendertag
+                // in die Datumsauswahl schrieb, bekam die Slots des Tages
+                // DAHINTER und buchte eine Nacht zu spaet.
+                $out[] = ['date' => $s['date'], 'time' => $s['time'], 'from_date' => $day->toDateString()];
                 if (count($out) >= $limit) {
                     break;
                 }
@@ -390,7 +395,12 @@ class ReservationAvailabilityService
                     ->where('start_at', '<', $endUtc)
                     ->where('end_at', '>', $startUtc)
                     ->sum('party_size');
-                if ($currentCovers + $partySize > $maxCovers) {
+                // Zusaetzliche Plaetze, die zwar zugesagt, aber noch nicht
+                // gebucht sind: offene Wartelistenangebote. Ohne sie zaehlt der
+                // Betrieb dieselben Plaetze mehrfach zu.
+                $zugesagt = (int) ($options['extra_covers'] ?? 0);
+
+                if ($currentCovers + $partySize + $zugesagt > $maxCovers) {
                     return [false, 'covers_full', []];
                 }
             }
@@ -405,6 +415,8 @@ class ReservationAvailabilityService
             'accessible' => $options['accessible'] ?? false,
             'room_id' => $options['room_id'] ?? null,
             'exclude_reservation_id' => $options['exclude_reservation_id'] ?? null,
+            // Zugesagt, aber noch nicht gebucht - siehe findTables().
+            'busy_table_ids' => $options['busy_table_ids'] ?? [],
         ]);
 
         if ($assignment === null) {

@@ -71,10 +71,21 @@ class WaitlistAdminController extends Controller
 
         $validated = $request->validate([
             'time' => ['required', 'date_format:H:i'],
+            'slot_date' => ['nullable', 'date_format:Y-m-d'],
             'valid_minutes' => ['nullable', 'integer', 'min:10', 'max:480'],
         ]);
 
-        $startLocal = CarbonImmutable::parse($entry->desired_date->toDateString().' '.$validated['time'], $location->timezone);
+        // Bei Oeffnungszeiten ueber Mitternacht gehoert 00:30 zur Nacht des
+        // Vortages - der Kalendertag ist dann ein anderer als der Wunschtag.
+        // Ohne dieses Feld bot das Personal 00:30 an und traf den Morgen davor,
+        // 24 Stunden vor dem Termin, den der Gast dann in der Mail las.
+        $tag = $validated['slot_date'] ?? $entry->desired_date->toDateString();
+        $erlaubt = [$entry->desired_date->toDateString(), $entry->desired_date->copy()->addDay()->toDateString()];
+        if (! in_array($tag, $erlaubt, true)) {
+            return back()->withErrors(['slot_date' => __('Das Angebot muss auf den Wunschtag oder die Nacht darauf fallen.')]);
+        }
+
+        $startLocal = CarbonImmutable::parse($tag.' '.$validated['time'], $location->timezone);
         $duration = $location->effectiveSettings()->durationFor($entry->party_size);
 
         try {
@@ -132,6 +143,11 @@ class WaitlistAdminController extends Controller
     {
         abort_if($entry->location_id !== $this->context->location()?->id, 404);
         $entry->update(['status' => 'cancelled']);
+
+        // Das Angebot mitschliessen. Blieb es offen, hielt es bis zu acht
+        // Stunden lang Tische fuer einen Gast frei, den niemand mehr erwartet -
+        // und der Annehmen-Link in seiner Mail funktionierte weiter.
+        $entry->offers()->where('status', 'open')->update(['status' => 'superseded']);
 
         return back()->with('success', __('Eintrag entfernt.'));
     }

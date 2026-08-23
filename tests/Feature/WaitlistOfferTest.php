@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Enums\ReservationStatus;
+use App\Models\OpeningHour;
+use App\Models\Reservation;
+use App\Models\RestaurantTable;
+use App\Models\Room;
 use App\Models\WaitlistEntry;
 use App\Models\WaitlistOffer;
 use Carbon\CarbonImmutable;
@@ -23,6 +28,21 @@ use Tests\TestCase;
 class WaitlistOfferTest extends TestCase
 {
     use CreatesTenants, RefreshDatabase;
+
+    /**
+     * "Sofort platzieren" prueft gegen die Uhrzeit des Laufs - der Gast steht
+     * ja jetzt da. Mit den 12:00-23:00 des Standardaufbaus waren diese Faelle
+     * dreizehn von vierundzwanzig Stunden rot, ohne dass sich am Code etwas
+     * geaendert haette: lokal gruen, in der Nacht-CI rot.
+     *
+     * @param  array<string, mixed>  $setup
+     */
+    private function openAroundTheClock(array $setup): void
+    {
+        OpeningHour::withoutGlobalScopes()
+            ->where('location_id', $setup['location']->id)
+            ->update(['opens_at' => '00:00', 'closes_at' => '23:59']);
+    }
 
     /**
      * @param  array<string, mixed>  $setup
@@ -92,33 +112,116 @@ class WaitlistOfferTest extends TestCase
     }
 
     /**
-     * Und ein abgelehnter Anlauf darf dem Gast nicht sein gueltiges Angebot
-     * nehmen: Der Link in seiner Mail waere danach tot, ohne dass es jemand
-     * merkt.
+     * Und ein abgelehnter Anlauf darf dem Gast nicht SEIN EIGENES gueltiges
+     * Angebot nehmen: Der Link in seiner Mail waere danach tot, ohne dass es
+     * jemand merkt.
+     *
+     * Genau dieser Gast ist der Fall - das Schliessen der alten Angebote ist
+     * auf seinen Eintrag gefiltert, ein fremdes stand nie zur Debatte. Anna
+     * bekommt den letzten Tisch, der wird belegt, und danach versucht das
+     * Personal, Anna ein zweites Mal anzubieten.
      */
-    public function test_a_refused_offer_leaves_the_existing_one_intact(): void
+    public function test_a_refused_offer_leaves_the_guests_own_offer_intact(): void
     {
         Mail::fake();
         $setup = $this->createTenantSetup([['min' => 1, 'max' => 2]]);
         $admin = $this->createMember($setup['tenant'], 'tenant_admin');
 
         $anna = $this->entry($setup, 'Anna');
-        $bert = $this->entry($setup, 'Bert');
         $this->clearTenantContext();
 
-        // Bert bekommt den einzigen Tisch.
-        $this->actingAs($admin)->post('/admin/waitlist/'.$bert->id.'/offer', ['time' => '19:00'])
+        $this->actingAs($admin)->post('/admin/waitlist/'.$anna->id.'/offer', ['time' => '19:00'])
             ->assertSessionHasNoErrors();
 
-        // Anna belegt ihn nicht mehr - aber Berts erneuter Anlauf auch nicht.
+        // Der Tisch geht anderweitig weg.
+        $start = CarbonImmutable::parse($anna->desired_date->toDateString().' 19:00', $setup['location']->timezone);
+        Reservation::create([
+            'tenant_id' => $setup['tenant']->id,
+            'location_id' => $setup['location']->id,
+            'party_size' => 2,
+            'reservation_date' => $start->toDateString(),
+            'start_at' => $start->utc(),
+            'end_at' => $start->addHours(2)->utc(),
+            'timezone' => $setup['location']->timezone,
+            'status' => ReservationStatus::Confirmed,
+            'source' => 'staff',
+            'guest_name_snapshot' => 'Clara',
+        ])->tables()->attach($setup['tables'][0]->id);
+
         $this->actingAs($admin)->post('/admin/waitlist/'.$anna->id.'/offer', ['time' => '19:00'])
             ->assertSessionHasErrors('time');
 
         $this->assertSame(1, WaitlistOffer::withoutGlobalScopes()
-            ->where('waitlist_entry_id', $bert->id)
+            ->where('waitlist_entry_id', $anna->id)
             ->where('status', 'open')
-            ->count(), 'Berts gueltiges Angebot ist verschwunden.');
-        $this->assertSame('offered', $bert->fresh()->status);
+            ->count(), 'Annas gueltiges Angebot ist verschwunden.');
+        $this->assertSame('offered', $anna->fresh()->status);
+    }
+
+    /**
+     * Zwei Raeume, in jedem ein Vierertisch, zwei Vierergruppen: Beide duerfen
+     * ein Angebot bekommen.
+     *
+     * Die Plaetze der anderen auf die eigene Gruppe zu addieren, fragte nach
+     * einem Achtertisch. Den gibt es hier nicht - und quer ueber zwei Raeume
+     * laesst sich auch keiner zusammenstellen. Der zweite Gast wurde abgewiesen,
+     * waehrend ein Vierertisch leer stand.
+     */
+    public function test_two_parties_of_four_fit_into_two_rooms(): void
+    {
+        Mail::fake();
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 4]]);
+        $zweiterRaum = Room::factory()->create([
+            'location_id' => $setup['location']->id,
+            'tenant_id' => $setup['tenant']->id,
+        ]);
+        RestaurantTable::factory()->create([
+            'tenant_id' => $setup['tenant']->id,
+            'location_id' => $setup['location']->id,
+            'room_id' => $zweiterRaum->id,
+            'name' => 'T2', 'min_capacity' => 1, 'max_capacity' => 4,
+        ]);
+        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
+
+        $anna = $this->entry($setup, 'Anna', 4);
+        $bert = $this->entry($setup, 'Bert', 4);
+        $this->clearTenantContext();
+
+        foreach ([$anna, $bert] as $eintrag) {
+            $this->actingAs($admin)
+                ->post('/admin/waitlist/'.$eintrag->id.'/offer', ['time' => '19:00'])
+                ->assertSessionHasNoErrors();
+        }
+
+        $this->assertSame(2, WaitlistOffer::withoutGlobalScopes()->where('status', 'open')->count());
+    }
+
+    /**
+     * Ein grosser Tisch, zwei kleine Gruppen: nur EIN Angebot.
+     *
+     * Die Summe zweier Zweiergruppen passt rechnerisch an einen Zehnertisch -
+     * in Wirklichkeit setzt sich die erste Gruppe daran, und die zweite steht
+     * mit einer Zusage da, die niemand einloesen kann.
+     */
+    public function test_one_big_table_is_promised_only_once(): void
+    {
+        Mail::fake();
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 10]]);
+        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
+
+        $anna = $this->entry($setup, 'Anna', 2);
+        $bert = $this->entry($setup, 'Bert', 2);
+        $this->clearTenantContext();
+
+        $this->actingAs($admin)->post('/admin/waitlist/'.$anna->id.'/offer', ['time' => '19:00'])
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($admin)->post('/admin/waitlist/'.$bert->id.'/offer', ['time' => '19:00'])
+            ->assertSessionHasErrors('time');
+
+        // Und das Angebot haelt fest, WELCHEN Tisch es verspricht.
+        $offer = WaitlistOffer::withoutGlobalScopes()->where('waitlist_entry_id', $anna->id)->sole();
+        $this->assertSame([$setup['tables'][0]->id], $offer->table_ids);
     }
 
     /**
@@ -129,6 +232,7 @@ class WaitlistOfferTest extends TestCase
     {
         Mail::fake();
         $setup = $this->createTenantSetup([['min' => 1, 'max' => 2]]);
+        $this->openAroundTheClock($setup);
         $admin = $this->createMember($setup['tenant'], 'tenant_admin');
 
         $anna = $this->entry($setup, 'Anna');
@@ -158,6 +262,7 @@ class WaitlistOfferTest extends TestCase
     {
         Mail::fake();
         $setup = $this->createTenantSetup([['min' => 1, 'max' => 2]]);
+        $this->openAroundTheClock($setup);
         $admin = $this->createMember($setup['tenant'], 'tenant_admin');
 
         $bert = $this->entry($setup, 'Bert');
