@@ -27,7 +27,30 @@
                                     {{ $m->role }}
                                 @endif
                             </td>
-                            <td class="px-4 py-3 text-stone-500">{{ $m->all_locations ? 'Alle' : 'Eingeschränkt' }}</td>
+                            <td class="px-4 py-3 text-stone-500">
+                                @if(auth()->user()->canInTenant('users.roles.manage', $tenant) && $m->user_id !== auth()->id())
+                                    <details>
+                                        <summary class="cursor-pointer select-none">{{ $m->all_locations ? 'Alle' : 'Eingeschränkt' }}</summary>
+                                        <form method="POST" action="{{ route('admin.users.locations', $m) }}" class="mt-2 space-y-1.5 text-xs">
+                                            @csrf @method('PUT')
+                                            <label class="flex items-center gap-2">
+                                                <input type="checkbox" name="all_locations" value="1" @checked($m->all_locations)>
+                                                Alle Standorte
+                                            </label>
+                                            @foreach($locations as $l)
+                                                <label class="flex items-center gap-2">
+                                                    <input type="checkbox" name="location_ids[]" value="{{ $l->id }}"
+                                                           @checked($m->user?->allowedLocations()->where('locations.id', $l->id)->exists())>
+                                                    {{ $l->name }}
+                                                </label>
+                                            @endforeach
+                                            <button class="mt-1 rounded-lg border border-stone-200 px-2.5 py-1 font-semibold hover:border-teal-600">Speichern</button>
+                                        </form>
+                                    </details>
+                                @else
+                                    {{ $m->all_locations ? 'Alle' : 'Eingeschränkt' }}
+                                @endif
+                            </td>
                             <td class="px-4 py-3 text-right">
                                 @if(auth()->user()->canInTenant('users.roles.manage', $tenant) && $m->user_id !== auth()->id())
                                     <div class="flex justify-end gap-4">

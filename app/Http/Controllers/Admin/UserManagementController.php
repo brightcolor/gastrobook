@@ -83,7 +83,7 @@ class UserManagementController extends Controller
             }
 
             if (! $membership->wasRecentlyCreated) {
-                return back()->with('success', __('Dieser Benutzer gehört bereits zum Betrieb – Rolle und Standorte bleiben unverändert.'));
+                return back()->with('success', __('Dieser Benutzer gehört bereits zum Betrieb. Rolle und Standorte änderst du unten in der Liste.'));
             }
 
             $this->audit->log('user.added', $user, null, ['role' => $validated['role']]);
@@ -152,6 +152,80 @@ class UserManagementController extends Controller
         $this->audit->log('user.role_changed', $membership, ['role' => $old], ['role' => $validated['role']]);
 
         return back()->with('success', __('Rolle geändert.'));
+    }
+
+    /**
+     * Standortfreigaben einer bestehenden Mitgliedschaft aendern.
+     *
+     * Frueher lief das ueber "Benutzer einladen" mit - und weil dort nur
+     * `users.invite` verlangt wird, konnte sich damit jeder selbst einen
+     * gesperrten Standort freischalten. Das Erweitern ist eine Aenderung an
+     * fremden Rechten und gehoert darum hierher, hinter dasselbe Recht wie die
+     * Rolle. Ohne diesen Weg gaebe es gar keinen mehr: Ein Mitglied, das
+     * zusaetzlich an einem zweiten Standort arbeitet, muesste sonst entfernt
+     * und neu eingeladen werden.
+     */
+    public function updateLocations(Request $request, TenantUser $membership)
+    {
+        $tenant = $this->context->tenant();
+        abort_if($membership->tenant_id !== $tenant->id, 404);
+        // Auch hier nicht die eigene Freigabe.
+        abort_if($membership->user_id === $request->user()->id, 403);
+
+        $validated = $request->validate([
+            'all_locations' => ['nullable', 'boolean'],
+            'location_ids' => ['nullable', 'array'],
+            'location_ids.*' => ['integer'],
+        ]);
+
+        $alle = $request->boolean('all_locations');
+        $locationIds = $alle
+            ? collect()
+            : collect($validated['location_ids'] ?? [])
+                ->map(fn ($id) => (int) $id)
+                ->filter(fn (int $id) => $tenant->locations()->where('id', $id)->exists())
+                ->values();
+
+        // Eine Mitgliedschaft ohne "alle Standorte" und ohne einen einzigen
+        // freigegebenen ist der Zustand, in dem gar kein Standort aufgeloest
+        // werden kann - genau daran fiel frueher die Standortschranke auf.
+        if (! $alle && $locationIds->isEmpty()) {
+            return back()->withErrors(['location_ids' => __('Bitte mindestens einen Standort auswählen.')]);
+        }
+
+        $vorher = [
+            'all_locations' => (bool) $membership->all_locations,
+            'location_ids' => DB::table('location_user')
+                ->where('user_id', $membership->user_id)
+                ->where('tenant_id', $tenant->id)
+                ->pluck('location_id')->all(),
+        ];
+
+        DB::transaction(function () use ($membership, $tenant, $alle, $locationIds) {
+            $membership->update(['all_locations' => $alle]);
+
+            DB::table('location_user')
+                ->where('user_id', $membership->user_id)
+                ->where('tenant_id', $tenant->id)
+                ->delete();
+
+            foreach ($locationIds as $locationId) {
+                DB::table('location_user')->insert([
+                    'location_id' => $locationId,
+                    'user_id' => $membership->user_id,
+                    'tenant_id' => $tenant->id,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        });
+
+        $this->audit->log('user.locations_changed', $membership, $vorher, [
+            'all_locations' => $alle,
+            'location_ids' => $locationIds->all(),
+        ]);
+
+        return back()->with('success', __('Standortfreigabe geändert.'));
     }
 
     public function remove(Request $request, TenantUser $membership)

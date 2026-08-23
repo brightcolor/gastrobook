@@ -446,6 +446,8 @@ class ReservationBookController extends Controller
                     // Die Tischsuche ergibt im Salon keinen Sinn; die
                     // Personenverfuegbarkeit ist oben bereits geprueft.
                     'skip_availability_check' => true,
+                    // Ausdrueckliches Ueberbuchen, hinter overbook.manual.
+                    'allow_staff_conflict' => $force,
                 ];
                 $salonServices = $services;
             }

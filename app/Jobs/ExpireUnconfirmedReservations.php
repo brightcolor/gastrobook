@@ -72,10 +72,15 @@ class ExpireUnconfirmedReservations implements ShouldQueue
             DB::transaction(function () use ($reservation, $lifecycle) {
                 $gesperrt = Reservation::withoutGlobalScopes()->lockForUpdate()->find($reservation->id);
 
-                if ($gesperrt === null || ! in_array($gesperrt->status, [
-                    ReservationStatus::Requested,
-                    ReservationStatus::PaymentPending,
-                ], true)) {
+                // Auch hier der Zahlungsstand: PaymentPending liegt im
+                // Zugriff dieses Laufs, und zwischen dem Verbuchen der Zahlung
+                // und dem Statuswechsel steht die Buchung genau so da.
+                if ($gesperrt === null
+                    || ! in_array($gesperrt->status, [
+                        ReservationStatus::Requested,
+                        ReservationStatus::PaymentPending,
+                    ], true)
+                    || in_array($gesperrt->payment_status, ['paid', 'refunded', 'partially_refunded', 'forfeited'], true)) {
                     return;
                 }
 

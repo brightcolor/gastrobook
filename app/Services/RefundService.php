@@ -315,7 +315,15 @@ class RefundService
                 return false;
             }
 
-            $result = $provider->refund($reference, $refund->amount_minor, $refund->currency);
+            // Der Schluessel haengt an DIESER Erstattungszeile: Ein zweiter
+            // Anlauf auf dieselbe Zeile - nach einem abgebrochenen Lauf - holt
+            // damit das vorhandene Ergebnis, statt ein zweites Mal auszuzahlen.
+            $result = $provider->refund(
+                $reference,
+                $refund->amount_minor,
+                $refund->currency,
+                'swayy-refund-'.$refund->id,
+            );
         } catch (\Throwable $e) {
             report($e);
             $refund->update([
@@ -380,7 +388,12 @@ class RefundService
 
         $settings = $location->effectiveSettings();
         $mode = $settings->refund_mode;
-        if ($mode === 'off') {
+
+        // Wie bei der Reservierung: Eine Zahlung auf eine abgesagte Buchung ist
+        // gegenstandslos, da gibt es keine Kulanzentscheidung zu treffen.
+        $gegenstandslos = $source === 'late_payment_auto_refund';
+
+        if ($mode === 'off' && ! $gegenstandslos) {
             return null;
         }
 
@@ -400,7 +413,7 @@ class RefundService
                 ->where('event_booking_id', $booking->id)
                 ->whereNotIn('status', ['rejected', 'failed'])
                 ->first(),
-            function () use ($booking, $intent, $settings, $mode, $source, $actor) {
+            function () use ($booking, $intent, $settings, $mode, $source, $actor, $gegenstandslos) {
                 EventBooking::withoutGlobalScopes()->lockForUpdate()->find($booking->id);
 
                 $existing = Refund::withoutGlobalScopes()
@@ -411,7 +424,7 @@ class RefundService
                     return $existing;
                 }
 
-                $percent = max(0, min(100, (int) $settings->refund_percent));
+                $percent = $gegenstandslos ? 100 : max(0, min(100, (int) $settings->refund_percent));
                 $amount = (int) round($intent->amount_minor * $percent / 100);
                 if ($amount <= 0) {
                     return null;

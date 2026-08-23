@@ -297,6 +297,68 @@ class PaymentSafetyNetTest extends TestCase
         $this->assertSame('paid', $frisch->payment_status);
     }
 
+    /**
+     * Der Zustand, an dem der gemeinsame Sperrgriff wirklich haengt: Status
+     * noch payment_pending, Zahlung aber schon verbucht. Genau dort steht die
+     * Buchung zwischen den beiden Schritten von handlePaid - und der
+     * Fristablauf las unter der Sperre nur den Status, nie den Zahlungsstand.
+     */
+    public function test_the_deadline_run_leaves_a_booking_whose_payment_already_landed(): void
+    {
+        Mail::fake();
+        $setup = $this->createTenantSetup();
+        $reservation = $this->awaitingPayment($setup);
+        $reservation->forceFill([
+            'payment_due_at' => now()->subMinute(),
+            'payment_status' => 'paid',
+        ])->save();
+
+        (new ExpireUnpaidReservations)->handle(app(ReservationLifecycleService::class));
+
+        $frisch = $reservation->fresh();
+        $this->assertSame(ReservationStatus::PaymentPending, $frisch->status);
+        $this->assertSame('paid', $frisch->payment_status);
+    }
+
+    /**
+     * Und der Weg danach muss durchlaufen: handlePaid schreibt den
+     * Zahlungsstand, gibt die Sperre frei und wechselt erst danach den Status.
+     * Faellt die Buchung in diesem Spalt auf "verfallen", scheitert der
+     * Statuswechsel - ohne Erstattung, ohne Meldung, mit dem Geld beim Betrieb.
+     */
+    public function test_a_payment_completes_even_when_the_deadline_run_fires_in_between(): void
+    {
+        Mail::fake();
+        Http::fake([
+            'api.stripe.com/v1/checkout/sessions/*' => Http::response([
+                'id' => 'cs_spalt', 'payment_status' => 'paid', 'payment_intent' => 'pi_1',
+            ], 200),
+        ]);
+
+        $setup = $this->createTenantSetup();
+        $this->connectStripe($setup);
+        $reservation = $this->awaitingPayment($setup);
+        $reservation->forceFill(['payment_due_at' => now()->subMinute()])->save();
+
+        $intent = PaymentIntent::withoutGlobalScopes()->create([
+            'tenant_id' => $setup['tenant']->id,
+            'reservation_id' => $reservation->id,
+            'provider' => 'stripe', 'provider_intent_id' => 'cs_spalt',
+            'type' => 'deposit', 'amount_minor' => 4000, 'currency' => 'EUR', 'status' => 'pending',
+        ]);
+        $this->clearTenantContext();
+
+        $this->get(route('pay.stripe.return', ['intent' => $intent->id]).'?session_id='.'cs_spalt')
+            ->assertRedirect();
+
+        // Der Fristablauf laeuft direkt danach - die Zahlung ist da.
+        (new ExpireUnpaidReservations)->handle(app(ReservationLifecycleService::class));
+
+        $frisch = $reservation->fresh();
+        $this->assertSame(ReservationStatus::Confirmed, $frisch->status);
+        $this->assertSame('paid', $frisch->payment_status);
+    }
+
     public function test_the_deadline_run_still_expires_an_unpaid_booking(): void
     {
         Mail::fake();
@@ -482,6 +544,79 @@ class PaymentSafetyNetTest extends TestCase
         $this->assertFalse($service->process($dritte));
         $this->assertSame('failed', $dritte->fresh()->status);
         Http::assertSentCount(2);
+    }
+
+    /**
+     * Der verbuchte Betrag muss der kassierte sein.
+     *
+     * Zwei Aenderungen greifen ineinander: Ein wiederverwendeter Vorgang zieht
+     * beim Umbuchen den neuen Betrag nach, und der Rueckweg nimmt jede
+     * Sitzung an, die dieser Vorgang je gesehen hat. Wer in der aelteren, noch
+     * offenen Sitzung ueber 10 Euro zahlt, haette damit eine Anzahlung ueber
+     * 60 Euro abgeschlossen.
+     */
+    public function test_a_payment_over_the_wrong_amount_does_not_settle_the_booking(): void
+    {
+        Mail::fake();
+        Http::fake([
+            'api.stripe.com/v1/checkout/sessions/*' => Http::response([
+                'id' => 'cs_alt',
+                'payment_status' => 'paid',
+                'payment_intent' => 'pi_1',
+                // Der Gast hat in der alten Sitzung ueber 10 Euro gezahlt.
+                'amount_total' => 1000,
+                'currency' => 'eur',
+            ], 200),
+        ]);
+
+        $setup = $this->createTenantSetup();
+        $this->connectStripe($setup);
+        $reservation = $this->awaitingPayment($setup);
+        $intent = PaymentIntent::withoutGlobalScopes()->create([
+            'tenant_id' => $setup['tenant']->id,
+            'reservation_id' => $reservation->id,
+            'provider' => 'stripe', 'provider_intent_id' => 'cs_neu',
+            'type' => 'deposit',
+            // Am Vorgang stehen inzwischen 60 Euro.
+            'amount_minor' => 6000, 'currency' => 'EUR', 'status' => 'pending',
+            'metadata' => ['sessions' => ['cs_alt', 'cs_neu']],
+        ]);
+        $this->clearTenantContext();
+
+        $this->get(route('pay.stripe.return', ['intent' => $intent->id]).'?session_id=cs_alt')
+            ->assertRedirect();
+
+        $this->assertSame('pending', $intent->fresh()->status);
+        $this->assertSame(ReservationStatus::PaymentPending, $reservation->fresh()->status);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'payment.amount_mismatch']);
+    }
+
+    public function test_a_payment_over_the_right_amount_settles_normally(): void
+    {
+        Mail::fake();
+        Http::fake([
+            'api.stripe.com/v1/checkout/sessions/*' => Http::response([
+                'id' => 'cs_neu', 'payment_status' => 'paid', 'payment_intent' => 'pi_1',
+                'amount_total' => 4000, 'currency' => 'eur',
+            ], 200),
+        ]);
+
+        $setup = $this->createTenantSetup();
+        $this->connectStripe($setup);
+        $reservation = $this->awaitingPayment($setup);
+        $intent = PaymentIntent::withoutGlobalScopes()->create([
+            'tenant_id' => $setup['tenant']->id,
+            'reservation_id' => $reservation->id,
+            'provider' => 'stripe', 'provider_intent_id' => 'cs_neu',
+            'type' => 'deposit', 'amount_minor' => 4000, 'currency' => 'EUR', 'status' => 'pending',
+        ]);
+        $this->clearTenantContext();
+
+        $this->get(route('pay.stripe.return', ['intent' => $intent->id]).'?session_id=cs_neu')
+            ->assertRedirect();
+
+        $this->assertSame('paid', $intent->fresh()->status);
+        $this->assertSame(ReservationStatus::Confirmed, $reservation->fresh()->status);
     }
 
     /**

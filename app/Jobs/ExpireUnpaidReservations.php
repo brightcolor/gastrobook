@@ -53,6 +53,13 @@ class ExpireUnpaidReservations implements ShouldQueue
      */
     private const MIN_REMINDER_GAP_MINUTES = 10;
 
+    /**
+     * Zahlungsstaende, bei denen Geld geflossen ist. Solche Buchungen faellt
+     * die Frist nicht mehr an - was danach mit dem Geld passiert, entscheidet
+     * der Betrieb, nicht ein Aufraeumlauf.
+     */
+    private const SETTLED = ['paid', 'refunded', 'partially_refunded', 'forfeited'];
+
     public function handle(ReservationLifecycleService $lifecycle): void
     {
         $this->remind($lifecycle);
@@ -185,7 +192,18 @@ class ExpireUnpaidReservations implements ShouldQueue
             $verfallen = DB::transaction(function () use ($reservation, $lifecycle) {
                 $gesperrt = Reservation::withoutGlobalScopes()->lockForUpdate()->find($reservation->id);
 
-                if ($gesperrt === null || $gesperrt->status !== ReservationStatus::PaymentPending) {
+                // Auch den ZAHLUNGSSTAND lesen, nicht nur den Status. Eine
+                // gemeinsame Sperre nuetzt nichts, wenn das Umstrittene nicht
+                // unter ihr gelesen wird: handlePaid schreibt erst den
+                // Zahlungsstand, gibt die Sperre frei und wechselt den Status
+                // in einem zweiten Schritt. In diesem Spalt steht die Buchung
+                // auf payment_pending UND bezahlt - und wurde hier verfallen
+                // geschrieben. Der Statuswechsel danach scheiterte, weil
+                // "verfallen" endgueltig ist: Geld beim Betrieb, kein Tisch
+                // beim Gast, keine Erstattung, keine Meldung.
+                if ($gesperrt === null
+                    || $gesperrt->status !== ReservationStatus::PaymentPending
+                    || in_array($gesperrt->payment_status, self::SETTLED, true)) {
                     return false;
                 }
 

@@ -747,7 +747,16 @@ details > summary::-webkit-details-marker { display: none; }
             dateInput.value = date;
             await loadSlots();
             const btn = slotContainer.querySelector('.slot-btn[data-time="' + time + '"]');
-            if (btn) btn.click(); else { timeInput.value = time; loadFp(); }
+            if (btn) {
+                btn.click();
+            } else {
+                timeInput.value = time;
+                // Ohne diese Zeile ginge das Slot-Datum verloren und die Buchung
+                // landete bei Fenstern ueber Mitternacht wieder 24 Stunden zu
+                // frueh.
+                if (slotDateInput) slotDateInput.value = slotDates[time] || dateInput.value;
+                loadFp();
+            }
         }
 
         async function loadSlots() {
@@ -870,7 +879,7 @@ details > summary::-webkit-details-marker { display: none; }
             tableIdInput.value = '';
             activeZoneFilter = null;
             try {
-                const res = await fetch(floorplanUrl + '?date=' + dateInput.value + '&time=' + timeInput.value + '&party_size=' + partyInput.value, {headers: {Accept: 'application/json'}});
+                const res = await fetch(floorplanUrl + '?date=' + ((slotDateInput && slotDateInput.value) || dateInput.value) + '&time=' + timeInput.value + '&party_size=' + partyInput.value, {headers: {Accept: 'application/json'}});
                 const data = await res.json();
                 fpRooms = data.rooms || [];
                 if (!fpRooms.length) { fpSection.classList.add('hidden'); return; }

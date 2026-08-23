@@ -247,6 +247,19 @@ class MarketingCampaignService
             return 'v-'.$guest->last_visit_at->copy()->setTimezone($location->timezone)->toDateString();
         }
 
+        // Geburtstag: das Jahr des GETROFFENEN Anlasses, nicht das des Laufs.
+        // Ueber den Jahreswechsel liegt der 31.12. im Nachholfenster des
+        // 1. Januar - mit dem Lauftag als Schluessel bekaeme jeder Gast mit
+        // Geburtstag am 29. bis 31.12. seine Mail ein zweites Mal.
+        if ($campaign->type === 'birthday' && $guest->birthday !== null) {
+            $ziel = $today->addDays((int) $campaign->offset_days);
+            $jahr = (int) $ziel->format('m') === 1 && (int) $guest->birthday->format('m') === 12
+                ? $ziel->year - 1
+                : $ziel->year;
+
+            return 'b-'.$jahr;
+        }
+
         return $this->reference($campaign, $today);
     }
 
@@ -257,6 +270,15 @@ class MarketingCampaignService
      */
     private function referenceWindow(MarketingCampaign $campaign, CarbonImmutable $today): array
     {
+        if ($campaign->type === 'birthday') {
+            // Beide Jahre: Das Nachholfenster greift ueber den Jahreswechsel
+            // zurueck, und der Schluessel eines nachgeholten Geburtstags traegt
+            // das alte Jahr.
+            $ziel = $today->addDays((int) $campaign->offset_days);
+
+            return ['b-'.$ziel->year, 'b-'.($ziel->year - 1)];
+        }
+
         if ($campaign->type !== 'rebooking') {
             return [$this->reference($campaign, $today)];
         }

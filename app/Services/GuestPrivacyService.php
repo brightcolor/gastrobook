@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\AuditLog;
 use App\Models\EventBooking;
+use App\Models\FeedbackRequest;
+use App\Models\FeedbackResponse;
 use App\Models\Guest;
 use App\Models\GuestMergeLog;
 use App\Models\NotificationLog;
@@ -196,12 +198,20 @@ class GuestPrivacyService
             AuditLog::withoutGlobalScopes()
                 ->where('entity_type', Guest::class)
                 ->where('entity_id', $guest->id)
-                ->update(['old_values' => null, 'new_values' => null]);
+                ->update(['old_values' => null, 'new_values' => null, 'metadata' => null]);
 
             AuditLog::withoutGlobalScopes()
                 ->where('entity_type', Reservation::class)
                 ->whereIn('entity_id', $guest->reservations()->withoutGlobalScope('tenant')->select('reservations.id'))
-                ->update(['old_values' => null, 'new_values' => null]);
+                ->update(['old_values' => null, 'new_values' => null, 'metadata' => null]);
+
+            // Die Bewertung selbst ist Freitext des Gastes und ueber die
+            // Reservierung auf ihn zurueckfuehrbar.
+            FeedbackResponse::withoutGlobalScopes()
+                ->whereIn('feedback_request_id', FeedbackRequest::withoutGlobalScopes()
+                    ->whereIn('reservation_id', $guest->reservations()->withoutGlobalScope('tenant')->select('reservations.id'))
+                    ->select('id'))
+                ->update(['comment' => null]);
 
             $guest->update([
                 'first_name' => null,

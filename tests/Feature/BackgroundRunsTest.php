@@ -81,9 +81,54 @@ class BackgroundRunsTest extends TestCase
     }
 
     /**
-     * Und wer rechtzeitig gebucht hat, bekommt sie - genau einmal. Ein zweiter
-     * Lauf darf nicht noch eine Mail und noch eine SMS ausloesen.
+     * Und wer rechtzeitig gebucht hat, bekommt sie - genau einmal.
+     *
+     * Der Test bricht den Versand MITTEN im Lauf ab. Genau das ist der Fall,
+     * um den es geht: Der Worker schiesst nach sechzig Sekunden ab, der Job
+     * wird erneut zugestellt. Ein Test, der den Job einfach zweimal fehlerfrei
+     * aufruft, beweist dagegen nichts - dort filtert schon die Abfrage die
+     * Zeile weg, und er waere auch mit der alten Reihenfolge gruen.
      */
+    public function test_a_crash_during_sending_does_not_send_twice(): void
+    {
+        Mail::fake();
+        $setup = $this->createTenantSetup();
+        $setup['location']->settings()->update(['reminder_enabled' => true, 'reminder_hours_before' => 24]);
+        $reservation = $this->reservation($setup);
+        $reservation->forceFill(['created_at' => now()->subDays(2)])->saveQuietly();
+
+        // Erster Lauf: der Versand scheitert.
+        $kaputt = new class extends ReservationLifecycleService
+        {
+            public function __construct() {}
+
+            public function sendGuestMail(Reservation $reservation, string $templateKey, array $extra = []): void
+            {
+                throw new \RuntimeException('Mailserver weg');
+            }
+        };
+
+        try {
+            (new SendReservationReminders)->handle($kaputt, app(SmsManager::class));
+        } catch (\RuntimeException) {
+            // Erwartet - der Job stirbt genau hier.
+        }
+
+        // Der Platz ist trotzdem beansprucht.
+        $this->assertNotNull($reservation->fresh()->reminder_sent_at);
+
+        // Zweiter Lauf mit funktionierendem Versand: nichts mehr.
+        (new SendReservationReminders)->handle(
+            app(ReservationLifecycleService::class),
+            app(SmsManager::class),
+        );
+
+        $this->assertSame(0, NotificationLog::withoutGlobalScopes()
+            ->where('reservation_id', $reservation->id)
+            ->where('template_key', 'reservation_reminder')
+            ->count(), 'Die Erinnerung ging nach dem Abbruch doch noch einmal raus.');
+    }
+
     public function test_a_reminder_goes_out_exactly_once(): void
     {
         Mail::fake();

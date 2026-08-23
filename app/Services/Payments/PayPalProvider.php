@@ -141,10 +141,14 @@ class PayPalProvider implements PaymentProvider
         return false;
     }
 
-    public function refund(string $reference, int $amountMinor, string $currency): array
+    public function refund(string $reference, int $amountMinor, string $currency, ?string $idempotencyKey = null): array
     {
+        // PayPal nennt den Schluessel PayPal-Request-Id. Zweck wie bei Stripe:
+        // Ein Wiederholungsversuch nach einem abgebrochenen Lauf darf nicht ein
+        // zweites Mal auszahlen.
         $response = Http::withToken($this->accessToken())
             ->timeout(15)
+            ->when($idempotencyKey !== null, fn ($r) => $r->withHeaders(['PayPal-Request-Id' => $idempotencyKey]))
             ->post($this->baseUrl()."/v2/payments/captures/{$reference}/refund", [
                 'amount' => [
                     'value' => number_format($amountMinor / 100, 2, '.', ''),

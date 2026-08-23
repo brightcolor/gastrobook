@@ -202,6 +202,13 @@ class PaymentController extends Controller
             $session = $provider->fetchSession($sessionId);
 
             if ($session !== null && $session['paid']) {
+                if (! $this->amountMatches($paymentIntent, $session['amount_minor'] ?? null, 'stripe')) {
+                    return redirect()->to($manageUrl)->with(
+                        'payment_amount_mismatch',
+                        __('Der gezahlte Betrag passt nicht zur aktuellen Anzahlung. Wir prüfen das und melden uns – bitte zahle nicht erneut.')
+                    );
+                }
+
                 $this->handlePaid($paymentIntent, $tenant, $sessionId, $session['charge_reference']);
 
                 return redirect()->to($manageUrl.'?paid=1');
@@ -440,7 +447,7 @@ class PaymentController extends Controller
             'checkout.session.completed',
             'checkout.session.async_payment_succeeded' => $this->handleCheckoutSession($intent, $tenant, $objekt),
             'checkout.session.async_payment_failed' => $this->handleAsyncFailed($intent, $objekt),
-            'checkout.session.expired' => $this->handleExpired($intent),
+            'checkout.session.expired' => $this->handleExpired($intent, $objekt),
             default => null,
         };
 
@@ -463,12 +470,46 @@ class PaymentController extends Controller
             return;
         }
 
+        $betrag = $objekt['amount_total'] ?? null;
+        if (! $this->amountMatches($intent, is_numeric($betrag) ? (int) $betrag : null, 'stripe')) {
+            return;
+        }
+
         $this->handlePaid(
             $intent,
             $tenant,
             (string) ($objekt['id'] ?? ''),
             $objekt['payment_intent'] ?? null,
         );
+    }
+
+    /**
+     * Stimmt der kassierte Betrag mit dem ueberein, der am Vorgang steht?
+     *
+     * Ein Vorgang wird wiederverwendet und sein Betrag beim Umbuchen
+     * nachgezogen, und der Rueckweg nimmt jede Sitzung an, die dieser Vorgang
+     * je gesehen hat. Beides zusammen liess eine aeltere Sitzung ueber 10 Euro
+     * eine Anzahlung ueber 60 Euro abschliessen - die Buchung galt als voll
+     * bezahlt, und eine spaetere Erstattung haette den falschen Betrag
+     * zurueckgezahlt.
+     *
+     * Meldet der Anbieter keinen Betrag, wird nicht blockiert: Dann ist die
+     * Pruefung nicht moeglich, und ein stiller Abbruch waere schlimmer als die
+     * fehlende Kontrolle.
+     */
+    private function amountMatches(PaymentIntent $intent, ?int $charged, string $provider): bool
+    {
+        if ($charged === null || $charged === (int) $intent->amount_minor) {
+            return true;
+        }
+
+        $this->audit->log('payment.amount_mismatch', $intent, null, [
+            'provider' => $provider,
+            'expected_minor' => (int) $intent->amount_minor,
+            'charged_minor' => $charged,
+        ], null, null, $intent->tenant_id);
+
+        return false;
     }
 
     /**
@@ -491,7 +532,15 @@ class PaymentController extends Controller
             return;
         }
 
-        $intent->update(['status' => 'failed']);
+        $beansprucht = PaymentIntent::withoutGlobalScopes()
+            ->whereKey($intent->id)
+            ->where('status', '!=', 'paid')
+            ->update(['status' => 'failed']);
+
+        if ($beansprucht === 0) {
+            return;
+        }
+
         $this->reopenPayment($intent);
 
         $this->audit->log('payment.async_failed', $intent, null, [
@@ -527,9 +576,24 @@ class PaymentController extends Controller
         $intent->refresh();
 
         if ($intent->event_booking_id) {
-            EventBooking::withoutGlobalScopes()
-                ->where('id', $intent->event_booking_id)
-                ->update(['payment_status' => 'paid']);
+            $booking = EventBooking::withoutGlobalScopes()->find($intent->event_booking_id);
+
+            if ($booking !== null) {
+                $booking->update(['payment_status' => 'paid']);
+
+                // Dieselbe Behandlung wie bei der Reservierung: Eine Zahlung
+                // auf eine abgesagte Buchung ist gegenstandslos. Vorher galt
+                // sie stillschweigend als bezahlt - keine Erstattung, keine
+                // Meldung, kein Eintrag.
+                if ($booking->status === 'cancelled') {
+                    $this->refunds->requestForEventBooking($booking, 'late_payment_auto_refund');
+                    $this->audit->log('payment.late_on_inactive_reservation', $booking, null, [
+                        'booking_status' => $booking->status,
+                        'payment_intent_id' => $intent->id,
+                        'amount_minor' => $intent->amount_minor,
+                    ], null, null, $intent->tenant_id);
+                }
+            }
         }
 
         if ($intent->reservation_id) {
@@ -538,16 +602,30 @@ class PaymentController extends Controller
             // Schreiber nie dasselbe Objekt - der spaetere gewann, und bei
             // ungluecklicher Reihenfolge stand "verfallen" auf einer bezahlten
             // Buchung.
+            // Zahlungsstand UND Statuswechsel unter derselben Sperre. Lag der
+            // Wechsel ausserhalb, stand die Buchung dazwischen auf
+            // "wartet auf Zahlung" UND "bezahlt" - und der Fristablauf schrieb
+            // sie in genau diesem Spalt auf "verfallen". Der Wechsel danach
+            // scheiterte, weil "verfallen" endgueltig ist.
             $reservation = DB::transaction(function () use ($intent) {
                 $reservation = Reservation::withoutGlobalScopes()->lockForUpdate()->find($intent->reservation_id);
-                $reservation?->update(['payment_status' => 'paid']);
+
+                if ($reservation === null) {
+                    return null;
+                }
+
+                $reservation->update(['payment_status' => 'paid']);
+
+                if ($reservation->status === ReservationStatus::PaymentPending) {
+                    $this->lifecycle->transition($reservation, ReservationStatus::Confirmed, null, 'system', 'payment_received');
+                }
 
                 return $reservation;
             });
 
             if ($reservation !== null) {
                 if ($reservation->status === ReservationStatus::PaymentPending) {
-                    $this->lifecycle->transition($reservation, ReservationStatus::Confirmed, null, 'system', 'payment_received');
+                    // Der Wechsel oben hat ihn bereits erledigt.
                 } elseif (! $reservation->status->isActive()) {
                     // Late webhook: payment arrived after the reservation was cancelled,
                     // rejected, or expired. We must not resurrect a terminal reservation.
@@ -576,10 +654,32 @@ class PaymentController extends Controller
         ]);
     }
 
-    private function handleExpired(PaymentIntent $intent): void
+    /**
+     * @param  array<string, mixed>  $objekt
+     */
+    private function handleExpired(PaymentIntent $intent, array $objekt = []): void
     {
-        if ($intent->status === 'pending') {
-            $intent->update(['status' => 'expired']);
+        // Nur die AKTUELLE Sitzung zaehlt. Ein Vorgang kennt mehrere - der Gast
+        // hat den Bezahllink zweimal geoeffnet. Die erste laeuft nach einer
+        // Stunde ab, waehrend die zweite noch offen und bezahlbar ist; ohne
+        // diese Pruefung riss der Ablauf der alten den ganzen Vorgang und die
+        // Buchung mit sich.
+        $gemeldet = (string) ($objekt['id'] ?? '');
+        if ($gemeldet !== '' && $gemeldet !== (string) $intent->provider_intent_id) {
+            $this->audit->log('payment.stale_session_expired', $intent, null, [
+                'provider' => 'stripe',
+                'session' => mb_substr($gemeldet, 0, 64),
+            ], null, null, $intent->tenant_id);
+
+            return;
+        }
+
+        $beansprucht = PaymentIntent::withoutGlobalScopes()
+            ->whereKey($intent->id)
+            ->where('status', 'pending')
+            ->update(['status' => 'expired']);
+
+        if ($beansprucht === 1) {
             $this->reopenPayment($intent);
         }
     }

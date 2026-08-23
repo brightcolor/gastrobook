@@ -44,7 +44,7 @@ class ReservationLifecycleService
      *     consents?: array<string,bool>, ip?: ?string, event_id?: ?int,
      *     skip_availability_check?: bool, duration_minutes?: ?int,
      *     service_id?: ?int, service_ids?: array<int>, staff_member_id?: ?int,
-     *     ad_hoc?: bool,
+     *     ad_hoc?: bool, allow_staff_conflict?: bool,
      * } $data
      */
     public function create(Location $location, array $data, ?User $actor = null): Reservation
@@ -79,7 +79,12 @@ class ReservationLifecycleService
             // zuerst schreibt, aber beide Anfragen beruhen auf demselben
             // veralteten "ist frei". Zwei Gaeste auf denselben Termin bei
             // derselben Stylistin kamen so beide durch.
-            $staffMemberId = $data['staff_member_id'] ?? null;
+            // Nicht ueber skip_availability_check: Das setzen Aufrufer, die
+            // vorher selbst geprueft haben - genau die sollen hier NOCHMAL
+            // geprueft werden. Das ausdrueckliche Ueberbuchen haengt an einer
+            // eigenen Berechtigung und braucht darum ein eigenes Kennzeichen;
+            // ohne das war der Weg fuer Salons tot.
+            $staffMemberId = ($data['allow_staff_conflict'] ?? false) ? null : ($data['staff_member_id'] ?? null);
             if ($staffMemberId !== null) {
                 $staff = StaffMember::withoutGlobalScope('tenant')->find($staffMemberId);
                 $frei = $staff !== null && $this->salonAvailability->canStaffTake(
@@ -336,7 +341,7 @@ class ReservationLifecycleService
                 // Actual check-in time: an explicitly chosen time (staff may
                 // correct it in the check-in dialog) wins over an earlier
                 // seated_at, which wins over "now".
-                ReservationStatus::Seated, ReservationStatus::PartiallyArrived => $updates['seated_at'] = $seatedAt ?? $reservation->seated_at ?? now(),
+                ReservationStatus::Seated, ReservationStatus::PartiallyArrived => $updates['seated_at'] = $seatedAt ?? $gesperrt?->seated_at ?? $reservation->seated_at ?? now(),
                 ReservationStatus::Completed => $updates['departed_at'] = now(),
                 ReservationStatus::CancelledByGuest,
                 ReservationStatus::CancelledByRestaurant,
@@ -361,8 +366,14 @@ class ReservationLifecycleService
             // weiter "Jetzt bezahlen" und konnte Geld ueberweisen, das der
             // Betrieb danach wieder zurueckbuchen muss. 'pending' bleibt
             // unangetastet: Dort laeuft gerade ein Vorgang.
+            // Aus der gesperrten Zeile lesen, nicht aus dem uebergebenen Modell:
+            // Kommt die Zahlung waehrenddessen an, stuende dort noch 'required',
+            // und das Bestaetigen loeschte den Nachweis einer Anzahlung, die
+            // tatsaechlich gezahlt wurde.
+            $zahlungsstand = $gesperrt?->payment_status ?? $reservation->payment_status;
+
             if ($to === ReservationStatus::Confirmed
-                && in_array($reservation->payment_status, ['failed', 'required'], true)) {
+                && in_array($zahlungsstand, ['failed', 'required'], true)) {
                 $updates['payment_status'] = 'not_required';
                 $updates['payment_due_at'] = null;
             }

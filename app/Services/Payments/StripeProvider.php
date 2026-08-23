@@ -66,7 +66,7 @@ class StripeProvider implements PaymentProvider
      * Liefert null, wenn Stripe nicht erreichbar ist – dann bleibt alles
      * stehen, statt auf Verdacht zu bestätigen.
      *
-     * @return array{paid: bool, charge_reference: ?string}|null
+     * @return array{paid: bool, charge_reference: ?string, amount_minor: ?int, currency: ?string}|null
      */
     public function fetchSession(string $sessionId): ?array
     {
@@ -83,9 +83,17 @@ class StripeProvider implements PaymentProvider
         $zahlung = $response->json('payment_intent');
         $referenz = is_array($zahlung) ? ($zahlung['id'] ?? null) : $zahlung;
 
+        // Was tatsaechlich kassiert wurde. Ohne diese Angabe laesst sich nicht
+        // pruefen, ob der Gast den Betrag gezahlt hat, der jetzt am Vorgang
+        // steht - eine aeltere, noch offene Sitzung traegt den Betrag von
+        // damals.
+        $betrag = $response->json('amount_total');
+
         return [
             'paid' => $response->json('payment_status') === 'paid',
             'charge_reference' => is_string($referenz) && $referenz !== '' ? $referenz : null,
+            'amount_minor' => is_numeric($betrag) ? (int) $betrag : null,
+            'currency' => is_string($response->json('currency')) ? strtoupper($response->json('currency')) : null,
         ];
     }
 
@@ -125,11 +133,17 @@ class StripeProvider implements PaymentProvider
         return false;
     }
 
-    public function refund(string $reference, int $amountMinor, string $currency): array
+    public function refund(string $reference, int $amountMinor, string $currency, ?string $idempotencyKey = null): array
     {
+        // Mit Idempotenzschluessel: Stirbt der Prozess NACH dem Aufruf und vor
+        // dem Schreiben des Ergebnisses, gilt die Erstattung als haengend und
+        // laesst sich erneut anstossen. Ohne Schluessel zahlte dieser zweite
+        // Anlauf ein zweites Mal aus - mit ihm liefert Stripe die vorhandene
+        // Erstattung zurueck.
         $response = Http::asForm()
             ->withToken($this->secretKey)
             ->timeout(15)
+            ->when($idempotencyKey !== null, fn ($r) => $r->withHeaders(['Idempotency-Key' => $idempotencyKey]))
             ->post(self::API_BASE.'/refunds', [
                 'payment_intent' => $reference,
                 'amount' => $amountMinor,

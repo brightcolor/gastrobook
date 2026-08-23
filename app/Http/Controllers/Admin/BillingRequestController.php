@@ -108,10 +108,21 @@ class BillingRequestController extends Controller
         // null - ein beliebiges Mitglied konnte sich damit ueber eine selbst
         // angegebene Mailadresse unbefristet freischalten, ohne dass irgendwo
         // eine Zahlung hinterlegt oder auch nur erwartet war.
-        $billingRequest->tenant->update([
-            'status' => 'active',
-            'trial_ends_at' => now()->addDays(self::GRACE_DAYS),
-        ]);
+        $tenant = $billingRequest->tenant;
+
+        // Nur einen GESPERRTEN Betrieb befristet freischalten. Ein bereits
+        // freigeschalteter zahlender Kunde bekaeme sonst nachtraeglich eine
+        // Frist angehaengt - der Bestaetigungslink gilt 72 Stunden, der
+        // Plattformbetreiber schaltet oft frueher frei.
+        if (in_array($tenant->status, ['trial_expired', 'pending_billing'], true)) {
+            $tenant->update([
+                'status' => 'active',
+                'trial_ends_at' => now()->addDays(self::GRACE_DAYS),
+                // Die Warnung vor Ablauf ist fuer diese Testphase verbraucht.
+                // Ohne Ruecksetzen endet die Kulanzfrist ohne jede Vorwarnung.
+                'trial_warning_sent_at' => null,
+            ]);
+        }
 
         // Notify owner
         $ownerEmail = config('swayy.owner_email');

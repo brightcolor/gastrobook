@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\ReservationStatus;
 use App\Http\Controllers\Controller;
+use App\Services\ReservationAvailabilityService;
 use App\Services\ReservationLifecycleService;
 use App\Services\TableAssignmentService;
 use App\Support\TenantContext;
@@ -17,6 +18,7 @@ class WalkInController extends Controller
         private readonly TenantContext $context,
         private readonly TableAssignmentService $tables,
         private readonly ReservationLifecycleService $lifecycle,
+        private readonly ReservationAvailabilityService $availability,
     ) {}
 
     public function index(Request $request)
@@ -79,6 +81,18 @@ class WalkInController extends Controller
 
         $nowLocal = CarbonImmutable::now($location->timezone);
         $shared = (bool) ($validated['shared'] ?? false);
+
+        // "Tisch teilen" setzt skip_availability_check und ueberspringt damit
+        // den ganzen Pruefblock - auch die Frage, ob der Betrieb ueberhaupt
+        // offen hat. Die gehoert aber hierher: Ein geteilter Walk-in um 03:30
+        // ging vorher durch, ein normaler nicht.
+        if ($shared && ! $this->availability->withinOpeningWindow($location, $nowLocal)) {
+            $message = __('Zu dieser Uhrzeit haben wir leider geschlossen.');
+
+            return $request->wantsJson()
+                ? response()->json(['message' => $message], 422)
+                : back()->withErrors(['party_size' => $message]);
+        }
 
         // Table sharing: seat a second, separate group at the same table as long
         // as free seats remain. Bypasses the "table busy" check, but only within

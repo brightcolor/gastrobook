@@ -17,6 +17,7 @@ class WaitlistService
 {
     public function __construct(
         private readonly ReservationLifecycleService $lifecycle,
+        private readonly ReservationAvailabilityService $availability,
         private readonly WebhookDispatchService $webhooks,
         private readonly AuditLogger $audit,
     ) {}
@@ -69,38 +70,78 @@ class WaitlistService
 
     /**
      * Offer a free slot to a waiting guest (mail with accept link).
+     *
+     * @param  bool  $sofort  Der Gast steht bereits da und wird vom Personal
+     *                        platziert. Dann wird nicht gegen andere Angebote
+     *                        gerechnet - der Tisch ist frei, sonst stuende
+     *                        niemand davor.
      */
-    public function offer(WaitlistEntry $entry, CarbonImmutable $startUtc, CarbonImmutable $endUtc, ?User $actor = null, int $validMinutes = 60): WaitlistOffer
+    public function offer(WaitlistEntry $entry, CarbonImmutable $startUtc, CarbonImmutable $endUtc, ?User $actor = null, int $validMinutes = 60, bool $sofort = false): WaitlistOffer
     {
-        // Aeltere offene Angebote desselben Eintrags schliessen. Sonst haengen
-        // mehrere Angebote am selben Gast, und das Aufraeumen eines davon
-        // faellt spaeter dem Eintrag in den Ruecken.
-        WaitlistOffer::withoutGlobalScopes()
-            ->where('waitlist_entry_id', $entry->id)
-            ->where('status', 'open')
-            ->update(['status' => 'superseded']);
+        // Reihenfolge und Transaktion sind wichtig: erst pruefen, dann die
+        // eigenen alten Angebote schliessen. Andersherum stuende der Gast nach
+        // einem abgelehnten Anlauf ganz ohne Angebot da - der Link in seiner
+        // Mail waere tot, und niemand erfuehre davon.
+        return DB::transaction(function () use ($entry, $startUtc, $endUtc, $actor, $validMinutes, $sofort) {
+            if (! $sofort) {
+                $this->assertCapacityLeft($entry, $startUtc, $endUtc);
+            }
 
-        // Kein zweites Angebot auf dasselbe Fenster. Der Platz wird durch ein
-        // Angebot nicht gehalten - wer zweiter klickt, bekaeme statt eines
-        // Tisches eine Fehlermeldung, obwohl ihm per Mail ausdruecklich "Ein
-        // Tisch ist frei geworden" zugesagt wurde.
-        $konkurrenz = WaitlistOffer::withoutGlobalScopes()
-            ->where('status', 'open')
-            ->where('offer_expires_at', '>', now())
-            ->where('waitlist_entry_id', '!=', $entry->id)
-            ->whereIn('waitlist_entry_id', WaitlistEntry::withoutGlobalScopes()
-                ->where('location_id', $entry->location_id)
-                ->select('id'))
-            ->where('offered_start_at', '<', $endUtc)
-            ->where('offered_end_at', '>', $startUtc)
-            ->exists();
+            WaitlistOffer::withoutGlobalScopes()
+                ->where('waitlist_entry_id', $entry->id)
+                ->where('status', 'open')
+                ->update(['status' => 'superseded']);
 
-        if ($konkurrenz) {
-            throw ValidationException::withMessages([
-                'time' => __('Für diesen Zeitraum liegt bereits ein offenes Angebot bei einem anderen Gast.'),
-            ]);
+            return $this->createOffer($entry, $startUtc, $endUtc, $actor, $validMinutes);
+        });
+    }
+
+    /**
+     * Ist zu diesem Fenster ueberhaupt noch Platz?
+     *
+     * Gemessen an der KAPAZITAET, nicht an anderen Angeboten: Ein Betrieb mit
+     * vierzig Tischen darf denselben Abend mehreren Wartenden anbieten. Die
+     * offenen Angebote anderer zaehlen dabei als schon vergeben mit - sonst
+     * sagt der Betrieb denselben Tisch zweimal zu, und wer zweiter klickt,
+     * bekommt statt eines Tisches eine Fehlermeldung.
+     */
+    private function assertCapacityLeft(WaitlistEntry $entry, CarbonImmutable $startUtc, CarbonImmutable $endUtc): void
+    {
+        $location = $entry->location()->withoutGlobalScope('tenant')->first();
+        if ($location === null) {
+            return;
         }
 
+        $vergeben = (int) WaitlistOffer::withoutGlobalScopes()
+            ->join('waitlist_entries', 'waitlist_entries.id', '=', 'waitlist_offers.waitlist_entry_id')
+            ->where('waitlist_offers.status', 'open')
+            ->where('waitlist_offers.offer_expires_at', '>', now())
+            ->where('waitlist_offers.waitlist_entry_id', '!=', $entry->id)
+            ->where('waitlist_entries.location_id', $location->id)
+            ->where('waitlist_offers.offered_start_at', '<', $endUtc)
+            ->where('waitlist_offers.offered_end_at', '>', $startUtc)
+            ->sum('waitlist_entries.party_size');
+
+        $check = $this->availability->checkExact(
+            $location,
+            CarbonImmutable::parse($startUtc)->setTimezone($location->timezone),
+            $entry->party_size + $vergeben,
+            [
+                'duration' => (int) $startUtc->diffInMinutes($endUtc),
+                'online' => false,
+                'ad_hoc' => true,
+            ],
+        );
+
+        if (! $check['available']) {
+            throw ValidationException::withMessages([
+                'time' => __('Für diesen Zeitraum ist gerade nichts mehr frei – bitte zuerst einen Tisch freigeben.'),
+            ]);
+        }
+    }
+
+    private function createOffer(WaitlistEntry $entry, CarbonImmutable $startUtc, CarbonImmutable $endUtc, ?User $actor, int $validMinutes): WaitlistOffer
+    {
         $offer = WaitlistOffer::create([
             'tenant_id' => $entry->tenant_id,
             'waitlist_entry_id' => $entry->id,

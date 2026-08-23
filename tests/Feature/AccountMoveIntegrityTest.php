@@ -16,6 +16,7 @@ use App\Services\AccountExportService;
 use App\Services\AccountImportService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Tests\Concerns\CreatesTenants;
 use Tests\TestCase;
 
@@ -203,6 +204,51 @@ class AccountMoveIntegrityTest extends TestCase
         $this->assertNotNull($importiert->preferred_table_id);
         $this->assertNotSame($guest->preferred_table_id, $importiert->preferred_table_id);
         $this->assertTrue($zielTische->contains($importiert->preferred_table_id));
+    }
+
+    // ── Fehlerhafte Datei ─────────────────────────────────────────────────
+
+    /**
+     * Ein Datenbankfehler beim Import darf nicht ins Formular.
+     *
+     * Seine Meldung traegt die fehlgeschlagene Anweisung samt eingesetzter
+     * Werte - also Gastdaten aus der Datei. `catch (RuntimeException)` reichte
+     * dafuer nicht: `QueryException` erbt ueber `PDOException` ebenfalls davon.
+     */
+    public function test_a_database_error_during_import_does_not_leak_guest_data(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $export = app(AccountExportService::class)->export($setup['tenant']);
+        // Ohne Nachnamen scheitert der Insert an der NOT-NULL-Bedingung - und
+        // die Fehlermeldung fuehrt die eingesetzten Werte mit, also E-Mail und
+        // Telefonnummer aus der Datei.
+        $export['guests'] = [[
+            'id' => 9001,
+            'first_name' => 'Klara',
+            'email' => 'klara-geheim@example.test',
+            'phone' => '+49 30 4711',
+        ]];
+
+        $datei = UploadedFile::fake()->createWithContent(
+            'export.json',
+            json_encode($export, JSON_UNESCAPED_UNICODE)
+        );
+
+        $antwort = $this->actingAs($owner)->post('/admin/account/import', [
+            'file' => $datei,
+            'confirm' => '1',
+        ]);
+
+        $antwort->assertSessionHasErrors('file');
+        $fehler = implode(' ', session('errors')->get('file'));
+
+        $this->assertNotSame('', $fehler, 'Es kam gar keine Meldung.');
+        $this->assertStringNotContainsString('klara-geheim@example.test', $fehler);
+        $this->assertStringNotContainsString('+49 30 4711', $fehler);
+        $this->assertStringNotContainsString('insert into', mb_strtolower($fehler));
     }
 
     // ── Salontermine ──────────────────────────────────────────────────────

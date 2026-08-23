@@ -1,5 +1,114 @@
 # Changelog
 
+## [1.124.0] – 2026-08-23
+
+### Nachgezogen aus vier Gegenprüfungen
+Vier unabhängige Durchsichten der letzten sieben Versionen. Sie haben zwei
+Fehler gefunden, die schon vorher da waren, und – wichtiger – fünf, die erst
+mit den Korrekturen selbst entstanden sind.
+
+**Eine bezahlte Buchung konnte weiterhin verfallen.** Der Fristablauf und der
+Zahlungseingang arbeiten seit v1.118.0 unter derselben Sperre – aber unter ihr
+gelesen wurde nur der Status, nicht der Zahlungsstand. Zwischen dem Verbuchen
+der Zahlung und dem Statuswechsel steht die Buchung genau dazwischen, und dort
+griff die Frist zu. Der Statuswechsel danach scheiterte, weil „verfallen"
+endgültig ist: Geld beim Betrieb, kein Tisch beim Gast, keine Erstattung, keine
+Meldung. Beides läuft jetzt in einem Zug unter der Sperre.
+
+**Der verbuchte Betrag konnte vom kassierten abweichen.** Ein wiederverwendeter
+Zahlungsvorgang zieht seit v1.117.0 den neuen Betrag nach, und der Rückweg
+akzeptiert seit v1.118.0 jede Sitzung, die dieser Vorgang je gesehen hat. Zusammen
+liess das eine ältere Sitzung über zehn Euro eine Anzahlung über sechzig Euro
+abschliessen. Die Anwendung vergleicht jetzt mit dem, was der Anbieter wirklich
+kassiert hat, und verweigert die Buchung bei Abweichung.
+
+**Der Ablauf einer alten Bezahlsitzung riss die laufende mit.** Wer den
+Bezahllink zweimal öffnet, hat beim Anbieter zwei Sitzungen; lief die erste nach
+einer Stunde ab, setzte das den ganzen Vorgang zurück, während die zweite noch
+offen war.
+
+**Zahlungen auf abgesagte Eventbuchungen** werden jetzt genauso behandelt wie die
+auf abgesagte Reservierungen: volle Erstattung, Eintrag im Protokoll.
+
+**Erstattungen tragen einen Wiedererkennungsschlüssel.** Ein erneuter Anlauf auf
+eine hängengebliebene Erstattung holt damit das vorhandene Ergebnis, statt ein
+zweites Mal auszuzahlen.
+
+**Ein Datenbankfehler beim Import zeigte weiterhin Gastdaten im Formular.** Die
+Absicherung aus v1.121.0 griff nicht: Der Fehlertyp der Datenbank erbt von
+derselben Klasse, die für die eigenen, harmlosen Meldungen gefangen wurde. Der
+Importer hat jetzt eine eigene.
+
+**Salontermine liessen sich nicht mehr überbuchen.** Die Prüfung aus v1.119.0 lief
+auch dann, wenn jemand mit dem entsprechenden Recht ausdrücklich überbuchen wollte
+– der Knopf tat stillschweigend nichts.
+
+**„Gast von der Warteliste übernehmen" scheiterte, sobald irgendein anderer Gast
+ein offenes Angebot für dieselbe Zeit hatte.** Die Sperre aus v1.123.0 hing am
+Zeitfenster statt an der Kapazität; ein Betrieb mit vierzig Tischen konnte damit
+nur noch ein einziges Angebot pro Abend halten. Und ein abgelehnter Anlauf nahm
+dem Gast sein bereits verschicktes, gültiges Angebot weg. Gerechnet wird jetzt
+gegen die tatsächliche Kapazität, „jetzt platzieren" ist davon ausgenommen, und
+geprüft wird vor dem Verwerfen.
+
+**Die Umbuchungsseite buchte weiterhin die falsche Nacht.** Bei Öffnungszeiten
+über Mitternacht hat v1.119.0 nur das Buchungsformular repariert – die
+Umbuchungsseite holt ihre Zeiten vom selben Endpunkt und landete 24 Stunden zu
+früh. Dasselbe galt für den Tischplan, der die Belegung der Nacht davor zeigte,
+und für das Formular nach einem Eingabefehler.
+
+**Geburtstagsgrüsse gingen zum Jahreswechsel doppelt raus.** Das Nachholfenster
+aus v1.123.0 greift über die Jahresgrenze zurück, der Merkschlüssel hing aber am
+Jahr des Laufs – jeder Gast mit Geburtstag zwischen dem 29. und 31. Dezember bekam
+seine Mail zweimal.
+
+**Ein geteilter Walk-in ging auch bei geschlossenem Betrieb durch.** „Tisch
+teilen" übersprang die gesamte Prüfung, also auch die Öffnungszeiten.
+
+**Die Kulanzfrist nach Ablauf der Testphase traf auch bereits freigeschaltete
+Kunden.** Wer den Bestätigungslink erst anklickte, nachdem der Zugang schon
+dauerhaft freigeschaltet war, bekam nachträglich eine Frist verpasst. Ausserdem
+endete die Frist ohne Vorwarnung, weil die Warnung für diese Testphase längst
+verbraucht war. Und wer die Seite ohne Abrechnungsrecht erreichte – die einzige,
+die ihm offensteht – füllte das ganze Formular aus, um am Ende abgewiesen zu
+werden.
+
+**Standortfreigaben lassen sich wieder ändern.** Die Absicherung aus v1.120.0 hat
+den einzigen Weg dorthin mit geschlossen; ein Mitglied, das zusätzlich an einem
+zweiten Standort arbeitet, hätte entfernt und neu eingeladen werden müssen. Dafür
+gibt es jetzt eine eigene Stelle in der Benutzerliste, hinter demselben Recht wie
+die Rollenänderung.
+
+**Der Supportzugriff steht jetzt wirklich im Protokoll.** Die handelnde Person
+wurde nie mitgeschrieben – jede Handlung im Supportzugriff lief als gewöhnliche
+Handlung des Betriebs.
+
+**Der Import verwarf ganze Datensätze.** Seit v1.121.0 liess ein nicht auflösbarer
+Verweis auf Raum, Leistung oder Event die ganze Zeile fallen – schlimmer als der
+falsche Verweis davor. Solche Verweise werden jetzt geleert, die Zeile bleibt.
+
+**Die Löschung erreicht jetzt auch Bewertungstexte** und die Zusatzangaben im
+Änderungsprotokoll.
+
+**Der Statuswechsel las den Zahlungsstand aus dem alten Stand.** Traf die Zahlung
+währenddessen ein, löschte das Bestätigen den Nachweis einer Anzahlung, die
+tatsächlich gezahlt wurde.
+
+**Datumsgrenzen rechnen in der Zeitzone des Betriebs**, nicht in UTC – sonst
+weisen sie abends legitime Buchungen für denselben Tag ab.
+
+**Das Konfetti meldete seinen Grössenwächter nie ab.**
+
+### Prüfungen
+Der Test, der die Vorlagen auf die Blade-Falle absucht, prüfte nur eine von
+sechs brechenden Varianten – und sein Suchmuster enthielt ein Steuerzeichen, das
+ihn ganz wirkungslos machte. Er kompiliert jetzt jede Ansicht wirklich und
+prüft sich zusätzlich an gebauten Fällen selbst. Zwei „genau-einmal"-Tests
+bestanden auch mit dem alten Code, weil sie den Abbruch gar nicht nachstellten;
+sie brechen den Versand jetzt mitten im Lauf ab. Dazu neue Tests für die
+Einengung der Schnittstellenrechte, für die restlichen Gästeseiten und für jeden
+der oben genannten Fehler.
+
 ## [1.123.0] – 2026-08-23
 
 ### Die Läufe im Hintergrund

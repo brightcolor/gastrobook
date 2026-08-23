@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exceptions\AccountImportException;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\Location;
@@ -102,9 +103,11 @@ class AccountController extends Controller
 
         try {
             $imported = $importer->import($tenant, $decoded);
-        } catch (\RuntimeException $e) {
-            // RuntimeException wirft der Importer selbst - das sind
-            // verstaendliche Saetze fuer den Betrieb.
+        } catch (AccountImportException $e) {
+            // Nur die eigene Klasse. `RuntimeException` als Fangnetz reichte
+            // nicht: `QueryException` erbt ueber `PDOException` ebenfalls
+            // davon, und deren Meldung traegt die fehlgeschlagene Anweisung
+            // samt eingesetzter Werte - also Gastdaten aus der Datei.
             return back()->withErrors(['file' => $e->getMessage()]);
         } catch (\Throwable $e) {
             // Alles andere ist eine Datenbank- oder Programmiermeldung. Sie

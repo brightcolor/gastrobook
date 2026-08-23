@@ -227,6 +227,53 @@ class BookingLimitsTest extends TestCase
         $this->assertSame($tag->addDay()->toDateString(), $reservation->reservation_date->toDateString());
     }
 
+    /**
+     * Derselbe Fehler auf der Umbuchungsseite: Sie holt ihre Zeiten vom
+     * identischen Endpunkt, hatte aber kein Feld fuer das Slot-Datum - der Gast
+     * landete 24 Stunden zu frueh, ohne Warnung.
+     */
+    public function test_rescheduling_into_a_slot_after_midnight_lands_on_the_right_night(): void
+    {
+        Mail::fake();
+        $setup = $this->createTenantSetup();
+        OpeningHour::where('location_id', $setup['location']->id)
+            ->update(['opens_at' => '18:00', 'closes_at' => '02:00']);
+
+        $tag = CarbonImmutable::now($setup['location']->timezone)->addDays(2);
+        $start = $tag->setTime(19, 0);
+
+        $reservation = Reservation::create([
+            'tenant_id' => $setup['tenant']->id,
+            'location_id' => $setup['location']->id,
+            'party_size' => 2,
+            'reservation_date' => $start->toDateString(),
+            'start_at' => $start->utc(),
+            'end_at' => $start->addHours(2)->utc(),
+            'timezone' => $setup['location']->timezone,
+            'status' => ReservationStatus::Confirmed,
+            'source' => 'online',
+            'guest_name_snapshot' => 'Frau Kessler',
+            'guest_email_snapshot' => 'kessler@example.test',
+        ]);
+        $this->clearTenantContext();
+
+        $this->post(route('booking.reschedule.post', [
+            'code' => $reservation->code, 'token' => $reservation->manage_token,
+        ]), [
+            // Der Gast steht im Kalender auf dem Tag, der Slot gehoert zum
+            // Folgetag.
+            'date' => $tag->addDay()->toDateString(),
+            'slot_date' => $tag->addDays(2)->toDateString(),
+            'time' => '00:00',
+            'party_size' => 2,
+        ])->assertRedirect();
+
+        $this->assertSame(
+            $tag->addDays(2)->toDateString(),
+            $reservation->fresh()->reservation_date->toDateString()
+        );
+    }
+
     // ── Salon ─────────────────────────────────────────────────────────────
 
     /**

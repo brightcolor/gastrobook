@@ -255,8 +255,8 @@ IP-Adresse wird beim Seitenaufruf also an keinen Dritten übermittelt.
   aufbewahrt.
 - Die Anonymisierung erfasst neben dem Gästeprofil auch die Angaben in den
   Reservierungen, internen Notizen, Eventbuchungen und Wartelisteneinträgen,
-  das Versandprotokoll, Dateianhänge sowie die im **Auditprotokoll**
-  gespeicherten Alt- und Neuwerte. Im Auditprotokoll bleiben Aktion, Zeitpunkt
+  das Versandprotokoll, Dateianhänge, abgegebene Bewertungstexte sowie die im
+  **Auditprotokoll** gespeicherten Alt- und Neuwerte samt Zusatzangaben. Im Auditprotokoll bleiben Aktion, Zeitpunkt
   und handelnde Person erhalten — das ist zur Erfüllung der Rechenschaftspflicht
   erforderlich (Art. 5 Abs. 2 DSGVO); die personenbezogenen Werte selbst werden
   entfernt.

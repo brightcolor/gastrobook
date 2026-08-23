@@ -245,6 +245,7 @@ if ($companions) {
             requestAnimationFrame(frame);
         } else {
             laeuft = false;
+            window.removeEventListener('resize', resize);
             canvas.remove();
         }
     }

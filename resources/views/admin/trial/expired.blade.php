@@ -55,6 +55,17 @@
                     </div>
                 </div>
 
+                @if(! auth()->user()->canInTenant('billing.manage', $tenant))
+                    {{-- Ohne das Recht laeuft das Absenden in ein 403. Wer hier
+                         landet, hat keinen anderen Weg mehr in die Anwendung -
+                         dann wenigstens ein Satz statt einer Fehlerseite. --}}
+                    <div class="px-8 py-10 text-center">
+                        <p class="text-sm leading-relaxed text-stone-600">
+                            Die Freischaltung läuft über die Inhaberin oder den Inhaber dieses Betriebs.
+                            Bitte wenden Sie sich dorthin – Sie selbst können den Antrag nicht stellen.
+                        </p>
+                    </div>
+                @else
                 <form action="{{ route('admin.trial.request') }}" method="POST" class="divide-y divide-stone-100">
                     @csrf
 
@@ -186,6 +197,7 @@
                         </button>
                     </div>
                 </form>
+                @endif
             </div>
         @endif
 

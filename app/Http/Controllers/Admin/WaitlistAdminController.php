@@ -101,10 +101,22 @@ class WaitlistAdminController extends Controller
         // inzwischen belegter Tisch. Ohne diesen Zweig bekaeme das Personal
         // eine Fehlerseite statt einer Meldung.
         try {
-            $offer = $entry->offers()->where('status', 'open')->latest()->first();
+            // Abgelaufene Angebote sind keine: acceptOffer wiese sie sonst mit
+            // "nicht mehr gueltig" ab, statt dass hier ein frisches entsteht.
+            $offer = $entry->offers()
+                ->where('status', 'open')
+                ->where('offer_expires_at', '>', now())
+                ->latest()
+                ->first();
+
             if ($offer === null) {
                 $duration = $location->effectiveSettings()->durationFor($entry->party_size);
-                $offer = $this->waitlist->offer($entry, now()->toImmutable(), now()->toImmutable()->addMinutes($duration), $request->user(), 15);
+                // sofort: Der Gast steht bereits am Tresen. Offene Angebote an
+                // andere zaehlen hier nicht dagegen.
+                $offer = $this->waitlist->offer(
+                    $entry, now()->toImmutable(), now()->toImmutable()->addMinutes($duration),
+                    $request->user(), 15, sofort: true,
+                );
             }
 
             $reservation = $this->waitlist->acceptOffer($offer);

@@ -422,7 +422,9 @@ class PublicBookingController extends Controller
         }
 
         $rules = [
-            'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
+            // Heute AM STANDORT, nicht in UTC: Sonst weist die Regel abends in
+            // westlichen Zeitzonen legitime Buchungen fuer denselben Tag ab.
+            'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:'.CarbonImmutable::now($location->timezone)->toDateString()],
             'time' => ['required', 'date_format:H:i'],
             'party_size' => ['required', 'integer', 'min:'.$settings->min_party_online, 'max:'.$settings->max_party_online],
             'name' => ['required', 'string', 'max:120'],
@@ -434,7 +436,7 @@ class PublicBookingController extends Controller
             'table_id' => ['nullable', 'integer'],
             // Das Datum des angeklickten Slots. Weicht nur bei Fenstern ueber
             // Mitternacht vom Datum im Kalender ab - dann aber entscheidend.
-            'slot_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:today'],
+            'slot_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:'.CarbonImmutable::now($location->timezone)->toDateString()],
         ];
         foreach (['email' => 'email:rfc', 'phone' => 'string|max:40'] as $field => $rule) {
             $fieldRule = $settings->fieldRule($field);
@@ -541,7 +543,7 @@ class PublicBookingController extends Controller
             // Ohne die Grenze liess sich ein Termin an einem Datum in der
             // Vergangenheit anlegen; er zaehlt als aktiv und verstopft den
             // Kalender der Mitarbeiterin.
-            'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
+            'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:'.CarbonImmutable::now($location->timezone)->toDateString()],
             'time' => ['required', 'date_format:H:i'],
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email:rfc'],
@@ -807,6 +809,12 @@ class PublicBookingController extends Controller
         $rules = [
             'date' => ['required', 'date_format:Y-m-d'],
             'time' => ['required', 'date_format:H:i'],
+            // Wie beim Buchen: Bei Oeffnungszeiten ueber Mitternacht gehoert
+            // "00:30" zum Folgetag. Ohne diese Angabe baut die Umbuchung den
+            // Zeitpunkt aus dem Kalendertag und schiebt den Termin 24 Stunden
+            // nach vorne - genau der Fehler, der im Buchungsweg schon behoben
+            // ist.
+            'slot_date' => ['nullable', 'date_format:Y-m-d'],
         ];
         if (! $isSalon) {
             $rules['party_size'] = [
@@ -818,7 +826,10 @@ class PublicBookingController extends Controller
 
         $validated = $request->validate($rules);
 
-        $newStartLocal = CarbonImmutable::parse($validated['date'].' '.$validated['time'], $reservation->timezone);
+        $newStartLocal = CarbonImmutable::parse(
+            ($validated['slot_date'] ?? $validated['date']).' '.$validated['time'],
+            $reservation->timezone
+        );
         $newPartySize = $isSalon ? null : (int) $validated['party_size'];
 
         try {
@@ -847,7 +858,7 @@ class PublicBookingController extends Controller
             // wird eine Ablauffrist, die schon vorbei ist: Der Eintrag wird vom
             // naechsten Aufraeumlauf abgeraeumt und nie einem Angebot
             // zugeordnet - der Gast bekommt trotzdem die volle Zusage.
-            'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
+            'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:'.CarbonImmutable::now($location->timezone)->toDateString()],
             'time' => ['nullable', 'date_format:H:i'],
             'party_size' => ['required', 'integer', 'min:'.$settings->min_party_online, 'max:'.$settings->max_party_online],
             'name' => ['required', 'string', 'max:120'],

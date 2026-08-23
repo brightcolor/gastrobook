@@ -61,6 +61,10 @@
                     <p class="col-span-full text-sm text-stone-500">Bitte Datum wählen.</p>
                 </div>
                 <input type="hidden" name="time" id="timeInput" required>
+                {{-- Das Datum des angeklickten Slots. Bei Öffnungszeiten über
+                     Mitternacht gehört „00:30" zum Folgetag, nicht zum Tag im
+                     Kalender daneben. --}}
+                <input type="hidden" name="slot_date" id="slotDateInput">
             </div>
             <button type="submit" class="btn-brand w-full rounded-xl py-3.5 text-lg font-bold text-white shadow hover:opacity-90">
                 Umbuchen
@@ -79,6 +83,8 @@
 
             const dateInput      = document.getElementById('date');
             const timeInput      = document.getElementById('timeInput');
+            const slotDateInput  = document.getElementById('slotDateInput');
+            let slotDates = {};
             const slotContainer  = document.getElementById('slotContainer');
             const partySizeInput = document.getElementById('partySizeInput');
 
@@ -100,6 +106,8 @@
                 if (!dateInput.value) return;
                 slotContainer.innerHTML = '<p class="col-span-full text-sm text-stone-500">Lade verfügbare Zeiten…</p>';
                 timeInput.value = '';
+                slotDates = {};
+                if (slotDateInput) slotDateInput.value = '';
                 const params = new URLSearchParams();
                 params.set('date', dateInput.value);
                 if (isSalon) {
@@ -116,6 +124,7 @@
                         slotContainer.innerHTML = '<p class="col-span-full text-sm text-red-600">An diesem Tag sind keine Zeiten verfügbar.</p>';
                         return;
                     }
+                    slotDates = data.slot_dates || {};
                     data.slots.forEach(t => {
                         const b = document.createElement('button');
                         b.type = 'button'; b.textContent = t;
@@ -124,6 +133,7 @@
                             document.querySelectorAll('.slot-btn').forEach(x => x.classList.remove('border-brand', 'bg-stone-50'));
                             b.classList.add('border-brand', 'bg-stone-50');
                             timeInput.value = t;
+                            if (slotDateInput) slotDateInput.value = slotDates[t] || dateInput.value;
                         });
                         slotContainer.appendChild(b);
                     });

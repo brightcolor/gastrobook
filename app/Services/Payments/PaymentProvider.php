@@ -33,5 +33,10 @@ interface PaymentProvider
      * @param  string  $reference  Provider charge reference (Stripe payment_intent id, PayPal capture id)
      * @return array{ok: bool, id: ?string}
      */
-    public function refund(string $reference, int $amountMinor, string $currency): array;
+    /**
+     * @param  string|null  $idempotencyKey  verhindert, dass ein
+     *                                       Wiederholungsversuch ein zweites
+     *                                       Mal auszahlt
+     */
+    public function refund(string $reference, int $amountMinor, string $currency, ?string $idempotencyKey = null): array;
 }

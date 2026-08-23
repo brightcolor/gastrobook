@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Exceptions\AccountImportException;
 use App\Models\BlackoutPeriod;
 use App\Models\DepositRule;
 use App\Models\Event;
@@ -40,7 +41,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-use RuntimeException;
 
 /**
  * Counterpart to AccountExportService: reads an export file back in so a
@@ -118,10 +118,10 @@ class AccountImportService
             $done['rooms'] = $this->rooms($tenant, $data);
             $done['tables'] = $this->tables($tenant, $data);
             $done['table_combinations'] = $this->combinations($tenant, $data);
-            $done['floor_zones'] = $this->simple($tenant, $data, 'floor_zones', FloorZone::class, ['location_id' => 'locations', 'room_id' => 'rooms']);
+            $done['floor_zones'] = $this->simple($tenant, $data, 'floor_zones', FloorZone::class, ['location_id' => 'locations', 'room_id' => 'rooms'], optional: ['room_id']);
             $done['opening_hours'] = $this->simple($tenant, $data, 'opening_hours', OpeningHour::class, ['location_id' => 'locations']);
             $done['special_opening_hours'] = $this->simple($tenant, $data, 'special_opening_hours', SpecialOpeningHour::class, ['location_id' => 'locations']);
-            $done['blackout_periods'] = $this->simple($tenant, $data, 'blackout_periods', BlackoutPeriod::class, ['location_id' => 'locations', 'room_id' => 'rooms']);
+            $done['blackout_periods'] = $this->simple($tenant, $data, 'blackout_periods', BlackoutPeriod::class, ['location_id' => 'locations', 'room_id' => 'rooms'], optional: ['room_id']);
             $done['tags'] = $this->simple($tenant, $data, 'tags', Tag::class, [], ['name', 'scope']);
             $done['table_blocks'] = $this->simple($tenant, $data, 'table_blocks', TableBlock::class, ['location_id' => 'locations', 'restaurant_table_id' => 'tables']);
             $done['notification_templates'] = $this->simple($tenant, $data, 'notification_templates', NotificationTemplate::class, ['location_id' => 'locations'], ['location_id', 'key', 'locale']);
@@ -134,13 +134,16 @@ class AccountImportService
             // muss vorher importiert sein – sonst steht in der Fremdschluessel-
             // spalte die ID der QUELLinstallation: entweder eine Verletzung, die
             // die ganze Transaktion abbricht, oder eine stille Falschverknuepfung.
-            $done['events'] = $this->simple($tenant, $data, 'events', Event::class, ['location_id' => 'locations', 'room_id' => 'rooms']);
+            // room_id ist optional: Ein Event ohne aufloesbaren Raum ist immer
+            // noch ein Event. Ohne diese Angabe verwuerfe der Import die ganze
+            // Zeile - schlimmer als der falsche Verweis, den er ersetzt.
+            $done['events'] = $this->simple($tenant, $data, 'events', Event::class, ['location_id' => 'locations', 'room_id' => 'rooms'], optional: ['room_id']);
             $done['deposit_rules'] = $this->simple($tenant, $data, 'deposit_rules', DepositRule::class, [
                 'location_id' => 'locations',
                 'room_id' => 'rooms',
                 'event_id' => 'events',
                 'service_id' => 'services',
-            ]);
+            ], optional: ['room_id', 'event_id', 'service_id']);
 
             // Die drei preferred_-Spalten sind echte Fremdschluessel. Ungemappt
             // steht dort die ID der Quellinstallation: entweder eine Verletzung,
@@ -159,15 +162,15 @@ class AccountImportService
                 'event_id' => 'events',
                 'reservation_id' => 'reservations',
                 'guest_id' => 'guests',
-            ]);
+            ], optional: ['reservation_id', 'guest_id']);
             $done['waitlist_entries'] = $this->simple($tenant, $data, 'waitlist_entries', WaitlistEntry::class, [
                 'location_id' => 'locations',
                 'guest_id' => 'guests',
                 'reservation_id' => 'reservations',
-            ]);
-            $done['payments'] = $this->simple($tenant, $data, 'payments', PaymentIntent::class, ['reservation_id' => 'reservations', 'event_booking_id' => 'event_bookings']);
+            ], optional: ['guest_id', 'reservation_id']);
+            $done['payments'] = $this->simple($tenant, $data, 'payments', PaymentIntent::class, ['reservation_id' => 'reservations', 'event_booking_id' => 'event_bookings'], optional: ['reservation_id', 'event_booking_id']);
             $done['refunds'] = $this->refunds($tenant, $data);
-            $done['feedback_requests'] = $this->simple($tenant, $data, 'feedback_requests', FeedbackRequest::class, ['location_id' => 'locations', 'reservation_id' => 'reservations']);
+            $done['feedback_requests'] = $this->simple($tenant, $data, 'feedback_requests', FeedbackRequest::class, ['location_id' => 'locations', 'reservation_id' => 'reservations'], optional: ['reservation_id']);
             $done['feedback_responses'] = $this->simple($tenant, $data, 'feedback_responses', FeedbackResponse::class, ['location_id' => 'locations', 'feedback_request_id' => 'feedback_requests']);
 
             $done['marketing_campaigns'] = $this->simple($tenant, $data, 'marketing_campaigns', MarketingCampaign::class, ['location_id' => 'locations']);
@@ -176,7 +179,7 @@ class AccountImportService
             $done['marketing_sends'] = $this->simple($tenant, $data, 'marketing_sends', MarketingSend::class, [
                 'marketing_campaign_id' => 'marketing_campaigns',
                 'guest_id' => 'guests',
-            ]);
+            ], optional: ['guest_id']);
 
             return array_filter($done);
         });
@@ -202,13 +205,13 @@ class AccountImportService
     private function assertValid(array $data): void
     {
         if (($data['format'] ?? null) !== 'swayy-account-export') {
-            throw new RuntimeException('Diese Datei ist kein Swayy-Account-Export.');
+            throw new AccountImportException('Diese Datei ist kein Swayy-Account-Export.');
         }
         if ((int) ($data['format_version'] ?? 0) !== 1) {
-            throw new RuntimeException('Diese Export-Datei stammt aus einer nicht unterstützten Version.');
+            throw new AccountImportException('Diese Export-Datei stammt aus einer nicht unterstützten Version.');
         }
         if (! isset($data['locations']) || ! is_array($data['locations']) || $data['locations'] === []) {
-            throw new RuntimeException('Die Datei enthält keine Standorte – ohne Standort kann nicht importiert werden.');
+            throw new AccountImportException('Die Datei enthält keine Standorte – ohne Standort kann nicht importiert werden.');
         }
     }
 
@@ -223,6 +226,7 @@ class AccountImportService
             $location = new Location($attrs);
             $location->tenant_id = $tenant->id;
             $location->save();
+            $this->carryTimestamps($location, $row);
 
             $this->remember('locations', $row['id'] ?? null, $location->id);
 
@@ -299,9 +303,14 @@ class AccountImportService
         }
 
         foreach ($ersatz as $neueId => $alteErsatzId) {
-            RestaurantTable::withoutGlobalScopes()->withTrashed()
-                ->whereKey($neueId)
-                ->update(['backup_table_id' => $this->mapped('tables', $alteErsatzId)]);
+            // Ohne den Zeitstempel: Ein Update ueber den Query Builder stempelt
+            // updated_at auf jetzt und macht damit den Uebertrag von oben
+            // wieder zunichte.
+            $tisch = RestaurantTable::withoutGlobalScopes()->withTrashed()->find($neueId);
+            $tisch?->forceFill([
+                'backup_table_id' => $this->mapped('tables', $alteErsatzId),
+                'updated_at' => $tisch->updated_at,
+            ])->saveQuietly();
         }
 
         return $count;
@@ -327,7 +336,10 @@ class AccountImportService
             }
         }
 
-        if ($ids !== []) {
+        // Am VORHANDENSEIN des Feldes entscheiden, nicht am Ergebnis: Eine
+        // neue Datei, deren Tische sich alle nicht aufloesen lassen, faellt
+        // sonst auf die Namenskarte zurueck und haengt an einem Gleichnamigen.
+        if (array_key_exists('table_ids', $row)) {
             return array_values(array_unique($ids));
         }
 

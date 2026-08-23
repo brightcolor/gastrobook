@@ -192,7 +192,14 @@ class SaasTenantController extends Controller
             'current_location_id' => null,
         ])->save();
 
-        session(['impersonating_tenant_id' => $tenant->id]);
+        // Beide Schluessel: Der erste steuert den Zugriff, der zweite steht in
+        // jedem Auditeintrag, den dieser Zugriff erzeugt. Ohne ihn lief jede
+        // Handlung im Supportzugriff als gewoehnliche Handlung des Betriebs -
+        // die Kennzeichnung im Protokoll erschien nie.
+        session([
+            'impersonating_tenant_id' => $tenant->id,
+            'impersonator_id' => $request->user()->id,
+        ]);
 
         $this->audit->log('support.impersonation_started', $tenant, null, null, [
             'reason' => $validated['reason'] ?? null,
@@ -209,7 +216,7 @@ class SaasTenantController extends Controller
             $this->audit->log('support.impersonation_ended', null, null, null, null, $request->user(), $tenantId);
         }
 
-        session()->forget('impersonating_tenant_id');
+        session()->forget(['impersonating_tenant_id', 'impersonator_id']);
         $request->user()->forceFill(['current_tenant_id' => null, 'current_location_id' => null])->save();
 
         return redirect()->route('saas.tenants.index');

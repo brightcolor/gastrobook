@@ -438,6 +438,10 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
         Route::post('/users/invite', [UserManagementController::class, 'invite'])->name('users.invite');
         Route::put('/users/{membership}/role', [UserManagementController::class, 'updateRole'])
             ->middleware('permission:users.roles.manage')->name('users.role');
+        // Standortfreigaben aendern - dasselbe Recht wie die Rolle, denn es ist
+        // dieselbe Art Aenderung an fremden Rechten.
+        Route::put('/users/{membership}/locations', [UserManagementController::class, 'updateLocations'])
+            ->middleware('permission:users.roles.manage')->name('users.locations');
         Route::delete('/users/{membership}', [UserManagementController::class, 'remove'])
             ->middleware('permission:users.roles.manage')->name('users.remove');
         Route::delete('/users/{membership}/delete-account', [UserManagementController::class, 'deleteUser'])
