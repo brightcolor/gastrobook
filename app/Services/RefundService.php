@@ -150,6 +150,9 @@ class RefundService
                     'reservation_id' => $reservation->id,
                     'payment_intent_id' => $intent->id,
                     'provider' => $intent->provider,
+                    // Die Belastung jetzt festhalten. Am Vorgang steht immer
+                    // nur die zuletzt gesehene, und der wird wiederverwendet.
+                    'charge_reference' => $intent->metadata['refund_ref'] ?? null,
                     'amount_minor' => $amount,
                     'currency' => $intent->currency,
                     // Hat der Betrieb Erstattungen nie eingeschaltet, wird hier
@@ -254,17 +257,33 @@ class RefundService
      */
     public function reopen(Refund $refund): bool
     {
+        $frist = now()->subHours(self::RETRY_WINDOW_HOURS);
+
         return Refund::withoutGlobalScopes()
             ->whereKey($refund->id)
             ->where(function ($q) {
                 $q->where('status', 'failed')
-                    ->where('updated_at', '>', now()->subHours(self::RETRY_WINDOW_HOURS))
                     // Haengengeblieben: beansprucht, aber seit einer
                     // Viertelstunde ruehrt sich nichts mehr.
                     ->orWhere(fn ($q) => $q->where('status', 'processing')
                         ->where('updated_at', '<', now()->subMinutes(self::STALE_PROCESSING_MINUTES)));
             })
+            // Das Fenster gilt fuer BEIDE Faelle und haengt am ERSTEN Anlauf.
+            // An updated_at gemessen setzte jeder Versuch es neu zurueck, und
+            // 'processing' hatte gar keine Obergrenze - ausgerechnet der Fall,
+            // in dem die Auszahlung am ehesten doch gelaufen ist.
+            ->where(function ($q) use ($frist) {
+                $q->whereNull('first_attempt_at')->orWhere('first_attempt_at', '>', $frist);
+            })
             ->update(['status' => 'approved', 'error' => null]) === 1;
+    }
+
+    /**
+     * `now()` als Literal fuer einen COALESCE-Ausdruck.
+     */
+    private function quotedNow(): string
+    {
+        return DB::connection()->getPdo()->quote(now()->toDateTimeString());
     }
 
     /**
@@ -280,10 +299,17 @@ class RefundService
         // in a single UPDATE proceeds. Without this compare-and-swap two concurrent
         // runs (immediate processing + scheduled batch, or the retry button + batch)
         // could both reach $provider->refund() and refund the guest twice.
+        // first_attempt_at nur beim ERSTEN Anlauf setzen. Daran haengt das
+        // Wiederholfenster: Der Schutz gegen die doppelte Auszahlung ist der
+        // Wiederholungsschluessel beim Anbieter, und der laeuft 24 Stunden
+        // nach seiner ersten Verwendung ab - nicht nach der letzten.
         $claimed = Refund::withoutGlobalScopes()
             ->whereKey($refund->id)
             ->where('status', 'approved')
-            ->update(['status' => 'processing']);
+            ->update([
+                'status' => 'processing',
+                'first_attempt_at' => DB::raw('COALESCE(first_attempt_at, '.$this->quotedNow().')'),
+            ]);
 
         if ($claimed === 0) {
             // Someone else already claimed/finished it (or it isn't approved).
@@ -302,7 +328,13 @@ class RefundService
             $tenant = Tenant::find($refund->tenant_id);
             $provider = $tenant ? $this->payments->provider($tenant, $refund->provider) : null;
             $intent = $refund->payment_intent_id ? PaymentIntent::withoutGlobalScopes()->find($refund->payment_intent_id) : null;
-            $reference = $intent->metadata['refund_ref'] ?? null;
+
+            // Die Referenz DIESER Erstattung, nicht die zuletzt am Vorgang
+            // notierte. Ein Vorgang wird wiederverwendet: Zahlt der Gast nach
+            // einer abgewiesenen Zahlung erneut, zeigt sie auf die neue
+            // Belastung - und eine wartende Erstattung holte sich das Geld von
+            // der falschen zurueck, waehrend die richtige liegen blieb.
+            $reference = $refund->charge_reference ?: ($intent->metadata['refund_ref'] ?? null);
 
             if ($provider === null || ! $reference) {
                 $refund->update(['status' => 'failed', 'error' => 'Kein Anbieter oder keine Zahlungsreferenz.']);
@@ -365,9 +397,6 @@ class RefundService
         // "Voll erstattet" ergibt sich aus der Summe aller Erstattungen zu
         // diesem Vorgang, nicht aus dieser einen Zeile: Zweimal die Haelfte
         // sind auch voll erstattet.
-        $fully = $intent === null
-            || ($bereits + $refund->amount_minor) >= (int) $intent->amount_minor;
-
         $refund->update([
             'status' => 'completed',
             'provider_refund_id' => $result['id'],
@@ -380,6 +409,9 @@ class RefundService
         // bezahlt - der Fristablauf laesst sie dann stehen, unbezahlt und ohne
         // Ende, und der Tisch bliebe bis zum Termin blockiert.
         if ($refund->source !== self::MISMATCH) {
+            $fully = $intent === null
+                || ($bereits + $refund->amount_minor) >= (int) $intent->amount_minor;
+
             $intent?->update(['status' => $fully ? 'refunded' : 'partially_refunded']);
 
             if ($refund->reservation_id) {
@@ -460,6 +492,7 @@ class RefundService
                     'event_booking_id' => $booking->id,
                     'payment_intent_id' => $intent->id,
                     'provider' => $intent->provider,
+                    'charge_reference' => $intent->metadata['refund_ref'] ?? null,
                     'amount_minor' => $amount,
                     'currency' => $intent->currency,
                     'status' => $mode === 'auto' ? 'approved' : 'pending',
@@ -542,33 +575,43 @@ class RefundService
             return null;
         }
 
-        // Die Referenz auf die Belastung ist die einzige Handhabe, mit der der
-        // Anbieter spaeter zurueckzahlen kann. Sie steht sonst nur an einer
-        // verbuchten Zahlung - und verbucht wird hier gerade nicht.
-        if ($chargeRef) {
-            $intent->update(['metadata' => array_merge($intent->metadata ?? [], ['refund_ref' => $chargeRef])]);
-            $intent->refresh();
-        }
+        $settings = $location->effectiveSettings();
+        $mode = $settings->refund_mode;
+        $kennung = $reservation?->code ?? $booking?->code ?? ('#'.$intent->id);
+        $gast = $this->guestLines(
+            $reservation?->guest_name_snapshot ?? $booking?->guest_name,
+            $reservation?->guest_email_snapshot ?? $booking?->guest_email,
+        );
 
-        if (empty($intent->metadata['refund_ref'])) {
-            // Ohne Referenz laesst sich beim Anbieter nichts ausloesen. Der
-            // Auditeintrag des Aufrufers bleibt der einzige Hinweis.
+        // Ohne Referenz auf die Belastung laesst sich beim Anbieter nichts
+        // ausloesen - gemeldet gehoert es trotzdem, und gerade dann: Das ist
+        // der Fall, in dem das Geld am schwersten zu finden ist. Vorher endete
+        // er wortlos, mit dem Auditeintrag des Aufrufers als einzigem Hinweis.
+        if (! $chargeRef) {
+            $this->notifyOperator($location, null, 'Zahlung mit falschem Betrag – '.$kennung, [
+                'Zu '.$kennung.' ist eine Zahlung über '.$this->formatMinor($charged, $intent->currency).' eingegangen,',
+                'erwartet waren '.$this->formatMinor((int) $intent->amount_minor, $intent->currency).'.',
+                '',
+                'Der Zahlungsanbieter hat dazu KEINE Belegnummer gemeldet – die',
+                'Rückerstattung muss dort von Hand ausgelöst werden.',
+                '',
+                ...$gast,
+            ]);
+
             return null;
         }
 
-        $settings = $location->effectiveSettings();
-        $mode = $settings->refund_mode;
-
-        // Gesperrt wird der Zahlungsvorgang: Die Zeile existiert, die
-        // Erstattungszeile noch nicht. Rueckweg des Gastes und Webhook des
-        // Anbieters laufen hier sekundengleich gegeneinander.
+        // Der Schluessel ist die BELASTUNG, nicht der Vorgang. Ein Gast mit
+        // zwei alten Bezahlseiten zahlt zweimal falsch; auf den Vorgang
+        // bezogen bekam er nur die erste zurueck, und die zweite verschwand.
         $vorhandene = fn () => Refund::withoutGlobalScopes()
-            ->where('payment_intent_id', $intent->id)
+            ->where('charge_reference', $chargeRef)
             ->where('source', self::MISMATCH)
             ->whereNotIn('status', ['rejected', 'failed'])
             ->first();
 
-        $refund = $this->createOnce($vorhandene, function () use ($intent, $reservation, $booking, $charged, $mode, $vorhandene) {
+        $frisch = false;
+        $refund = $this->createOnce($vorhandene, function () use ($intent, $reservation, $booking, $charged, $chargeRef, $mode, $vorhandene, &$frisch) {
             PaymentIntent::withoutGlobalScopes()->lockForUpdate()->find($intent->id);
 
             $existing = $vorhandene();
@@ -582,6 +625,9 @@ class RefundService
                 'event_booking_id' => $booking?->id,
                 'payment_intent_id' => $intent->id,
                 'provider' => $intent->provider,
+                // Die Belastung wird HIER festgeschrieben. Am Vorgang steht
+                // immer nur die zuletzt gesehene, und der wird wiederverwendet.
+                'charge_reference' => $chargeRef,
                 'amount_minor' => $charged,
                 'currency' => $intent->currency,
                 'status' => $mode === 'auto' ? 'approved' : 'pending',
@@ -595,6 +641,8 @@ class RefundService
                 'mode' => $mode,
             ], null, null, $intent->tenant_id);
 
+            $frisch = true;
+
             return $refund;
         });
 
@@ -602,23 +650,54 @@ class RefundService
             return null;
         }
 
-        $kennung = $reservation?->code ?? $booking?->code ?? ('#'.$intent->id);
-        $this->notifyOperator($location, $refund, 'Zahlung mit falschem Betrag – '.$kennung, [
-            'Zu '.$kennung.' ist eine Zahlung über '.number_format($charged / 100, 2, ',', '.').' '.$intent->currency.' eingegangen,',
-            'erwartet waren '.number_format((int) $intent->amount_minor / 100, 2, ',', '.').' '.$intent->currency.'.',
-            'Die Buchung gilt deshalb weiter als unbezahlt.',
-            '',
-            ...$this->guestLines(
-                $reservation?->guest_name_snapshot ?? $booking?->guest_name,
-                $reservation?->guest_email_snapshot ?? $booking?->guest_email,
-            ),
-        ]);
+        // Nur beim ersten Mal melden. Die Adresse des Rueckwegs liegt beim
+        // Gast; ein Neuladen schickte dem Betrieb sonst bei jedem Druck auf F5
+        // dieselbe Mail.
+        if ($frisch) {
+            $this->notifyOperator($location, $refund, 'Zahlung mit falschem Betrag – '.$kennung, [
+                'Zu '.$kennung.' ist eine Zahlung über '.$this->formatMinor($charged, $intent->currency).' eingegangen,',
+                'erwartet waren '.$this->formatMinor((int) $intent->amount_minor, $intent->currency).'.',
+                'Die Buchung gilt deshalb weiter als unbezahlt.',
+                '',
+                ...$gast,
+            ]);
+        }
 
         if ($refund->status === 'approved' && $settings->refund_processing === 'immediate') {
             $this->process($refund);
         }
 
         return $refund->fresh();
+    }
+
+    private function formatMinor(int $minor, ?string $currency): string
+    {
+        return number_format($minor / 100, 2, ',', '.').' '.($currency ?: 'EUR');
+    }
+
+    /**
+     * Die Zahlung ist verbucht, die Buchung aber nicht bestaetigt worden.
+     *
+     * Sie bleibt danach auf "wartet auf Zahlung" stehen - und weil an ihr Geld
+     * haengt, laesst der Fristablauf sie bewusst in Ruhe. Ohne diese Meldung
+     * stuende sie dort fuer immer, mit einem Auditeintrag als einzigem Hinweis.
+     */
+    public function notifyStuckAfterPayment(Reservation $reservation): void
+    {
+        $location = $reservation->location()->withoutGlobalScope('tenant')->first();
+        if ($location === null) {
+            return;
+        }
+
+        $this->notifyOperator($location, null, 'Zahlung verbucht, Buchung hängt – '.$reservation->code, [
+            'Zu der Reservierung '.$reservation->code.' ist die Zahlung eingegangen und verbucht,',
+            'die Bestätigung ist danach aber fehlgeschlagen.',
+            '',
+            'Die Buchung steht deshalb weiter auf "wartet auf Zahlung" und läuft',
+            'nicht mehr von allein ab. Bitte im Buchungsbuch von Hand bestätigen.',
+            '',
+            ...$this->guestLines($reservation->guest_name_snapshot, $reservation->guest_email_snapshot),
+        ]);
     }
 
     /**
@@ -660,8 +739,18 @@ class RefundService
     {
         try {
             return DB::transaction($anlegen);
-        } catch (UniqueConstraintViolationException) {
-            return $vorhandene();
+        } catch (UniqueConstraintViolationException $e) {
+            $treffer = $vorhandene();
+
+            if ($treffer === null) {
+                // Der Index hat die Zeile verhindert, und der Blick danach
+                // findet nichts: Dann sperrt eine Zeile den Platz, die die
+                // Suche gar nicht kennt. Ohne diesen Eintrag endet der Weg
+                // wortlos - keine Erstattung, kein Fehler, kein Hinweis.
+                report($e);
+            }
+
+            return $treffer;
         }
     }
 
@@ -703,20 +792,23 @@ class RefundService
      * Nimmt die Eckdaten einzeln statt einer Reservierung: Derselbe Fall tritt
      * bei Eventbuchungen auf, und die sind kein Reservation-Objekt.
      *
+     * Ohne Erstattungszeile ist die Meldung reine Information: Dann gibt es
+     * nichts zu erstatten, was die Anwendung selbst ausloesen koennte.
+     *
      * @param  array<int, string>  $zeilen
      */
-    private function notifyOperator(Location $location, Refund $refund, string $betreff, array $zeilen): void
+    private function notifyOperator(Location $location, ?Refund $refund, string $betreff, array $zeilen): void
     {
         $to = $location->effectiveSettings()->owner_notification_email ?: $location->email;
         if (! $to) {
             return;
         }
 
-        $tenant = Tenant::find($refund->tenant_id);
+        $tenant = Tenant::find($refund?->tenant_id ?? $location->tenant_id);
 
         Mail::to($to)->queue(new TemplatedMail(
             $betreff,
-            implode("\n", [
+            implode("\n", $refund === null ? $zeilen : [
                 ...$zeilen,
                 '',
                 'Betrag:  '.$refund->amountFormatted(),

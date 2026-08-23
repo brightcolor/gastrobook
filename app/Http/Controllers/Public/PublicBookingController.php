@@ -558,8 +558,10 @@ class PublicBookingController extends Controller
             // Kalender der Mitarbeiterin.
             'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:'.CarbonImmutable::now($location->timezone)->toDateString()],
             // Der Kalendertag des gewaehlten Slots. Bei Arbeitszeiten ueber
-            // Mitternacht ist er ein anderer als der gewaehlte Tag.
-            'slot_date' => ['nullable', 'date_format:Y-m-d'],
+            // Mitternacht ist er ein anderer als der gewaehlte Tag. Dieselbe
+            // Untergrenze wie am Tag selbst - sonst faende sich hier der Weg
+            // in die Vergangenheit, den der Restaurantpfad laengst zu hat.
+            'slot_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:'.CarbonImmutable::now($location->timezone)->toDateString()],
             'time' => ['required', 'date_format:H:i'],
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email:rfc'],

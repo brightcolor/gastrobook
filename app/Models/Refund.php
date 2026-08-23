@@ -22,7 +22,10 @@ class Refund extends Model
         'tenant_id', 'reservation_id', 'event_booking_id', 'payment_intent_id',
         'provider', 'provider_refund_id', 'amount_minor', 'currency',
         'status', 'source', 'reason', 'requested_by', 'approved_by',
-        'scheduled_for', 'processed_at', 'error',
+        'scheduled_for', 'processed_at', 'first_attempt_at', 'error',
+        // An WELCHER Belastung diese Erstattung haengt. Am Zahlungsvorgang
+        // steht immer nur die zuletzt gesehene - der wird wiederverwendet.
+        'charge_reference',
     ];
 
     protected function casts(): array
@@ -31,6 +34,7 @@ class Refund extends Model
             'amount_minor' => 'integer',
             'scheduled_for' => 'datetime',
             'processed_at' => 'datetime',
+            'first_attempt_at' => 'datetime',
         ];
     }
 

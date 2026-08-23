@@ -504,9 +504,9 @@ class PaymentController extends Controller
      * bezahlt, und eine spaetere Erstattung haette den falschen Betrag
      * zurueckgezahlt.
      *
-     * Meldet der Anbieter keinen Betrag, wird nicht blockiert: Dann ist die
-     * Pruefung nicht moeglich, und ein stiller Abbruch waere schlimmer als die
-     * fehlende Kontrolle.
+     * Meldet der Anbieter keinen Betrag, wird nicht blockiert - und dann auch
+     * die Waehrung nicht geprueft: Ohne Betrag gaebe es nichts zu erstatten,
+     * und ein stiller Abbruch waere schlimmer als die fehlende Kontrolle.
      *
      * Abgewiesen heisst nicht folgenlos: Das Geld ist kassiert. Vorher endete
      * dieser Weg mit einer Zeile im Auditlog - keine Erstattung, keine Meldung
@@ -678,6 +678,12 @@ class PaymentController extends Controller
                             'payment_intent_id' => $intent->id,
                             'error' => $e::class,
                         ], null, null, $intent->tenant_id);
+
+                        // Und eine Meldung: Die Buchung bleibt jetzt auf
+                        // "wartet auf Zahlung" stehen, und weil Geld an ihr
+                        // haengt, laesst der Fristablauf sie bewusst in Ruhe.
+                        // Ohne diesen Hinweis stuende sie dort fuer immer.
+                        $this->refunds->notifyStuckAfterPayment($reservation);
                     }
                 } elseif (! $reservation->status->isActive()) {
                     // Late webhook: payment arrived after the reservation was cancelled,

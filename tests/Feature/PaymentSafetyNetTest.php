@@ -13,9 +13,12 @@ use App\Models\IntegrationConnection;
 use App\Models\PaymentIntent;
 use App\Models\Refund;
 use App\Models\Reservation;
+use App\Models\User;
 use App\Services\RefundService;
 use App\Services\ReservationLifecycleService;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
@@ -449,6 +452,99 @@ class PaymentSafetyNetTest extends TestCase
         Mail::assertQueued(TemplatedMail::class, fn (TemplatedMail $mail) => $mail->hasTo('betrieb@example.test'));
     }
 
+    /**
+     * Scheitert der Statuswechsel, bleibt die Zahlung trotzdem verbucht.
+     *
+     * Der Wechsel verschickt Mails und Webhooks. Lag er in derselben
+     * Transaktion wie der Zahlungsstand, nahm ein Fehler dabei den verbuchten
+     * Stand mit zurueck - und der Gast stand mit bezahltem, aber unverbuchtem
+     * Geld da. Und weil die Buchung danach haengenbleibt, muss der Betrieb es
+     * erfahren: Der Fristablauf laesst sie wegen des Geldes bewusst in Ruhe.
+     */
+    public function test_a_failing_confirmation_keeps_the_payment_booked_and_tells_the_operator(): void
+    {
+        Mail::fake();
+        Http::fake([
+            'api.stripe.com/v1/checkout/sessions/*' => Http::response([
+                'id' => 'cs_x', 'payment_status' => 'paid', 'payment_intent' => 'pi_x',
+                'amount_total' => 4000, 'currency' => 'eur',
+            ], 200),
+        ]);
+
+        $setup = $this->createTenantSetup();
+        $setup['location']->settings->update(['owner_notification_email' => 'betrieb@example.test']);
+        $this->connectStripe($setup);
+        $reservation = $this->awaitingPayment($setup);
+        $intent = PaymentIntent::withoutGlobalScopes()->create([
+            'tenant_id' => $setup['tenant']->id,
+            'reservation_id' => $reservation->id,
+            'provider' => 'stripe', 'provider_intent_id' => 'cs_x',
+            'type' => 'deposit', 'amount_minor' => 4000, 'currency' => 'EUR', 'status' => 'pending',
+        ]);
+        $this->clearTenantContext();
+
+        // Der Wechsel selbst faellt aus - egal warum.
+        $this->app->bind(ReservationLifecycleService::class, function ($app) {
+            return new class(...array_values($this->lifecycleDependencies($app))) extends ReservationLifecycleService
+            {
+                public function transition(Reservation $reservation, ReservationStatus $to, ?User $actor = null, string $actorType = 'user', ?string $reason = null, ?string $note = null, ?CarbonInterface $seatedAt = null): Reservation
+                {
+                    throw new \RuntimeException('Bestaetigung faellt aus.');
+                }
+            };
+        });
+
+        $this->get(route('pay.stripe.return', ['intent' => $intent->id]).'?session_id=cs_x');
+
+        $frisch = $reservation->fresh();
+        $this->assertSame('paid', $frisch->payment_status, 'Der verbuchte Zahlungsstand wurde zurueckgenommen.');
+        $this->assertSame('paid', $intent->fresh()->status);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'payment.confirm_failed']);
+        Mail::assertQueued(TemplatedMail::class, fn (TemplatedMail $mail) => $mail->hasTo('betrieb@example.test'));
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    private function lifecycleDependencies(Application $app): array
+    {
+        $parameter = (new \ReflectionClass(ReservationLifecycleService::class))->getConstructor()?->getParameters() ?? [];
+
+        return array_map(
+            fn (\ReflectionParameter $p) => $app->make((string) $p->getType()),
+            $parameter
+        );
+    }
+
+    /**
+     * Der Abbruch einer verzoegerten Zahlung darf nur einen wirklich OFFENEN
+     * Vorgang treffen. "Alles ausser bezahlt" traf auch eine bereits erstattete
+     * Zahlung: Sie stand danach als Fehlversuch da, und die Buchung wurde
+     * wieder auf "Zahlung offen" gestellt.
+     */
+    public function test_an_async_failure_leaves_a_refunded_payment_alone(): void
+    {
+        Mail::fake();
+        $setup = $this->createTenantSetup();
+        $this->connectStripe($setup);
+        $reservation = $this->awaitingPayment($setup, 'refunded');
+        $intent = PaymentIntent::withoutGlobalScopes()->create([
+            'tenant_id' => $setup['tenant']->id,
+            'reservation_id' => $reservation->id,
+            'provider' => 'stripe', 'provider_intent_id' => 'cs_async',
+            'type' => 'deposit', 'amount_minor' => 4000, 'currency' => 'EUR', 'status' => 'refunded',
+        ]);
+        $this->clearTenantContext();
+
+        $this->postWebhook([
+            'type' => 'checkout.session.async_payment_failed',
+            'data' => ['object' => ['id' => 'cs_async', 'metadata' => ['payment_intent_id' => (string) $intent->id]]],
+        ]);
+
+        $this->assertSame('refunded', $intent->fresh()->status);
+        $this->assertSame('refunded', $reservation->fresh()->payment_status);
+    }
+
     public function test_the_deadline_run_still_expires_an_unpaid_booking(): void
     {
         Mail::fake();
@@ -518,16 +614,34 @@ class PaymentSafetyNetTest extends TestCase
             'source' => 'staff', 'reason' => 'cancellation',
         ]);
 
-        $refund->forceFill(['updated_at' => now()->subHours(2)])->saveQuietly();
+        // Zwei Stunden nach dem ersten Anlauf: geht noch.
+        Refund::withoutGlobalScopes()->whereKey($refund->id)
+            ->update(['first_attempt_at' => now()->subHours(2)]);
         $this->assertTrue(app(RefundService::class)->reopen($refund->fresh()));
 
         // Ueber den Abfragebauer, nicht ueber das Modell: Das haelt in seinen
         // Attributen noch 'failed' und schriebe darum gar nichts.
-        Refund::withoutGlobalScopes()->whereKey($refund->id)
-            ->update(['status' => 'failed', 'updated_at' => now()->subHours(30)]);
+        //
+        // Gemessen wird am ERSTEN Anlauf, nicht am letzten: Zwei Fehlversuche
+        // mit einem Tag Abstand liefen sonst am Wiederholungsschutz vorbei,
+        // weil jeder Versuch updated_at neu setzt.
+        Refund::withoutGlobalScopes()->whereKey($refund->id)->update([
+            'status' => 'failed',
+            'first_attempt_at' => now()->subHours(30),
+            'updated_at' => now()->subMinutes(5),
+        ]);
 
         $this->assertFalse(app(RefundService::class)->reopen($refund->fresh()));
         $this->assertSame('failed', $refund->fresh()->status);
+
+        // Und dasselbe fuer eine haengengebliebene: Der Fall, in dem die
+        // Auszahlung am ehesten doch gelaufen ist, hatte gar keine Obergrenze.
+        Refund::withoutGlobalScopes()->whereKey($refund->id)->update([
+            'status' => 'processing',
+            'first_attempt_at' => now()->subHours(30),
+            'updated_at' => now()->subDays(7),
+        ]);
+        $this->assertFalse(app(RefundService::class)->reopen($refund->fresh()));
     }
 
     /**
@@ -755,9 +869,11 @@ class PaymentSafetyNetTest extends TestCase
         // Zurueck geht, was kassiert wurde - nicht, was am Vorgang steht.
         $this->assertSame(1000, $refund->amount_minor);
         $this->assertSame($reservation->id, $refund->reservation_id);
-        // Und die Referenz auf die Belastung, ohne die der Anbieter nichts
-        // zurueckzahlen kann.
-        $this->assertSame('pi_alt', $intent->fresh()->metadata['refund_ref']);
+        // Die Referenz auf die FALSCHE Belastung steht an der Erstattung, nicht
+        // am Vorgang: Der wird wiederverwendet, und eine spaetere richtige
+        // Zahlung ueberschriebe sie dort.
+        $this->assertSame('pi_alt', $refund->charge_reference);
+        $this->assertArrayNotHasKey('refund_ref', $intent->fresh()->metadata ?? []);
 
         Mail::assertQueued(TemplatedMail::class, fn (TemplatedMail $mail) => $mail->hasTo('betrieb@example.test'));
 

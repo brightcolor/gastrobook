@@ -10,8 +10,10 @@ use App\Models\Service;
 use App\Models\StaffMember;
 use App\Models\StaffWorkingHour;
 use App\Models\User;
+use App\Services\ReservationLifecycleService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Tests\Concerns\CreatesTenants;
 use Tests\TestCase;
 
@@ -110,6 +112,53 @@ class SalonAdminTest extends TestCase
         // Mit ausdruecklichem Ueberbuchen: angelegt.
         $this->actingAs($admin)->post('/admin/reservations', ['name' => 'Cara', 'force' => 1] + $termin)
             ->assertSessionHasNoErrors();
+        $this->assertSame(2, Reservation::withoutGlobalScopes()->count());
+    }
+
+    /**
+     * Und die Pruefung sitzt unter der SPERRE, nicht nur im Controller davor.
+     *
+     * Der Test darueber laeuft ueber die Maske, und dort weist schon der
+     * Vorcheck ab - die Pruefung unter der Sperre liesse sich ersatzlos
+     * loeschen, ohne dass er rot wird. Sie ist aber genau die, auf die es
+     * ankommt: Zwei gleichzeitige Anfragen sehen beide dasselbe veraltete
+     * "ist frei", und nur unter der Sperre faellt die zweite auf.
+     *
+     * Darum hier direkt an lifecycle->create, mit skip_availability_check -
+     * so rufen alle Salonwege auf.
+     */
+    public function test_the_stylist_check_sits_under_the_slot_lock(): void
+    {
+        [$admin, $staff, $service, $setup] = $this->salonWithService();
+        $start = CarbonImmutable::now($setup['location']->timezone)->addDay()->setTime(14, 0);
+
+        $daten = [
+            'party_size' => 1,
+            'start_local' => $start,
+            'duration_minutes' => 60,
+            'source' => 'manual',
+            'guest_name' => 'Bea',
+            'service_id' => $service->id,
+            'staff_member_id' => $staff->id,
+            'skip_availability_check' => true,
+        ];
+
+        $lifecycle = app(ReservationLifecycleService::class);
+        $lifecycle->create($setup['location'], $daten, $admin);
+
+        // Der zweite Aufruf kommt mit demselben veralteten "ist frei" - und
+        // muss trotzdem scheitern.
+        try {
+            $lifecycle->create($setup['location'], ['guest_name' => 'Cara'] + $daten, $admin);
+            $this->fail('Die Doppelbelegung ist unter der Sperre durchgegangen.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('start_at', $e->errors());
+        }
+
+        $this->assertSame(1, Reservation::withoutGlobalScopes()->count());
+
+        // Mit ausdruecklichem Ueberbuchen geht es.
+        $lifecycle->create($setup['location'], ['guest_name' => 'Cara', 'allow_staff_conflict' => true] + $daten, $admin);
         $this->assertSame(2, Reservation::withoutGlobalScopes()->count());
     }
 

@@ -38,16 +38,19 @@
                                         <label class="mb-1 block text-xs text-stone-500">Zeit anbieten<span class="tip" tabindex="0" data-tip="Die Uhrzeit, die du dem wartenden Gast vorschlagen möchtest. Er bekommt eine E-Mail mit einem Annehmen-Link; nimmt er nicht rechtzeitig an, verfällt das Angebot automatisch und der Platz ist wieder frei.">?</span></label>
                                         <input type="time" name="time" required class="rounded-lg border-stone-200 text-sm">
                                     </div>
-                                    {{-- Nur bei Öffnungszeiten über Mitternacht relevant: 00:30 gehört
-                                         dann zur Nacht des Wunschtages, liegt aber im Kalender einen Tag
-                                         später. Ohne diese Auswahl landete das Angebot 24 Stunden früher. --}}
-                                    <div>
-                                        <label class="mb-1 block text-xs text-stone-500">Tag</label>
-                                        <select name="slot_date" class="rounded-lg border-stone-200 text-sm">
-                                            <option value="{{ $entry->desired_date->toDateString() }}">{{ $entry->desired_date->format('d.m.') }}</option>
-                                            <option value="{{ $entry->desired_date->copy()->addDay()->toDateString() }}">{{ $entry->desired_date->copy()->addDay()->format('d.m.') }} (nach Mitternacht)</option>
-                                        </select>
-                                    </div>
+                                    {{-- Nur bei Öffnungszeiten über Mitternacht: 00:30 gehört dann zur
+                                         Nacht des Wunschtages, liegt aber im Kalender einen Tag später.
+                                         Ohne diese Auswahl landete das Angebot 24 Stunden früher. Wer vor
+                                         Mitternacht schliesst, bekommt die Frage gar nicht erst. --}}
+                                    @if($ueberMitternacht ?? false)
+                                        <div>
+                                            <label class="mb-1 block text-xs text-stone-500">Tag</label>
+                                            <select name="slot_date" class="rounded-lg border-stone-200 text-sm">
+                                                <option value="{{ $entry->desired_date->toDateString() }}">{{ $entry->desired_date->format('d.m.') }}</option>
+                                                <option value="{{ $entry->desired_date->copy()->addDay()->toDateString() }}">{{ $entry->desired_date->copy()->addDay()->format('d.m.') }} (nach Mitternacht)</option>
+                                            </select>
+                                        </div>
+                                    @endif
                                     <button class="rounded-lg bg-purple-600 px-3 py-2 text-xs font-semibold text-white">Per Mail anbieten</button>
                                 </form>
                             @endif

@@ -17,6 +17,7 @@ use App\Models\Tenant;
 use App\Services\SalonAvailabilityService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class SalonAvailabilityTest extends TestCase
@@ -383,5 +384,79 @@ class SalonAvailabilityTest extends TestCase
         $response->assertSee('Leistungen wählen');
         $response->assertSee('Termin buchen');
         $response->assertSee($this->service->name);
+    }
+
+    /**
+     * Auch der Salon braucht das Slot-Datum.
+     *
+     * Bei Arbeitszeiten ueber Mitternacht gehoert 00:30 zum naechsten
+     * Kalendertag. Der Restaurantpfad traegt das seit v1.123.0 mit, der Salon
+     * hatte das Verfahren gar nicht: Das Formular setzte den gewaehlten Tag
+     * ein und legte den Termin 24 Stunden zu frueh.
+     */
+    public function test_salon_slots_carry_the_calendar_day_of_the_slot(): void
+    {
+        OpeningHour::where('location_id', $this->location->id)
+            ->update(['opens_at' => '18:00', 'closes_at' => '02:00']);
+        StaffWorkingHour::where('staff_member_id', $this->staff->id)->delete();
+        foreach (range(0, 6) as $day) {
+            StaffWorkingHour::create([
+                'tenant_id' => $this->tenant->id,
+                'staff_member_id' => $this->staff->id,
+                'weekday' => $day,
+                'starts_at' => '18:00',
+                'ends_at' => '02:00',
+            ]);
+        }
+
+        $tag = CarbonImmutable::now('Europe/Berlin')->addDays(2)->startOfDay();
+
+        $antwort = $this->getJson('/book/'.$this->tenant->slug.'/'.$this->location->slug
+            .'/slots?date='.$tag->toDateString().'&service_ids[]='.$this->service->id)->assertOk();
+
+        $daten = $antwort->json();
+        $this->assertNotEmpty($daten['slots'] ?? [], 'Ohne Termine prueft dieser Fall nichts.');
+        $this->assertArrayHasKey('slot_dates', $daten);
+
+        foreach ($daten['slots'] as $zeit) {
+            $erwartet = str_starts_with((string) $zeit, '00:') || str_starts_with((string) $zeit, '01:')
+                ? $tag->addDay()->toDateString()
+                : $tag->toDateString();
+
+            $this->assertSame($erwartet, $daten['slot_dates'][$zeit] ?? null, 'Falscher Kalendertag fuer '.$zeit);
+        }
+    }
+
+    public function test_a_salon_booking_after_midnight_lands_on_the_right_night(): void
+    {
+        Mail::fake();
+
+        OpeningHour::where('location_id', $this->location->id)
+            ->update(['opens_at' => '18:00', 'closes_at' => '02:00']);
+        StaffWorkingHour::where('staff_member_id', $this->staff->id)->delete();
+        foreach (range(0, 6) as $day) {
+            StaffWorkingHour::create([
+                'tenant_id' => $this->tenant->id,
+                'staff_member_id' => $this->staff->id,
+                'weekday' => $day,
+                'starts_at' => '18:00',
+                'ends_at' => '02:00',
+            ]);
+        }
+
+        $tag = CarbonImmutable::now('Europe/Berlin')->addDays(2)->startOfDay();
+
+        $this->post('/book/'.$this->tenant->slug.'/'.$this->location->slug, [
+            'service_ids' => [$this->service->id],
+            'date' => $tag->toDateString(),
+            'slot_date' => $tag->addDay()->toDateString(),
+            'time' => '00:30',
+            'name' => 'Frau Kessler',
+            'email' => 'kessler@example.test',
+            'privacy_accepted' => '1',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $reservation = Reservation::withoutGlobalScopes()->sole();
+        $this->assertSame($tag->addDay()->toDateString(), $reservation->reservation_date->toDateString());
     }
 }

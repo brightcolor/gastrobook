@@ -398,6 +398,11 @@ class ReservationAvailabilityService
                 // Zusaetzliche Plaetze, die zwar zugesagt, aber noch nicht
                 // gebucht sind: offene Wartelistenangebote. Ohne sie zaehlt der
                 // Betrieb dieselben Plaetze mehrfach zu.
+                //
+                // Nur hier, nicht in bookingBlockReason: Dort geht es um eine
+                // Buchung, die JETZT entsteht, und dagegen darf eine blosse
+                // Zusage nicht sperren. Der Betrieb soll den Tisch vergeben
+                // koennen, auch wenn noch ein Angebot offen steht.
                 $zugesagt = (int) ($options['extra_covers'] ?? 0);
 
                 if ($currentCovers + $partySize + $zugesagt > $maxCovers) {

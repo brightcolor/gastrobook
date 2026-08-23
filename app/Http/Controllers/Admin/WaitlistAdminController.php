@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\WaitlistEntry;
+use App\Models\WaitlistOffer;
 use App\Services\WaitlistService;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
@@ -32,7 +33,13 @@ class WaitlistAdminController extends Controller
             ->with('offers')
             ->get();
 
-        return view('admin.waitlist.index', compact('location', 'entries', 'date'));
+        // Nur Betriebe mit einem Fenster ueber Mitternacht brauchen die
+        // Tagesauswahl am Angebot - sonst ist sie eine Frage ohne Anlass.
+        $ueberMitternacht = $location->openingHours()
+            ->whereColumn('closes_at', '<=', 'opens_at')
+            ->exists();
+
+        return view('admin.waitlist.index', compact('location', 'entries', 'date', 'ueberMitternacht'));
     }
 
     public function store(Request $request)
@@ -147,7 +154,10 @@ class WaitlistAdminController extends Controller
         // Das Angebot mitschliessen. Blieb es offen, hielt es bis zu acht
         // Stunden lang Tische fuer einen Gast frei, den niemand mehr erwartet -
         // und der Annehmen-Link in seiner Mail funktionierte weiter.
-        $entry->offers()->where('status', 'open')->update(['status' => 'superseded']);
+        WaitlistOffer::withoutGlobalScopes()
+            ->where('waitlist_entry_id', $entry->id)
+            ->where('status', 'open')
+            ->update(['status' => 'superseded']);
 
         return back()->with('success', __('Eintrag entfernt.'));
     }

@@ -315,6 +315,17 @@ class MarketingCampaignService
                     $q->orWhere(fn (Builder $inner) => $inner
                         ->whereMonth('birthday', (int) $tag->format('m'))
                         ->whereDay('birthday', (int) $tag->format('d')));
+
+                    // Am 28. Februar eines Nicht-Schaltjahres auch die
+                    // Schalttagskinder mitnehmen. Auf den Kalendertag genau
+                    // gesucht, gaebe es fuer sie nur alle vier Jahre einen
+                    // Gruss - dreimal in Folge nichts, ohne dass es jemandem
+                    // auffiele.
+                    if ($tag->month === 2 && $tag->day === 28 && ! $tag->isLeapYear()) {
+                        $q->orWhere(fn (Builder $inner) => $inner
+                            ->whereMonth('birthday', 2)
+                            ->whereDay('birthday', 29));
+                    }
                 }
             });
     }

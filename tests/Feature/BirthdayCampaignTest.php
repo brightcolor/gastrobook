@@ -161,6 +161,33 @@ class BirthdayCampaignTest extends TestCase
     }
 
     /**
+     * Und die Schalttagskinder: Auf den Kalendertag genau gesucht, bekamen sie
+     * nur alle vier Jahre einen Gruss - drei Jahre lang nichts, ohne dass es
+     * jemandem auffiele. In Nicht-Schaltjahren zaehlt der 28. Februar.
+     */
+    public function test_a_leap_day_guest_is_greeted_every_year(): void
+    {
+        Mail::fake();
+        $setup = $this->createTenantSetup();
+        $kampagne = $this->campaign($setup);
+        $this->guestBornOn($setup, '1992-02-29');
+
+        $dienst = app(MarketingCampaignService::class);
+        $tz = $setup['location']->timezone;
+
+        // 2027 ist kein Schaltjahr: der 28. Februar traegt den Gruss.
+        $this->assertSame(1, $dienst->run($kampagne, CarbonImmutable::create(2027, 2, 28, 0, 0, 0, $tz)));
+        // Und der 1. Maerz legt nicht nach.
+        $this->assertSame(0, $dienst->run($kampagne, CarbonImmutable::create(2027, 3, 1, 0, 0, 0, $tz)));
+
+        // 2028 ist eines: dann der 29. Februar, und nur einmal.
+        $this->assertSame(1, $dienst->run($kampagne, CarbonImmutable::create(2028, 2, 29, 0, 0, 0, $tz)));
+        $this->assertSame(0, $dienst->run($kampagne, CarbonImmutable::create(2028, 3, 1, 0, 0, 0, $tz)));
+
+        $this->assertSame(2, MarketingSend::withoutGlobalScopes()->count());
+    }
+
+    /**
      * Ein Gast mit Geburtstag Anfang Januar gehoert ins laufende Jahr, nicht
      * ins vorige - sonst schoebe die Jahreswechsel-Regel ihn ein Jahr zurueck.
      */

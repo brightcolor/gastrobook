@@ -72,7 +72,11 @@ class BladePhpBlockTest extends TestCase
      */
     private function withoutLiteralDirectives(string $template): string
     {
-        $ohne = preg_replace('/@verbatim.*?@endverbatim/s', '', $template) ?? $template;
+        // Nur echte Direktiven, nicht die Zeichenkette. Ohne den Anker vor
+        // `@verbatim` versteckte eine beliebige Erwaehnung des Wortes - in
+        // einem JS-String, in einem HTML-Kommentar, auf einer Doku-Seite -
+        // alles dazwischen vor dem Detektor, verschluckte Bloecke inklusive.
+        $ohne = preg_replace('/(?<![\S@])@verbatim\b.*?(?<![\S@])@endverbatim\b/s', '', $template) ?? $template;
 
         return str_replace(['@@php', '@@endphp'], '', $ohne);
     }
@@ -112,6 +116,9 @@ class BladePhpBlockTest extends TestCase
             'Kurzform vor einzeiligem Block' => $kurz."\n@php \$b = 2; @endphp",
             'Kurzform im Kommentar vor Block' => '{{-- '.$kurz.' --}}'."\n".$block,
             'Block, Kurzform, Block' => $block."\n".$kurz."\n".$block,
+            // Das Wort in einer Zeichenkette ist keine Direktive und darf
+            // nichts verstecken.
+            'kaputt zwischen erwaehnten @verbatim' => $kurz."\n".'<script>var a="@verbatim";</script>'."\n".$block."\n".'<!-- @endverbatim -->',
         ];
 
         foreach ($muss_brechen as $name => $vorlage) {

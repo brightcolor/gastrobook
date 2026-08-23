@@ -15,13 +15,7 @@
     @endif
     {{-- Die Rueckwege der Zahlung landen auch hier. Ohne diese Ausgabe blieb
          ein kassierter, aber nicht passender Betrag fuer den Gast unsichtbar. --}}
-    @foreach(['payment_already_settled', 'payment_amount_mismatch'] as $zahlungshinweis)
-        @if(session($zahlungshinweis))
-            <div class="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
-                <span class="text-base">⚠️</span> {{ session($zahlungshinweis) }}
-            </div>
-        @endif
-    @endforeach
+    @include('public.partials.payment-notices')
     @if($errors->any())
         <div class="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-900">{{ $errors->first() }}</div>
     @endif

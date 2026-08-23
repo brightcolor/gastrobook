@@ -1,5 +1,80 @@
 # Changelog
 
+## [1.126.0] – 2026-08-23
+
+### Die Erstattung, die die nächste blockierte
+
+Drei Durchsichten über die vorige Version. Sie haben drei Fehler gefunden, die
+erst mit ihr entstanden sind – alle drei auf dem Geldweg, alle drei an derselben
+Stelle: der automatischen Rückzahlung eines Betrags, der nicht zur Anzahlung
+passt.
+
+**Diese Rückzahlung blockierte jede spätere Erstattung derselben Buchung.** Sie
+belegte den Platz „offene Erstattung dieser Reservierung", und zwar dauerhaft.
+Zahlte der Gast danach richtig und stornierte später, lief die Stornoerstattung
+ins Leere – ohne Fehler, ohne Eintrag, ohne Geld. Sie zählt jetzt nicht mehr als
+Stornoerstattung mit.
+
+**Und sie holte sich ihr Geld von der falschen Zahlung.** Wartete sie auf
+Freigabe – die Voreinstellung, also der Normalfall –, und zahlte der Gast
+zwischenzeitlich den richtigen Betrag, ging die Rückzahlung von der neuen,
+guten Zahlung ab. Die falsche blieb beim Zahlungsanbieter liegen. Jede
+Erstattung hält jetzt selbst fest, zu welcher Belastung sie gehört.
+
+**Ein zweiter falscher Betrag verschwand ganz.** Wer zwei alte Bezahlseiten
+offen hatte und auf beiden zahlte, bekam nur die erste zurück.
+
+**Ein alter Fehlversuch liess sich weiterhin wiederholen.** Die Zwanzig-Stunden-
+Grenze aus v1.125.0 hing am Zeitpunkt des letzten Versuchs – und den setzt jeder
+Versuch neu. Zwei Fehlversuche mit einem Tag Abstand liefen damit am Schutz
+gegen die doppelte Auszahlung vorbei. Für hängengebliebene Erstattungen gab es
+gar keine Grenze, ausgerechnet in dem Fall, in dem die Auszahlung am ehesten
+doch gelaufen ist. Gemessen wird jetzt am ersten Anlauf.
+
+**Ohne Belegnummer des Anbieters** endete der Fall wortlos: keine Erstattung –
+das geht dann nicht – aber auch keine Meldung. Der Betrieb erfährt jetzt davon,
+gerade weil das Geld in diesem Fall am schwersten zu finden ist. Und der
+Rückweg mailt nicht mehr bei jedem Neuladen.
+
+**Scheitert die Bestätigung nach dem Zahlungseingang**, bleibt die Buchung auf
+„wartet auf Zahlung" stehen – und weil Geld an ihr hängt, lässt die Frist sie
+bewusst in Ruhe. Auch das meldet die Anwendung jetzt.
+
+**Wartelisten-Angebote aus der Zeit vor v1.125.0** hielten keinen Tisch fest und
+zählten deshalb gegen gar nichts. Beim Ausrollen hätte der gerade behobene
+Fehler damit für die Lebensdauer dieser Angebote wieder offengestanden. Solche
+Angebote zählen jetzt wieder grob mit – lieber eine Zusage zu wenig als zwei auf
+denselben Tisch.
+
+**Und ein Angebot löst jetzt ein, was es verspricht:** Ein Tisch, der nicht
+online buchbar ist, wurde zugesagt und war beim Annehmen dann „nicht mehr frei" –
+für einen Tisch, der die ganze Zeit dastand.
+
+**Salontermine nach Mitternacht liessen sich gar nicht buchen.** Die Terminliste
+bot 00:30 an, das Buchen wies es als ausserhalb der Arbeitszeit ab: Eine Schicht
+von 18:00 bis 02:00 gehört zu dem Tag, an dem sie beginnt.
+
+**Der Import bricht nicht mehr an einem einzigen Verweis ab.** Ein vierter Fall
+derselben Art steckte noch im Bestand (ein Tisch ohne auflösbaren Raum), und die
+Absicherung aus v1.125.0 hätte ihn nicht gefunden – sie prüfte eine Liste, nicht
+den Import. Jetzt entscheidet die Datenbank selbst, welcher Verweis verzichtbar
+ist, und ein Test schickt eine Datei voller kaputter Verweise durch den
+kompletten Import.
+
+**Weitere Korrekturen**
+
+- Geburtstagskinder vom 29. Februar bekamen ihren Gruss nur alle vier Jahre.
+- Das Protokoll zeigt alle Vorgänge in Klartext; ein Test lässt keine neue
+  Aktion mehr ohne deutsche Bezeichnung durch.
+- Ein geteilter Walk-in achtet auf Sperrzeiten und Platzlimit – bisher nur auf
+  die Öffnungszeiten.
+- Die Auswahl „nach Mitternacht" beim Wartelisten-Angebot erscheint nur noch bei
+  Betrieben, die über Mitternacht geöffnet haben.
+- Ein Salontermin nach Mitternacht steht in der Terminliste unter einer eigenen
+  Überschrift statt ganz oben unter „Vormittag".
+- Erstattungen und Zahlungen ohne jeden Bezug werden beim Import nicht mehr
+  angelegt.
+
 ## [1.125.0] – 2026-08-23
 
 ### Kassiertes Geld, das liegen blieb – und Zusagen ohne Deckung

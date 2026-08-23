@@ -116,6 +116,37 @@ class UserLocationAccessTest extends TestCase
             ->count(), 'Die Freigabe des anderen Betriebs ist mitgeloescht worden.');
     }
 
+    /**
+     * Die Benutzerliste fragte je Mitglied UND je Standort einzeln nach - bei
+     * elf Mitgliedern und zehn Standorten hundert zusaetzliche Abfragen fuer
+     * eine Seite. Ohne diese Zaehlung faellt der Rueckfall niemandem auf: Die
+     * Seite sieht danach genauso aus.
+     */
+    public function test_the_user_list_does_not_query_per_member_and_location(): void
+    {
+        $setup = $this->createTenantSetup();
+        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
+
+        for ($i = 0; $i < 9; $i++) {
+            Location::factory()->create(['tenant_id' => $setup['tenant']->id]);
+        }
+        for ($i = 0; $i < 10; $i++) {
+            $this->memberWithLocations($setup);
+        }
+        $this->clearTenantContext();
+
+        $abfragen = 0;
+        DB::listen(function () use (&$abfragen) {
+            $abfragen++;
+        });
+
+        $this->actingAs($admin)->get('/admin/users')->assertOk();
+
+        // 11 Mitglieder x 10 Standorte waeren allein 110 Abfragen. Die Grenze
+        // liegt bewusst weit darunter und weit ueber dem heutigen Stand.
+        $this->assertLessThan(40, $abfragen, 'Die Benutzerliste fragt wieder je Mitglied und Standort einzeln nach: '.$abfragen.' Abfragen.');
+    }
+
     public function test_a_host_cannot_change_location_access(): void
     {
         $setup = $this->createTenantSetup();

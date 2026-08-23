@@ -357,10 +357,17 @@ details > summary::-webkit-details-marker { display: none; }
                     { label: 'Mittag',     test: h => h >= 12 && h < 14 },
                     { label: 'Nachmittag', test: h => h >= 14 && h < 18 },
                     { label: 'Abend',      test: h => h >= 18 },
+                    // Wie im Restaurantpfad: Nach Mitternacht gehoert zum Abend
+                    // davor. Sonst steht "00:30" ganz oben unter "Vormittag"
+                    // und liest sich wie halb eins mittags.
+                    { label: 'Nach Mitternacht', test: h => h < 6 },
                 ];
+                const nachMitternacht = t => parseInt(t.split(':')[0], 10) < 6;
                 let any = false;
                 groups.forEach(g => {
-                    const times = slots.filter(t => g.test(parseInt(t.split(':')[0], 10)));
+                    const times = slots.filter(t => g.label === 'Nach Mitternacht'
+                        ? nachMitternacht(t)
+                        : (!nachMitternacht(t) && g.test(parseInt(t.split(':')[0], 10))));
                     if (!times.length) return;
                     const lbl = document.createElement('p'); lbl.className = 'slot-group-label'; lbl.textContent = g.label;
                     slotContainer.appendChild(lbl);
@@ -774,6 +781,10 @@ details > summary::-webkit-details-marker { display: none; }
             slotContainer.innerHTML = '<p class="col-span-full animate-pulse text-sm text-stone-400">Verfügbare Zeiten werden geladen…</p>';
             altBox.classList.add('hidden'); resetFp();
             slotDates = {};
+            // Uhrzeit mit leeren, wie die beiden Geschwister-Lader. Eine
+            // stehengebliebene Zeit ohne Datum liesse den Server wieder aus
+            // dem Kalendertag bauen.
+            timeInput.value = '';
             if (slotDateInput) slotDateInput.value = '';
             try {
                 const res = await fetch(slotsUrl + '?date=' + dateInput.value + '&party_size=' + partyInput.value, {headers: {Accept: 'application/json'}});

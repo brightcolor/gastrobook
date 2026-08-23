@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Enums\ReservationStatus;
+use App\Models\BlackoutPeriod;
 use App\Models\OpeningHour;
 use App\Models\Reservation;
 use App\Models\Service;
@@ -225,6 +226,56 @@ class BookingLimitsTest extends TestCase
 
         $reservation = Reservation::withoutGlobalScopes()->sole();
         $this->assertSame($tag->addDay()->toDateString(), $reservation->reservation_date->toDateString());
+    }
+
+    /**
+     * "Naechster freier Termin" braucht ZWEI Daten.
+     *
+     * `date` ist der Kalendertag des Slots - so liest der Gast ihn. Zum
+     * Wiederaufbau der Auswahl taugt er aber nicht: Unter ihm stehen die Slots
+     * der Nacht DAHINTER, und der Knopf traf damit einen Tag zu spaet.
+     * `from_date` ist der Tag, dessen Oeffnungsfenster den Slot enthaelt.
+     */
+    public function test_the_next_free_slot_carries_the_service_day_too(): void
+    {
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 2]]);
+        OpeningHour::where('location_id', $setup['location']->id)
+            ->update(['opens_at' => '18:00', 'closes_at' => '02:00']);
+        $this->clearTenantContext();
+
+        $tag = CarbonImmutable::now($setup['location']->timezone)->addDays(2);
+
+        // Dieser eine Abend ist dicht - dann liefert die Antwort die naechsten
+        // freien Termine.
+        BlackoutPeriod::create([
+            'tenant_id' => $setup['tenant']->id,
+            'location_id' => $setup['location']->id,
+            'starts_at' => $tag->setTime(0, 0)->utc(),
+            'ends_at' => $tag->addDay()->setTime(12, 0)->utc(),
+            'reason' => 'Privatfeier',
+        ]);
+        $this->clearTenantContext();
+
+        $antwort = $this->getJson('/book/'.$setup['tenant']->slug.'/'.$setup['location']->slug
+            .'/slots?date='.$tag->toDateString().'&party_size=2')->assertOk();
+
+        $naechste = $antwort->json('next_slots') ?? [];
+        $this->assertNotEmpty($naechste, 'Ohne Vorschlaege prueft dieser Fall nichts.');
+
+        foreach ($naechste as $slot) {
+            $this->assertArrayHasKey('from_date', $slot);
+
+            // Nach Mitternacht gehoeren die beiden auseinander, sonst sind sie
+            // gleich - in beiden Faellen liegt der Kalendertag nie VOR dem
+            // Servicetag.
+            $this->assertGreaterThanOrEqual($slot['from_date'], $slot['date']);
+            if (str_starts_with((string) $slot['time'], '00:') || str_starts_with((string) $slot['time'], '01:')) {
+                $this->assertSame(
+                    CarbonImmutable::parse($slot['from_date'])->addDay()->toDateString(),
+                    $slot['date'],
+                );
+            }
+        }
     }
 
     /**

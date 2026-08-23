@@ -350,6 +350,22 @@ class SalonAvailabilityService
             return null;
         }
 
+        // Auch der Vortag: Eine Schicht von 18:00 bis 02:00 gehoert zum Tag,
+        // an dem sie BEGINNT. Ein Termin um 00:30 liegt kalendarisch am Tag
+        // danach - nur mit dessen eigener Schicht verglichen, faellt er davor
+        // und galt als ausserhalb der Arbeitszeit. Die Terminliste bot ihn an,
+        // das Buchen wies ihn ab.
+        return array_merge(
+            $this->windowsStartingOn($staff, $localDate->subDay()),
+            $this->windowsStartingOn($staff, $localDate),
+        );
+    }
+
+    /**
+     * @return array<int, array{opens: CarbonImmutable, closes: CarbonImmutable}>
+     */
+    private function windowsStartingOn(StaffMember $staff, CarbonImmutable $localDate): array
+    {
         $weekday = $localDate->dayOfWeekIso - 1; // 0 = Monday
         $tz = $localDate->getTimezone();
 

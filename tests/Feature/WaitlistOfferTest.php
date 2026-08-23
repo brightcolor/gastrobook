@@ -11,6 +11,7 @@ use App\Models\RestaurantTable;
 use App\Models\Room;
 use App\Models\WaitlistEntry;
 use App\Models\WaitlistOffer;
+use App\Services\WaitlistService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -222,6 +223,132 @@ class WaitlistOfferTest extends TestCase
         // Und das Angebot haelt fest, WELCHEN Tisch es verspricht.
         $offer = WaitlistOffer::withoutGlobalScopes()->where('waitlist_entry_id', $anna->id)->sole();
         $this->assertSame([$setup['tables'][0]->id], $offer->table_ids);
+    }
+
+    /**
+     * Ein Angebot aus der Zeit vor den festgehaltenen Tischen sperrt keinen -
+     * es darf trotzdem nicht wirkungslos sein.
+     *
+     * Solche Zeilen fallen sonst durch beide Raster: keine Tische fuer die
+     * Sperrliste, und der Deckenzaehler laeuft im Tischmodus gar nicht. Beim
+     * Ausrollen stuende der gerade behobene Fehler damit acht Stunden lang
+     * wieder offen - so lange lebt ein Angebot hoechstens.
+     */
+    public function test_an_offer_without_recorded_tables_still_counts(): void
+    {
+        Mail::fake();
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 2]]);
+        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
+
+        $anna = $this->entry($setup, 'Anna');
+        $bert = $this->entry($setup, 'Bert');
+
+        // Wie ein Angebot aus v1.125.0: offen, aber ohne table_ids.
+        $start = CarbonImmutable::parse($anna->desired_date->toDateString().' 19:00', $setup['location']->timezone);
+        WaitlistOffer::create([
+            'tenant_id' => $setup['tenant']->id,
+            'waitlist_entry_id' => $anna->id,
+            'offered_start_at' => $start->utc(),
+            'offered_end_at' => $start->addHours(2)->utc(),
+            'offer_expires_at' => now()->addHour(),
+            'table_ids' => null,
+            'status' => 'open',
+        ]);
+        $this->clearTenantContext();
+
+        $this->actingAs($admin)->post('/admin/waitlist/'.$bert->id.'/offer', ['time' => '19:00'])
+            ->assertSessionHasErrors('time');
+    }
+
+    /**
+     * Und das Angebot loest ein, was es verspricht.
+     *
+     * Die Zusage prueft ohne `online`, das Annehmen buchte mit - ein Tisch, der
+     * nicht online buchbar ist, wurde zugesagt und war beim Klick "nicht mehr
+     * frei". Der Gast bekam eine Fehlermeldung fuer einen Tisch, der die ganze
+     * Zeit dastand.
+     */
+    public function test_an_offer_for_a_table_that_is_not_online_bookable_can_be_accepted(): void
+    {
+        Mail::fake();
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 2]]);
+        $setup['tables'][0]->update(['online_bookable' => false]);
+        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
+
+        $anna = $this->entry($setup, 'Anna');
+        $this->clearTenantContext();
+
+        $this->actingAs($admin)->post('/admin/waitlist/'.$anna->id.'/offer', ['time' => '19:00'])
+            ->assertSessionHasNoErrors();
+
+        $offer = WaitlistOffer::withoutGlobalScopes()->where('waitlist_entry_id', $anna->id)->sole();
+        $this->assertSame([$setup['tables'][0]->id], $offer->table_ids);
+
+        $reservation = app(WaitlistService::class)->acceptOffer($offer);
+
+        $this->assertSame('accepted', $anna->fresh()->status);
+        $this->assertSame([$setup['tables'][0]->id], $reservation->tables()->pluck('restaurant_tables.id')->all());
+    }
+
+    /**
+     * Ein entfernter Eintrag nimmt sein Angebot mit. Blieb es offen, hielt es
+     * bis zu acht Stunden Tische fuer jemanden frei, den niemand mehr erwartet -
+     * und der Annehmen-Link in seiner Mail funktionierte weiter.
+     */
+    public function test_removing_an_entry_closes_its_open_offer(): void
+    {
+        Mail::fake();
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 2]]);
+        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
+
+        $anna = $this->entry($setup, 'Anna');
+        $bert = $this->entry($setup, 'Bert');
+        $this->clearTenantContext();
+
+        $this->actingAs($admin)->post('/admin/waitlist/'.$anna->id.'/offer', ['time' => '19:00'])
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($admin)->post('/admin/waitlist/'.$anna->id.'/cancel')->assertRedirect();
+
+        $this->assertSame(0, WaitlistOffer::withoutGlobalScopes()->where('status', 'open')->count());
+
+        // Und der Tisch ist damit wieder zu haben.
+        $this->actingAs($admin)->post('/admin/waitlist/'.$bert->id.'/offer', ['time' => '19:00'])
+            ->assertSessionHasNoErrors();
+    }
+
+    /**
+     * Ein Angebot fuer die Zeit nach Mitternacht gehoert auf den Folgetag.
+     * Aus dem Wunschtag zusammengesetzt landete es einen Abend zu frueh - der
+     * Gast las in der Mail ein Datum, das der Betrieb nie gemeint hatte.
+     */
+    public function test_a_staff_offer_after_midnight_lands_on_the_next_day(): void
+    {
+        Mail::fake();
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 2]]);
+        OpeningHour::withoutGlobalScopes()
+            ->where('location_id', $setup['location']->id)
+            ->update(['opens_at' => '18:00', 'closes_at' => '02:00']);
+        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
+
+        $anna = $this->entry($setup, 'Anna');
+        $folgetag = $anna->desired_date->copy()->addDay()->toDateString();
+        $this->clearTenantContext();
+
+        $this->actingAs($admin)->post('/admin/waitlist/'.$anna->id.'/offer', [
+            'time' => '00:30', 'slot_date' => $folgetag,
+        ])->assertSessionHasNoErrors();
+
+        $offer = WaitlistOffer::withoutGlobalScopes()->sole();
+        $this->assertSame(
+            $folgetag,
+            CarbonImmutable::parse($offer->offered_start_at)->setTimezone($setup['location']->timezone)->toDateString()
+        );
+
+        // Ein beliebiger anderer Tag geht nicht.
+        $this->actingAs($admin)->post('/admin/waitlist/'.$anna->id.'/offer', [
+            'time' => '00:30', 'slot_date' => $anna->desired_date->copy()->addDays(9)->toDateString(),
+        ])->assertSessionHasErrors('slot_date');
     }
 
     /**

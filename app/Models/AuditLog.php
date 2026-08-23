@@ -81,79 +81,149 @@ class AuditLog extends Model
     ];
 
     /**
-     * Turn the technical action key into a plain German sentence.
-     * Suffix (created/updated/…) drives the verb, prefix the subject.
+     * Aktionen mit eigener Formulierung.
+     *
+     * Ansonsten gilt: Endung (created/updated/…) gibt die Taetigkeit, Praefix
+     * den Gegenstand.
+     *
+     * Alles, was hier nicht steht, wird aus SUBJECTS und VERBS
+     * zusammengesetzt. Faellt beides aus, entsteht eine englische Kruecke aus
+     * dem Aktionsnamen ("Zahlung Amount Mismatch") - AuditLabelTest laesst das
+     * nicht mehr durch.
+     *
+     * @var array<string, string>
      */
+    public const ACTION_LABELS = [
+        'reservation.status_changed' => 'Reservierung: Status geändert',
+        'reservation.party_updated' => 'Reservierung: Personenzahl geändert',
+        'reservation.rescheduled' => 'Reservierung umgebucht',
+        'reservation.tags_updated' => 'Reservierung: Tags geändert',
+        'auth.login' => 'Angemeldet',
+        'guest.anonymized' => 'Gast anonymisiert',
+        'guest.data_export' => 'Gastdaten exportiert',
+        'support.impersonation_started' => 'Supportzugriff gestartet',
+        'support.impersonation_ended' => 'Supportzugriff beendet',
+        'tenant.trial_extended' => 'Testphase verlängert',
+        'tenant.plan_changed' => 'Tarif geändert',
+        'tenant.status_changed' => 'Betriebsstatus geändert',
+        'tenant.type_changed' => 'Betriebsart geändert',
+        'payment.succeeded' => 'Zahlung eingegangen',
+        'payment.checkout_started' => 'Bezahlvorgang gestartet',
+        'payment.forfeited' => 'Anzahlung einbehalten (No-Show)',
+        // Ohne diese Zeilen stand im Protokoll "Zahlung Amount Mismatch" -
+        // der Rueckfall setzt aus dem Aktionsnamen zusammen, und der ist
+        // englisch. Gerade die Geldwege liest jemand, der wissen will, was
+        // schiefging.
+        'payment.amount_mismatch' => 'Zahlung mit falschem Betrag',
+        'payment.late_on_inactive_reservation' => 'Zahlung auf ungültige Buchung',
+        'payment.confirm_failed' => 'Zahlung verbucht, Bestätigung fehlgeschlagen',
+        'payment.awaiting_settlement' => 'Zahlung noch nicht gutgeschrieben',
+        'payment.async_failed' => 'Verzögerte Zahlung gescheitert',
+        'payment.async_failed_after_settlement' => 'Zahlung gescheitert, obwohl verbucht',
+        'payment.already_settled_at_provider' => 'Beim Anbieter bereits bezahlt',
+        'payment.return_not_yet_paid' => 'Rücksprung ohne Zahlungseingang',
+        'payment.stale_session_expired' => 'Alte Bezahlsitzung abgelaufen',
+        'payment.unknown_return_session' => 'Rücksprung mit unbekannter Sitzung',
+        'payment.webhook_received' => 'Meldung des Zahlungsanbieters',
+        'user.locations_changed' => 'Standortfreigabe geändert',
+        'user.role_changed' => 'Rolle geändert',
+        'user.self_deleted' => 'Konto selbst gelöscht',
+        'account.exported' => 'Alle Daten exportiert',
+        'billing.directdebit.webhook' => 'Meldung des Lastschriftanbieters',
+        'billing.request_created' => 'Abrechnungsdaten übermittelt',
+        'event.attendees_exported' => 'Teilnehmerliste exportiert',
+        'event.booking_cancelled' => 'Eventbuchung storniert',
+        'event.booking_checked_in' => 'Eventgast eingecheckt',
+        'event.booking_created' => 'Eventbuchung angelegt',
+        'event.status_changed' => 'Event: Status geändert',
+        'guest.marketing_unsubscribed' => 'Newsletter abbestellt',
+        'guest.merged' => 'Gäste zusammengeführt',
+        'integration.mailwizz_updated' => 'Newsletter-Anbindung geändert',
+        'integration.paypal_updated' => 'PayPal-Anbindung geändert',
+        'integration.sms_updated' => 'SMS-Anbindung geändert',
+        'integration.stripe_updated' => 'Stripe-Anbindung geändert',
+        'location.field_rules_updated' => 'Standort: Feldregeln geändert',
+        'location.general_updated' => 'Standort: Stammdaten geändert',
+        'location.settings_updated' => 'Standort: Einstellungen geändert',
+        'reservation.attachment_added' => 'Reservierung: Anhang hinzugefügt',
+        'reservation.attachment_deleted' => 'Reservierung: Anhang gelöscht',
+        'reservation.deposit_shortfall' => 'Reservierung: Anzahlung zu niedrig',
+        'reservation.note_added' => 'Reservierung: Notiz hinzugefügt',
+        'reservation.staff_assigned' => 'Reservierung: Person zugewiesen',
+        'saas.user_created' => 'Plattform-Benutzer angelegt',
+        'saas.user_deleted' => 'Plattform-Benutzer gelöscht',
+        'saas.user_role_changed' => 'Plattform-Rolle geändert',
+        'staff_member.absence_created' => 'Abwesenheit eingetragen',
+        'staff_member.absence_deleted' => 'Abwesenheit gelöscht',
+        'staff_member.working_hours_updated' => 'Arbeitszeiten geändert',
+        'tenant.branding_updated' => 'Erscheinungsbild geändert',
+        'webhook.ping' => 'Webhook getestet',
+        'webhook.secret_rotated' => 'Webhook-Schlüssel erneuert',
+    ];
+
+    /** @var array<string, string> Praefix der Aktion => Gegenstand */
+    public const SUBJECTS = [
+        'reservation' => 'Reservierung', 'guest' => 'Gast', 'guests' => 'Gäste',
+        'table' => 'Tisch', 'table_combination' => 'Tischkombination', 'room' => 'Raum',
+        'zone' => 'Zone', 'event' => 'Event', 'service' => 'Leistung',
+        'staff_member' => 'Mitarbeiter', 'tag' => 'Tag', 'location' => 'Standort',
+        'user' => 'Benutzer', 'refund' => 'Erstattung', 'deposit_rule' => 'Anzahlungsregel',
+        'blackout' => 'Sperrzeit', 'special_hours' => 'Sonderöffnungszeit',
+        'opening_hours' => 'Öffnungszeiten', 'template' => 'E-Mail-Vorlage',
+        'api_token' => 'API-Token', 'webhook' => 'Webhook', 'tenant' => 'Betrieb',
+        'floorplan' => 'Tischplan', 'billing' => 'Abrechnung', 'integration' => 'Integration',
+        'waitlist' => 'Warteliste', 'payment' => 'Zahlung', 'saas' => 'Plattform-Benutzer',
+        'marketing_campaign' => 'Marketing-Kampagne', 'table_block' => 'Tischsperre',
+        'account' => 'Konto',
+    ];
+
+    /** @var array<string, string> Endung der Aktion => Taetigkeit */
+    public const VERBS = [
+        'created' => 'angelegt', 'updated' => 'geändert', 'deleted' => 'gelöscht',
+        'removed' => 'entfernt', 'added' => 'hinzugefügt', 'invited' => 'eingeladen',
+        'exported' => 'exportiert', 'approved' => 'genehmigt', 'rejected' => 'abgelehnt',
+        'completed' => 'abgeschlossen', 'requested' => 'angefragt', 'offered' => 'angeboten',
+        'activated' => 'aktiviert', 'cancelled' => 'storniert', 'reset' => 'zurückgesetzt',
+        'signed_up' => 'registriert', 'imported' => 'importiert',
+    ];
+
     public function actionLabel(): string
     {
-        $overrides = [
-            'reservation.status_changed' => 'Reservierung: Status geändert',
-            'reservation.party_updated' => 'Reservierung: Personenzahl geändert',
-            'reservation.rescheduled' => 'Reservierung umgebucht',
-            'reservation.tags_updated' => 'Reservierung: Tags geändert',
-            'auth.login' => 'Angemeldet',
-            'guest.anonymized' => 'Gast anonymisiert',
-            'guest.data_export' => 'Gastdaten exportiert',
-            'support.impersonation_started' => 'Supportzugriff gestartet',
-            'support.impersonation_ended' => 'Supportzugriff beendet',
-            'tenant.trial_extended' => 'Testphase verlängert',
-            'tenant.plan_changed' => 'Tarif geändert',
-            'tenant.status_changed' => 'Betriebsstatus geändert',
-            'tenant.type_changed' => 'Betriebsart geändert',
-            'payment.succeeded' => 'Zahlung eingegangen',
-            'payment.checkout_started' => 'Bezahlvorgang gestartet',
-            'payment.forfeited' => 'Anzahlung einbehalten (No-Show)',
-            // Ohne diese Zeilen stand im Protokoll "Zahlung Amount Mismatch" -
-            // der Rueckfall setzt aus dem Aktionsnamen zusammen, und der ist
-            // englisch. Gerade die Geldwege liest jemand, der wissen will, was
-            // schiefging.
-            'payment.amount_mismatch' => 'Zahlung mit falschem Betrag',
-            'payment.late_on_inactive_reservation' => 'Zahlung auf ungültige Buchung',
-            'payment.confirm_failed' => 'Zahlung verbucht, Bestätigung fehlgeschlagen',
-            'payment.awaiting_settlement' => 'Zahlung noch nicht gutgeschrieben',
-            'payment.async_failed' => 'Verzögerte Zahlung gescheitert',
-            'payment.async_failed_after_settlement' => 'Zahlung gescheitert, obwohl verbucht',
-            'payment.already_settled_at_provider' => 'Beim Anbieter bereits bezahlt',
-            'payment.return_not_yet_paid' => 'Rücksprung ohne Zahlungseingang',
-            'payment.stale_session_expired' => 'Alte Bezahlsitzung abgelaufen',
-            'payment.unknown_return_session' => 'Rücksprung mit unbekannter Sitzung',
-            'payment.webhook_received' => 'Meldung des Zahlungsanbieters',
-            'user.locations_changed' => 'Standortfreigabe geändert',
-            'user.role_changed' => 'Rolle geändert',
-            'user.self_deleted' => 'Konto selbst gelöscht',
-            'account.exported' => 'Alle Daten exportiert',
-        ];
-        if (isset($overrides[$this->action])) {
-            return $overrides[$this->action];
+        return self::labelFor($this->action);
+    }
+
+    /**
+     * Dieselbe Aufloesung ohne Datensatz - damit ein Test sie fuer jede
+     * geloggte Aktion durchspielen kann.
+     */
+    public static function labelFor(string $action): string
+    {
+        if (isset(self::ACTION_LABELS[$action])) {
+            return self::ACTION_LABELS[$action];
         }
 
-        $subjects = [
-            'reservation' => 'Reservierung', 'guest' => 'Gast', 'guests' => 'Gäste',
-            'table' => 'Tisch', 'table_combination' => 'Tischkombination', 'room' => 'Raum',
-            'zone' => 'Zone', 'event' => 'Event', 'service' => 'Leistung',
-            'staff_member' => 'Mitarbeiter', 'tag' => 'Tag', 'location' => 'Standort',
-            'user' => 'Benutzer', 'refund' => 'Erstattung', 'deposit_rule' => 'Anzahlungsregel',
-            'blackout' => 'Sperrzeit', 'special_hours' => 'Sonderöffnungszeit',
-            'opening_hours' => 'Öffnungszeiten', 'template' => 'E-Mail-Vorlage',
-            'api_token' => 'API-Token', 'webhook' => 'Webhook', 'tenant' => 'Betrieb',
-            'floorplan' => 'Tischplan', 'billing' => 'Abrechnung', 'integration' => 'Integration',
-            'waitlist' => 'Warteliste', 'payment' => 'Zahlung', 'saas' => 'Plattform-Benutzer',
-        ];
-        $verbs = [
-            'created' => 'angelegt', 'updated' => 'geändert', 'deleted' => 'gelöscht',
-            'removed' => 'entfernt', 'added' => 'hinzugefügt', 'invited' => 'eingeladen',
-            'exported' => 'exportiert', 'approved' => 'genehmigt', 'rejected' => 'abgelehnt',
-            'completed' => 'abgeschlossen', 'requested' => 'angefragt', 'offered' => 'angeboten',
-            'activated' => 'aktiviert', 'cancelled' => 'storniert', 'reset' => 'zurückgesetzt',
-            'signed_up' => 'registriert',
-        ];
-
-        [$prefix, $rest] = array_pad(explode('.', $this->action, 2), 2, '');
-        $subject = $subjects[$prefix] ?? Str::headline($prefix);
+        [$prefix, $rest] = array_pad(explode('.', $action, 2), 2, '');
+        $subject = self::SUBJECTS[$prefix] ?? Str::headline($prefix);
         $verbKey = $rest ? (string) Str::afterLast($rest, '.') : '';
-        $verb = $verbs[$verbKey] ?? null;
+        $verb = self::VERBS[$verbKey] ?? null;
 
         return $verb ? "{$subject} {$verb}" : trim($subject.' '.Str::headline(str_replace('.', ' ', (string) $rest)));
+    }
+
+    /**
+     * Ergibt diese Aktion eine deutsche Bezeichnung - oder faellt sie auf die
+     * englische Kruecke aus dem Aktionsnamen zurueck?
+     */
+    public static function hasGermanLabel(string $action): bool
+    {
+        if (isset(self::ACTION_LABELS[$action])) {
+            return true;
+        }
+
+        [$prefix, $rest] = array_pad(explode('.', $action, 2), 2, '');
+
+        return isset(self::SUBJECTS[$prefix])
+            && isset(self::VERBS[$rest ? (string) Str::afterLast($rest, '.') : '']);
     }
 
     /**

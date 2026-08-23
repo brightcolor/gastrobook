@@ -78,10 +78,11 @@ class WaitlistService
      */
     public function offer(WaitlistEntry $entry, CarbonImmutable $startUtc, CarbonImmutable $endUtc, ?User $actor = null, int $validMinutes = 60, bool $sofort = false): WaitlistOffer
     {
-        // Reihenfolge und Transaktion sind wichtig: erst pruefen, dann die
-        // eigenen alten Angebote schliessen. Andersherum stuende der Gast nach
-        // einem abgelehnten Anlauf ganz ohne Angebot da - der Link in seiner
-        // Mail waere tot, und niemand erfuehre davon.
+        // Die TRANSAKTION traegt den Schutz: Wirft die Pruefung, rollt sie das
+        // Schliessen der alten Angebote mit zurueck. Ohne sie stuende der Gast
+        // nach einem abgelehnten Anlauf ganz ohne Angebot da - der Link in
+        // seiner Mail waere tot, und niemand erfuehre davon. Die Reihenfolge
+        // (erst pruefen, dann schliessen) ist der zweite Boden darunter.
         return DB::transaction(function () use ($entry, $startUtc, $endUtc, $actor, $validMinutes, $sofort) {
             $tische = $sofort ? [] : $this->assertCapacityLeft($entry, $startUtc, $endUtc);
 
@@ -140,26 +141,36 @@ class WaitlistService
             ->where('waitlist_offers.offered_end_at', '>', $startUtc)
             ->get(['waitlist_offers.table_ids', 'waitlist_entries.party_size as entry_party_size']);
 
-        // Ein Angebot ohne festgehaltene Tische sperrt keine: Bei reiner
-        // Personenzaehlung gibt es keine, und "Gast steht schon da" haelt auch
-        // keine frei. Die Plaetze zaehlen in beiden Faellen ueber extra_covers.
         $belegt = $offene->flatMap(fn (WaitlistOffer $o) => $o->table_ids ?? [])->unique()->values()->all();
         $vergeben = (int) $offene->sum('entry_party_size');
 
-        $check = $this->availability->checkExact(
-            $location,
-            CarbonImmutable::parse($startUtc)->setTimezone($location->timezone),
-            $entry->party_size,
-            [
-                // Die Dauer stammt vom aufrufenden Fenster, nicht aus der
-                // Gruppengroesse - der Aufrufer hat sie bereits gerechnet.
-                'duration' => (int) $startUtc->diffInMinutes($endUtc),
-                'online' => false,
-                'ad_hoc' => true,
-                'busy_table_ids' => $belegt,
-                'extra_covers' => $vergeben,
-            ],
-        );
+        // Ein Angebot ohne festgehaltene Tische sperrt keinen - bei reiner
+        // Personenzaehlung gibt es keine, "Gast steht schon da" haelt keine
+        // frei, und Angebote von vor dieser Aenderung tragen sie nicht.
+        //
+        // In der Tischsuche zaehlen ihre Plaetze darum wieder auf die eigene
+        // Gruppe. Das ist die alte, grobe Rechnung - aber sie irrt nach oben:
+        // lieber eine Zusage zu wenig als zwei auf denselben Tisch. Ohne diese
+        // Zeile faellt so ein Angebot durch beide Raster, und beim Ausrollen
+        // stuende der behobene Fehler acht Stunden lang wieder offen.
+        $ohneTische = (int) $offene
+            ->filter(fn (WaitlistOffer $o) => empty($o->table_ids))
+            ->sum('entry_party_size');
+
+        $startLocal = CarbonImmutable::parse($startUtc)->setTimezone($location->timezone);
+        $optionen = [
+            // Die Dauer stammt vom aufrufenden Fenster, nicht aus der
+            // Gruppengroesse - der Aufrufer hat sie bereits gerechnet.
+            'duration' => (int) $startUtc->diffInMinutes($endUtc),
+            'online' => false,
+            'ad_hoc' => true,
+            'busy_table_ids' => $belegt,
+            // Nur die Plaetze der Angebote MIT Tischen: Die anderen stecken
+            // schon in der Gruppengroesse und zaehlten sonst doppelt.
+            'extra_covers' => $vergeben - $ohneTische,
+        ];
+
+        $check = $this->availability->checkExact($location, $startLocal, $entry->party_size + $ohneTische, $optionen);
 
         if (! $check['available']) {
             throw ValidationException::withMessages([
@@ -167,7 +178,13 @@ class WaitlistService
             ]);
         }
 
-        return $check['table_ids'];
+        // Versprochen wird, was DIESE Gruppe braucht. Die Aufschlaege oben
+        // sind nur der Riegel; als Zusage festgehalten waeren sie zu viel.
+        if ($ohneTische === 0) {
+            return $check['table_ids'];
+        }
+
+        return $this->availability->checkExact($location, $startLocal, $entry->party_size, $optionen)['table_ids'];
     }
 
     /**
@@ -260,6 +277,12 @@ class WaitlistService
                 // oeffentlichen Raster. "Jetzt platzieren" faellt sonst an der
                 // Rasterpruefung und an der Vorlaufzeit durch.
                 'ad_hoc' => true,
+                // Und die Tische aus dem Angebot einloesen, statt neu zu
+                // suchen. Die Suche lief hier mit 'online', das Angebot ohne:
+                // Ein Tisch, der nicht online buchbar ist, wurde zugesagt und
+                // war beim Annehmen dann "nicht mehr frei". Der Gast bekam eine
+                // Fehlermeldung fuer einen Tisch, der die ganze Zeit dastand.
+                'table_ids' => $offer->table_ids ?? [],
             ]);
 
             $offer->update(['status' => 'accepted']);

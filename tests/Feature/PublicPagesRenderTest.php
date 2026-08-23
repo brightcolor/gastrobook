@@ -262,8 +262,10 @@ class PublicPagesRenderTest extends TestCase
         $this->get(route('guest.verify', ['token' => $token]))->assertOk();
 
         // Und ein zweiter Aufruf desselben Links landet auf der Fehlerseite,
-        // statt auf einem Serverfehler.
-        $this->get(route('guest.verify', ['token' => $token]))->assertOk();
+        // statt auf einem Serverfehler. Der Einmal-Schluessel ist verbraucht.
+        $this->get(route('guest.verify', ['token' => $token]))
+            ->assertOk()
+            ->assertSee('Link ungültig oder abgelaufen', false);
     }
 
     public function test_the_billing_confirmation_page_renders(): void
@@ -285,8 +287,11 @@ class PublicPagesRenderTest extends TestCase
 
         $this->get(route('billing.confirm', ['token' => $anfrage->token]))->assertOk();
 
-        // Der zweite Klick auf denselben Link gehoert auf die Hinweisseite.
-        $this->get(route('billing.confirm', ['token' => $anfrage->token]))->assertOk();
+        // Der zweite Klick auf denselben Link gehoert auf die Hinweisseite,
+        // nicht noch einmal in die Freischaltung.
+        $this->get(route('billing.confirm', ['token' => $anfrage->token]))
+            ->assertOk()
+            ->assertSee('Link bereits verwendet', false);
     }
 
     /**

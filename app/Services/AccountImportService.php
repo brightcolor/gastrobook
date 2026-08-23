@@ -79,6 +79,9 @@ class AccountImportService
     /** @var array<string, array<int, string>> Tabellenname → Spalten */
     private array $columns = [];
 
+    /** @var array<string, array<int, string>> Tabellenname → Spalten, die NULL zulassen */
+    private array $nullable = [];
+
     /**
      * Validate the payload and report what an import would create.
      *
@@ -123,7 +126,7 @@ class AccountImportService
             $done['floor_zones'] = $this->simple($tenant, $data, 'floor_zones', FloorZone::class, ['location_id' => 'locations', 'room_id' => 'rooms']);
             $done['opening_hours'] = $this->simple($tenant, $data, 'opening_hours', OpeningHour::class, ['location_id' => 'locations']);
             $done['special_opening_hours'] = $this->simple($tenant, $data, 'special_opening_hours', SpecialOpeningHour::class, ['location_id' => 'locations']);
-            $done['blackout_periods'] = $this->simple($tenant, $data, 'blackout_periods', BlackoutPeriod::class, ['location_id' => 'locations', 'room_id' => 'rooms'], optional: $this->optionalFor('blackout_periods'));
+            $done['blackout_periods'] = $this->simple($tenant, $data, 'blackout_periods', BlackoutPeriod::class, ['location_id' => 'locations', 'room_id' => 'rooms']);
             $done['tags'] = $this->simple($tenant, $data, 'tags', Tag::class, [], ['name', 'scope']);
             $done['table_blocks'] = $this->simple($tenant, $data, 'table_blocks', TableBlock::class, ['location_id' => 'locations', 'restaurant_table_id' => 'tables']);
             $done['notification_templates'] = $this->simple($tenant, $data, 'notification_templates', NotificationTemplate::class, ['location_id' => 'locations'], ['location_id', 'key', 'locale']);
@@ -136,16 +139,15 @@ class AccountImportService
             // muss vorher importiert sein – sonst steht in der Fremdschluessel-
             // spalte die ID der QUELLinstallation: entweder eine Verletzung, die
             // die ganze Transaktion abbricht, oder eine stille Falschverknuepfung.
-            // room_id ist optional: Ein Event ohne aufloesbaren Raum ist immer
-            // noch ein Event. Ohne diese Angabe verwuerfe der Import die ganze
-            // Zeile - schlimmer als der falsche Verweis, den er ersetzt.
-            $done['events'] = $this->simple($tenant, $data, 'events', Event::class, ['location_id' => 'locations', 'room_id' => 'rooms'], optional: $this->optionalFor('events'));
+            // Welche Verweise verzichtbar sind, steht in NULLABLE_AFTER_MAPPING -
+            // ein Event ohne aufloesbaren Raum ist immer noch ein Event.
+            $done['events'] = $this->simple($tenant, $data, 'events', Event::class, ['location_id' => 'locations', 'room_id' => 'rooms']);
             $done['deposit_rules'] = $this->simple($tenant, $data, 'deposit_rules', DepositRule::class, [
                 'location_id' => 'locations',
                 'room_id' => 'rooms',
                 'event_id' => 'events',
                 'service_id' => 'services',
-            ], optional: $this->optionalFor('deposit_rules'));
+            ]);
 
             // Die drei preferred_-Spalten sind echte Fremdschluessel. Ungemappt
             // steht dort die ID der Quellinstallation: entweder eine Verletzung,
@@ -164,13 +166,13 @@ class AccountImportService
                 'event_id' => 'events',
                 'reservation_id' => 'reservations',
                 'guest_id' => 'guests',
-            ], optional: $this->optionalFor('event_bookings'));
+            ]);
             $done['waitlist_entries'] = $this->simple($tenant, $data, 'waitlist_entries', WaitlistEntry::class, [
                 'location_id' => 'locations',
                 'guest_id' => 'guests',
                 'reservation_id' => 'reservations',
-            ], optional: $this->optionalFor('waitlist_entries'));
-            $done['payments'] = $this->simple($tenant, $data, 'payments', PaymentIntent::class, ['reservation_id' => 'reservations', 'event_booking_id' => 'event_bookings'], optional: $this->optionalFor('payments'));
+            ]);
+            $done['payments'] = $this->simple($tenant, $data, 'payments', PaymentIntent::class, ['reservation_id' => 'reservations', 'event_booking_id' => 'event_bookings']);
             $done['refunds'] = $this->refunds($tenant, $data);
             // reservation_id ist PFLICHT - eine Feedback-Anfrage ohne Buchung gibt
             // es nicht.
@@ -272,12 +274,17 @@ class AccountImportService
 
         foreach ($data['tables'] ?? [] as $row) {
             $attrs = $this->attrs($row);
-            $attrs['location_id'] = $this->mapped('locations', $row['location_id'] ?? null);
-            $attrs['room_id'] = $this->mapped('rooms', $row['room_id'] ?? null);
             // Selbstverweis: zeigt auf einen Tisch, den es hier noch nicht gibt.
             // Wird nach dem Durchlauf nachgetragen.
             unset($attrs['backup_table_id']);
-            if ($attrs['location_id'] === null) {
+
+            // Ueber remap wie ueberall sonst - und damit auch room_id. Der
+            // Raum ist hier PFLICHT; geprueft wurde bisher nur der Standort,
+            // und ein unaufloesbarer Raum brach den ganzen Import ab.
+            if (! $this->remap('tables', 'restaurant_tables', [
+                'location_id' => 'locations',
+                'room_id' => 'rooms',
+            ], $row, $attrs)) {
                 continue;
             }
 
@@ -401,9 +408,13 @@ class AccountImportService
 
         foreach ($data['guests'] ?? [] as $row) {
             $attrs = $this->attrs($row);
-            $attrs['preferred_location_id'] = $this->mapped('locations', $row['preferred_location_id'] ?? null);
-            $attrs['preferred_room_id'] = $this->mapped('rooms', $row['preferred_room_id'] ?? null);
-            $attrs['preferred_table_id'] = $this->mapped('tables', $row['preferred_table_id'] ?? null);
+            if (! $this->remap('guests', 'guests', [
+                'preferred_location_id' => 'locations',
+                'preferred_room_id' => 'rooms',
+                'preferred_table_id' => 'tables',
+            ], $row, $attrs)) {
+                continue;
+            }
 
             $guest = new Guest($attrs);
             $guest->tenant_id = $tenant->id;
@@ -437,11 +448,15 @@ class AccountImportService
 
             $attrs = $this->attrs($row);
             $attrs['location_id'] = $locationId;
-            $attrs['guest_id'] = $this->mapped('guests', $row['guest_id'] ?? null);
-            $attrs['event_id'] = $this->mapped('events', $row['event_id'] ?? null);
-            $attrs['service_id'] = $this->mapped('services', $row['service_id'] ?? null);
-            $attrs['staff_member_id'] = $this->mapped('staff_members', $row['staff_member_id'] ?? null);
-            $attrs['deposit_rule_id'] = $this->mapped('deposit_rules', $row['deposit_rule_id'] ?? null);
+            if (! $this->remap('reservations', 'reservations', [
+                'guest_id' => 'guests',
+                'event_id' => 'events',
+                'service_id' => 'services',
+                'staff_member_id' => 'staff_members',
+                'deposit_rule_id' => 'deposit_rules',
+            ], $row, $attrs)) {
+                continue;
+            }
 
             $reservation = new Reservation($attrs);
             $reservation->tenant_id = $tenant->id;
@@ -501,9 +516,13 @@ class AccountImportService
 
         foreach ($data['refunds'] ?? [] as $row) {
             $attrs = $this->attrs($row);
-            $attrs['reservation_id'] = $this->mapped('reservations', $row['reservation_id'] ?? null);
-            $attrs['event_booking_id'] = $this->mapped('event_bookings', $row['event_booking_id'] ?? null);
-            $attrs['payment_intent_id'] = $this->mapped('payments', $row['payment_intent_id'] ?? null);
+            if (! $this->remap('refunds', 'refunds', [
+                'reservation_id' => 'reservations',
+                'event_booking_id' => 'event_bookings',
+                'payment_intent_id' => 'payments',
+            ], $row, $attrs)) {
+                continue;
+            }
 
             if (in_array($attrs['status'] ?? null, $open, true)) {
                 $attrs['status'] = 'failed';
@@ -524,30 +543,19 @@ class AccountImportService
     }
 
     /**
-     * Generic importer for a section.
-     *
-     * @param  class-string  $modelClass
-     * @param  array<string, string>  $relations  column => entity key in the id map
-     * @param  array<int, string>  $unique  columns forming a natural key within the tenant.
-     *                                      A match reuses the existing record instead of
-     *                                      creating a duplicate — the target business may
-     *                                      already have tags or templates of its own.
-     * @param  array<int, string>  $optional  Spalten, deren unaufloesbarer Verweis die
-     *                                        Zeile NICHT verwirft, sondern nur geleert
-     *                                        wird. Ein Gast ohne Lieblingstisch ist
-     *                                        immer noch ein Gast.
-     */
-    /**
-     * Spalten, in denen nach dem Umschluesseln NULL stehen kann.
+     * Spalten, in denen nach dem Umschluesseln NULL stehen darf.
      *
      * Ein Verweis, der sich in der Zielinstallation nicht aufloesen laesst,
-     * wird geleert, statt die ganze Zeile zu verwerfen - eine Buchung ohne
-     * Raum ist immer noch eine Buchung. Das geht aber nur, wenn die Spalte
-     * NULL zulaesst: Sonst scheitert das Einfuegen, und weil der ganze Import
-     * in EINER Transaktion laeuft, reisst eine einzige Zeile ihn komplett mit.
+     * wird bei diesen Spalten geleert, statt die ganze Zeile zu verwerfen -
+     * eine Buchung ohne Raum ist immer noch eine Buchung. Alles, was hier
+     * nicht steht, gilt als Pflichtverweis: Laesst er sich nicht aufloesen,
+     * faellt die ZEILE weg.
      *
-     * Die Liste steht hier als Daten, damit ein Test sie gegen das Schema
-     * halten kann - AccountImportNullableTest tut das fuer jeden Eintrag.
+     * Der zweite Waechter steht in remap(): Was hier steht, die Datenbank aber
+     * verlangt, wird trotzdem verworfen statt geleert. Denn ein NULL in einer
+     * NOT-NULL-Spalte bricht das Einfuegen, und weil der ganze Import in EINER
+     * Transaktion laeuft, reisst eine einzige Zeile ihn komplett mit. Diese
+     * Liste kann sich also irren, ohne Schaden anzurichten.
      *
      * @var array<string, array{0: class-string<Model>, 1: array<int, string>}>
      */
@@ -564,30 +572,94 @@ class AccountImportService
     ];
 
     /**
-     * @return array<int, string>
+     * Abschnitte, deren Zeilen mindestens EINEN dieser Verweise behalten muessen.
+     *
+     * Jede Spalte darf einzeln leer sein - eine Zahlung haengt entweder an
+     * einer Reservierung oder an einer Eventbuchung. Alle zusammen leer heisst
+     * dagegen: eine Geldzeile ohne Bezug. Sie steht dann in der Liste, laesst
+     * sich aber weder zuordnen noch ausloesen.
+     *
+     * @var array<string, array<int, string>>
      */
-    private function optionalFor(string $section): array
+    private const REQUIRES_ANY_OWNER = [
+        'payments' => ['reservation_id', 'event_booking_id'],
+        'refunds' => ['reservation_id', 'event_booking_id', 'payment_intent_id'],
+    ];
+
+    /**
+     * Verweise umschluesseln und melden, ob die Zeile brauchbar bleibt.
+     *
+     * Die einzige Stelle, die entscheidet, ob ein unaufloesbarer Verweis die
+     * Zeile kostet oder nur die Spalte. Vorher entschied das jeder Aufrufer
+     * ueber ein eigenes Argument - und drei davon lagen falsch: Sie erklaerten
+     * Spalten fuer verzichtbar, die die Datenbank verlangt. Der ganze Umzug
+     * scheiterte dann an einer einzigen Zeile.
+     *
+     * @param  array<string, string>  $relations  Spalte => Abschnitt in der Zuordnung
+     * @param  array<string, mixed>  $row
+     * @param  array<string, mixed>  $attrs
+     * @return bool false heisst: Zeile verwerfen
+     */
+    private function remap(string $section, string $table, array $relations, array $row, array &$attrs): bool
     {
-        return self::NULLABLE_AFTER_MAPPING[$section][1] ?? [];
+        $optional = self::NULLABLE_AFTER_MAPPING[$section][1] ?? [];
+
+        foreach ($relations as $column => $entity) {
+            $neu = $this->mapped($entity, $row[$column] ?? null);
+
+            // Leeren nur, wenn es BEIDE erlauben: die Absicht oben und das
+            // Schema. Das Schema hat das letzte Wort - eine falsche Zeile in
+            // der Liste kostet dann hoechstens diese eine Zeile, nie den
+            // ganzen Import.
+            if ($neu === null
+                && (! in_array($column, $optional, true) || ! $this->isNullable($table, $column))) {
+                return false;
+            }
+
+            $attrs[$column] = $neu;
+        }
+
+        foreach (self::REQUIRES_ANY_OWNER[$section] ?? [] as $spalte) {
+            if (($attrs[$spalte] ?? null) !== null) {
+                return true;
+            }
+        }
+
+        return ! isset(self::REQUIRES_ANY_OWNER[$section]);
     }
 
-    private function simple(Tenant $tenant, array $data, string $section, string $modelClass, array $relations = [], array $unique = [], array $optional = []): int
+    /**
+     * Laesst die Datenbank in dieser Spalte NULL zu?
+     */
+    private function isNullable(string $table, string $column): bool
+    {
+        $this->nullable[$table] ??= collect(Schema::getColumns($table))
+            ->filter(fn (array $spalte) => (bool) $spalte['nullable'])
+            ->pluck('name')
+            ->all();
+
+        return in_array($column, $this->nullable[$table], true);
+    }
+
+    /**
+     * Generic importer for a section.
+     *
+     * @param  class-string  $modelClass
+     * @param  array<string, string>  $relations  column => entity key in the id map
+     * @param  array<int, string>  $unique  columns forming a natural key within the tenant.
+     *                                      A match reuses the existing record instead of
+     *                                      creating a duplicate — the target business may
+     *                                      already have tags or templates of its own.
+     */
+    private function simple(Tenant $tenant, array $data, string $section, string $modelClass, array $relations = [], array $unique = []): int
     {
         $count = 0;
+        $tabelle = (new $modelClass)->getTable();
+
         foreach ($data[$section] ?? [] as $row) {
             $attrs = $this->attrs($row);
 
-            $skip = false;
-            foreach ($relations as $column => $entity) {
-                $new = $this->mapped($entity, $row[$column] ?? null);
-                // A required parent that cannot be resolved means the row is orphaned.
-                if ($new === null && ! empty($row[$column]) && ! in_array($column, $optional, true)) {
-                    $skip = true;
-                    break;
-                }
-                $attrs[$column] = $new;
-            }
-            if ($skip) {
+            if (! $this->remap($section, $tabelle, $relations, $row, $attrs)) {
                 continue;
             }
 
