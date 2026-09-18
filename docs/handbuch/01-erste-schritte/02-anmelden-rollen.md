@@ -6,6 +6,9 @@ Du meldest dich mit E-Mail-Adresse und Passwort an. Passwort vergessen? Auf der
 Anmeldeseite auf „Passwort vergessen" klicken – du bekommst einen Link per Mail,
 der eine begrenzte Zeit gültig ist.
 
+Ist der Spamschutz eingeschaltet, steht unter dem Passwortfeld ein Kästchen
+„Ich bin ein Mensch". Einmal anklicken, den Rest erledigt der Rechner.
+
 Es gibt **keine gemeinsamen Team-Zugänge**. Jeder Mitarbeiter bekommt einen
 eigenen Zugang. Das ist keine Schikane: Im Verlauf jeder Buchung steht, wer was
 gemacht hat – mit einem geteilten Zugang wäre diese Information wertlos, und bei

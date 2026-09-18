@@ -87,8 +87,9 @@ Fertige Docker-Images baut die CI automatisch: `ghcr.io/brightcolor/gastrobook:l
 12. [CLI-Befehle (Artisan)](#cli-befehle-artisan)
 13. [E-Mails testen](#e-mails-testen)
 14. [Tests & Codequalität](#tests--codequalität)
-15. [Datenschutz (DSGVO)](#datenschutz-dsgvo)
-16. [Backup, Updates, Produktion](#backup-updates-produktion)
+15. [Spamschutz der öffentlichen Formulare (Cap)](#spamschutz-der-öffentlichen-formulare-cap)
+16. [Datenschutz (DSGVO)](#datenschutz-dsgvo)
+17. [Backup, Updates, Produktion](#backup-updates-produktion)
 
 ---
 
@@ -713,6 +714,79 @@ vendor/bin/phpstan analyse --memory-limit=1G       # Statische Analyse (0 Fehler
 ```
 
 CI: GitHub Actions (`.github/workflows/ci.yml`) mit Pint, Larastan, Tests und Frontend-Build.
+
+---
+
+## Spamschutz der öffentlichen Formulare (Cap)
+
+Die öffentlich erreichbaren Formulare können mit [Cap](https://capjs.js.org)
+gegen automatisierte Eingaben geschützt werden — einem selbst gehosteten
+Proof-of-Work-CAPTCHA. Der Browser des Gastes rechnet eine kleine Aufgabe;
+Bilderrätsel und Verhaltensauswertung entfallen.
+
+Geschützt werden Reservierung und Terminbuchung, Eventbuchung, Warteliste,
+Anmeldelink für das Gastkonto, Kontakt, Registrierung, Anmeldung und
+„Passwort vergessen“. Formulare, die nur über einen Einmal-Token aus einer
+Mail erreichbar sind (Stornierung, Umbuchung, Feedback, Einladung,
+Passwort-Reset), bleiben bewusst ohne CAPTCHA.
+
+### Einrichtung
+
+1. Einen Cap-Server betreiben (Cap Standalone, Anleitung unter
+   https://capjs.js.org) und dort einen Schlüssel anlegen. Man erhält einen
+   **Site Key** und ein **Secret**.
+2. In der `.env` eintragen und die Container neu starten:
+
+```env
+CAP_ENABLED=true
+CAP_SERVER_URL=https://cap.example.com
+CAP_SITE_KEY=abc123
+CAP_SECRET_KEY=sk-...
+```
+
+Fehlt eine der drei Angaben, bleibt der Schutz aus — ein halb eingerichteter
+CAPTCHA soll kein Formular blockieren.
+
+### Schalter
+
+| Variable | Voreinstellung | Wirkung |
+|---|---|---|
+| `CAP_TIMEOUT` | `8` | Wartezeit für die Rückfrage beim Cap-Server, in Sekunden |
+| `CAP_FAIL_OPEN` | `false` | Notausgang: Antwortet der Cap-Server gar nicht, läuft die Anfrage ungeprüft durch — mit einem Fehlereintrag im Log bei jedem Mal. Ein Token, den Cap ausdrücklich abgelehnt hat, bleibt auch dann abgelehnt |
+| `CAP_PROTECT_BOOKING` | `true` | Reservierung, Termin, Eventbuchung |
+| `CAP_PROTECT_WAITLIST` | `true` | Warteliste |
+| `CAP_PROTECT_CONTACT` | `true` | Kontaktformular |
+| `CAP_PROTECT_REGISTER` | `true` | Registrierung eines Betriebs |
+| `CAP_PROTECT_LOGIN` | `true` | Anmeldung |
+| `CAP_PROTECT_PASSWORD` | `true` | Passwort vergessen |
+| `CAP_PROTECT_PORTAL` | `true` | Anmeldelink für das Gastkonto |
+
+### Eigene Formulare nachrüsten
+
+Die Route bekommt die Wache, die Seite das Widget — beide mit demselben Namen
+aus `config/cap.php`:
+
+```php
+Route::post('/mein-formular', [MeinController::class, 'store'])
+    ->middleware('cap:contact');
+```
+
+```blade
+<x-cap-widget form="contact" />
+```
+
+Ein Test wacht darüber, dass beide Seiten zusammenpassen und dass kein neues
+öffentliches Formular ohne Schutz dazukommt
+(`tests/Feature/CapCaptchaTest.php`).
+
+### Datenschutz
+
+Widget und WebAssembly lädt der Browser vom eigenen Cap-Server, den
+pako-Entpacker aus `public/vendor/cap/`. An ein fremdes CDN geht dabei keine
+Anfrage. Der Cap-Server selbst erhält beim Abholen der Aufgabe die IP-Adresse
+des Besuchers — Abschnitt 13a der Datenschutzerklärung
+(`resources/legal/datenschutz.md`) beschreibt das und wartet auf die Angaben
+zum eigenen Server.
 
 ---
 

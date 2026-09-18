@@ -1,5 +1,51 @@
 # Changelog
 
+## [1.128.0] – 2026-09-18
+
+### Spamschutz für alle öffentlichen Formulare
+
+Jedes Formular, das ohne Anmeldung erreichbar ist, löst etwas aus: eine Mail an
+eine fremde Adresse, eine SMS, einen belegten Reservierungsplatz, einen
+Anmeldeversuch. Davor stand bisher ein verstecktes Feld, das automatische
+Skripte ausfüllen und Menschen leer lassen. Es fängt die einfachen Fälle ab.
+
+Dazu kommt jetzt **Cap**, ein selbst gehosteter Proof-of-Work-CAPTCHA. Der
+Browser rechnet eine kleine Aufgabe, bevor das Formular abgeschickt werden darf.
+Für den Besucher bleibt es bei einem Klick auf „Ich bin ein Mensch“ — die
+Rechnung läuft im Hintergrund, ohne Bilderrätsel und ohne verzerrte Schrift. Wer
+massenhaft Formulare abschickt, zahlt dafür Rechenzeit.
+
+Geschützt sind Reservierung und Terminbuchung, Eventbuchung, Warteliste,
+Anmeldelink fürs Gastkonto, Kontakt, Registrierung, Anmeldung und „Passwort
+vergessen“. Formulare, die nur über einen Einmal-Token aus einer Mail erreichbar
+sind — Stornierung, Umbuchung, Feedback, Einladung, Passwort-Reset — bleiben
+ohne CAPTCHA: Ihre Adresse ist unratbar, und wer dort ankommt, will meist gerade
+etwas absagen.
+
+**Eingerichtet wird es über vier Angaben in der `.env`** (`CAP_ENABLED`,
+`CAP_SERVER_URL`, `CAP_SITE_KEY`, `CAP_SECRET_KEY`). Fehlt eine davon, bleibt der
+Schutz aus — ein halb eingerichteter CAPTCHA soll kein Formular blockieren. Jedes
+Formular lässt sich einzeln abschalten.
+
+**Wenn der Cap-Server schweigt,** weist die Anwendung die Anfrage ab und sagt,
+dass die Prüfung gerade nicht erreichbar ist. Für den Störfall gibt es
+`CAP_FAIL_OPEN=true`: Dann laufen Anfragen ungeprüft durch, und jede einzelne
+davon steht als Fehler im Log. Ein Token, den der Cap-Server ausdrücklich
+abgelehnt hat, bleibt auch dann abgelehnt — sonst käme man mit Unsinn durch,
+indem man die Ablehnung provoziert.
+
+**Datenschutz:** Widget und WebAssembly kommen vom eigenen Cap-Server, der
+pako-Entpacker aus dem eigenen öffentlichen Verzeichnis. Die Voreinstellung des
+Widgets wäre ein öffentliches CDN gewesen — damit hätte jede Buchungsseite die
+IP-Adresse ihrer Gäste an einen Dritten weitergereicht. Die Datenschutzerklärung
+hat dafür einen eigenen Abschnitt bekommen, die bisherige Zusage „keine externen
+Inhalte“ ist entsprechend präzisiert.
+
+Zwei Tests wachen mit: Einer meldet jedes neue öffentliche Formular, das ohne
+Schutz dazukommt, der andere hält Wache und Widget auf denselben Namen — sonst
+löst ein Besucher eine Aufgabe, die niemand prüft, oder wird geprüft, ohne eine
+Aufgabe zu bekommen.
+
 ## [1.127.1] – 2026-08-23
 
 Die Anwendung verlangt jetzt selbst HTTPS für ein Jahr im Voraus (nur über eine

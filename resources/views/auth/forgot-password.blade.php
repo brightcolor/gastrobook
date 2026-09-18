@@ -36,6 +36,8 @@
                     <input type="email" name="email" id="email" required autofocus value="{{ old('email') }}"
                            class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
                 </div>
+                <x-cap-widget form="password" />
+
                 <button class="w-full rounded-xl bg-stone-900 py-3 font-bold text-white hover:bg-stone-700">
                     Reset-Link senden
                 </button>

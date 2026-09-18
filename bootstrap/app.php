@@ -7,6 +7,7 @@ use App\Http\Middleware\RequirePermission;
 use App\Http\Middleware\RequireValidLicense;
 use App\Http\Middleware\ResolveTenantContext;
 use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\VerifyCapToken;
 use App\Support\TrustedHosts;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -26,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => RequirePermission::class,
             'license' => RequireValidLicense::class,
             'trial' => EnsureTrialActive::class,
+            'cap' => VerifyCapToken::class,
         ]);
 
         // Sicherheitsheader aus der Anwendung heraus. Auf swayy.de setzt sie

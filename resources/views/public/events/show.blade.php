@@ -80,6 +80,8 @@
                     Bei Nichterscheinen (No-Show) erfolgt <strong>keine Rückerstattung</strong>.
                 </p>
             @endif
+            <x-cap-widget form="booking" />
+
             <button class="btn-brand w-full rounded-xl py-4 text-lg font-bold text-white shadow hover:opacity-90">
                 @php($dueNow = $event->deposit_minor ?? $event->price_minor)
                 Jetzt buchen{{ $dueNow ? ' · ' . number_format($dueNow / 100, 2, ',', '.') . ' € p. P.' . ($event->deposit_minor ? ' Anzahlung' : '') : '' }}

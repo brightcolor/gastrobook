@@ -40,6 +40,8 @@
             <label class="flex items-center gap-2 text-sm">
                 <input type="checkbox" name="remember" value="1"> Angemeldet bleiben
             </label>
+            <x-cap-widget form="login" />
+
             <button class="w-full rounded-xl bg-stone-900 py-3 font-bold text-white hover:bg-stone-700">Anmelden</button>
         </form>
 

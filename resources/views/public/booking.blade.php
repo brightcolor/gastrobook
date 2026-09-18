@@ -193,6 +193,8 @@ details > summary::-webkit-details-marker { display: none; }
                                 <span class="text-stone-400">Newsletter erhalten (jederzeit widerrufbar).</span>
                             </label>
                         </div>
+                        <x-cap-widget form="booking" />
+
                         <button type="submit"
                                 class="btn-brand flex w-full items-center justify-center gap-2 rounded-xl py-4 text-base font-bold text-white transition-all active:scale-[0.99]">
                             Termin buchen
@@ -580,6 +582,8 @@ details > summary::-webkit-details-marker { display: none; }
                         </label>
                     </div>
 
+                    <x-cap-widget form="booking" />
+
                     <button type="submit"
                             class="btn-brand flex w-full items-center justify-center gap-2 rounded-xl py-4 text-base font-bold text-white transition-all active:scale-[0.99]">
                         Jetzt reservieren
@@ -606,6 +610,8 @@ details > summary::-webkit-details-marker { display: none; }
                 <span>@if($tenant->privacy_url)Ich akzeptiere die <a href="{{ $tenant->privacy_url }}" target="_blank" rel="noopener" class="underline">Datenschutzhinweise</a>.@else Ich bin damit einverstanden, dass meine Angaben zur Bearbeitung meiner Anfrage gespeichert und verarbeitet werden.@endif</span>
             </label>
             <p id="wlError" class="hidden text-xs font-medium text-red-600"></p>
+            <x-cap-widget form="waitlist" />
+
             <button type="button" id="wlSubmit" class="w-full rounded-xl bg-amber-600 py-2.5 text-sm font-bold text-white hover:bg-amber-700 active:scale-[0.98]">
                 Eintragen – wir melden uns
             </button>
@@ -863,9 +869,15 @@ details > summary::-webkit-details-marker { display: none; }
             const name = document.getElementById('wlName').value.trim();
             const email = document.getElementById('wlEmail').value.trim();
             const privacy = document.getElementById('wlPrivacy').checked;
+            const capWidget = wlBox.querySelector('cap-widget');
+            const capField = wlBox.querySelector('input[name="cap-token"]');
             err.classList.add('hidden');
             if (!name || !email || !privacy) {
                 err.textContent = 'Bitte Name, E-Mail und die Datenschutz-Zustimmung ausfüllen.';
+                err.classList.remove('hidden'); return;
+            }
+            if (capWidget && !(capField && capField.value)) {
+                err.textContent = 'Bitte zuerst die Sicherheitsprüfung abschließen.';
                 err.classList.remove('hidden'); return;
             }
             wlSubmit.disabled = true; wlSubmit.textContent = 'Wird gesendet…';
@@ -880,6 +892,7 @@ details > summary::-webkit-details-marker { display: none; }
                         name, email, phone: document.getElementById('wlPhone').value.trim(),
                         website: document.getElementById('wlWebsite').value,
                         privacy_accepted: privacy ? 1 : 0,
+                        'cap-token': capField ? capField.value : '',
                     }),
                 });
                 if (res.ok && res.status === 200) {
@@ -894,6 +907,9 @@ details > summary::-webkit-details-marker { display: none; }
                 err.classList.remove('hidden');
             } finally {
                 wlSubmit.disabled = false; wlSubmit.textContent = 'Eintragen – wir melden uns';
+                // A Cap token is single use: a second attempt needs a fresh
+                // challenge, otherwise the server rejects it every time.
+                if (capWidget && capWidget.isConnected) { capWidget.reset(); }
             }
         });
 

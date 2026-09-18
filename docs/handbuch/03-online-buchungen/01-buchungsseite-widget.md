@@ -23,6 +23,11 @@ Mailsignatur, Speisekarte als QR-Code.
 Dazu Logo, Farbe, Adresse, Telefonnummer und Anfahrt – alles aus deinen
 Einstellungen.
 
+Ist der Spamschutz eingeschaltet, steht über dem Absenden-Knopf ein Kästchen
+„Ich bin ein Mensch". Ein Klick genügt, den Rest erledigt der Rechner des
+Gastes von selbst – ohne Bilderrätsel und ohne verzerrte Schrift. Solange das
+Kästchen offen ist, lässt sich das Formular nicht absenden.
+
 Ist ein Tag ausgebucht, zeigt die Seite von selbst die **nächsten freien
 Termine** und – wenn eingeschaltet – die **Warteliste** an.
 

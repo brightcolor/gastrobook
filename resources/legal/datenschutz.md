@@ -218,17 +218,20 @@ erforderlich sind, insbesondere:
   (Auftragsverarbeiter nach Art. 28 DSGVO),
 - E-Mail-/SMTP-Dienstleister,
 - **sofern aktiviert:** SMS-Anbieter (seven.io, Deutschland),
-  Zahlungsdienstleister (Stripe, PayPal), Newsletter-Dienst (MailWizz).
+  Zahlungsdienstleister (Stripe, PayPal), Newsletter-Dienst (MailWizz),
+  Betreiber des Cap-Servers für den Spamschutz der Formulare (Abschnitt 13a).
 
 **Drittlandübermittlung:** Soweit Dienstleister Daten außerhalb der EU/des EWR
 verarbeiten (insb. Zahlungsdienstleister), erfolgt dies auf Basis eines
 Angemessenheitsbeschlusses oder geeigneter Garantien gemäß Art. 46 DSGVO
 (EU-Standardvertragsklauseln).
 
-**Keine externen Inhalte:** Die Buchungsseiten laden Schriften, Skripte und
-Bilder ausschließlich vom Server dieser Anwendung. Es werden keine
-Inhaltsnetzwerke (CDN) oder sonstigen fremden Adressen eingebunden — Ihre
-IP-Adresse wird beim Seitenaufruf also an keinen Dritten übermittelt.
+**Externe Inhalte:** Die Buchungsseiten laden Schriften, Skripte und Bilder
+vom Server dieser Anwendung. Ein Inhaltsnetzwerk (CDN) ist nicht eingebunden.
+Ist der Spamschutz Cap aktiviert (Abschnitt 13a), holt Ihr Browser Widget,
+Rechenaufgabe und WebAssembly-Datei zusätzlich vom Cap-Server; dabei wird Ihre
+IP-Adresse an dessen Betreiber übermittelt. Weitere fremde Adressen werden beim
+Seitenaufruf nicht angefragt.
 
 ## 13. Cookies, Sitzung und Server-Logs
 
@@ -242,6 +245,33 @@ IP-Adresse wird beim Seitenaufruf also an keinen Dritten übermittelt.
 - Sicherheitsrelevante Aktionen werden in einem **Auditprotokoll**
   (IP-anonymisiert) erfasst (Art. 6 Abs. 1 lit. f / Art. 5 Abs. 2 DSGVO,
   Rechenschaftspflicht).
+
+## 13a. Spamschutz der öffentlichen Formulare (sofern aktiviert)
+
+Die öffentlich erreichbaren Formulare — Reservierung/Terminbuchung,
+Eventbuchung, Warteliste, Anmeldelink für das Gastkonto, Kontakt, Registrierung,
+Anmeldung und „Passwort vergessen“ — können mit **Cap** (https://capjs.js.org)
+gegen automatisierte Eingaben geschützt werden.
+
+Cap stellt Ihrem Browser eine Rechenaufgabe, die er im Hintergrund löst
+(„Proof of Work“). Es gibt kein Bilderrätsel, keine Auswertung Ihres Verhaltens
+auf der Seite und kein Nutzerprofil beim Anbieter.
+
+- **Übermittelte Daten:** Beim Abholen der Aufgabe und beim Einlösen der Lösung
+  überträgt Ihr Browser IP-Adresse, Zeitpunkt und technische Angaben (u. a.
+  Browserkennung) an den Cap-Server. Gerechnet wird die Aufgabe auf Ihrem
+  Gerät; ihr Ergebnis enthält keine personenbezogenen Daten.
+- **Betrieb:** Der Cap-Server ist unter [Adresse des Cap-Servers, z. B.
+  cap.example.com] erreichbar und wird von [Betreiber, Standort des
+  Rechenzentrums] betrieben. [Sofern der Zugang über ein Inhaltsnetzwerk oder
+  einen Tunneldienst läuft: dessen Anbieter, Sitz und die Grundlage einer
+  Drittlandübermittlung hier ergänzen.]
+- **Rechtsgrundlage:** Art. 6 Abs. 1 lit. f DSGVO. Das berechtigte Interesse
+  liegt in der Abwehr von Formularmissbrauch: Jede dieser Eingaben löst
+  E-Mails oder SMS an fremde Adressen aus, belegt Reservierungsplätze oder
+  eröffnet Zugänge.
+- **Speicherdauer:** Aufgabe und eingelöste Lösung verfallen nach kurzer Zeit
+  von selbst. Eine Lösung ist nur ein einziges Mal gültig.
 
 ## 14. Speicherdauer und Löschung
 

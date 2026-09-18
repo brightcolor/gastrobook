@@ -13,6 +13,8 @@
         <input type="email" name="email" required placeholder="{{ $du ? 'deine@email.de' : 'ihre@email.de' }}"
                class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
         @error('email')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
+        <x-cap-widget form="portal" />
+
         <button type="submit" class="btn-brand w-full rounded-xl py-3.5 text-lg font-bold text-white shadow hover:opacity-90">
             Anmeldelink senden
         </button>

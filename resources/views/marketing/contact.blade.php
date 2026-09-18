@@ -30,6 +30,8 @@
             <textarea name="message" id="message" required rows="6" maxlength="5000"
                       class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">{{ old('message') }}</textarea>
         </div>
+        <x-cap-widget form="contact" />
+
         <button class="rounded-xl bg-teal-700 px-8 py-3 font-bold text-white hover:bg-teal-800">Absenden</button>
     </form>
 </section>

@@ -57,7 +57,7 @@ Route::get('/datenschutz', [MarketingController::class, 'privacy'])->name('legal
 Route::get('/agb', [MarketingController::class, 'terms'])->name('legal.terms');
 Route::get('/kontakt', [MarketingController::class, 'contact'])->name('contact');
 Route::post('/kontakt', [MarketingController::class, 'sendContact'])
-    ->middleware('throttle:5,10')->name('contact.send');
+    ->middleware(['throttle:5,10', 'cap:contact'])->name('contact.send');
 
 /*
 |--------------------------------------------------------------------------
@@ -83,10 +83,14 @@ Route::middleware('throttle:booking-slots')->group(function () {
 });
 
 Route::middleware('throttle:booking')->group(function () {
-    Route::post('/book/{tenantSlug}', [PublicBookingController::class, 'storeLanding'])->name('booking.store.landing');
-    Route::post('/book/{tenantSlug}/{locationSlug}', [PublicBookingController::class, 'store'])->name('booking.store');
-    Route::post('/book/{tenantSlug}/{locationSlug}/waitlist', [PublicBookingController::class, 'joinWaitlist'])->name('booking.waitlist');
-    Route::post('/book/{tenantSlug}/{locationSlug}/events/{eventSlug}', [PublicEventController::class, 'store'])->name('events.store');
+    Route::post('/book/{tenantSlug}', [PublicBookingController::class, 'storeLanding'])
+        ->middleware('cap:booking')->name('booking.store.landing');
+    Route::post('/book/{tenantSlug}/{locationSlug}', [PublicBookingController::class, 'store'])
+        ->middleware('cap:booking')->name('booking.store');
+    Route::post('/book/{tenantSlug}/{locationSlug}/waitlist', [PublicBookingController::class, 'joinWaitlist'])
+        ->middleware('cap:waitlist')->name('booking.waitlist');
+    Route::post('/book/{tenantSlug}/{locationSlug}/events/{eventSlug}', [PublicEventController::class, 'store'])
+        ->middleware('cap:booking')->name('events.store');
 });
 
 Route::get('/event-booking/{code}/{token}', [PublicEventController::class, 'manage'])
@@ -121,7 +125,7 @@ Route::post('/reservation/{code}/reschedule/{token}', [PublicBookingController::
 Route::get('/konto/verify/{token}', [GuestPortalController::class, 'verify'])->name('guest.verify');
 Route::get('/konto/{tenantSlug}', [GuestPortalController::class, 'request'])->name('guest.portal.request');
 Route::post('/konto/{tenantSlug}', [GuestPortalController::class, 'sendLink'])
-    ->middleware('throttle:5,10')->name('guest.portal.link');
+    ->middleware(['throttle:5,10', 'cap:portal'])->name('guest.portal.link');
 // Gedrosselt wie jeder andere Anmeldeweg: Der Schluessel ist zwar 48 Zeichen
 // lang und praktisch nicht zu raten, aber er war der einzige Zugang ohne
 // zweite Ebene - und der Nachbarpfad daneben hat sie.
@@ -151,13 +155,14 @@ Route::post('/waitlist/{entry}/{token}', [WaitlistResponseController::class, 're
 */
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+    Route::post('/login', [AuthController::class, 'login'])->middleware(['throttle:10,1', 'cap:login']);
     Route::get('/register', [RegistrationController::class, 'show'])->name('register');
-    Route::post('/register', [RegistrationController::class, 'store'])->middleware('throttle:5,10');
+    Route::post('/register', [RegistrationController::class, 'store'])->middleware(['throttle:5,10', 'cap:register']);
     Route::get('/invitation/{token}', [InvitationController::class, 'show'])->name('invitation.accept');
     Route::post('/invitation/{token}', [InvitationController::class, 'accept'])->name('invitation.accept.post');
     Route::get('/passwort-vergessen', [PasswordResetController::class, 'showForgot'])->name('password.request');
-    Route::post('/passwort-vergessen', [PasswordResetController::class, 'sendLink'])->name('password.email');
+    Route::post('/passwort-vergessen', [PasswordResetController::class, 'sendLink'])
+        ->middleware('cap:password')->name('password.email');
     Route::get('/passwort-reset/{token}', [PasswordResetController::class, 'showReset'])->name('password.reset');
     Route::post('/passwort-reset', [PasswordResetController::class, 'reset'])->name('password.update');
 });

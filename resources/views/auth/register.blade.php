@@ -51,6 +51,8 @@
                 <input type="checkbox" name="privacy_accepted" value="1" required class="mt-1">
                 <span>Ich akzeptiere die <a href="{{ route('legal.terms') }}" target="_blank" class="font-semibold text-teal-700 underline">AGB</a> und habe die <a href="{{ route('legal.privacy') }}" target="_blank" class="font-semibold text-teal-700 underline">Datenschutzerklärung</a> gelesen.</span>
             </label>
+            <x-cap-widget form="register" />
+
             <button class="w-full rounded-xl bg-teal-700 py-3 font-bold text-white hover:bg-teal-800">Kostenlos starten</button>
         </form>
 
