@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\VerifyCapToken;
 use App\Mail\ContactRequestMail;
+use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -117,7 +120,6 @@ class CapCaptchaTest extends TestCase
 
         Mail::assertNothingSent();
     }
-
 
     /**
      * Cap does not answer HTTP 200 when it rejects. Measured against the live
@@ -255,7 +257,7 @@ class CapCaptchaTest extends TestCase
     private function capFormOf(array $middleware): ?string
     {
         foreach ($middleware as $entry) {
-            foreach (['cap:', \App\Http\Middleware\VerifyCapToken::class.':'] as $prefix) {
+            foreach (['cap:', VerifyCapToken::class.':'] as $prefix) {
                 if (str_starts_with($entry, $prefix)) {
                     return substr($entry, strlen($prefix));
                 }
@@ -280,7 +282,7 @@ class CapCaptchaTest extends TestCase
 
             // Behind a login, or part of the token-authenticated API.
             if (in_array('auth', $middleware, true)
-                || in_array(\Illuminate\Auth\Middleware\Authenticate::class, $middleware, true)
+                || in_array(Authenticate::class, $middleware, true)
                 || str_starts_with($route->uri(), 'api/')) {
                 continue;
             }
@@ -353,7 +355,7 @@ class CapCaptchaTest extends TestCase
         ];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('guardedPages')]
+    #[DataProvider('guardedPages')]
     public function test_page_carries_the_widget_and_our_own_asset_urls(string $path, string $form): void
     {
         $this->capOn(['cap.forms.'.$form => true]);
@@ -375,7 +377,7 @@ class CapCaptchaTest extends TestCase
         $this->assertStringNotContainsString('sk-test', $html);
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('guardedPages')]
+    #[DataProvider('guardedPages')]
     public function test_page_stays_clean_when_that_form_is_unguarded(string $path, string $form): void
     {
         $this->capOn(['cap.forms.'.$form => false]);

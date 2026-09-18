@@ -396,8 +396,7 @@ class SalonAvailabilityTest extends TestCase
      */
     public function test_salon_slots_carry_the_calendar_day_of_the_slot(): void
     {
-        OpeningHour::where('location_id', $this->location->id)
-            ->update(['opens_at' => '18:00', 'closes_at' => '02:00']);
+        $this->openLateEveryDay();
         StaffWorkingHour::where('staff_member_id', $this->staff->id)->delete();
         foreach (range(0, 6) as $day) {
             StaffWorkingHour::create([
@@ -431,8 +430,7 @@ class SalonAvailabilityTest extends TestCase
     {
         Mail::fake();
 
-        OpeningHour::where('location_id', $this->location->id)
-            ->update(['opens_at' => '18:00', 'closes_at' => '02:00']);
+        $this->openLateEveryDay();
         StaffWorkingHour::where('staff_member_id', $this->staff->id)->delete();
         foreach (range(0, 6) as $day) {
             StaffWorkingHour::create([
@@ -458,5 +456,28 @@ class SalonAvailabilityTest extends TestCase
 
         $reservation = Reservation::withoutGlobalScopes()->sole();
         $this->assertSame($tag->addDay()->toDateString(), $reservation->reservation_date->toDateString());
+    }
+
+    /**
+     * Opening hours 18:00-02:00 on every weekday, Saturday and Sunday
+     * included.
+     *
+     * setUp() only creates Mon-Fri, so an update() left the weekend without
+     * any opening hours – and a test picking "today + 2 days" then failed on
+     * Thursdays and Fridays, on those days only.
+     */
+    private function openLateEveryDay(): void
+    {
+        OpeningHour::where('location_id', $this->location->id)->delete();
+
+        foreach (range(0, 6) as $day) {
+            OpeningHour::create([
+                'tenant_id' => $this->tenant->id,
+                'location_id' => $this->location->id,
+                'weekday' => $day,
+                'opens_at' => '18:00',
+                'closes_at' => '02:00',
+            ]);
+        }
     }
 }

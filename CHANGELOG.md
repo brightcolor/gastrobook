@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.128.1] – 2026-09-18
+
+Auslieferung von 1.128.0. Dort brach der Bau an einer Formatierungsregel ab, ein
+Abbild ist nie entstanden; inhaltlich ist diese Fassung dieselbe.
+
+Dazu ein Test, der nur donnerstags und freitags fehlschlug: Er wählte „heute plus
+zwei Tage“ und landete damit am Wochenende — für das die Testeinrichtung keine
+Öffnungszeiten anlegte. Sie entstehen jetzt für alle Wochentage.
+
 ## [1.128.0] – 2026-09-18
 
 ### Spamschutz für alle öffentlichen Formulare
