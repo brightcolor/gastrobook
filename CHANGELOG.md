@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unveröffentlicht]
+## [1.128.3] – 2026-10-05
 
 ### MailWizz-Anbindung: dieselbe Zielprüfung wie bei Webhooks
 
