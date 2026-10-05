@@ -1,5 +1,44 @@
 # Changelog
 
+## [Unveröffentlicht]
+
+### MailWizz-Anbindung: dieselbe Zielprüfung wie bei Webhooks
+
+Ausgehende Anfragen an die MailWizz-Adresse laufen jetzt über dieselbe
+Zielprüfung wie Webhooks. Die API-URL muss mit `https://` beginnen und auf eine
+öffentlich erreichbare Adresse zeigen. Geprüft wird beim Speichern, beim
+Verbindungstest und vor jeder Übertragung eines Gastes. Jede Anfrage geht
+genau an die geprüfte Adresse und folgt keiner Weiterleitung.
+
+**Besteht eine gespeicherte Adresse die Prüfung nicht mehr,** steht die
+Anbindung auf „Fehler“, und die Einstellungsseite nennt den Grund. Weitere
+Übertragungen ruhen, bis die Einstellungen neu gespeichert sind; dabei wird die
+Adresse erneut geprüft. Lässt sich der Servername nur vorübergehend nicht
+auflösen, versucht der Job es später noch einmal, und die Anbindung bleibt
+eingeschaltet.
+
+**Die Meldungen nennen Grund und nächsten Schritt:** fehlendes https,
+Zugangsdaten in der Adresse, nicht auflösbarer Name, internes Netz. Der
+Verbindungstest unterscheidet außerdem Weiterleitung, abgelehnten API-Key und
+unbekannte Liste. Ein Fehler beim Speichern erscheint jetzt auch auf der
+Einstellungsseite; bisher meldete sie in diesem Fall „Gespeichert“.
+Webhook-Endpunkte nutzen dieselbe Prüfregel und zeigen dieselben Meldungen.
+
+**Die Prüfung selbst ist enger gefasst.** Als öffentlich gilt eine Adresse,
+wenn sie laut IANA-Verzeichnis global geroutet wird. Servernamen mit Zeichen
+außerhalb eines DNS-Namens lehnt sie ab, damit Prüfung und HTTP-Client
+denselben Host sehen. Beides gilt auch für Webhooks.
+
+**Neue Einstellungen:**
+
+- `SWAYY_OUTBOUND_ALLOWED_NETWORKS` gibt Netze frei, die ausgehende Anfragen
+  trotzdem erreichen dürfen, etwa eine MailWizz-Installation im internen Netz
+  einer Selbstinstallation. Voreinstellung: leer, also nur öffentliche Ziele.
+- `SWAYY_NEWSLETTER_TIMEOUT` (10 Sekunden), `SWAYY_NEWSLETTER_TRIES` (3) und
+  `SWAYY_NEWSLETTER_BACKOFF` (60,600) standen bisher fest im Code. Ein
+  ungültiger Wert legt nichts lahm: Es gilt die Voreinstellung oder die
+  nächste Grenze, und eine Warnung im Log nennt die Variable.
+
 ## [1.128.2] – 2026-10-05
 
 ### Sicherheitsupdates für vier Abhängigkeiten

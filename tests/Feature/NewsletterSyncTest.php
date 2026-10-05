@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Guest;
 use App\Models\IntegrationConnection;
+use App\Support\OutboundUrlGuard;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
@@ -15,6 +16,15 @@ use Tests\TestCase;
 class NewsletterSyncTest extends TestCase
 {
     use CreatesTenants, RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Die Zielpruefung loest den Namen auf. Ohne Ersatz fragte der Test
+        // das echte DNS - und .test loest dort nie auf.
+        OutboundUrlGuard::resolveUsing(fn (string $host) => $host === 'news.example.test' ? ['93.184.216.34'] : []);
+    }
 
     private function connectMailwizz(int $tenantId): void
     {

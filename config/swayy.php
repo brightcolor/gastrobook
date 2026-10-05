@@ -1,5 +1,7 @@
 <?php
 
+use App\Support\EnvSetting;
+
 return [
     /*
     |--------------------------------------------------------------------------
@@ -71,5 +73,50 @@ return [
             'datenschutz' => 'Datenschutzerklärung',
             'agb' => 'AGB',
         ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Ausgehende Anfragen an Adressen der Betriebe
+    |--------------------------------------------------------------------------
+    |
+    | Webhooks und die MailWizz-Anbindung rufen Adressen auf, die ein Betrieb
+    | selbst einträgt. Erlaubt sind https-Ziele, deren Name auf global
+    | geroutete Adressen zeigt. Geprüft wird beim Speichern und vor jedem
+    | Aufruf; der Aufruf geht genau an die geprüfte Adresse und folgt keiner
+    | Weiterleitung (App\Support\OutboundUrlGuard).
+    |
+    | allowed_networks: Netze, die trotzdem erreichbar sein dürfen, etwa eine
+    | MailWizz-Installation im internen Netz einer Selbstinstallation.
+    | Komma-Liste aus IP-Adressen und Netzen in CIDR-Schreibweise. Ein Eintrag
+    | gibt das Netz für alle Betriebe dieser Installation frei. Vorgabe: leer,
+    | also nur öffentliche Ziele.
+    |
+    */
+    'outbound' => [
+        'allowed_networks' => EnvSetting::networks('SWAYY_OUTBOUND_ALLOWED_NETWORKS'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Newsletter-Anbindung (MailWizz)
+    |--------------------------------------------------------------------------
+    |
+    | Ein ungültiger Wert legt nichts lahm: Es gilt die Vorgabe oder die
+    | nächste Grenze, und eine Warnung im Log nennt die Variable.
+    |
+    */
+    'newsletter' => [
+        // Wartezeit je Anfrage an MailWizz in Sekunden, auch beim
+        // Verbindungstest auf der Einstellungsseite. 1 bis 60, Vorgabe 10.
+        'timeout' => EnvSetting::integer('SWAYY_NEWSLETTER_TIMEOUT', default: 10, min: 1, max: 60),
+
+        // Versuche je Übertragung eines Gastes. 1 bis 10, Vorgabe 3.
+        'tries' => EnvSetting::integer('SWAYY_NEWSLETTER_TRIES', default: 3, min: 1, max: 10),
+
+        // Wartezeiten zwischen den Versuchen in Sekunden, Komma-Liste. Der
+        // letzte Wert gilt für alle weiteren Versuche. Je Wert 1 bis 86400,
+        // Vorgabe 60,600.
+        'backoff' => EnvSetting::integerList('SWAYY_NEWSLETTER_BACKOFF', default: [60, 600], min: 1, max: 86400),
     ],
 ];

@@ -410,9 +410,22 @@ Events: `reservation.created|confirmed|updated|cancelled|seated|completed|no_sho
 - Payload signiert: Header `X-Gastrobook-Signature: sha256=<HMAC-SHA256(body, secret)>`
 - Retries mit Backoff (1 min → 2 h, 5 Versuche), Delivery-Log in `webhook_deliveries`
 - Automatische Deaktivierung nach 20 Fehlern in Folge (Reaktivierung im Admin setzt den Fehlerzähler zurück)
-- Nur öffentlich erreichbare https-Ziele (SSRF-Guard, erneut geprüft beim Zustellen)
+- Nur öffentlich erreichbare https-Ziele (SSRF-Guard, erneut geprüft beim Zustellen, siehe [Zielprüfung](#zielprüfung-für-ausgehende-anfragen))
 - Payload-Versionierung (`"version": "1"`)
 - Voraussetzung: Tarif-Feature `webhooks_enabled`
+
+### Zielprüfung für ausgehende Anfragen
+
+Webhook-Endpunkte und die [MailWizz-API-URL](#newsletter-mailwizz) trägt jeder Betrieb selbst ein, aufgerufen werden sie vom Server. Beide laufen durch dieselbe Prüfung (`App\Support\OutboundUrlGuard`):
+
+- Die Adresse beginnt mit `https://`, enthält keine Zugangsdaten, und ihr Servername besteht aus den Zeichen eines DNS-Namens (Umlaute als Punycode).
+- Der Name wird aufgelöst; **jede** Adresse dahinter muss global geroutet sein. Loopback, private, Link-Local- und andere Netze für besondere Zwecke sind gesperrt.
+- Geprüft wird beim Speichern und vor jedem Aufruf. Der Aufruf geht genau an die geprüfte Adresse (`CURLOPT_RESOLVE`), damit ein Name nicht zwischen Prüfung und Aufruf umschwenken kann, und folgt keiner Weiterleitung.
+- Die Meldung beim Speichern nennt den Grund und den nächsten Schritt.
+
+| Variable | Voreinstellung | Wirkung |
+|---|---|---|
+| `SWAYY_OUTBOUND_ALLOWED_NETWORKS` | leer | Netze, die trotzdem erreichbar sein dürfen, etwa eine MailWizz-Installation im internen Netz einer Selbstinstallation. Komma-Liste aus IP-Adressen und CIDR-Netzen (`10.20.0.0/16,192.168.5.10`). Ein Eintrag gilt für alle Betriebe der Installation; ungültige Einträge bleiben unberücksichtigt und stehen als Warnung im Log |
 
 ---
 
@@ -524,8 +537,17 @@ Konfiguration im Adminbereich unter **Einstellungen → Newsletter: MailWizz** (
 3. Ab dann: Setzt ein Gast im Buchungswidget die **getrennte Newsletter-Checkbox**, wird er nach der Buchung per Queue-Job (`SyncNewsletterSubscriber`, Retry mit Backoff) in die MailWizz-Liste übertragen (`EMAIL`, `FNAME`, `LNAME`).
 4. **Double-Opt-In** steuert die Listeneinstellung in MailWizz – bei DOI-Listen verschickt MailWizz die Bestätigungsmail selbst.
 5. Jede Übertragung wird in `notification_logs` (Kanal `newsletter`) protokolliert; die Einwilligung selbst liegt unabhängig davon DSGVO-konform in `guest_consents`.
+6. Die API-URL läuft durch dieselbe [Zielprüfung](#zielprüfung-für-ausgehende-anfragen) wie Webhook-Endpunkte: beim Speichern, beim Verbindungstest und vor jeder Übertragung. Lehnt die Prüfung eine gespeicherte Adresse ab, steht die Anbindung auf „Fehler“, die Einstellungsseite nennt den Grund, und weitere Übertragungen ruhen bis zum nächsten Speichern. Ein Name, der sich vorübergehend nicht auflösen lässt, führt zu einem späteren Versuch.
 
 Ohne konfigurierte Integration wird die Einwilligung nur gespeichert – es geht nichts verloren, die Synchronisierung kann später nachgeholt werden. Weitere Provider (Mailchimp, Brevo, CleverReach) lassen sich über das `NewsletterProvider`-Interface ergänzen.
+
+| Variable | Voreinstellung | Wirkung |
+|---|---|---|
+| `SWAYY_NEWSLETTER_TIMEOUT` | `10` | Wartezeit je Anfrage an MailWizz in Sekunden, auch beim Verbindungstest (1 bis 60) |
+| `SWAYY_NEWSLETTER_TRIES` | `3` | Versuche je Übertragung eines Gastes (1 bis 10) |
+| `SWAYY_NEWSLETTER_BACKOFF` | `60,600` | Wartezeiten zwischen den Versuchen in Sekunden; der letzte Wert gilt für alle weiteren (je 1 bis 86400) |
+
+Ein ungültiger Wert legt nichts lahm: Eine Zahl außerhalb der Grenzen gilt als nächste Grenze, alles andere als Voreinstellung, und eine Warnung im Log nennt die Variable.
 
 ---
 

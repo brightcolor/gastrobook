@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Admin\WebhookController as AdminWebhookController;
 use App\Http\Controllers\Controller;
 use App\Models\WebhookEndpoint;
+use App\Rules\AllowedOutboundUrl;
 use App\Services\AuditLogger;
-use App\Support\OutboundUrlGuard;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -34,15 +34,9 @@ class WebhookApiController extends Controller
         $this->authorizeWebhooks($request);
 
         $validated = $request->validate([
-            'url' => [
-                'required', 'url:https',
-                // SSRF guard: reject URLs resolving to private/loopback/reserved IPs.
-                function (string $attr, mixed $value, callable $fail) {
-                    if (! is_string($value) || ! OutboundUrlGuard::isAllowed($value)) {
-                        $fail(__('Die URL muss öffentlich erreichbar sein (keine internen/privaten Adressen).'));
-                    }
-                },
-            ],
+            // SSRF guard: only https targets resolving to allowed addresses.
+            // Delivery checks again (DeliverWebhook).
+            'url' => ['required', 'string', 'bail', 'url', new AllowedOutboundUrl],
             'events' => ['required', 'array', 'min:1'],
             // Dieselbe Liste wie im Admin und in der OpenAPI-Beschreibung. Ohne
             // sie legt ein Tippfehler ("reservation.create") einen Endpunkt an,
