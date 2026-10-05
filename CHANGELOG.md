@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unveröffentlicht]
+## [1.128.4] – 2026-10-05
 
 ### Sicherheitsupdates für Laravel und Flysystem, feste Stände im Build
 
