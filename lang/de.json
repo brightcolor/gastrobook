@@ -1,0 +1,5 @@
+{
+    "(and :count more error)": "(und :count weiterer Fehler)",
+    "(and :count more errors)": "(und :count weitere Fehler)",
+    "The given data was invalid.": "Die Eingaben wurden abgelehnt. Bitte sie prüfen und es noch einmal versuchen."
+}

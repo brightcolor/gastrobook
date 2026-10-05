@@ -1,5 +1,56 @@
 # Changelog
 
+## [Unveröffentlicht]
+
+### Einstellungsseite: Fehlermeldungen kommen an
+
+Die Formulare der Einstellungsseite speichern per fetch. Lehnte der Server
+eine Eingabe ab, antwortete Laravel mit einer Weiterleitung, der die Seite still
+folgte; sie meldete dann „Gespeichert ✓“, und die eigentliche Meldung ging
+verloren. Fragt eine Seite der Verwaltung nach JSON, antwortet der Server jetzt
+auch im Fehlerfall mit JSON. Das gilt für alle Formulare der Seite und
+ebenso für die übrigen Verwaltungsseiten, die per fetch speichern.
+
+- **Die Meldung bleibt am Formular stehen,** bis es erneut abgeschickt wird,
+  und die betroffenen Felder sind markiert. Unten rechts erscheint sie
+  zusätzlich kurz eingeblendet.
+- **„Gespeichert“ meldet die Seite nur, wenn der Server das Speichern
+  bestätigt.** Kommt keine verwertbare Antwort, sagt sie, dass die Seite neu
+  geladen und die Änderung geprüft werden sollte.
+- **Jede Meldung ist deutsch und nennt den nächsten Schritt:** deutsche
+  Feldnamen in den Prüfmeldungen, eigene Texte für abgelaufene Anmeldung oder
+  Sitzung, fehlende Berechtigung, gelöschte Einträge, zu große Dateien, zu
+  viele Anfragen, Serverfehler und Verbindungsabbrüche. Einzelheiten
+  unerwarteter Fehler stehen nur im Log.
+- Stripe, PayPal und seven.io nennen genau, welche Angabe fehlt und wo sie zu
+  finden ist. Sperrzeiten, Tischsperren und neue Tische mit einem Raum oder
+  Tisch eines anderen Standorts erklären sich ebenfalls. Tags und die
+  Raumgröße zeigen den Grund einer Ablehnung.
+
+### Webhooks: Endpunkt bleibt bei gestörter Namensauflösung eingeschaltet
+
+Lässt sich der Servername eines Endpunkts gerade nicht auflösen, zählt das als
+Fehlversuch: Die Zustellung wird später wiederholt, und der Endpunkt bleibt
+eingeschaltet. Bisher schaltete schon eine kurze Störung der Namensauflösung
+den Endpunkt ab. Lehnt die Zielprüfung die Adresse selbst ab, etwa weil sie in
+ein internes Netz führt, schaltet sich der Endpunkt wie bisher sofort ab.
+
+- **Das Zustellprotokoll nennt den Grund,** wenn nichts bei der Gegenstelle
+  ankam: pausierter Endpunkt, abgelehnte Adresse, nicht auflösbarer Name,
+  Gegenstelle nicht erreichbar.
+- **Nach dem letzten Versuch endet der Job.** Ein endgültig gescheitertes
+  Ereignis steht im Zustellprotokoll und erscheint nicht mehr zusätzlich unter
+  den fehlgeschlagenen Jobs.
+- **Neue Einstellungen,** bisher fest im Code: `SWAYY_WEBHOOK_TIMEOUT`
+  (10 Sekunden), `SWAYY_WEBHOOK_TRIES` (5), `SWAYY_WEBHOOK_BACKOFF`
+  (60,300,1800,7200), `SWAYY_WEBHOOK_DISABLE_AFTER` (20 gescheiterte
+  Ereignisse in Folge), `SWAYY_WEBHOOK_RESPONSE_LIMIT` (2000 Zeichen der
+  Antwort im Protokoll) und `SWAYY_WEBHOOK_LOG_ENTRIES` (25 Einträge im
+  Zustellprotokoll der Webhook-Seite). Ein ungültiger Wert legt nichts lahm:
+  Es gilt die Voreinstellung oder die nächste Grenze, und eine Warnung im Log
+  nennt die Variable. Die Hinweise auf der Webhook-Seite folgen den
+  Einstellungen.
+
 ## [1.128.4] – 2026-10-05
 
 ### Sicherheitsupdates für Laravel und Flysystem, feste Stände im Build

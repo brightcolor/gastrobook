@@ -403,16 +403,27 @@ Rate Limit: 120 Requests/Minute pro Token. Der Telefon-/AI-Assistent (vorbereite
 
 ## Webhooks
 
-Endpoints pro Tenant. **Verwaltung im Admin unter `/admin/webhooks`** (Recht `webhooks.manage`): anlegen, Ereignisse auswählen, **Testereignis** senden, Secret neu erzeugen, pausieren/reaktivieren, Zustellprotokoll der letzten 25 Versuche. Alternativ per REST-API (`POST /api/v1/webhooks`, Scope `webhooks:manage`) – dieselben Endpunkte.
+Endpoints pro Tenant. **Verwaltung im Admin unter `/admin/webhooks`** (Recht `webhooks.manage`): anlegen, Ereignisse auswählen, **Testereignis** senden, Secret neu erzeugen, pausieren/reaktivieren, Zustellprotokoll der letzten Versuche (Voreinstellung 25). Alternativ per REST-API (`POST /api/v1/webhooks`, Scope `webhooks:manage`) – dieselben Endpunkte.
 
 Events: `reservation.created|confirmed|updated|cancelled|seated|completed|no_show`, `waitlist.created|offered|accepted`, `event.booking_created`, `payment.succeeded`, `feedback.received` — oder `*` für alle.
 
 - Payload signiert: Header `X-Gastrobook-Signature: sha256=<HMAC-SHA256(body, secret)>`
-- Retries mit Backoff (1 min → 2 h, 5 Versuche), Delivery-Log in `webhook_deliveries`
-- Automatische Deaktivierung nach 20 Fehlern in Folge (Reaktivierung im Admin setzt den Fehlerzähler zurück)
-- Nur öffentlich erreichbare https-Ziele (SSRF-Guard, erneut geprüft beim Zustellen, siehe [Zielprüfung](#zielprüfung-für-ausgehende-anfragen))
+- Retries mit Backoff (Voreinstellung 1 min → 2 h, 5 Versuche), Delivery-Log in `webhook_deliveries`
+- Automatische Deaktivierung nach 20 gescheiterten Ereignissen in Folge (Voreinstellung; Reaktivierung im Admin setzt den Fehlerzähler zurück)
+- Nur öffentlich erreichbare https-Ziele (SSRF-Guard, erneut geprüft beim Zustellen, siehe [Zielprüfung](#zielprüfung-für-ausgehende-anfragen)). Lehnt die Prüfung die Adresse ab, schaltet sich der Endpunkt sofort ab; lässt sich der Servername nur gerade nicht auflösen, zählt das als Fehlversuch und wird wiederholt. Der Grund steht im Zustellprotokoll.
 - Payload-Versionierung (`"version": "1"`)
 - Voraussetzung: Tarif-Feature `webhooks_enabled`
+
+| Variable | Voreinstellung | Wirkung |
+|---|---|---|
+| `SWAYY_WEBHOOK_TIMEOUT` | `10` | Wartezeit je Zustellung in Sekunden (1 bis 60) |
+| `SWAYY_WEBHOOK_TRIES` | `5` | Versuche je Ereignis (1 bis 10) |
+| `SWAYY_WEBHOOK_BACKOFF` | `60,300,1800,7200` | Wartezeiten zwischen den Versuchen in Sekunden; der letzte Wert gilt für alle weiteren (je 1 bis 86400) |
+| `SWAYY_WEBHOOK_DISABLE_AFTER` | `20` | Gescheiterte Ereignisse in Folge, nach denen sich ein Endpunkt abschaltet (1 bis 1000) |
+| `SWAYY_WEBHOOK_RESPONSE_LIMIT` | `2000` | Zeichen der Antwort einer Gegenstelle, die das Zustellprotokoll aufbewahrt (0 bis 10000) |
+| `SWAYY_WEBHOOK_LOG_ENTRIES` | `25` | Einträge, die das Zustellprotokoll auf der Webhook-Seite zeigt (1 bis 500) |
+
+Ein ungültiger Wert legt nichts lahm: Es gilt die Voreinstellung oder die nächste Grenze, und eine Warnung im Log nennt die Variable.
 
 ### Zielprüfung für ausgehende Anfragen
 

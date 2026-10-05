@@ -68,11 +68,12 @@ class CheckInTimeTest extends TestCase
         $r = $this->confirmedToday($setup);
         $this->clearTenantContext();
 
-        // Validation failures redirect app-wide (302 + session errors), even
-        // for postJson — they are not 422 JSON here.
+        // Fragt die Seite nach JSON, kommt die Ablehnung als JSON mit Grund.
         $this->actingAs($admin)->postJson("/admin/reservations/{$r->id}/transition", [
             'status' => 'seated', 'seated_at' => '25:99',
-        ])->assertStatus(302)->assertSessionHasErrors('seated_at');
+        ])->assertStatus(422)->assertJsonValidationErrors([
+            'seated_at' => 'Bitte die Ankunftszeit als Uhrzeit eintragen, etwa 19:15.',
+        ]);
 
         $this->assertSame(ReservationStatus::Confirmed, $r->fresh()->status);
     }
