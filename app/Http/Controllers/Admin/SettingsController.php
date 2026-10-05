@@ -30,7 +30,6 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 class SettingsController extends Controller
@@ -273,7 +272,7 @@ class SettingsController extends Controller
     {
         $tenant = $this->context->tenant();
 
-        $validator = Validator::make($request->all(), [
+        $validated = $request->validate([
             // Der Server ruft diese Adresse selbst auf - also dieselbe
             // Zielpruefung wie bei Webhook-Endpunkten. Jede Anfrage prueft
             // spaeter noch einmal (MailwizzProvider).
@@ -282,16 +281,6 @@ class SettingsController extends Controller
             'list_uid' => ['required', 'string', 'max:64'],
             'enabled' => ['nullable', 'boolean'],
         ]);
-
-        // Die Einstellungsseite schickt per fetch und zeigt Fehler aus dem
-        // JSON. Ausserhalb von api/* antwortet Laravel auf Pruefungsfehler mit
-        // einer Weiterleitung; der folgte fetch still, und die Seite meldete
-        // "Gespeichert", obwohl nichts gespeichert war.
-        if ($request->wantsJson() && $validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $validated = $validator->validate();
 
         $connection = IntegrationConnection::firstOrNew([
             'tenant_id' => $tenant->id,
@@ -411,8 +400,16 @@ class SettingsController extends Controller
             $credentials['webhook_secret'] = $validated['webhook_secret'];
         }
 
-        if (empty($credentials['secret_key']) || empty($credentials['webhook_secret'])) {
-            return back()->withErrors(['secret_key' => __('Secret Key und Webhook-Secret sind erforderlich.')]);
+        $missing = array_filter([
+            'secret_key' => empty($credentials['secret_key'])
+                ? __('Der Secret Key fehlt. Bitte ihn aus dem Stripe-Dashboard unter Developers → API keys eintragen.')
+                : null,
+            'webhook_secret' => empty($credentials['webhook_secret'])
+                ? __('Das Webhook-Signing-Secret fehlt. Bitte es im Stripe-Dashboard beim Webhook-Endpunkt abrufen und eintragen.')
+                : null,
+        ]);
+        if ($missing !== []) {
+            return $this->rejected($request, $missing);
         }
 
         $connection->credentials_encrypted = Crypt::encryptString(json_encode($credentials));
@@ -459,8 +456,16 @@ class SettingsController extends Controller
         }
         $credentials['mode'] = $validated['mode'];
 
-        if (empty($credentials['client_id']) || empty($credentials['secret'])) {
-            return back()->withErrors(['client_id' => __('Client-ID und Secret sind erforderlich.')]);
+        $missing = array_filter([
+            'client_id' => empty($credentials['client_id'])
+                ? __('Die Client-ID fehlt. Bitte sie aus dem PayPal Developer Dashboard unter Apps & Credentials eintragen.')
+                : null,
+            'secret' => empty($credentials['secret'])
+                ? __('Das Secret fehlt. Bitte es aus dem PayPal Developer Dashboard unter Apps & Credentials eintragen.')
+                : null,
+        ]);
+        if ($missing !== []) {
+            return $this->rejected($request, $missing);
         }
 
         $connection->credentials_encrypted = Crypt::encryptString(json_encode($credentials));
@@ -505,7 +510,7 @@ class SettingsController extends Controller
         $credentials['sender_id'] = $validated['sender_id'] ?? ($credentials['sender_id'] ?? '');
 
         if (empty($credentials['api_key'])) {
-            return $this->failed($request, 'api_key', __('API-Key erforderlich.'));
+            return $this->failed($request, 'api_key', __('Der API-Key fehlt. Bitte den API-Key aus seven.io eintragen (app.seven.io → Einstellungen → API).'));
         }
 
         $connection->credentials_encrypted = Crypt::encryptString(json_encode($credentials));
@@ -523,12 +528,12 @@ class SettingsController extends Controller
                 if (! $provider->testConnection()) {
                     $connection->update(['status' => 'error']);
 
-                    return $this->failed($request, 'api_key', __('Verbindungstest fehlgeschlagen – API-Key prüfen.'));
+                    return $this->failed($request, 'api_key', __('Gespeichert, aber seven.io hat den Verbindungstest abgelehnt. Bitte den API-Key unter app.seven.io → Einstellungen → API prüfen und neu eintragen.'));
                 }
             } catch (\Throwable) {
                 $connection->update(['status' => 'error']);
 
-                return $this->failed($request, 'api_key', __('seven.io nicht erreichbar.'));
+                return $this->failed($request, 'api_key', __('Gespeichert, aber seven.io war beim Verbindungstest nicht erreichbar. Bitte später noch einmal auf „Speichern“ klicken, um die Verbindung zu testen.'));
             }
         }
 
@@ -711,7 +716,7 @@ class SettingsController extends Controller
         abort_if($location === null, 404);
 
         if (! $this->limits->canAdd($location->tenant, 'max_tables')) {
-            return back()->withErrors(['name' => __('Tisch-Limit Ihres Tarifs erreicht.')]);
+            return $this->failed($request, 'name', __('Das Tisch-Limit des Tarifs ist erreicht. Für mehr Tische bitte den Tarif unter „Abrechnung“ wechseln oder einen Administrator des Betriebs fragen.'));
         }
 
         $validated = $request->validate([
@@ -726,7 +731,9 @@ class SettingsController extends Controller
             'online_bookable' => ['nullable', 'boolean'],
         ]);
 
-        abort_unless($location->rooms()->where('id', $validated['room_id'])->exists(), 422);
+        if (! $location->rooms()->where('id', $validated['room_id'])->exists()) {
+            return $this->failed($request, 'room_id', __('Dieser Raum gehört nicht zu diesem Standort. Bitte die Seite neu laden und einen Raum aus der Liste wählen.'));
+        }
 
         [$width, $height] = RestaurantTable::sizeForCapacity('rect', (int) $validated['max_capacity']);
 
@@ -747,7 +754,7 @@ class SettingsController extends Controller
 
         $this->audit->log('table.created', $table, null, $validated);
 
-        return back()->with('success', __('Tisch angelegt.'));
+        return $this->saved($request, __('Tisch angelegt.'));
     }
 
     public function uploadLogo(Request $request)
@@ -968,7 +975,7 @@ class SettingsController extends Controller
 
         $validated = $request->validate([
             'type' => ['required', 'string', 'in:restaurant,salon'],
-        ]);
+        ], [], ['type' => __('Betriebstyp')]);
 
         $old = $tenant->getRawOriginal('type');
         $tenant->update(['type' => TenantType::from($validated['type'])]);
@@ -1098,7 +1105,9 @@ class SettingsController extends Controller
         // A room filter, if given, must belong to this location.
         $roomId = null;
         if (! empty($validated['room_id'])) {
-            abort_unless($location->rooms()->where('id', $validated['room_id'])->exists(), 422);
+            if (! $location->rooms()->where('id', $validated['room_id'])->exists()) {
+                return $this->failed($request, 'room_id', __('Dieser Raum gehört nicht zu diesem Standort. Bitte die Seite neu laden und einen Raum aus der Liste wählen.'));
+            }
             $roomId = (int) $validated['room_id'];
         }
 
@@ -1149,7 +1158,7 @@ class SettingsController extends Controller
 
         $tableId = (int) $validated['restaurant_table_id'];
         if (! RestaurantTable::where('location_id', $location->id)->where('id', $tableId)->exists()) {
-            return $this->failed($request, 'restaurant_table_id', __('Dieser Tisch gehört nicht zu diesem Standort.'));
+            return $this->failed($request, 'restaurant_table_id', __('Dieser Tisch gehört nicht zu diesem Standort. Bitte die Seite neu laden und einen Tisch aus der Liste wählen.'));
         }
 
         // Wall-clock input is in location time; the availability logic compares UTC.
@@ -1279,10 +1288,24 @@ class SettingsController extends Controller
 
     private function failed(Request $request, string $field, string $message): mixed
     {
+        return $this->rejected($request, [$field => $message]);
+    }
+
+    /**
+     * Ablehnung in derselben Form wie ein Pruefungsfehler von Laravel: per
+     * fetch als JSON mit "message" und "errors", sonst zurueck zur Seite.
+     *
+     * @param  array<string, string>  $errors  Feld => Meldung
+     */
+    private function rejected(Request $request, array $errors): mixed
+    {
         if ($request->wantsJson()) {
-            return response()->json(['errors' => [$field => [$message]]], 422);
+            return response()->json([
+                'message' => implode(' ', $errors),
+                'errors' => array_map(fn (string $message) => [$message], $errors),
+            ], 422);
         }
 
-        return back()->withErrors([$field => $message]);
+        return back()->withErrors($errors);
     }
 }

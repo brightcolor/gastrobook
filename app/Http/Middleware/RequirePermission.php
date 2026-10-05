@@ -25,7 +25,7 @@ class RequirePermission
         }
 
         if (! $user->canInTenant($permission, $tenant, $this->context->location())) {
-            abort(403, 'Fehlende Berechtigung: '.$permission);
+            abort(403, __('Für diese Aktion fehlt die Berechtigung (:permission). Bitte einen Administrator des Betriebs fragen.', ['permission' => $permission]));
         }
 
         return $next($request);

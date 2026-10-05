@@ -86,18 +86,43 @@
             </div>
             <button class="w-full rounded-xl bg-stone-900 py-2.5 font-bold text-white" @unless($webhooksEnabled) disabled style="opacity:.5" @endunless>Webhook anlegen</button>
         </form>
+        @php
+            // Was die Einstellungen swayy.webhooks.* gerade bewirken.
+            $tries = (int) config('swayy.webhooks.tries');
+            $backoff = array_values((array) config('swayy.webhooks.backoff'));
+            $delays = $tries > 1 && $backoff !== []
+                ? array_map(fn (int $i) => (int) $backoff[min($i, count($backoff) - 1)], range(0, $tries - 2))
+                : [];
+            $duration = fn (int $seconds) => match (true) {
+                $seconds % 3600 === 0 => intdiv($seconds, 3600).' Std.',
+                $seconds % 60 === 0 => intdiv($seconds, 60).' Min.',
+                default => $seconds.' Sek.',
+            };
+            // Jede Dauer endet auf den Punkt ihrer Abkuerzung; er schliesst
+            // zugleich den Satz.
+            if ($delays === []) {
+                $retryText = 'Jedes Ereignis bekommt einen Zustellversuch.';
+            } elseif (min($delays) === max($delays)) {
+                $retryText = 'Fehlversuche werden wiederholt: '.$tries.' Versuche je Ereignis, Abstände je '.$duration(min($delays));
+            } else {
+                $retryText = 'Fehlversuche werden wiederholt: '.$tries.' Versuche je Ereignis, Abstände von '
+                    .$duration(min($delays)).' bis '.$duration(max($delays));
+            }
+            $disableAfter = (int) config('swayy.webhooks.disable_after');
+        @endphp
         <div class="mt-4 rounded-xl bg-stone-50 p-3 text-xs text-stone-600">
             <p class="font-semibold">Gut zu wissen</p>
             <ul class="mt-1 list-disc space-y-1 pl-4">
-                <li>Nur öffentlich erreichbare https-Adressen – interne Adressen werden abgelehnt.</li>
-                <li>Fehlversuche werden wiederholt (1 Min. bis 2 Std., 5 Versuche).</li>
-                <li>Nach 20 Fehlern in Folge schaltet sich der Endpunkt selbst ab; hier lässt er sich wieder aktivieren.</li>
+                <li>Erlaubt sind öffentlich erreichbare https-Adressen. Vor jeder Zustellung prüft Swayy die Adresse erneut.</li>
+                <li>{{ $retryText }} Ein Servername, der sich gerade nicht auflösen lässt, zählt ebenfalls als Fehlversuch.</li>
+                <li>Führt die Adresse in ein internes Netz, schaltet sich der Endpunkt sofort ab. Der Grund steht im Zustellprotokoll.</li>
+                <li>Nach {{ $disableAfter }} gescheiterten Ereignissen in Folge schaltet sich der Endpunkt selbst ab; hier lässt er sich wieder aktivieren.</li>
             </ul>
         </div>
     </div>
 
     <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100 lg:col-span-2">
-        <h2 class="font-bold">Zustellprotokoll<span class="tip" tabindex="0" data-tip="Die letzten 25 Versuche. „erfolgreich“ heißt: die Gegenstelle hat die Nachricht angenommen. Bei Fehlern steht hier der Statuscode, den sie zurückgegeben hat.">?</span></h2>
+        <h2 class="font-bold">Zustellprotokoll<span class="tip" tabindex="0" data-tip="Die letzten {{ $logEntries }} Versuche. „erfolgreich“ heißt: die Gegenstelle hat die Nachricht angenommen. Bei Fehlern steht hier der Statuscode, den sie zurückgegeben hat, oder der Grund, warum nichts ankam.">?</span></h2>
         <div class="mt-3 overflow-x-auto">
             <table class="w-full text-left text-sm">
                 <thead class="text-xs uppercase text-stone-400">
@@ -119,6 +144,9 @@
                                     <span class="text-stone-500">unterwegs</span>
                                 @endif
                                 @if($delivery->response_code) · HTTP {{ $delivery->response_code }} @endif
+                                @if($delivery->status === 'failed' && ! $delivery->response_code && filled($delivery->response_body))
+                                    <span class="mt-0.5 block text-stone-500">{{ $delivery->response_body }}</span>
+                                @endif
                             </td>
                         </tr>
                     @empty

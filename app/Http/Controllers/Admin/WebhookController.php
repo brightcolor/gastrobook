@@ -43,9 +43,12 @@ class WebhookController extends Controller
 
     public function index()
     {
+        $logEntries = (int) config('swayy.webhooks.log_entries');
+
         return view('admin.webhooks.index', [
             'endpoints' => WebhookEndpoint::withCount('deliveries')->orderBy('id')->get(),
-            'deliveries' => WebhookDelivery::with('endpoint')->latest('id')->limit(25)->get(),
+            'deliveries' => WebhookDelivery::with('endpoint')->latest('id')->limit($logEntries)->get(),
+            'logEntries' => $logEntries,
             'events' => self::EVENTS,
             'webhooksEnabled' => $this->context->tenant()->hasFeature('webhooks_enabled'),
         ]);

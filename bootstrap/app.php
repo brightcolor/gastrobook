@@ -8,6 +8,7 @@ use App\Http\Middleware\RequireValidLicense;
 use App\Http\Middleware\ResolveTenantContext;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\VerifyCapToken;
+use App\Support\AdminJsonErrors;
 use App\Support\TrustedHosts;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -97,7 +98,13 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // api/* antwortet immer mit JSON, die Verwaltung, sobald eine Seite
+        // danach fragt. Ihre Formulare laufen per fetch: Auf eine Weiterleitung
+        // nach einem Pruefungsfehler folgte fetch still, und die Seite meldete
+        // "Gespeichert" (siehe AdminJsonErrors).
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*'),
+            fn (Request $request) => $request->is('api/*') || AdminJsonErrors::applies($request),
         );
+
+        $exceptions->render(fn (Throwable $e, Request $request) => AdminJsonErrors::render($e, $request));
     })->create();

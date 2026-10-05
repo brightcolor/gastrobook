@@ -99,6 +99,47 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Webhooks
+    |--------------------------------------------------------------------------
+    |
+    | Zustellung an die Endpunkte der Betriebe (App\Jobs\DeliverWebhook).
+    | Lehnt die Zielprüfung eine Adresse ab, etwa weil sie in ein internes Netz
+    | führt, schaltet sich der Endpunkt sofort ab. Lässt sich der Name nur
+    | gerade nicht auflösen, zählt das als Fehlversuch wie eine Antwort mit
+    | Fehlerstatus und wird wiederholt.
+    |
+    | Ein ungültiger Wert legt nichts lahm: Es gilt die Vorgabe oder die
+    | nächste Grenze, und eine Warnung im Log nennt die Variable.
+    |
+    */
+    'webhooks' => [
+        // Wartezeit je Zustellung in Sekunden. 1 bis 60, Vorgabe 10.
+        'timeout' => EnvSetting::integer('SWAYY_WEBHOOK_TIMEOUT', default: 10, min: 1, max: 60),
+
+        // Versuche je Ereignis. 1 bis 10, Vorgabe 5.
+        'tries' => EnvSetting::integer('SWAYY_WEBHOOK_TRIES', default: 5, min: 1, max: 10),
+
+        // Wartezeiten zwischen den Versuchen in Sekunden, Komma-Liste. Der
+        // letzte Wert gilt für alle weiteren Versuche. Je Wert 1 bis 86400,
+        // Vorgabe 60,300,1800,7200.
+        'backoff' => EnvSetting::integerList('SWAYY_WEBHOOK_BACKOFF', default: [60, 300, 1800, 7200], min: 1, max: 86400),
+
+        // Nach so vielen gescheiterten Ereignissen in Folge schaltet sich ein
+        // Endpunkt ab. Gezählt wird ein Ereignis, wenn alle Versuche
+        // gescheitert sind. 1 bis 1000, Vorgabe 20.
+        'disable_after' => EnvSetting::integer('SWAYY_WEBHOOK_DISABLE_AFTER', default: 20, min: 1, max: 1000),
+
+        // Zeichen der Antwort einer Gegenstelle, die das Zustellprotokoll
+        // aufbewahrt. 0 bis 10000, Vorgabe 2000.
+        'response_limit' => EnvSetting::integer('SWAYY_WEBHOOK_RESPONSE_LIMIT', default: 2000, min: 0, max: 10000),
+
+        // Einträge, die das Zustellprotokoll auf der Webhook-Seite zeigt.
+        // 1 bis 500, Vorgabe 25.
+        'log_entries' => EnvSetting::integer('SWAYY_WEBHOOK_LOG_ENTRIES', default: 25, min: 1, max: 500),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Newsletter-Anbindung (MailWizz)
     |--------------------------------------------------------------------------
     |

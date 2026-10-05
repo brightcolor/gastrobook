@@ -1139,6 +1139,79 @@ document.getElementById('addDurationRule')?.addEventListener('click', () => {
     const csrf  = @json(csrf_token());
     const toast = document.getElementById('settingsToast');
     const scrollKey = 'sw_settings_scroll';
+    // Texte fuer Antworten ohne JSON (Fehlerseite eines Proxys, Weiterleitung,
+    // abgebrochene Verbindung), je Statuscode. Quelle: AdminJsonErrors.
+    const problemTexts = @json(\App\Support\AdminJsonErrors::forClient());
+    let problemCount = 0;
+
+    async function readJson(res) {
+        if (!(res.headers.get('Content-Type') || '').includes('json')) return null;
+        try { return await res.json(); } catch { return null; }
+    }
+
+    // Was die Antwort ueber den Fehler sagt: die Meldungen des Servers, sonst
+    // der Text zum Statuscode.
+    function problemsOf(res, json) {
+        if (json && json.errors) return Object.values(json.errors).flat();
+        if (json && json.message) return [json.message];
+        const text = problemTexts[res.status] || (res.status >= 500 ? problemTexts[500] : problemTexts.default);
+        return [text.replace(':status', res.status)];
+    }
+
+    function clearProblems(form) {
+        form.querySelector('[data-form-problems]')?.remove();
+        form.querySelectorAll('[aria-invalid="true"]').forEach(el => {
+            el.removeAttribute('aria-invalid');
+            el.removeAttribute('aria-describedby');
+            el.classList.remove('ring-2', 'ring-red-500');
+        });
+        if (form.dataset.problemWrap) {
+            form.classList.remove('flex-wrap');
+            delete form.dataset.problemWrap;
+        }
+    }
+
+    // Die Meldungen bleiben am Formular stehen, bis es erneut abgeschickt wird.
+    // Felder, die der Server nennt, tragen aria-invalid und verweisen auf die
+    // Meldung ("hours.0.opens_at" heisst im Formular "hours[0][opens_at]").
+    function showProblems(form, json, messages) {
+        const box = document.createElement('div');
+        box.id = 'formProblems' + (++problemCount);
+        box.dataset.formProblems = '';
+        box.className = 'col-span-full basis-full mt-3 w-full rounded-lg border-l-4 border-red-600 bg-red-50 px-3 py-2 text-sm text-red-800';
+        if (messages.length === 1) {
+            box.textContent = messages[0];
+        } else {
+            const list = document.createElement('ul');
+            list.className = 'list-disc space-y-1 pl-4';
+            messages.forEach(message => {
+                const item = document.createElement('li');
+                item.textContent = message;
+                list.appendChild(item);
+            });
+            box.appendChild(list);
+        }
+
+        Object.keys((json && json.errors) || {}).forEach(key => {
+            const [head, ...rest] = key.split('.');
+            const name = head + rest.map(part => '[' + part + ']').join('');
+            form.querySelectorAll('[name="' + CSS.escape(name) + '"], [name="' + CSS.escape(name) + '[]"]').forEach(el => {
+                el.setAttribute('aria-invalid', 'true');
+                el.setAttribute('aria-describedby', box.id);
+                el.classList.add('ring-2', 'ring-red-500');
+            });
+        });
+
+        // Formulare in einer Zeile umbrechen, damit die Meldung darunter steht.
+        if (!form.classList.contains('flex-wrap')) {
+            form.classList.add('flex-wrap');
+            form.dataset.problemWrap = '1';
+        }
+        form.appendChild(box);
+    }
+
+    // Fuer die Skripte weiter unten (Tags, Raumgroesse).
+    window.swayySettings = { readJson, problemsOf, problemTexts, showToast };
 
     function showToast(msg, isErr) {
         toast.textContent = msg;
@@ -1167,6 +1240,7 @@ document.getElementById('addDurationRule')?.addEventListener('click', () => {
             const btn  = form.querySelector('[type=submit]');
             const orig = btn?.textContent;
             if (btn) { btn.disabled = true; btn.textContent = '…'; }
+            clearProblems(form);
 
             try {
                 const isMultipart = form.enctype === 'multipart/form-data';
@@ -1180,11 +1254,20 @@ document.getElementById('addDurationRule')?.addEventListener('click', () => {
                     body,
                 });
 
-                let json = {};
-                try { json = await res.json(); } catch {}
+                const json = await readJson(res);
 
-                if (res.ok) {
-                    showToast(json.message || 'Gespeichert ✓');
+                if (!res.ok) {
+                    const messages = problemsOf(res, json);
+                    showToast(messages.join(' · '), true);
+                    showProblems(form, json, messages);
+                } else if (!json || typeof json.message !== 'string') {
+                    // Gespeichert meldet nur, wer es bestaetigt. Eine Antwort
+                    // ohne JSON (etwa nach einer Weiterleitung) laesst offen,
+                    // ob die Aenderung angekommen ist.
+                    showToast(problemTexts.unclear, true);
+                    showProblems(form, null, [problemTexts.unclear]);
+                } else {
+                    showToast(json.message);
 
                     if (json.logo_url) {
                         const img  = document.getElementById('logoPreviewImg');
@@ -1205,14 +1288,10 @@ document.getElementById('addDurationRule')?.addEventListener('click', () => {
                         sessionStorage.setItem(scrollKey, String(window.scrollY));
                         setTimeout(() => location.reload(), 700);
                     }
-                } else {
-                    const msg = json.errors
-                        ? Object.values(json.errors).flat().join(' · ')
-                        : (json.message || 'Fehler beim Speichern.');
-                    showToast(msg, true);
                 }
             } catch {
-                showToast('Netzwerkfehler – bitte Seite neu laden.', true);
+                showToast(problemTexts.network, true);
+                showProblems(form, null, [problemTexts.network]);
             } finally {
                 if (btn) { btn.disabled = false; if (orig) btn.textContent = orig; }
             }
@@ -1257,44 +1336,59 @@ document.getElementById('addDurationRule')?.addEventListener('click', () => {
             const trimmed = name.trim();
             if (!trimmed || trimmed === tag.name) return;
             btn.disabled = true;
-            const res = await fetch(`${updateBase}/${tag.id}`, {
+            const res = await send(`${updateBase}/${tag.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, Accept: 'application/json' },
                 body: JSON.stringify({ name: trimmed, color: tag.color }),
             });
-            if (res.ok) { const u = await res.json(); tags = tags.map(t => t.id === u.id ? u : t); renderTags(); }
-            else { btn.disabled = false; alert('Umbenennen fehlgeschlagen.'); }
+            if (res) { tags = tags.map(t => t.id === res.id ? res : t); renderTags(); }
+            else { btn.disabled = false; }
         }));
 
         list.querySelectorAll('.tag-del').forEach(btn => btn.addEventListener('click', async () => {
             if (!confirm('Tag „' + tags.find(t => t.id == btn.dataset.id)?.name + '" löschen?')) return;
             btn.disabled = true;
-            const res = await fetch(`${deleteBase}/${btn.dataset.id}`, {
+            const res = await send(`${deleteBase}/${btn.dataset.id}`, {
                 method: 'DELETE',
                 headers: { 'X-CSRF-TOKEN': csrf, Accept: 'application/json' },
             });
-            if (res.ok) { tags = tags.filter(t => t.id != btn.dataset.id); renderTags(); }
-            else { btn.disabled = false; alert('Löschen fehlgeschlagen.'); }
+            if (res) { tags = tags.filter(t => t.id != btn.dataset.id); renderTags(); }
+            else { btn.disabled = false; }
         }));
+    }
+
+    // Schickt die Anfrage und liefert das JSON der Antwort. Bei einem Fehler
+    // sagt ein Hinweis, was passiert ist und was jetzt zu tun ist; dann null.
+    async function send(url, options) {
+        const { readJson, problemsOf, problemTexts } = window.swayySettings;
+        let res;
+        try {
+            res = await fetch(url, options);
+        } catch {
+            alert(problemTexts.network);
+            return null;
+        }
+        const json = await readJson(res);
+        if (!res.ok || !json) {
+            alert(res.ok ? problemTexts.unclear : problemsOf(res, json).join('\n'));
+            return null;
+        }
+        return json;
     }
 
     document.getElementById('settingsTagCreate')?.addEventListener('click', async () => {
         const name  = document.getElementById('settingsTagName').value.trim();
         const color = document.getElementById('settingsTagColor').value;
         if (!name) return;
-        const res = await fetch(storeUrl, {
+        const tag = await send(storeUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, Accept: 'application/json' },
             body: JSON.stringify({ name, color }),
         });
-        if (res.ok) {
-            const tag = await res.json();
+        if (tag) {
             if (!tags.find(t => t.id === tag.id)) tags.push(tag); else tags = tags.map(t => t.id === tag.id ? tag : t);
             document.getElementById('settingsTagName').value = '';
             renderTags();
-        } else {
-            const j = await res.json().catch(() => ({}));
-            alert(j.message || 'Tag konnte nicht angelegt werden.');
         }
     });
 
@@ -1369,20 +1463,24 @@ async function saveRoomSize(roomId) {
         body[inp.dataset.field] = isNaN(v) ? null : v;
     });
     const csrf = document.querySelector('input[name=_token]')?.value || '';
-    const res  = await fetch('/admin/floorplan/rooms/' + roomId + '/size', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, Accept: 'application/json' },
-        body: JSON.stringify(body),
-    });
-    const toast = document.getElementById('settingsToast');
-    if (toast) {
-        toast.textContent  = res.ok ? 'Raumgröße gespeichert.' : 'Fehler beim Speichern.';
-        toast.className    = 'pointer-events-none fixed bottom-6 right-6 z-50 max-w-sm rounded-xl px-5 py-3 text-sm font-semibold shadow-xl transition-all duration-300 '
-            + (res.ok ? 'bg-stone-900 text-white' : 'bg-red-600 text-white');
-        toast.style.opacity = '1';
-        toast.style.transform = 'translateY(0)';
-        setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateY(8px)'; }, 2500);
+    const { readJson, problemsOf, problemTexts, showToast } = window.swayySettings;
+    let res;
+    try {
+        res = await fetch('/admin/floorplan/rooms/' + roomId + '/size', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, Accept: 'application/json' },
+            body: JSON.stringify(body),
+        });
+    } catch {
+        showToast(problemTexts.network, true);
+        return;
     }
+    const json = await readJson(res);
+    if (res.ok && json?.ok) {
+        showToast('Raumgröße gespeichert.');
+        return;
+    }
+    showToast(res.ok ? problemTexts.unclear : problemsOf(res, json).join(' · '), true);
 }
 
 function swayyWidgetCopy(id, btn) {
