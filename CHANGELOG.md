@@ -1,5 +1,30 @@
 # Changelog
 
+## [Unveröffentlicht]
+
+### Sicherheitsupdates für Laravel und Flysystem, feste Stände im Build
+
+Zwei Abhängigkeiten stehen jetzt auf der kleinsten Version mit den aktuellen
+Sicherheitskorrekturen. Geändert hat sich dafür nur `composer.lock`.
+
+- **laravel/framework 13.15.0 → 13.30.0** (CVE-2026-102279), Korrektur der
+  Fehlerseite im Debug-Modus.
+- **league/flysystem 3.34.0 → 3.35.3** (CVE-2026-102601), Korrektur in der
+  Pfadprüfung.
+
+Für Fremdcode in Build und Entwicklung gelten feste Regeln:
+
+- **CI:** Jede GitHub Action steht auf einem festen Commit, die Version steht als
+  Kommentar dahinter. Der `GITHUB_TOKEN` hat im Workflow Leserechte auf den
+  Code, der Docker-Job zusätzlich das Schreibrecht für die Registry.
+- **Wartezeit für neue Versionen:** Dependabot schlägt Versions-Updates erst
+  vor, wenn eine Version sieben Tage veröffentlicht ist (`cooldown` in
+  `.github/dependabot.yml`); Sicherheitsupdates kommen sofort. npm löst neue
+  Versionen ab npm 11.10 ebenfalls erst nach sieben Tagen auf
+  (`min-release-age` in `.npmrc`). `npm ci` installiert weiter genau die
+  Versionen aus `package-lock.json`.
+- `SupplyChainSettingsTest` prüft diese Regeln bei jedem CI-Lauf.
+
 ## [1.128.3] – 2026-10-05
 
 ### MailWizz-Anbindung: dieselbe Zielprüfung wie bei Webhooks
