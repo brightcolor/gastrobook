@@ -737,6 +737,8 @@ vendor/bin/phpstan analyse --memory-limit=1G       # Statische Analyse (0 Fehler
 
 CI: GitHub Actions (`.github/workflows/ci.yml`) mit Pint, Larastan, Tests und Frontend-Build.
 
+**Fremdcode im Build:** Jede Action im Workflow steht auf einem festen Commit, die Version steht als Kommentar dahinter; Dependabot hebt beides gemeinsam an. Der `GITHUB_TOKEN` hat im Workflow Leserechte auf den Code, der Docker-Job zusätzlich das Schreibrecht für die Registry. Neue Paketversionen kommen mit einer Wartezeit von sieben Tagen: Dependabot über `cooldown` in `.github/dependabot.yml` (Sicherheitsupdates kommen sofort), npm ab Version 11.10 über `min-release-age` in `.npmrc`. `npm ci` installiert immer genau die Versionen aus `package-lock.json`. Ein dringendes Update auf eine jüngere Version geht mit `npm install <paket>@<version> --min-release-age=0`. `tests/Unit/SupplyChainSettingsTest.php` prüft diese Regeln.
+
 ---
 
 ## Spamschutz der öffentlichen Formulare (Cap)

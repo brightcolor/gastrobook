@@ -8,6 +8,10 @@ version: 2
 # Pull-Request erzeugt, obwohl Aktualisierungen vorlagen. Deshalb hier die
 # einfachste Form ohne Gruppierung - erst wenn die wieder Vorschlaege liefert,
 # lohnt sich Feintuning.
+#
+# Wartezeit (`cooldown`): Versions-Updates schlägt Dependabot erst vor, wenn die
+# neue Version sieben Tage veröffentlicht ist. Sicherheitsupdates kommen sofort.
+# Für npm gilt dieselbe Wartezeit über `min-release-age` in der `.npmrc`.
 updates:
   - package-ecosystem: composer
     directory: /
@@ -15,6 +19,8 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 10
+    cooldown:
+      default-days: 7
     # Nur den Lockfile aktualisieren, solange die Vorgabe in composer.json passt.
     versioning-strategy: increase-if-necessary
     commit-message:
@@ -26,6 +32,8 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 10
+    cooldown:
+      default-days: 7
     versioning-strategy: increase-if-necessary
     commit-message:
       prefix: "chore(deps)"
@@ -35,5 +43,7 @@ updates:
     schedule:
       interval: monthly
     open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(ci)"
