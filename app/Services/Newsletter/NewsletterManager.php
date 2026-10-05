@@ -8,18 +8,16 @@ use Illuminate\Support\Facades\Crypt;
 
 class NewsletterManager
 {
+    /** Anbieter, fuer die es einen Adapter gibt. */
+    private const PROVIDERS = ['mailwizz'];
+
     /**
      * Resolve the configured newsletter provider for a tenant, or null when
      * no integration is connected.
      */
     public function providerFor(Tenant $tenant): ?NewsletterProvider
     {
-        $connection = IntegrationConnection::withoutGlobalScopes()
-            ->where('tenant_id', $tenant->id)
-            ->whereNull('location_id')
-            ->where('status', 'connected')
-            ->whereIn('provider', ['mailwizz'])
-            ->first();
+        $connection = $this->connectionFor($tenant);
 
         if ($connection === null || ! $connection->credentials_encrypted) {
             return null;
@@ -38,5 +36,36 @@ class NewsletterManager
             ),
             default => null,
         };
+    }
+
+    /**
+     * Haelt die Anbindung an, wenn die Zielpruefung ihre Adresse ablehnt.
+     *
+     * Jeder weitere Versuch traefe dieselbe Pruefung. Die Anbindung steht
+     * deshalb auf "Fehler", bis jemand die Einstellungen neu speichert - dabei
+     * wird die Adresse erneut geprueft. Der Grund erscheint auf der
+     * Einstellungsseite.
+     */
+    public function suspend(Tenant $tenant, string $reason): void
+    {
+        $connection = $this->connectionFor($tenant);
+        if ($connection === null) {
+            return;
+        }
+
+        $connection->update([
+            'status' => 'error',
+            'settings' => array_merge($connection->settings ?? [], ['last_error' => $reason]),
+        ]);
+    }
+
+    private function connectionFor(Tenant $tenant): ?IntegrationConnection
+    {
+        return IntegrationConnection::withoutGlobalScopes()
+            ->where('tenant_id', $tenant->id)
+            ->whereNull('location_id')
+            ->where('status', 'connected')
+            ->whereIn('provider', self::PROVIDERS)
+            ->first();
     }
 }

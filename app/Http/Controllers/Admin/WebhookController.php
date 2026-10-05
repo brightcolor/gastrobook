@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Jobs\DeliverWebhook;
 use App\Models\WebhookDelivery;
 use App\Models\WebhookEndpoint;
+use App\Rules\AllowedOutboundUrl;
 use App\Services\AuditLogger;
-use App\Support\OutboundUrlGuard;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -56,15 +56,9 @@ class WebhookController extends Controller
         $this->requireFeature();
 
         $validated = $request->validate([
-            'url' => [
-                'required', 'url:https',
-                // SSRF guard: reject URLs resolving to private/loopback/reserved IPs.
-                function (string $attr, mixed $value, callable $fail) {
-                    if (! is_string($value) || ! OutboundUrlGuard::isAllowed($value)) {
-                        $fail(__('Die URL muss öffentlich per https erreichbar sein (keine internen oder privaten Adressen).'));
-                    }
-                },
-            ],
+            // SSRF guard: only https targets resolving to allowed addresses.
+            // Delivery checks again (DeliverWebhook).
+            'url' => ['required', 'string', 'bail', 'url', new AllowedOutboundUrl],
             'events' => ['required', 'array', 'min:1'],
             'events.*' => ['string', 'in:*,'.implode(',', self::EVENTS)],
         ]);

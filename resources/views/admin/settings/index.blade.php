@@ -906,9 +906,12 @@
             @endif
         </div>
         <p class="mb-3 text-xs text-stone-500">Gäste mit Newsletter-Einwilligung werden automatisch in die MailWizz-Liste übertragen (mandantenweit).</p>
+        @if(($mailwizz?->status === 'error') && filled($mailwizz->settings['last_error'] ?? null))
+            <p class="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700" role="status">{{ $mailwizz->settings['last_error'] }}</p>
+        @endif
         <div class="space-y-2 text-sm">
             <div>
-                <label class="mb-1 block text-xs font-semibold text-stone-500">API-URL <span class="tip" tabindex="0" data-tip="Die Adresse deiner MailWizz-Installation, z. B. &#39;https://mail.deinedomain.de/api&#39;. Steht in deinem MailWizz-Adminbereich unter API-Einstellungen.">?</span></label>
+                <label class="mb-1 block text-xs font-semibold text-stone-500">API-URL <span class="tip" tabindex="0" data-tip="Die Adresse deiner MailWizz-Installation, z. B. &#39;https://mail.deinedomain.de/api&#39;. Steht in deinem MailWizz-Adminbereich unter API-Einstellungen. Swayy ruft sie direkt auf: Sie muss mit https:// beginnen und öffentlich erreichbar sein.">?</span></label>
                 <input type="url" name="api_url" required placeholder="https://news.example.com/api" value="{{ $mailwizzCredentials['api_url'] ?? '' }}" class="w-full rounded-lg border-stone-200">
             </div>
             <div>

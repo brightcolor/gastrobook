@@ -3,7 +3,10 @@
 namespace App\Services\Newsletter;
 
 use App\Models\Guest;
-use Illuminate\Support\Facades\Http;
+use App\Support\OutboundUrlBlocked;
+use App\Support\OutboundUrlGuard;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 
 /**
  * MailWizz EMS adapter (API v2, single X-API-KEY auth).
@@ -11,6 +14,12 @@ use Illuminate\Support\Facades\Http;
  * Credentials: api_url (e.g. https://news.example.com/api), api_key, list_uid.
  * Double-opt-in is controlled by the MailWizz list settings — when the list
  * is configured for DOI, MailWizz sends the confirmation mail itself.
+ *
+ * Die API-Adresse traegt der Betrieb selbst ein. Jede Anfrage laeuft deshalb
+ * ueber dieselbe Zielpruefung wie die Webhooks: vor jedem Aufruf neu
+ * aufgeloest, auf die gepruefte Adresse festgenagelt und ohne Weiterleitungen.
+ * Eine abgelehnte Adresse wirft OutboundUrlBlocked, bevor eine Verbindung
+ * entsteht.
  */
 class MailwizzProvider implements NewsletterProvider
 {
@@ -26,25 +35,19 @@ class MailwizzProvider implements NewsletterProvider
             return false;
         }
 
-        $response = Http::asForm()
-            ->withHeaders(['X-API-KEY' => $this->apiKey])
-            ->timeout(10)
-            ->post($this->endpoint('/subscribers'), array_filter([
-                'EMAIL' => $guest->email,
-                'FNAME' => $guest->first_name,
-                'LNAME' => $guest->last_name,
-            ]));
+        $fields = array_filter([
+            'EMAIL' => $guest->email,
+            'FNAME' => $guest->first_name,
+            'LNAME' => $guest->last_name,
+        ]);
+
+        $url = $this->endpoint('/subscribers');
+        $response = $this->request($url)->asForm()->post($url, $fields);
 
         // 409/422 = already subscribed → update instead (idempotent behaviour)
         if ($response->status() === 409 || $response->status() === 422) {
-            $response = Http::asForm()
-                ->withHeaders(['X-API-KEY' => $this->apiKey])
-                ->timeout(10)
-                ->put($this->endpoint('/subscribers/search-by-email-and-update'), array_filter([
-                    'EMAIL' => $guest->email,
-                    'FNAME' => $guest->first_name,
-                    'LNAME' => $guest->last_name,
-                ]));
+            $url = $this->endpoint('/subscribers/search-by-email-and-update');
+            $response = $this->request($url)->asForm()->put($url, $fields);
         }
 
         return $response->successful();
@@ -56,22 +59,35 @@ class MailwizzProvider implements NewsletterProvider
             return false;
         }
 
-        $response = Http::asForm()
-            ->withHeaders(['X-API-KEY' => $this->apiKey])
-            ->timeout(10)
-            ->put($this->endpoint('/subscribers/search-by-email-and-unsubscribe'), [
-                'EMAIL' => $guest->email,
-            ]);
+        $url = $this->endpoint('/subscribers/search-by-email-and-unsubscribe');
 
-        return $response->successful();
+        return $this->request($url)->asForm()->put($url, [
+            'EMAIL' => $guest->email,
+        ])->successful();
     }
 
-    public function testConnection(): bool
+    /**
+     * Fragt die Liste ab. Die Antwort geht unveraendert zurueck, damit die
+     * Einstellungsseite sagen kann, woran es liegt: Weiterleitung, API-Key
+     * oder Liste.
+     *
+     * @throws OutboundUrlBlocked
+     */
+    public function testConnection(): Response
     {
-        return Http::withHeaders(['X-API-KEY' => $this->apiKey])
-            ->timeout(10)
-            ->get($this->endpoint(''))
-            ->successful();
+        $url = $this->endpoint('');
+
+        return $this->request($url)->get($url);
+    }
+
+    /**
+     * @throws OutboundUrlBlocked
+     */
+    private function request(string $url): PendingRequest
+    {
+        return OutboundUrlGuard::client($url)
+            ->withHeaders(['X-API-KEY' => $this->apiKey])
+            ->timeout((int) config('swayy.newsletter.timeout'));
     }
 
     private function endpoint(string $path): string
