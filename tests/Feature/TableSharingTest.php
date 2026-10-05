@@ -16,6 +16,19 @@ class TableSharingTest extends TestCase
 {
     use CreatesTenants, RefreshDatabase;
 
+    /**
+     * Walk-ins entstehen zur Wanduhrzeit. Ohne feste Uhr lief dieser Test
+     * zwischen 23 und 12 Uhr ausserhalb der Oeffnungszeiten des Test-Setups
+     * (12-23 Uhr) und scheiterte mit "Zu dieser Uhrzeit haben wir leider
+     * geschlossen". 19:00 Ortszeit liegt mitten im Betrieb.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->travelTo(CarbonImmutable::parse('2026-06-15 19:00:00', 'Europe/Berlin')->utc());
+    }
+
     private function seatGroup(array $setup, int $party): void
     {
         $start = CarbonImmutable::now('Europe/Berlin')->subMinutes(10);

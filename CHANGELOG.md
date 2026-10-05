@@ -1,5 +1,40 @@
 # Changelog
 
+## [Unveröffentlicht]
+
+### Sicherheitsupdates für vier Abhängigkeiten
+
+Die Sicherheitsscanner meldeten bekannte Lücken in Guzzle, CommonMark,
+shell-quote und PostCSS. Jedes Paket steht jetzt auf der kleinsten Version, die
+die gemeldeten Lücken schließt. Geändert haben sich nur die Lockfiles.
+
+- **guzzlehttp/guzzle 7.11.1 → 7.15.2**, dazu guzzlehttp/psr7 2.11.0 → 2.13.0
+  und guzzlehttp/promises 2.5.0 → 2.5.1, die Guzzle 7.15.2 voraussetzt
+  (CVE-2026-69246). curl dekodierte den Host einer Anfrage selbst, etwa
+  `127.0.0.%31` zu `127.0.0.1`, und verband sich mit dem Ergebnis. Das betraf
+  die Zielprüfung der Webhooks: Sie löst den Namen so auf, wie er geschrieben
+  steht, und nagelt die Anfrage auf die geprüften Adressen fest. Ein Host mit
+  Prozentzeichen konnte je nach Resolver trotzdem bei einer anderen Adresse
+  landen. Guzzle 7.15.2 lehnt solche Hosts vor jeder Verbindung ab.
+- **league/commonmark 2.8.2 → 2.10.2.** Präpariertes Markdown konnte die
+  Rechenzeit quadratisch wachsen lassen, und in der Attributes-Erweiterung ließ
+  sich der Filter für `on*`-Attribute umgehen. Swayy rendert Markdown nur für
+  Impressum, Datenschutz und AGB, die der Betreiber selbst pflegt, und bindet
+  keine der betroffenen Zusatzerweiterungen ein.
+- **concurrently 9.2.1 → 9.2.4** bringt shell-quote 1.9.0 mit (vorher 1.8.3).
+  In 1.8.3 maskierte `quote()` keine Zeilenumbrüche, und `parse()` lief
+  quadratisch. concurrently startet nur die lokale Entwicklungsumgebung
+  (`composer dev`).
+- **postcss 8.5.15 → 8.5.23**, dazu nanoid 3.3.12 → 3.3.18. Ein
+  `sourceMappingURL`-Kommentar im CSS konnte `.map`-Dateien außerhalb des
+  Projekts lesen. Der erste Fix in 8.5.18 griff nur mit gesetztem `from`,
+  vollständig ist er ab 8.5.23. PostCSS verarbeitet beim Bau der Assets nur das
+  eigene CSS.
+
+Dazu ein Test, der nachts und vormittags fehlschlug: `TableSharingTest` legte
+Walk-ins zur echten Uhrzeit an und landete zwischen 23 und 12 Uhr außerhalb der
+Öffnungszeiten der Testeinrichtung. Er läuft jetzt mit fester Uhr um 19 Uhr.
+
 ## [1.128.1] – 2026-09-18
 
 Auslieferung von 1.128.0. Dort brach der Bau an einer Formatierungsregel ab, ein
