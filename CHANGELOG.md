@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unveröffentlicht]
+## [1.128.2] – 2026-10-05
 
 ### Sicherheitsupdates für vier Abhängigkeiten
 
