@@ -10,8 +10,8 @@ die gemeldeten Lücken schließt. Geändert haben sich nur die Lockfiles.
 
 - **guzzlehttp/guzzle 7.11.1 → 7.15.2**, dazu guzzlehttp/psr7 2.11.0 → 2.13.0
   und guzzlehttp/promises 2.5.0 → 2.5.1, die Guzzle 7.15.2 voraussetzt
-  (CVE-2026-69246). curl dekodierte den Host einer Anfrage selbst, etwa
-  `127.0.0.%31` zu `127.0.0.1`, und verband sich mit dem Ergebnis. Das betraf
+  (CVE-2026-69246). curl dekodierte Prozentzeichen im Host einer Anfrage
+  selbst und verband sich mit dem Ergebnis. Das betraf
   die Zielprüfung der Webhooks: Sie löst den Namen so auf, wie er geschrieben
   steht, und nagelt die Anfrage auf die geprüften Adressen fest. Ein Host mit
   Prozentzeichen konnte je nach Resolver trotzdem bei einer anderen Adresse
