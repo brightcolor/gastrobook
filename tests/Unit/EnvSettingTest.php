@@ -88,6 +88,30 @@ class EnvSettingTest extends TestCase
         }
     }
 
+    public function test_a_choice_list_keeps_order_and_drops_duplicates(): void
+    {
+        $erlaubt = ['location_email', 'owner_notification_email'];
+
+        $this->assertSame($erlaubt, $this->capture(fn () => EnvSetting::choiceList(self::VARIABLE, default: $erlaubt, allowed: $erlaubt)));
+        $this->assertSame('', $this->warnings);
+
+        $this->set('owner_notification_email, location_email,owner_notification_email');
+        $this->assertSame(['owner_notification_email', 'location_email'], $this->capture(fn () => EnvSetting::choiceList(self::VARIABLE, default: $erlaubt, allowed: $erlaubt)));
+        $this->assertSame('', $this->warnings);
+
+        $this->set('-');
+        $this->assertSame([], $this->capture(fn () => EnvSetting::choiceList(self::VARIABLE, default: $erlaubt, allowed: $erlaubt)));
+    }
+
+    public function test_an_unknown_choice_restores_the_whole_default(): void
+    {
+        $erlaubt = ['location_email', 'owner_notification_email'];
+        $this->set('owner_notification_email,support_email');
+
+        $this->assertSame($erlaubt, $this->capture(fn () => EnvSetting::choiceList(self::VARIABLE, default: $erlaubt, allowed: $erlaubt)));
+        $this->assertStringContainsString(self::VARIABLE.': Der Eintrag „support_email“ ist unbekannt. Es gilt die Vorgabe location_email,owner_notification_email.', $this->warnings);
+    }
+
     private function set(string $value): void
     {
         $_SERVER[self::VARIABLE] = $value;

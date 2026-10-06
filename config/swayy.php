@@ -99,6 +99,45 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Mails an Gäste: Absendername und Antwortadresse
+    |--------------------------------------------------------------------------
+    |
+    | Absender bleibt MAIL_FROM_ADDRESS, damit SPF und DKIM passen. Antwortet
+    | ein Gast, geht die Mail an die Antwortadresse (Reply-To) des Betriebs.
+    | Trägt der Betrieb unter Einstellungen › Allgemein › „E-Mails an Gäste“
+    | nichts ein, gilt der erste gefüllte Wert aus diesen Listen.
+    |
+    | Ein unbekannter Eintrag legt nichts lahm: Es gilt die Vorgabe, und eine
+    | Warnung im Log nennt die Variable. „-“ heißt: ohne Ersatz.
+    |
+    */
+    'guest_mail' => [
+        // Ersatz für die Antwortadresse, in dieser Reihenfolge.
+        // Erlaubt: location_email (E-Mail des Standorts aus den Stammdaten),
+        // owner_notification_email (Adresse für Betreiber-Benachrichtigungen).
+        // Vorgabe: location_email,owner_notification_email
+        'reply_to_fallbacks' => EnvSetting::choiceList(
+            'SWAYY_GUEST_MAIL_REPLY_TO_FALLBACKS',
+            default: ['location_email', 'owner_notification_email'],
+            allowed: ['location_email', 'owner_notification_email'],
+        ),
+
+        // Ersatz für den Absendernamen, in dieser Reihenfolge. Ohne Treffer
+        // gilt MAIL_FROM_NAME. Erlaubt: location_name, tenant_name.
+        // Vorgabe: location_name,tenant_name
+        'from_name_fallbacks' => EnvSetting::choiceList(
+            'SWAYY_GUEST_MAIL_FROM_NAME_FALLBACKS',
+            default: ['location_name', 'tenant_name'],
+            allowed: ['location_name', 'tenant_name'],
+        ),
+
+        // Benachrichtigung an den Betrieb über eine neue Buchung: Antworten
+        // gehen direkt an den Gast. true oder false, Vorgabe true.
+        'owner_reply_to_guest' => (bool) env('SWAYY_GUEST_MAIL_OWNER_REPLY_TO_GUEST', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Webhooks
     |--------------------------------------------------------------------------
     |

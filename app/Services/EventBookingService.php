@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Mail\TemplatedMail;
 use App\Models\Event;
 use App\Models\EventBooking;
 use App\Models\User;
@@ -190,9 +189,11 @@ class EventBookingService
             ? __(":greeting\n\ndeine Buchung für \":event\" ist bestätigt:\n\nDatum: :date\nUhrzeit: :time Uhr\nTickets: :tickets\nBuchungsnummer: :code\n:payment\nStornieren: :link\n\nWir freuen uns auf dich!\n:location", $vars)
             : __(":greeting\n\nIhre Buchung für \":event\" ist bestätigt:\n\nDatum: :date\nUhrzeit: :time Uhr\nTickets: :tickets\nBuchungsnummer: :code\n:payment\nStornieren: :link\n\nWir freuen uns auf Sie!\n:location", $vars);
 
-        Mail::to($booking->guest_email)->queue(new TemplatedMail(
+        Mail::to($booking->guest_email)->queue(app(GuestMailSender::class)->toGuest(
             __('Buchungsbestätigung: :event', ['event' => $event->title]),
             $body,
+            $location?->tenant()->withoutGlobalScopes()->first(),
+            $location,
         ));
     }
 }

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Mail\TemplatedMail;
 use App\Models\EventBooking;
 use App\Models\Location;
 use App\Models\PaymentIntent;
@@ -806,7 +805,7 @@ class RefundService
 
         $tenant = Tenant::find($refund?->tenant_id ?? $location->tenant_id);
 
-        Mail::to($to)->queue(new TemplatedMail(
+        Mail::to($to)->queue(app(GuestMailSender::class)->toOperator(
             $betreff,
             implode("\n", $refund === null ? $zeilen : [
                 ...$zeilen,
@@ -817,8 +816,8 @@ class RefundService
                     ? 'Die Rückerstattung wurde automatisch angestossen.'
                     : 'Die Rückerstattung liegt zur Freigabe in der Liste der Rückerstattungen.',
             ]),
-            $tenant?->mail_from_name,
-            $tenant?->mail_reply_to,
+            $tenant,
+            $location,
         ));
     }
 

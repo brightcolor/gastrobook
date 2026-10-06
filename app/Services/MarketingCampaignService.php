@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Enums\ReservationStatus;
-use App\Mail\TemplatedMail;
 use App\Models\Guest;
 use App\Models\Location;
 use App\Models\MarketingCampaign;
@@ -202,11 +201,11 @@ class MarketingCampaignService
         $rendered = $this->render($campaign, $location, $guest);
         $tenant = $location->tenant;
 
-        Mail::to($guest->email)->queue(new TemplatedMail(
+        Mail::to($guest->email)->queue(app(GuestMailSender::class)->toGuest(
             $rendered['subject'],
             $rendered['body'],
-            $tenant->mail_from_name,
-            $tenant->mail_reply_to,
+            $tenant,
+            $location,
         ));
 
         NotificationLog::withoutGlobalScopes()->create([

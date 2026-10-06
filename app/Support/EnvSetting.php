@@ -77,6 +77,42 @@ final class EnvSetting
     }
 
     /**
+     * Komma-Liste von Schluesseln aus $allowed, Reihenfolge wie angegeben.
+     * Ein leerer Wert ("-") ergibt eine leere Liste. Ist ein Eintrag
+     * unbekannt, gilt die ganze Vorgabe: Eine halbe Liste aendert die
+     * Reihenfolge der uebrigen Eintraege.
+     *
+     * @param  list<string>  $default
+     * @param  list<string>  $allowed
+     * @return list<string>
+     */
+    public static function choiceList(string $variable, array $default, array $allowed): array
+    {
+        $raw = self::raw($variable);
+        if ($raw === null) {
+            return $default;
+        }
+        if ($raw === '-') {
+            return [];
+        }
+
+        $values = [];
+        foreach (self::items($raw) as $item) {
+            if (! in_array($item, $allowed, true)) {
+                self::warn("{$variable}: Der Eintrag „{$item}“ ist unbekannt. Es gilt die Vorgabe ".implode(',', $default).'. Erlaubt sind: '.implode(', ', $allowed).'; „-“ für keinen.');
+
+                return $default;
+            }
+
+            if (! in_array($item, $values, true)) {
+                $values[] = $item;
+            }
+        }
+
+        return $values === [] ? $default : $values;
+    }
+
+    /**
      * Komma-Liste aus IP-Adressen und Netzen in CIDR-Schreibweise. Ungueltige
      * Eintraege entfallen mit Warnung, die uebrigen gelten.
      *

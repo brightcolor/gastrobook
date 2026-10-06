@@ -157,6 +157,7 @@ class AuditLog extends Model
         'staff_member.absence_deleted' => 'Abwesenheit gelöscht',
         'staff_member.working_hours_updated' => 'Arbeitszeiten geändert',
         'tenant.branding_updated' => 'Erscheinungsbild geändert',
+        'tenant.guest_mail_updated' => 'Absender für Gästemails geändert',
         'webhook.ping' => 'Webhook getestet',
         'webhook.secret_rotated' => 'Webhook-Schlüssel erneuert',
     ];
