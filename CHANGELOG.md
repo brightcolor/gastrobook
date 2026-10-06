@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unveröffentlicht]
+## [1.128.5] – 2026-10-06
 
 ### Einstellungsseite: Fehlermeldungen kommen an
 
