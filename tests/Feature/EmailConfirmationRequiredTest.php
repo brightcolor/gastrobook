@@ -137,6 +137,152 @@ class EmailConfirmationRequiredTest extends TestCase
         );
     }
 
+    // ── Was der Gast nach dem Klick bekommt ───────────────────────────────
+
+    /**
+     * Beim Anlegen wird die Buchungsmail zurueckgehalten, solange die Adresse
+     * offen ist. Der Klick muss sie nachholen, sonst hat der Gast nichts
+     * Schriftliches ueber seinen Termin.
+     */
+    public function test_after_the_click_the_guest_gets_the_booking_confirmation(): void
+    {
+        Mail::fake();
+
+        $setup = $this->createTenantSetup();
+        $this->requireConfirmation($setup);
+        $this->clearTenantContext();
+
+        $this->bookOnline($setup);
+        $reservation = Reservation::withoutGlobalScopes()->firstOrFail();
+
+        $this->assertSame(0, $this->buchungsmails($reservation), 'Vor dem Klick ging schon eine Buchungsmail raus.');
+
+        $token = GuestAuthToken::withoutGlobalScopes()->where('purpose', 'verify')->firstOrFail();
+        $this->get('/konto/verify/'.$token->token)->assertOk();
+
+        $this->assertSame(1, NotificationLog::withoutGlobalScopes()
+            ->where('reservation_id', $reservation->id)
+            ->where('template_key', 'reservation_confirmed')
+            ->count());
+    }
+
+    /**
+     * Gibt der Betrieb jede Buchung selbst frei, bleibt die Buchung nach dem
+     * Klick eine Anfrage. Auch dann braucht der Gast die Eingangsbestaetigung,
+     * die beim Anlegen zurueckgehalten wurde.
+     */
+    public function test_after_the_click_a_request_gets_its_receipt(): void
+    {
+        Mail::fake();
+
+        $setup = $this->createTenantSetup();
+        $setup['location']->settings()->update([
+            'require_email_confirmation' => true,
+            'auto_confirm' => false,
+        ]);
+        $this->clearTenantContext();
+
+        $this->bookOnline($setup);
+        $reservation = Reservation::withoutGlobalScopes()->firstOrFail();
+
+        $token = GuestAuthToken::withoutGlobalScopes()->where('purpose', 'verify')->firstOrFail();
+        $this->get('/konto/verify/'.$token->token)->assertOk();
+
+        $this->assertSame(ReservationStatus::Requested, $reservation->fresh()->status);
+        $this->assertSame(1, NotificationLog::withoutGlobalScopes()
+            ->where('reservation_id', $reservation->id)
+            ->where('template_key', 'reservation_requested')
+            ->count(), 'Nach dem Klick kam keine Eingangsbestaetigung.');
+    }
+
+    /**
+     * Ein zweiter Klick auf denselben Link (oder ein Mailscanner davor) darf
+     * keine zweite Eingangsbestaetigung ausloesen.
+     */
+    public function test_a_second_click_sends_no_second_receipt(): void
+    {
+        Mail::fake();
+
+        $setup = $this->createTenantSetup();
+        $setup['location']->settings()->update([
+            'require_email_confirmation' => true,
+            'auto_confirm' => false,
+        ]);
+        $this->clearTenantContext();
+
+        $this->bookOnline($setup);
+        $reservation = Reservation::withoutGlobalScopes()->firstOrFail();
+
+        $token = GuestAuthToken::withoutGlobalScopes()->where('purpose', 'verify')->firstOrFail();
+        $this->get('/konto/verify/'.$token->token)->assertOk();
+        $this->get('/konto/verify/'.$token->token);
+
+        $this->assertSame(1, $this->buchungsmails($reservation));
+    }
+
+    /**
+     * Bei Freigabe von Hand erfaehrt der Gast auf jeder Station, dass der
+     * Betrieb die Anfrage noch persoenlich prueft: nach dem Absenden, nach
+     * dem Klick und in der Mail.
+     */
+    public function test_with_manual_approval_the_guest_learns_that_the_team_decides(): void
+    {
+        Mail::fake();
+
+        $setup = $this->createTenantSetup();
+        $setup['location']->settings()->update([
+            'require_email_confirmation' => true,
+            'auto_confirm' => false,
+        ]);
+        $this->clearTenantContext();
+
+        $this->followingRedirects()->post(
+            '/book/'.$setup['tenant']->slug.'/'.$setup['location']->slug,
+            $this->bookingPayload($setup)
+        )->assertOk()
+            ->assertSee('Fast geschafft!')
+            ->assertSee('persönlich an')
+            ->assertDontSee('ist Ihr Tisch reserviert');
+
+        $token = GuestAuthToken::withoutGlobalScopes()->where('purpose', 'verify')->firstOrFail();
+        $this->get('/konto/verify/'.$token->token)
+            ->assertOk()
+            ->assertSee('ist bei uns angekommen')
+            ->assertSee('persönlich an')
+            ->assertDontSee('wird bearbeitet');
+
+        $log = NotificationLog::withoutGlobalScopes()->where('template_key', 'reservation_requested')->firstOrFail();
+        $this->assertSame('Ihre Anfrage ist angekommen – '.$setup['location']->name, $log->subject);
+    }
+
+    /**
+     * Mit Sofortbestaetigung bleibt die bisherige Ansage: Erst der Klick
+     * reserviert den Tisch.
+     */
+    public function test_with_auto_confirm_the_page_says_the_click_reserves_the_table(): void
+    {
+        Mail::fake();
+
+        $setup = $this->createTenantSetup();
+        $this->requireConfirmation($setup);
+        $this->clearTenantContext();
+
+        $this->followingRedirects()->post(
+            '/book/'.$setup['tenant']->slug.'/'.$setup['location']->slug,
+            $this->bookingPayload($setup)
+        )->assertOk()
+            ->assertSee('ist Ihr Tisch reserviert')
+            ->assertDontSee('persönlich an');
+    }
+
+    private function buchungsmails(Reservation $reservation): int
+    {
+        return NotificationLog::withoutGlobalScopes()
+            ->where('reservation_id', $reservation->id)
+            ->whereIn('template_key', ['reservation_confirmed', 'reservation_requested'])
+            ->count();
+    }
+
     // ── Aufraeumen ────────────────────────────────────────────────────────
 
     /**
