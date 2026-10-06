@@ -127,6 +127,47 @@
     </div>
     @endif
 
+    {{-- E-Mails an Gäste --}}
+    @if($canManage)
+    @php
+        // Was ohne eigene Angabe gilt, damit das Feld nicht ins Leere zeigt.
+        $mailSender = app(\App\Services\GuestMailSender::class);
+        $ohneEigene = $tenant->replicate()->fill(['mail_from_name' => null, 'mail_reply_to' => null]);
+        $ersatzName = $mailSender->fromName($ohneEigene, $location) ?? config('mail.from.name');
+        $ersatzAntwort = $mailSender->replyTo($ohneEigene, $location);
+    @endphp
+    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
+        <h2 class="mb-1 font-bold">E-Mails an Gäste <span class="tip" tabindex="0" data-tip="Buchungsbestätigungen, Erinnerungen und alle anderen Mails an deine Gäste zeigen diesen Absendernamen. Antwortet ein Gast, landet seine Mail bei der Antwortadresse.">?</span></h2>
+        <p class="mb-3 text-sm text-stone-500">
+            Antwortet ein Gast auf eine Mail, geht die Antwort an diese Adresse.
+        </p>
+        <form method="POST" action="{{ route('admin.settings.guest-mail') }}" class="grid gap-3 text-sm sm:grid-cols-2">
+            @csrf @method('PUT')
+            <label class="block">Absendername
+                <input name="mail_from_name" maxlength="100" value="{{ old('mail_from_name', $tenant->mail_from_name) }}"
+                       placeholder="{{ $ersatzName }}" class="mt-1 w-full rounded-lg border-stone-200">
+                <span class="mt-1 block text-xs text-stone-500">Leer: „{{ $ersatzName }}“</span>
+            </label>
+            <label class="block">Antwortadresse
+                <input type="email" name="mail_reply_to" maxlength="200" value="{{ old('mail_reply_to', $tenant->mail_reply_to) }}"
+                       placeholder="{{ $ersatzAntwort ?? 'info@dein-betrieb.de' }}" class="mt-1 w-full rounded-lg border-stone-200">
+                <span class="mt-1 block text-xs {{ $ersatzAntwort ? 'text-stone-500' : 'text-amber-700' }}">
+                    @if($ersatzAntwort)
+                        Leer: {{ $ersatzAntwort }} (E-Mail aus den Stammdaten bzw. Adresse für Benachrichtigungen)
+                    @else
+                        Bitte eintragen. Solange hier und in den Stammdaten keine Adresse steht, erreichen Antworten von Gästen niemanden.
+                    @endif
+                </span>
+            </label>
+            @error('mail_from_name')<p class="text-xs text-red-600 sm:col-span-2">{{ $message }}</p>@enderror
+            @error('mail_reply_to')<p class="text-xs text-red-600 sm:col-span-2">{{ $message }}</p>@enderror
+            <div class="sm:col-span-2">
+                <button class="rounded-xl bg-stone-900 px-5 py-2.5 font-bold text-white">Speichern</button>
+            </div>
+        </form>
+    </div>
+    @endif
+
     {{-- Betriebstyp --}}
     <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
         <h2 class="mb-1 font-bold">Betriebstyp <span class="tip" tabindex="0" data-tip="Legt fest, ob dein Betrieb als Restaurant mit Tischreservierungen oder als Salon mit Terminbuchungen pro Mitarbeiter arbeitet. Du kannst jederzeit umschalten – alles passt sich automatisch an.">?</span></h2>

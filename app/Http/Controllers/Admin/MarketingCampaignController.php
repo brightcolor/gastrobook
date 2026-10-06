@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Mail\TemplatedMail;
 use App\Models\Guest;
 use App\Models\MarketingCampaign;
 use App\Services\AuditLogger;
+use App\Services\GuestMailSender;
 use App\Services\MarketingCampaignService;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
@@ -144,11 +144,13 @@ class MarketingCampaignController extends Controller
 
         $rendered = $this->campaigns->render($campaign, $location, $sample);
 
-        Mail::to($request->user()->email)->queue(new TemplatedMail(
+        // Wie der echte Versand: Die Testmail zeigt Absendername und
+        // Antwortadresse, die auch die Gäste sehen.
+        Mail::to($request->user()->email)->queue(app(GuestMailSender::class)->toGuest(
             '[Test] '.$rendered['subject'],
             $rendered['body'],
-            $location->tenant->mail_from_name,
-            $location->tenant->mail_reply_to,
+            $location->tenant,
+            $location,
         ));
 
         return back()->with('success', __('Testmail an :mail verschickt.', ['mail' => $request->user()->email]));

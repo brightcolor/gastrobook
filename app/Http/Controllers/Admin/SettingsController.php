@@ -969,6 +969,37 @@ class SettingsController extends Controller
         return $this->saved($request, __('Markenfarbe gespeichert.'));
     }
 
+    /**
+     * Absendername und Antwortadresse fuer Mails an Gaeste. Leer heisst:
+     * Ersatz aus config/swayy.php (guest_mail), siehe GuestMailSender.
+     */
+    public function updateGuestMail(Request $request)
+    {
+        $tenant = $this->context->tenant();
+        abort_if($tenant === null, 404);
+
+        $validated = $request->validate([
+            'mail_from_name' => ['nullable', 'string', 'max:100', 'not_regex:/[<>@\r\n"]/'],
+            'mail_reply_to' => ['nullable', 'email:rfc', 'max:200'],
+        ], [
+            'mail_from_name.max' => __('Der Absendername darf höchstens 100 Zeichen haben. Bitte kürzen.'),
+            'mail_from_name.not_regex' => __('Der Absendername darf keine Zeichen wie <, >, @ oder Anführungszeichen enthalten. Bitte nur den Namen des Betriebs eintragen.'),
+            'mail_reply_to.email' => __('Die Antwortadresse ist keine gültige E-Mail-Adresse. Bitte so eintragen: info@dein-betrieb.de'),
+            'mail_reply_to.max' => __('Die Antwortadresse darf höchstens 200 Zeichen haben.'),
+        ]);
+
+        $neu = [
+            'mail_from_name' => trim((string) ($validated['mail_from_name'] ?? '')) ?: null,
+            'mail_reply_to' => trim((string) ($validated['mail_reply_to'] ?? '')) ?: null,
+        ];
+        $old = ['mail_from_name' => $tenant->mail_from_name, 'mail_reply_to' => $tenant->mail_reply_to];
+        $tenant->update($neu);
+
+        $this->audit->log('tenant.guest_mail_updated', $tenant, $old, $neu);
+
+        return $this->saved($request, __('E-Mail-Einstellungen gespeichert.'), reload: true);
+    }
+
     public function updateTenantType(Request $request)
     {
         $tenant = $this->context->tenant();

@@ -73,7 +73,9 @@ class GuestAuthService
         $url = route('guest.portal.login', ['tenantSlug' => $tenant->slug, 'token' => $token]);
 
         // Portal login is tenant-wide → use the tenant's first location's tone.
-        $du = Location::where('tenant_id', $tenant->id)->first()?->effectiveSettings()->du() ?? false;
+        $location = Location::where('tenant_id', $tenant->id)->first();
+        $du = $location?->effectiveSettings()->du() ?? false;
+        $sender = app(GuestMailSender::class);
 
         // Send synchronously (like the password-reset mail): a magic link is
         // useless if it sits in a stuck queue when Redis/worker is down.
@@ -84,6 +86,8 @@ class GuestAuthService
                 : __('Hier ist Ihr Anmeldelink für Ihr Kundenkonto bei :name.', ['name' => $tenant->name]),
             $url,
             __('Jetzt anmelden'),
+            $sender->fromName($tenant, $location),
+            $sender->replyTo($tenant, $location),
         ));
     }
 
@@ -99,7 +103,10 @@ class GuestAuthService
         $token = $this->issue($guest, 'verify', $reservation->id, 1440);
         $url = route('guest.verify', ['token' => $token]);
 
-        $du = $reservation->location()->withoutGlobalScope('tenant')->first()?->effectiveSettings()->du() ?? false;
+        $location = $reservation->location()->withoutGlobalScope('tenant')->first();
+        $tenant = $location?->tenant()->withoutGlobalScopes()->first();
+        $du = $location?->effectiveSettings()->du() ?? false;
+        $sender = app(GuestMailSender::class);
 
         // Synchronous: the guest is waiting on this link to finish booking.
         Mail::to($guest->email)->send(new GuestLinkMail(
@@ -109,6 +116,8 @@ class GuestAuthService
                 : __('Bitte bestätigen Sie Ihre E-Mail-Adresse, um Ihre Buchung :code abzuschließen.', ['code' => $reservation->code]),
             $url,
             __('E-Mail bestätigen'),
+            $sender->fromName($tenant, $location),
+            $sender->replyTo($tenant, $location),
         ));
     }
 }

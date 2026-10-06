@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Enums\ReservationStatus;
-use App\Mail\TemplatedMail;
 use App\Models\Location;
 use App\Models\NotificationLog;
 use App\Models\Reservation;
@@ -29,6 +28,7 @@ class ReservationLifecycleService
         private readonly NotificationTemplateRenderer $templates,
         private readonly WebhookDispatchService $webhooks,
         private readonly AuditLogger $audit,
+        private readonly GuestMailSender $mailSender,
     ) {}
 
     /**
@@ -535,15 +535,15 @@ class ReservationLifecycleService
                 'code' => $reservation->code,
             ];
 
-            Mail::to($reservation->guest_email_snapshot)->queue(new TemplatedMail(
+            Mail::to($reservation->guest_email_snapshot)->queue($this->mailSender->toGuest(
                 $du
                     ? __('Tischänderung zu deiner Reservierung :code – :loc', $vars)
                     : __('Tischänderung zu Ihrer Reservierung :code – :loc', $vars),
                 $du
                     ? __("Hallo :name,\n\nzu deiner Reservierung am :date um :time Uhr haben wir dir statt deines Wunschtisches Tisch :tables zugewiesen, damit alles optimal passt. An deiner Reservierung ändert sich sonst nichts.\n\nBei Fragen melde dich gerne.\n\n:loc", $vars)
                     : __("Hallo :name,\n\nzu Ihrer Reservierung am :date um :time Uhr haben wir Ihnen statt Ihres Wunschtisches Tisch :tables zugewiesen, damit alles optimal passt. An Ihrer Reservierung ändert sich sonst nichts.\n\nBei Fragen melden Sie sich gerne.\n\n:loc", $vars),
-                $tenant?->mail_from_name,
-                $tenant?->mail_reply_to,
+                $tenant,
+                $location,
             ));
 
             $reservation->update(['table_chosen_by_guest' => false]);
@@ -852,11 +852,12 @@ class ReservationLifecycleService
         $subject = 'Neue Reservierung – '.$localStart->format('d.m.').' '.$localStart->format('H:i').' · '
             .$reservation->guest_name_snapshot.' ('.$reservation->party_size.' P.)';
 
-        Mail::to($to)->queue(new TemplatedMail(
+        Mail::to($to)->queue($this->mailSender->toOperator(
             $subject,
             implode("\n", $lines),
-            $tenant?->mail_from_name,
-            $tenant?->mail_reply_to,
+            $tenant,
+            $location,
+            $reservation->guest_email_snapshot,
         ));
 
         NotificationLog::withoutGlobalScopes()->create([
@@ -910,13 +911,11 @@ class ReservationLifecycleService
     {
         $rendered = $this->templates->render($templateKey, $reservation, $extra);
         $tenant = $reservation->tenant()->first();
+        $location = $reservation->location()->withoutGlobalScope('tenant')->first();
 
-        Mail::to($reservation->guest_email_snapshot)->queue(new TemplatedMail(
-            $rendered['subject'],
-            $rendered['body'],
-            $tenant?->mail_from_name,
-            $tenant?->mail_reply_to,
-        ));
+        Mail::to($reservation->guest_email_snapshot)->queue(
+            $this->mailSender->toGuest($rendered['subject'], $rendered['body'], $tenant, $location)
+        );
 
         NotificationLog::withoutGlobalScopes()->create([
             'tenant_id' => $reservation->tenant_id,

@@ -161,7 +161,8 @@ Abbuchungen. Das Mandat kann jederzeit im Konto gekündigt werden.
 
 - **E-Mail:** Bestätigungen, Erinnerungen, Statusänderungen, Feedback-Anfragen
   und Zahlungs-/Stornoinformationen versenden wir per E-Mail über einen
-  SMTP-Dienstleister.
+  SMTP-Dienstleister. Antworten Sie auf eine solche E-Mail, geht Ihre Antwort
+  direkt an die E-Mail-Adresse des Betriebs, bei dem Sie gebucht haben.
 - **SMS (sofern aktiviert):** Terminerinnerungen per SMS über den deutschen
   Anbieter **seven.io** (seven communications GmbH). Hierzu wird Ihre
   Telefonnummer an den Anbieter als Auftragsverarbeiter übermittelt.

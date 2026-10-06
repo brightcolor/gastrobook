@@ -408,6 +408,8 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
             ->middleware('permission:tenant.settings.manage')->name('settings.tenant-type');
         Route::put('/settings/branding', [SettingsController::class, 'updateBranding'])
             ->middleware('permission:tenant.settings.manage')->name('settings.branding');
+        Route::put('/settings/guest-mail', [SettingsController::class, 'updateGuestMail'])
+            ->middleware('permission:tenant.settings.manage')->name('settings.guest-mail');
     });
 
     // Salon: Leistungen

@@ -727,6 +727,14 @@ MAIL_FROM_ADDRESS="no-reply@example.com"
 MAIL_FROM_NAME="Swayy"
 ```
 
+**Antworten von Gästen:** Alle Mails an Gäste gehen mit `MAIL_FROM_ADDRESS` als Absender (SPF/DKIM bleiben passend), zeigen aber den Namen des Betriebs und tragen dessen Antwortadresse als Reply-To. Antwortet ein Gast, landet die Mail direkt beim Betrieb, ohne eigenes SMTP je Betrieb. Der Betrieb pflegt Absendername und Antwortadresse unter *Einstellungen › Allgemein › E-Mails an Gäste*. Ohne eigene Angabe gelten die Ersatzlisten:
+
+| Variable | Voreinstellung | Wirkung |
+|---|---|---|
+| `SWAYY_GUEST_MAIL_REPLY_TO_FALLBACKS` | `location_email,owner_notification_email` | Ersatz für die Antwortadresse, in dieser Reihenfolge; `-` für keinen |
+| `SWAYY_GUEST_MAIL_FROM_NAME_FALLBACKS` | `location_name,tenant_name` | Ersatz für den Absendernamen; ohne Treffer gilt `MAIL_FROM_NAME` |
+| `SWAYY_GUEST_MAIL_OWNER_REPLY_TO_GUEST` | `true` | Benachrichtigung über eine neue Buchung: Antworten des Betriebs gehen direkt an den Gast |
+
 Zum lokalen Testen ohne echten Versand: `MAIL_MAILER=log` → Mails landen in `storage/logs/laravel.log`. Vorlagen liegen als Defaults im `NotificationTemplateRenderer` und sind pro Tenant/Standort über die Tabelle `notification_templates` überschreibbar (Platzhalter: `{guest_name}`, `{reservation_date}`, `{cancel_link}`, …).
 
 ---

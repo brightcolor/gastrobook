@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.129.0] – 2026-10-06
+
+### Antworten von Gästen landen beim Betrieb
+
+Antwortete ein Gast auf eine Mail aus Swayy, ging die Antwort an die
+Absenderadresse der Plattform und erreichte niemanden. Jetzt trägt jede Mail an
+Gäste die Antwortadresse des Betriebs als Reply-To. Absender bleibt die Adresse
+der Plattform, damit SPF und DKIM passen; ein eigenes SMTP je Betrieb ist dafür
+unnötig.
+
+- **Neue Karte „E-Mails an Gäste“** unter Einstellungen › Allgemein:
+  Absendername und Antwortadresse, mit verständlichen Meldungen bei
+  ungültigen Eingaben. Die Karte zeigt, was ohne eigene Angabe gilt, und
+  warnt, wenn Antworten niemanden erreichen würden.
+- **Ohne eigene Angabe** gilt zuerst die E-Mail des Standorts aus den
+  Stammdaten, danach die Adresse für Betreiber-Benachrichtigungen. Als
+  Absendername erscheint der Name des Standorts. Beide Reihenfolgen sind
+  einstellbar (`SWAYY_GUEST_MAIL_REPLY_TO_FALLBACKS`,
+  `SWAYY_GUEST_MAIL_FROM_NAME_FALLBACKS`).
+- **Gilt für alle Mails an Gäste:** Buchungs- und Statusmails, Erinnerungen,
+  Tischänderung, Warteliste, Event-Buchungen, Marketing sowie Bestätigungs-
+  und Anmeldelink.
+- **Benachrichtigung über eine neue Buchung:** Antwortet der Betrieb darauf,
+  geht die Mail direkt an den Gast (`SWAYY_GUEST_MAIL_OWNER_REPLY_TO_GUEST`,
+  Vorgabe an).
+- Datenschutzhinweise ergänzt: Antworten gehen an den Betrieb.
+
 ## [1.128.6] – 2026-10-06
 
 ### Freigabe von Hand: Gäste hören nach dem Bestätigungsklick von uns

@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Mail\TemplatedMail;
 use App\Models\Location;
 use App\Models\Reservation;
 use App\Models\User;
@@ -225,12 +224,14 @@ class WaitlistService
             // laeuft: Die Queue liegt auf Redis, nicht in derselben Datenbank.
             // Ein Arbeiter koennte die Mail also verschicken, bevor - oder
             // ohne dass - das Angebot ueberhaupt existiert.
-            Mail::to($entry->guest_email)->queue((new TemplatedMail(
+            Mail::to($entry->guest_email)->queue(app(GuestMailSender::class)->toGuest(
                 __('Ein Tisch ist frei geworden – :location', ['location' => $location->name]),
                 $du
                     ? __("Hallo :name,\n\nfür :date um :time Uhr ist ein Tisch für :party Personen frei geworden.\n\nBitte bestätige innerhalb von :minutes Minuten:\n:link\n\n:location", $vars)
                     : __("Hallo :name,\n\nfür :date um :time Uhr ist ein Tisch für :party Personen frei geworden.\n\nBitte bestätigen Sie innerhalb von :minutes Minuten:\n:link\n\n:location", $vars),
-            ))->afterCommit());
+                $location->tenant()->withoutGlobalScopes()->first(),
+                $location,
+            )->afterCommit());
         }
 
         $this->audit->log('waitlist.offered', $entry, null, ['offer_id' => $offer->id], null, $actor, $entry->tenant_id);
