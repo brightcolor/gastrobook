@@ -115,12 +115,26 @@ class GuestPortalController extends Controller
 
         if ($reservation !== null && $reservation->status === ReservationStatus::Requested) {
             $settings = $reservation->location()->withoutGlobalScope('tenant')->first()?->effectiveSettings();
-            if ($settings && $settings->auto_confirm && ! $settings->request_only) {
+            if ($settings && ! $settings->freigabeVonHand()) {
                 app(ReservationLifecycleService::class)->transition(
                     $reservation, ReservationStatus::Confirmed, null, 'guest', 'email_confirmed'
                 );
                 $reservation->refresh();
             }
+        }
+
+        // Gibt der Betrieb jede Buchung selbst frei, bleibt sie nach dem Klick
+        // eine Anfrage. Die Eingangsbestätigung wurde beim Anlegen wegen der
+        // offenen Adresse zurückgehalten und kommt jetzt – einmal, auch wenn
+        // der Link ein zweites Mal geöffnet wird.
+        if ($reservation !== null
+            && $reservation->status === ReservationStatus::Requested
+            && $reservation->guest_email_snapshot
+            && ! NotificationLog::withoutGlobalScopes()
+                ->where('reservation_id', $reservation->id)
+                ->where('template_key', 'reservation_requested')
+                ->exists()) {
+            app(ReservationLifecycleService::class)->sendGuestMail($reservation, 'reservation_requested');
         }
 
         // Wartet die Buchung auf eine Anzahlung, ist genau hier der richtige

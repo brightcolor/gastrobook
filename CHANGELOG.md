@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.128.6] – 2026-10-06
+
+### Freigabe von Hand: Gäste hören nach dem Bestätigungsklick von uns
+
+Verlangt ein Standort die Bestätigung der E-Mail-Adresse und gibt er Buchungen
+selbst frei, bekam der Gast nach dem Klick auf den Bestätigungslink bisher
+keine Mail. Die Eingangsbestätigung wurde beim Anlegen zurückgehalten, weil die
+Adresse noch offen war, und danach nie verschickt. Erst die Freigabe durch den
+Betrieb brachte die erste Nachricht, mitunter Tage später.
+
+- **Nach dem Klick kommt die Eingangsbestätigung,** genau einmal, auch wenn
+  der Link ein zweites Mal geöffnet wird oder ein Mailscanner ihn vorher
+  abruft.
+- **Der Gast erfährt an jeder Station, dass das Team persönlich entscheidet:**
+  auf der Seite nach dem Absenden, auf der Seite nach dem Klick und in der
+  Mail. Die Seite nach dem Absenden sagt bei Freigabe von Hand, dass der Klick
+  die Anfrage zum Betrieb bringt; bei Sofortbestätigung bleibt es bei
+  „erst dann ist Ihr Tisch reserviert“.
+- **Neue Vorgabe für die Mail „Anfrage eingegangen“** in Du- und Sie-Form:
+  freundlicher Ton, alle Eckdaten der Buchung und der Link zum Ansehen oder
+  Zurückziehen. Eigene Vorlagen eines Betriebs bleiben unverändert.
+- Die Regel „Betrieb gibt selbst frei“ steht an einer Stelle
+  (`LocationSettings::freigabeVonHand()`) und gilt für Anlegen und Klick
+  gleichermaßen.
+
 ## [1.128.5] – 2026-10-06
 
 ### Einstellungsseite: Fehlermeldungen kommen an

@@ -9,6 +9,7 @@
     // Bestaetigungslink erst nach Ablauf, der Tisch ist laengst wieder frei.
     $nochAktiv = $status?->isActive() ?? false;
     $wartetAufZahlung = $status === \App\Enums\ReservationStatus::PaymentPending;
+    $platz = $reservation?->location?->tenant?->isSalon() ? 'Termin' : 'Tisch';
 @endphp
 <div class="mx-auto max-w-md rounded-2xl bg-white p-6 text-center shadow-sm">
     <div class="text-5xl">{{ $reservation && ! $nochAktiv ? '⌛' : '✅' }}</div>
@@ -45,9 +46,21 @@
                 leisten {{ $du ? 'kannst' : 'können' }} – erst danach ist der
                 Tisch verbindlich reserviert.
             @else
-                wird bearbeitet.
+                ist bei uns angekommen.
             @endif
         </p>
+        @if($status === \App\Enums\ReservationStatus::Requested)
+            <p class="mt-3 text-stone-600">
+                Wir schauen uns jede Anfrage persönlich an und
+                {{ $du ? 'schreiben dir' : 'schreiben Ihnen' }}, sobald
+                {{ $du ? 'dein' : 'Ihr' }} {{ $platz }} feststeht. Eine kurze
+                Eingangsbestätigung {{ $du ? 'hast du' : 'haben Sie' }} schon
+                im Postfach.
+            </p>
+            <p class="mt-3 text-sm text-stone-500">
+                Wir freuen uns auf {{ $du ? 'dich' : 'Sie' }}!
+            </p>
+        @endif
         <a href="{{ route('booking.manage', ['code' => $reservation->code, 'token' => $reservation->manage_token]) }}"
            class="mt-5 inline-block text-sm text-brand underline">Buchung ansehen</a>
     @else

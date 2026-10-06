@@ -95,6 +95,15 @@ class LocationSettings extends Model
     }
 
     /**
+     * Der Betrieb gibt Online-Buchungen selbst frei. Der Gast bekommt dann
+     * zuerst eine Eingangsbestätigung und die Zusage erst nach der Freigabe.
+     */
+    public function freigabeVonHand(): bool
+    {
+        return $this->request_only || ! $this->auto_confirm;
+    }
+
+    /**
      * Duration in minutes for a given party size and local start time.
      * duration_rules: [{"min_party":1,"max_party":4,"duration":90}, ...]
      */

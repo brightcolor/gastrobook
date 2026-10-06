@@ -70,8 +70,18 @@ if ($companions) {
         <p class="mt-2 text-sm leading-relaxed text-stone-600">
             Wir haben {{ $du ? 'dir' : 'Ihnen' }} eine E-Mail an
             <strong class="whitespace-nowrap">{{ $reservation->guest_email_snapshot }}</strong> geschickt.
-            {{ $du ? 'Klicke' : 'Klicken Sie' }} auf den Link darin –
-            <strong>erst dann {{ $du ? 'ist dein Tisch' : 'ist Ihr Tisch' }} reserviert.</strong>
+            @if($settings->freigabeVonHand())
+                {{ $du ? 'Klicke' : 'Klicken Sie' }} auf den Link darin, dann landet
+                {{ $du ? 'deine' : 'Ihre' }} Anfrage bei uns.
+            </p>
+            <p class="mt-2 text-sm leading-relaxed text-stone-600">
+                Wir schauen uns jede Anfrage persönlich an und
+                {{ $du ? 'schreiben dir' : 'schreiben Ihnen' }}, sobald
+                {{ $du ? 'dein' : 'Ihr' }} {{ $isSalon ? 'Termin' : 'Tisch' }} feststeht.
+            @else
+                {{ $du ? 'Klicke' : 'Klicken Sie' }} auf den Link darin –
+                <strong>erst dann {{ $du ? 'ist dein Tisch' : 'ist Ihr Tisch' }} reserviert.</strong>
+            @endif
         </p>
 
         <div class="mt-4 rounded-xl bg-amber-50 p-4 text-left text-sm text-amber-900">
@@ -90,7 +100,9 @@ if ($companions) {
     @else
         <p class="mt-2 text-sm text-stone-500">
             @if($isRequested)
-                Wir prüfen {{ $du ? 'deine' : 'Ihre' }} Anfrage und melden uns schnellstmöglich.
+                Schön, dass {{ $du ? 'du' : 'Sie' }} zu uns {{ $du ? 'möchtest' : 'möchten' }}!
+                Wir schauen uns {{ $du ? 'deine' : 'Ihre' }} Anfrage persönlich an und
+                {{ $du ? 'schreiben dir' : 'schreiben Ihnen' }}, sobald alles feststeht.
             @elseif($isPending)
                 {{ $du ? 'Deine' : 'Ihre' }} {{ $vorgang }} wird nach Zahlungseingang bestätigt.
             @endif

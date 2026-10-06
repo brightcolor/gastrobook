@@ -138,8 +138,8 @@ class NotificationTemplateRenderer
                     'body' => "Hallo {guest_name},\n\ndeine Reservierung ist bestätigt:\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nPersonen: {party_size}\nReservierungsnummer: {reservation_code}\n\nÄndern oder stornieren: {cancel_link}\n\nWir freuen uns auf deinen Besuch!\n{location_name}",
                 ],
                 'reservation_requested' => [
-                    'subject' => 'Reservierungsanfrage erhalten – {location_name}',
-                    'body' => "Hallo {guest_name},\n\nwir haben deine Anfrage für den {reservation_date} um {reservation_time} Uhr ({party_size} Personen) erhalten und melden uns schnellstmöglich.\n\nReservierungsnummer: {reservation_code}\n\n{location_name}",
+                    'subject' => 'Deine Anfrage ist angekommen – {location_name}',
+                    'body' => "Hallo {guest_name},\n\nschön, dass du zu uns möchtest! Deine Anfrage ist bei uns angekommen:\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nPersonen: {party_size}\nReservierungsnummer: {reservation_code}\n\nWir schauen uns jede Anfrage persönlich an und schreiben dir, sobald alles feststeht. Mit dieser Zusage ist dein Platz dann fest für dich reserviert.\n\nAnsehen oder zurückziehen: {cancel_link}\n\nHerzliche Grüße\n{location_name}",
                 ],
                 'reservation_cancelled' => [
                     'subject' => 'Reservierung storniert – {location_name}',
@@ -182,8 +182,8 @@ class NotificationTemplateRenderer
                 'body' => "Hallo {guest_name},\n\nIhre Reservierung ist bestätigt:\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nPersonen: {party_size}\nReservierungsnummer: {reservation_code}\n\nÄndern oder stornieren: {cancel_link}\n\nWir freuen uns auf Ihren Besuch!\n{location_name}",
             ],
             'reservation_requested' => [
-                'subject' => 'Reservierungsanfrage erhalten – {location_name}',
-                'body' => "Hallo {guest_name},\n\nwir haben Ihre Anfrage für den {reservation_date} um {reservation_time} Uhr ({party_size} Personen) erhalten und melden uns schnellstmöglich.\n\nReservierungsnummer: {reservation_code}\n\n{location_name}",
+                'subject' => 'Ihre Anfrage ist angekommen – {location_name}',
+                'body' => "Hallo {guest_name},\n\nschön, dass Sie zu uns möchten! Ihre Anfrage ist bei uns angekommen:\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nPersonen: {party_size}\nReservierungsnummer: {reservation_code}\n\nWir schauen uns jede Anfrage persönlich an und schreiben Ihnen, sobald alles feststeht. Mit dieser Zusage ist Ihr Platz dann fest für Sie reserviert.\n\nAnsehen oder zurückziehen: {cancel_link}\n\nHerzliche Grüße\n{location_name}",
             ],
             'reservation_cancelled' => [
                 'subject' => 'Reservierung storniert – {location_name}',

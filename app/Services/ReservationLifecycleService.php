@@ -173,7 +173,7 @@ class ReservationLifecycleService
             $status = ReservationStatus::Confirmed;
             if ($data['source'] === 'walk_in') {
                 $status = ReservationStatus::Seated;
-            } elseif ($online && ($settings->request_only || ! $settings->auto_confirm)) {
+            } elseif ($online && $settings->freigabeVonHand()) {
                 $status = ReservationStatus::Requested;
             }
             // Hold the booking until the guest confirms their email (once)
