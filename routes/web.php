@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ReservationAttachmentController;
 use App\Http\Controllers\Admin\ReservationBookController;
 use App\Http\Controllers\Admin\ServiceController;
+use App\Http\Controllers\Admin\Settings\SettingsMenuController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\StaffCalendarController;
 use App\Http\Controllers\Admin\StaffMemberController;
@@ -352,6 +353,9 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
     Route::post('/account/import', [AccountController::class, 'import'])->name('account.import');
     Route::delete('/account', [AccountController::class, 'destroy'])->name('account.destroy');
     Route::delete('/account/tenant', [AccountController::class, 'destroyTenant'])->name('account.tenant.destroy');
+
+    // Einstieg in die Einstellungen (Smartphone); prüft selbst, ob eine Seite erlaubt ist.
+    Route::get('/settings/menu', SettingsMenuController::class)->name('admin.settings.menu');
 
     // Settings (rooms, tables, hours, booking rules)
     Route::middleware('permission:tables.manage')->group(function () {
