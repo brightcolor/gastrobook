@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.133.1] – 2026-10-07
+
+### Saison-Hinweis: Buchen geht schon jetzt
+
+Der Hinweis außerhalb der Saison lautete „Reservierungen nehmen wir wieder ab
+dem 23. November entgegen" und klang, als ließe sich erst ab dann buchen. Gebucht
+werden kann aber jederzeit – nur der gewählte Tag liegt außerhalb der Saison.
+
+- Neuer Text: „An diesem Tag haben wir geschlossen. Reservieren können Sie schon
+  jetzt – wählen Sie einfach einen Tag ab dem 23. November." (Ton Sie/du)
+- Knopf „Zum 23. November" stellt den ersten buchbaren Tag direkt im Formular
+  ein, sofern er im Buchungshorizont liegt.
+
 ## [1.133.0] – 2026-10-07
 
 ### Buchbare Saison für Saisonbetriebe

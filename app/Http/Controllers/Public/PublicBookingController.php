@@ -238,10 +238,12 @@ class PublicBookingController extends Controller
 
     /**
      * Warmer Hinweis, wenn der angefragte Tag außerhalb der buchbaren Saison
-     * liegt: nennt den nächsten Saisonstart. null, wenn der Tag in Saison liegt
-     * oder gar keine Saison gesetzt ist.
+     * liegt. Gebucht werden kann jederzeit – nur dieser Tag liegt außerhalb.
+     * Darum nennt der Text den ersten buchbaren Tag, und der Sprung-Knopf
+     * stellt ihn im Formular ein. null, wenn der Tag in Saison liegt oder gar
+     * keine Saison gesetzt ist.
      *
-     * @return array{text: string, next_date: ?string}|null
+     * @return array{text: string, next_date: ?string, jump_label: ?string}|null
      */
     private function seasonNotice(Location $location, CarbonImmutable $localDate): ?array
     {
@@ -252,16 +254,23 @@ class PublicBookingController extends Controller
         $next = $this->seasons->nextOpening($location, $localDate);
         $du = $location->effectiveSettings()->du();
 
-        if ($next !== null) {
-            $tag = $next->locale('de')->translatedFormat('j. F');
-            $text = $du
-                ? 'Schön, dass du da bist! Reservierungen nehmen wir wieder ab dem '.$tag.' entgegen. Schau gern bis dahin noch einmal vorbei.'
-                : 'Schön, dass Sie da sind! Reservierungen nehmen wir wieder ab dem '.$tag.' entgegen. Schauen Sie gern bis dahin noch einmal vorbei.';
-        } else {
-            $text = 'In diesem Zeitraum nehmen wir gerade keine Reservierungen entgegen.';
+        if ($next === null) {
+            return [
+                'text' => $du ? 'An diesem Tag haben wir geschlossen. Wähl gern einen anderen Tag.' : 'An diesem Tag haben wir geschlossen. Wählen Sie gern einen anderen Tag.',
+                'next_date' => null,
+                'jump_label' => null,
+            ];
         }
 
-        return ['text' => $text, 'next_date' => $next?->toDateString()];
+        $tag = $next->locale('de')->translatedFormat('j. F');
+
+        return [
+            'text' => $du
+                ? 'Schön, dass du da bist! An diesem Tag haben wir geschlossen. Reservieren kannst du schon jetzt – wähl einfach einen Tag ab dem '.$tag.'.'
+                : 'Schön, dass Sie da sind! An diesem Tag haben wir geschlossen. Reservieren können Sie schon jetzt – wählen Sie einfach einen Tag ab dem '.$tag.'.',
+            'next_date' => $next->toDateString(),
+            'jump_label' => 'Zum '.$tag,
+        ];
     }
 
     /**
