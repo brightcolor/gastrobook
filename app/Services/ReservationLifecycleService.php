@@ -544,6 +544,7 @@ class ReservationLifecycleService
                     : __("Hallo :name,\n\nzu Ihrer Reservierung am :date um :time Uhr haben wir Ihnen statt Ihres Wunschtisches Tisch :tables zugewiesen, damit alles optimal passt. An Ihrer Reservierung ändert sich sonst nichts.\n\nBei Fragen melden Sie sich gerne.\n\n:loc", $vars),
                 $tenant,
                 $location,
+                $reservation,
             ));
 
             $reservation->update(['table_chosen_by_guest' => false]);
@@ -914,7 +915,7 @@ class ReservationLifecycleService
         $location = $reservation->location()->withoutGlobalScope('tenant')->first();
 
         Mail::to($reservation->guest_email_snapshot)->queue(
-            $this->mailSender->toGuest($rendered['subject'], $rendered['body'], $tenant, $location)
+            $this->mailSender->toGuest($rendered['subject'], $rendered['body'], $tenant, $location, $reservation)
         );
 
         NotificationLog::withoutGlobalScopes()->create([

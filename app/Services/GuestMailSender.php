@@ -6,7 +6,9 @@ namespace App\Services;
 
 use App\Mail\TemplatedMail;
 use App\Models\Location;
+use App\Models\Reservation;
 use App\Models\Tenant;
+use App\Services\Mail\GuestReplyAddress;
 
 /**
  * Absendername und Antwortadresse fuer Mails eines Betriebs.
@@ -62,14 +64,30 @@ class GuestMailSender
     /**
      * Mail an einen Gast: Name des Betriebs, Antworten an den Betrieb.
      */
-    public function toGuest(string $subject, string $body, ?Tenant $tenant, ?Location $location): TemplatedMail
+    public function toGuest(string $subject, string $body, ?Tenant $tenant, ?Location $location, ?Reservation $reservation = null): TemplatedMail
     {
         return new TemplatedMail(
             $subject,
             $body,
             $this->fromName($tenant, $location),
-            $this->replyTo($tenant, $location),
+            $this->relayReplyTo($tenant, $reservation) ?? $this->replyTo($tenant, $location),
         );
+    }
+
+    /**
+     * Antwortadresse über Swayy, wenn der Betrieb Relay aktiviert hat, die
+     * Domain gesetzt ist und eine Reservierung vorliegt. Sonst null: Es gilt
+     * der Ersatz aus replyTo() (direktes Reply-To des Betriebs).
+     */
+    private function relayReplyTo(?Tenant $tenant, ?Reservation $reservation): ?string
+    {
+        if ($tenant === null || $reservation === null || ! $tenant->mail_relay_enabled || ! GuestReplyAddress::isConfigured()) {
+            return null;
+        }
+
+        $reservation->loadMissing('tenant');
+
+        return GuestReplyAddress::forReservation($reservation);
     }
 
     /**
