@@ -1407,7 +1407,9 @@ document.getElementById('addDurationRule')?.addEventListener('click', () => {
     const saved = sessionStorage.getItem(scrollKey);
     if (saved !== null) { window.scrollTo(0, parseInt(saved, 10)); sessionStorage.removeItem(scrollKey); }
 
-    document.querySelectorAll('form').forEach(form => {
+    // Nur Formulare dieser Seite: Standortwahl, Abmelden und Supportzugriff in
+    // der Navigation senden normal und laden die Seite neu.
+    document.querySelectorAll('#main-content form').forEach(form => {
         if (form.querySelector('input[name="_method"][value="DELETE"]')) return;
 
         form.addEventListener('submit', async e => {
