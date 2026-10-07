@@ -862,6 +862,13 @@ details > summary::-webkit-details-marker { display: none; }
                 const data = await res.json();
                 slotContainer.innerHTML = '';
                 if (!data.slots || !data.slots.length) {
+                    if (data.season_notice) {
+                        const note = document.createElement('p');
+                        note.className = 'col-span-full rounded-2xl border-2 border-brand/20 bg-brand/5 px-4 py-4 text-center text-sm font-medium text-stone-700';
+                        note.textContent = data.season_notice.text;
+                        slotContainer.appendChild(note);
+                        return;
+                    }
                     if (data.oversized) {
                         slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm text-stone-600">Für Gruppen ab ' + (parseInt(data.max_party) + 1) + ' Personen nehmen wir Reservierungen gerne direkt entgegen.</p>';
                         // Elemente statt Markup-Text: data.phone ist eine
