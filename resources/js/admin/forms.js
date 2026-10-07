@@ -41,22 +41,59 @@ function problemsOf(res, json) {
     return [text.replace(':status', String(res.status))];
 }
 
+function describedBy(el, add = null, remove = () => false) {
+    const ids = (el.getAttribute('aria-describedby') || '').split(' ').filter((id) => id && !remove(id));
+    if (add && !ids.includes(add)) ids.push(add);
+    if (ids.length) {
+        el.setAttribute('aria-describedby', ids.join(' '));
+    } else {
+        el.removeAttribute('aria-describedby');
+    }
+}
+
 function clearProblems(form) {
     form.querySelector('[data-form-problems]')?.remove();
+    form.querySelectorAll('[data-ajax-error]').forEach((el) => el.remove());
     form.querySelectorAll('[data-ajax-invalid]').forEach((el) => {
         el.removeAttribute('aria-invalid');
         el.removeAttribute('data-ajax-invalid');
-        const ids = (el.getAttribute('aria-describedby') || '').split(' ').filter((id) => id && !id.startsWith('formProblems'));
-        if (ids.length) {
-            el.setAttribute('aria-describedby', ids.join(' '));
-        } else {
-            el.removeAttribute('aria-describedby');
-        }
+        describedBy(el, null, (id) => id.startsWith('formProblems') || id === `${el.id}-error`);
     });
 }
 
-// Zusammenfassung oben im Formular, gemeldete Felder mit aria-invalid und
-// Verweis auf die Zusammenfassung ("hours.0.opens_at" heißt im Formular
+// Fehlertext direkt am Feld, mit derselben ID wie bei x-field ({id}-error):
+// unter dem Feld in seinem Block (Beschriftung, Feld, Hilfesatz).
+function showFieldError(form, field, text) {
+    const errorId = `${field.id}-error`;
+    let note = document.getElementById(errorId);
+    if (!note) {
+        note = document.createElement('p');
+        note.id = errorId;
+        note.className = 'text-[13px] text-red-700';
+        const block = form.querySelector(`label[for="${CSS.escape(field.id)}"]`)?.parentElement ?? field.parentElement;
+        block.append(note);
+    }
+    note.dataset.ajaxError = '';
+    note.textContent = text;
+    describedBy(field, errorId);
+}
+
+// Eintrag der Zusammenfassung: mit Feld als Link, der den Fokus dorthin setzt.
+function summaryEntry({ message, field }) {
+    if (!field?.id) return document.createTextNode(message);
+    const link = document.createElement('a');
+    link.href = `#${field.id}`;
+    link.className = 'underline underline-offset-2';
+    link.textContent = message;
+    link.addEventListener('click', (e) => {
+        e.preventDefault();
+        field.focus();
+    });
+    return link;
+}
+
+// Zusammenfassung oben im Formular mit Links zu den Feldern, dazu der Text am
+// Feld und aria-invalid ("hours.0.opens_at" heißt im Formular
 // "hours[0][opens_at]"). Der Fokus springt zum ersten gemeldeten Feld.
 function showProblems(form, json, messages) {
     const box = document.createElement('div');
@@ -66,30 +103,38 @@ function showProblems(form, json, messages) {
     box.tabIndex = -1;
     box.className = 'rounded-lg border border-red-200 border-l-4 border-l-red-700 bg-red-50 px-3 py-2 text-sm text-red-800';
 
-    if (messages.length === 1) {
-        box.textContent = messages[0];
+    const entries = [];
+    let first = null;
+    Object.entries(json?.errors ?? {}).forEach(([key, list]) => {
+        const [head, ...rest] = key.split('.');
+        const name = head + rest.map((part) => `[${part}]`).join('');
+        const fields = [...form.querySelectorAll(`[name="${CSS.escape(name)}"], [name="${CSS.escape(name)}[]"]`)];
+        const text = [].concat(list).join(' ');
+        const field = fields[0] ?? null;
+        fields.forEach((el) => {
+            el.setAttribute('aria-invalid', 'true');
+            el.setAttribute('data-ajax-invalid', '');
+            // Felder ohne eigene ID (etwa Optionsfelder) verweisen auf die Zusammenfassung.
+            if (!el.id) describedBy(el, box.id);
+        });
+        if (field?.id) showFieldError(form, field, text);
+        first ??= field;
+        entries.push({ message: text, field });
+    });
+    if (entries.length === 0) messages.forEach((message) => entries.push({ message, field: null }));
+
+    if (entries.length === 1) {
+        box.append(summaryEntry(entries[0]));
     } else {
         const list = document.createElement('ul');
         list.className = 'list-disc space-y-1 pl-4';
-        messages.forEach((message) => {
+        entries.forEach((entry) => {
             const item = document.createElement('li');
-            item.textContent = message;
+            item.append(summaryEntry(entry));
             list.append(item);
         });
         box.append(list);
     }
-
-    let first = null;
-    Object.keys(json?.errors ?? {}).forEach((key) => {
-        const [head, ...rest] = key.split('.');
-        const name = head + rest.map((part) => `[${part}]`).join('');
-        form.querySelectorAll(`[name="${CSS.escape(name)}"], [name="${CSS.escape(name)}[]"]`).forEach((el) => {
-            el.setAttribute('aria-invalid', 'true');
-            el.setAttribute('data-ajax-invalid', '');
-            el.setAttribute('aria-describedby', `${el.getAttribute('aria-describedby') || ''} ${box.id}`.trim());
-            first ??= el;
-        });
-    });
 
     form.prepend(box);
     (first ?? box).focus();
