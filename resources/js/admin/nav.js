@@ -33,11 +33,26 @@ export function initRail() {
         toggle.setAttribute('aria-label', collapsed ? 'Navigation ausklappen' : 'Navigation einklappen');
     };
 
+    const setCollapsed = (collapsed) => {
+        apply(collapsed);
+        writeCollapsed(collapsed);
+    };
+
     apply(readCollapsed());
-    toggle.addEventListener('click', () => {
-        const next = rail.dataset.collapsed !== 'true';
-        apply(next);
-        writeCollapsed(next);
+    // Der gespeicherte Zustand gilt sofort; animiert wird erst danach. Das
+    // erzwungene Layout trennt beides, sonst liefe die Breite beim Laden ein.
+    void rail.offsetWidth;
+    window.requestAnimationFrame(() => {
+        rail.dataset.navReady = '';
+    });
+
+    toggle.addEventListener('click', () => setCollapsed(rail.dataset.collapsed !== 'true'));
+    // Die Schaltflächen der eingeklappten Leiste (Standort) klappen sie aus.
+    document.querySelectorAll('[data-nav-expand]').forEach((el) => {
+        el.addEventListener('click', () => {
+            setCollapsed(false);
+            toggle.focus();
+        });
     });
 }
 
@@ -45,20 +60,22 @@ export function initMoreSheet() {
     const sheet = document.getElementById('swayyMore');
     const opener = document.querySelector('[data-more-open]');
     if (!sheet || !opener) return;
-    const main = document.getElementById('main-content');
+    // Hinter dem Blatt ist alles andere gesperrt: Inhalt, Kopfleiste und untere Leiste.
+    const covered = [document.getElementById('main-content'), ...document.querySelectorAll('[data-sheet-inert]')]
+        .filter(Boolean);
 
     const open = () => {
         sheet.hidden = false;
         opener.setAttribute('aria-expanded', 'true');
         document.body.style.overflow = 'hidden';
-        main?.setAttribute('inert', '');
+        covered.forEach((el) => el.setAttribute('inert', ''));
         sheet.querySelector('[role="dialog"] a, [role="dialog"] button, [role="dialog"] select')?.focus();
     };
     const close = () => {
         sheet.hidden = true;
         opener.setAttribute('aria-expanded', 'false');
         document.body.style.overflow = '';
-        main?.removeAttribute('inert');
+        covered.forEach((el) => el.removeAttribute('inert'));
         opener.focus();
     };
 
@@ -66,6 +83,10 @@ export function initMoreSheet() {
     sheet.querySelectorAll('[data-more-close]').forEach((el) => el.addEventListener('click', close));
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && !sheet.hidden) close();
+    });
+    // Ab 768 px gibt es kein Blatt mehr; ein offener Zustand würde Seite und Bildlauf sperren.
+    window.matchMedia('(min-width: 768px)').addEventListener('change', (e) => {
+        if (e.matches && !sheet.hidden) close();
     });
 }
 

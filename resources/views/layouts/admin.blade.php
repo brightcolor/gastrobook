@@ -29,7 +29,7 @@
     $nav = \App\Support\Navigation\Navigation::fromConfig();
     $settingsMode = $nav->isSettingsRoute($routeName);
     $mainGroups = $tenant ? $nav->main($user, $tenant, $location, $routeName) : [];
-    $settingsGroups = $tenant ? $nav->settings($user, $tenant, $location, $routeName) : [];
+    $settingsGroups = $tenant && $settingsMode ? $nav->settings($user, $tenant, $location, $routeName) : [];
     $mobileBar = $tenant ? $nav->mobileBar($user, $tenant, $location, $routeName) : [];
     $settingsUrl = $tenant ? $nav->firstSettingsUrl($user, $tenant, $location) : null;
 @endphp
@@ -37,7 +37,7 @@
 <div class="flex min-h-screen">
     {{-- Seitenleiste: ab 1280 px voll, 768–1279 px einklappbar, darunter ausgeblendet --}}
     <aside id="swayyNav" data-nav-rail data-nav-mode="{{ $settingsMode ? 'settings' : 'main' }}"
-           class="nav-rail sticky top-0 hidden h-screen shrink-0 flex-col bg-stone-900 text-stone-100 md:flex">
+           class="nav-rail sticky top-0 hidden h-dvh shrink-0 flex-col bg-stone-900 text-stone-100 md:flex">
         <div class="flex items-center justify-between gap-2 px-4 py-4">
             <span class="nav-full px-1 text-lg font-bold tracking-tight">Swayy<x-beta /></span>
             <button type="button" data-nav-collapse aria-controls="swayyNav" aria-expanded="true" aria-label="Navigation einklappen"
@@ -46,6 +46,13 @@
             </button>
         </div>
         @if($tenant)
+            @if($location)
+                {{-- Nur in der eingeklappten Leiste: Standort anzeigen und Leiste ausklappen --}}
+                <button type="button" data-nav-expand title="Standort: {{ $location->name }}"
+                        class="nav-rail-only mx-4 mb-3 h-9 w-9 items-center justify-center rounded-md text-stone-300 hover:bg-stone-800 hover:text-white">
+                    <x-nav-icon name="location" /><span class="sr-only">Standort: {{ $location->name }} – Navigation ausklappen</span>
+                </button>
+            @endif
             <div class="nav-full px-5 pb-3 text-xs text-stone-400">{{ $tenant->name }}</div>
             <div class="nav-full px-4 pb-4">
                 @include('admin.partials.nav.location-switch', ['switchId' => 'locationSwitchDesktop'])
@@ -63,11 +70,18 @@
 
     <div class="flex min-w-0 flex-1 flex-col">
         {{-- Kopfleiste auf dem Smartphone --}}
-        <header class="sticky top-0 z-30 flex min-h-12 items-center gap-2 bg-stone-900 px-3 text-stone-100 md:hidden">
+        <header data-sheet-inert class="sticky top-0 z-30 flex min-h-12 items-center gap-2 bg-stone-900 px-3 text-stone-100 md:hidden">
             @if($settingsMode && $settingsUrl)
-                <a href="{{ route('admin.settings.menu') }}" class="flex min-h-10 items-center gap-1.5 rounded-md px-2 text-sm hover:bg-stone-800">
-                    <x-nav-icon name="back" /> Einstellungen
-                </a>
+                {{-- Auf der Einstellungsübersicht selbst führt der Weg zurück zum Betrieb --}}
+                @if($routeName === 'admin.settings.menu')
+                    <a href="{{ route('admin.dashboard') }}" class="flex min-h-10 items-center gap-1.5 rounded-md px-2 text-sm hover:bg-stone-800">
+                        <x-nav-icon name="back" /> Übersicht
+                    </a>
+                @else
+                    <a href="{{ route('admin.settings.menu') }}" class="flex min-h-10 items-center gap-1.5 rounded-md px-2 text-sm hover:bg-stone-800">
+                        <x-nav-icon name="back" /> Einstellungen
+                    </a>
+                @endif
             @else
                 <span class="px-2 font-bold">Swayy<x-beta /></span>
             @endif
@@ -104,12 +118,12 @@
 
 @if($tenant)
     {{-- Untere Leiste auf dem Smartphone: die häufigsten Ziele und „Mehr“ --}}
-    <nav aria-label="Schnellzugriff"
+    <nav aria-label="Schnellzugriff" data-sheet-inert
          class="fixed inset-x-0 bottom-0 z-40 grid border-t border-stone-800 bg-stone-900 text-stone-300 md:hidden"
          style="grid-template-columns: repeat({{ count($mobileBar) + 1 }}, minmax(0, 1fr))">
         @foreach($mobileBar as $item)
             <a href="{{ $item->url }}" data-nav-key="{{ $item->key }}" @if($item->active) aria-current="page" @endif
-               class="flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-[11px] {{ $item->active ? 'text-white' : 'hover:text-white' }}">
+               class="flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-[11px] {{ $item->active ? 'font-semibold text-white shadow-[inset_0_2px_0_0_#fff]' : 'hover:text-white' }}">
                 <x-nav-icon :name="$item->icon" class="h-5 w-5" /><span class="truncate">{{ $item->label }}</span>
             </a>
         @endforeach

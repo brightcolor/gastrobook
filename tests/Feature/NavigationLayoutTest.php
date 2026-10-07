@@ -26,8 +26,18 @@ class NavigationLayoutTest extends TestCase
             ->assertSee('data-nav-key="settings"', false)
             ->assertSee('aria-label="Schnellzugriff"', false)
             ->assertSee('data-more-open', false)
+            ->assertSee('<body data-admin', false)
+            ->assertSee('id="swayyToast" role="status" aria-live="polite"', false)
+            ->assertSee('<header data-sheet-inert', false)
             ->assertDontSee('data-nav-key="webhooks"', false);
-        $this->assertMatchesRegularExpression('/data-nav-key="reservations"[^>]*aria-current="page"/', (string) $response->getContent());
+        $content = (string) $response->getContent();
+        $this->assertMatchesRegularExpression('/data-nav-key="reservations"[^>]*aria-current="page"/', $content);
+
+        // Die untere Leiste trägt den aktiven Eintrag mit zweitem Merkmal neben der Farbe.
+        $this->assertSame(1, preg_match('#<nav aria-label="Schnellzugriff".*?</nav>#s', $content, $bar));
+        $this->assertStringContainsString('data-sheet-inert', $bar[0]);
+        $this->assertMatchesRegularExpression('/data-nav-key="reservations"\s+aria-current="page"[^>]*font-semibold/', $bar[0]);
+        $this->assertDoesNotMatchRegularExpression('/data-nav-key="board"[^>]*aria-current/', $bar[0]);
     }
 
     public function test_settings_pages_swap_the_sidebar_for_the_settings_navigation(): void
@@ -68,6 +78,65 @@ class NavigationLayoutTest extends TestCase
             ->assertOk()
             ->assertSee('Termine')
             ->assertSee('data-nav-key="staff-calendar"', false);
+    }
+
+    public function test_collapsed_rail_offers_the_location_and_an_expand_control(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $name = e($setup['location']->name);
+
+        $this->actingAs($owner)->get('/admin/reservations')
+            ->assertOk()
+            ->assertSee('data-nav-expand', false)
+            ->assertSee('title="Standort: '.$name.'"', false)
+            ->assertSee('Standort: '.$name.' – Navigation ausklappen', false);
+    }
+
+    public function test_impersonation_stop_stays_reachable_in_the_collapsed_rail(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $html = (string) $this->actingAs($owner)
+            ->withSession(['impersonating_tenant_id' => $setup['tenant']->id])
+            ->get('/admin/reservations')
+            ->assertOk()
+            ->getContent();
+
+        // Ausführlicher Nutzerbereich und Symbolknopf der eingeklappten Leiste.
+        $this->assertGreaterThanOrEqual(2, substr_count($html, 'Supportzugriff beenden'));
+        $this->assertStringContainsString('>Supportzugriff beenden</button>', $html);
+        $this->assertStringContainsString('<span class="sr-only">Supportzugriff beenden</span>', $html);
+    }
+
+    public function test_stop_button_is_absent_without_impersonation(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->get('/admin/reservations')
+            ->assertOk()
+            ->assertDontSee('Supportzugriff beenden');
+    }
+
+    public function test_settings_overview_header_links_back_to_the_dashboard(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $html = (string) $this->actingAs($owner)->get('/admin/settings/menu')->assertOk()->getContent();
+
+        $this->assertSame(1, preg_match('#<header.*?</header>#s', $html, $header));
+        $this->assertStringContainsString('href="'.route('admin.dashboard').'"', $header[0]);
+        $this->assertStringContainsString('Übersicht', $header[0]);
+        $this->assertStringNotContainsString('href="'.route('admin.settings.menu').'"', $header[0]);
+        $this->assertStringContainsString('data-settings-noresult hidden role="status"', $html);
     }
 
     public function test_layout_and_navigation_use_no_inline_event_handlers(): void

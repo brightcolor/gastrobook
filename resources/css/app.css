@@ -290,17 +290,20 @@
 /* Navigation der Verwaltung (layouts/admin.blade.php, resources/js/admin/nav.js). */
 .nav-rail {
     width: 15rem;
+}
+/* Erst nach dem ersten Anwenden des gespeicherten Zustands animieren (nav.js). */
+.nav-rail[data-nav-ready] {
     transition: width 0.15s ease;
 }
 .nav-rail-only {
     display: none;
 }
 @media (min-width: 768px) and (max-width: 1279.98px) {
-    .nav-rail[data-collapsed='true'][data-nav-mode='main'] {
+    .nav-rail:not([data-collapsed='false'])[data-nav-mode='main'] {
         width: 4.25rem;
     }
-    .nav-rail[data-collapsed='true'][data-nav-mode='main'] .nav-label,
-    .nav-rail[data-collapsed='true'][data-nav-mode='main'] .nav-heading {
+    .nav-rail:not([data-collapsed='false'])[data-nav-mode='main'] .nav-label,
+    .nav-rail:not([data-collapsed='false'])[data-nav-mode='main'] .nav-heading {
         position: absolute;
         width: 1px;
         height: 1px;
@@ -308,13 +311,13 @@
         clip: rect(0 0 0 0);
         white-space: nowrap;
     }
-    .nav-rail[data-collapsed='true'][data-nav-mode='main'] .nav-full {
+    .nav-rail:not([data-collapsed='false'])[data-nav-mode='main'] .nav-full {
         display: none;
     }
-    .nav-rail[data-collapsed='true'][data-nav-mode='main'] .nav-rail-only {
+    .nav-rail:not([data-collapsed='false'])[data-nav-mode='main'] .nav-rail-only {
         display: flex;
     }
-    .nav-rail[data-collapsed='true'][data-nav-mode='main'] [data-nav-key] {
+    .nav-rail:not([data-collapsed='false'])[data-nav-mode='main'] [data-nav-key] {
         justify-content: center;
     }
 }
@@ -327,7 +330,7 @@
     display: none;
 }
 @media (prefers-reduced-motion: reduce) {
-    .nav-rail {
+    .nav-rail[data-nav-ready] {
         transition: none;
     }
 }

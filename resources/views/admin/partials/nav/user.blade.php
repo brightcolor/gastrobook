@@ -1,5 +1,14 @@
 {{-- Nutzerbereich unten in der Seitenleiste und im Blatt „Mehr“. --}}
 <div class="border-t border-stone-700 p-4 text-sm">
+    @if(session('impersonating_tenant_id'))
+        <form method="POST" action="{{ route('saas.stop-impersonation') }}" class="nav-rail-only mb-2">
+            @csrf
+            <button type="submit" title="Supportzugriff beenden"
+                    class="flex h-9 w-9 items-center justify-center rounded-md bg-amber-600 text-white hover:bg-amber-500">
+                <x-nav-icon name="back" /><span class="sr-only">Supportzugriff beenden</span>
+            </button>
+        </form>
+    @endif
     <a href="{{ route('admin.account.show') }}" title="Mein Konto"
        class="nav-rail-only h-9 w-9 items-center justify-center rounded-md text-stone-300 hover:bg-stone-800 hover:text-white">
         <x-nav-icon name="user" /><span class="sr-only">Mein Konto</span>
