@@ -83,4 +83,21 @@ class SeasonAdminTest extends TestCase
 
         $this->assertSame(1, SeasonPeriod::withoutGlobalScopes()->count());
     }
+
+    public function test_the_settings_page_shows_the_season_section(): void
+    {
+        $setup = $this->createTenantSetup();
+        $admin = $this->createMember($setup['tenant'], 'tenant_owner');
+        $setup['location']->seasonPeriods()->create([
+            'tenant_id' => $setup['tenant']->id, 'label' => 'Sommersaison',
+            'start_month' => 4, 'start_day' => 1, 'end_month' => 10, 'end_day' => 31,
+        ]);
+        $this->clearTenantContext();
+
+        $this->actingAs($admin)->get('/admin/settings')
+            ->assertOk()
+            ->assertSee('Buchbare Saison', false)
+            ->assertSee('Sommersaison', false)
+            ->assertSee('1. April', false);
+    }
 }
