@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Muster Ausnahmen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --s50:#fafaf9; --s200:#e7e5e4; --s300:#d6d3d1; --s500:#78716c; --s600:#57534e; --s700:#44403c; --s900:#1c1917; --brand:#0f766e; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Inter', ui-sans-serif, system-ui, sans-serif; background:#d9d6d3; color:var(--s900); }
+  .shell-h { display:flex; flex-wrap:wrap; gap:12px 20px; align-items:center; justify-content:space-between; padding:12px 20px; background:#fff; border-bottom:1px solid var(--s300); }
+  .shell-h h1 { margin:0; font-size:15px; font-weight:600; }
+  .shell-h p { margin:2px 0 0; font-size:13px; color:var(--s600); max-width:640px; }
+  .ctrl { display:flex; flex-wrap:wrap; gap:8px; }
+  .seg { display:inline-flex; border:1px solid var(--s300); border-radius:6px; overflow:hidden; background:#fff; }
+  .seg button { font:inherit; font-size:13px; padding:7px 11px; border:0; background:transparent; color:var(--s700); cursor:pointer; min-height:34px; }
+  .seg button + button { border-left:1px solid var(--s200); }
+  .seg button[aria-pressed="true"] { background:var(--s900); color:#fff; }
+  .seg button:focus-visible { outline:2px solid var(--brand); outline-offset:-2px; }
+  .stage { display:flex; gap:20px; align-items:flex-start; justify-content:center; padding:20px; }
+  .frame { position:relative; background:#fff; box-shadow:0 10px 30px rgba(28,25,23,.18); overflow:hidden; flex-shrink:0; }
+  .frame.phone { border-radius:28px; border:10px solid var(--s900); }
+  .frame iframe { border:0; display:block; transform-origin:0 0; background:#f5f5f4; }
+  .legend { width:340px; flex-shrink:0; background:#fff; border-radius:10px; padding:16px 18px; font-size:13px; line-height:1.5; box-shadow:0 4px 16px rgba(28,25,23,.08); }
+  .legend[hidden] { display:none; }
+  .legend h2 { margin:0 0 4px; font-size:14px; }
+  .legend > p { margin:0 0 12px; color:var(--s600); }
+  .legend ol { list-style:none; margin:0; padding:0; }
+  .legend li { display:grid; grid-template-columns:24px 1fr; gap:8px; padding:9px 0; border-top:1px solid var(--s200); }
+  .legend li b { display:block; }
+  .legend li span.src { display:block; color:var(--s500); font-size:12px; margin-top:2px; }
+  .legend .n { width:22px; height:22px; border-radius:50%; background:#c2410c; color:#fff; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  @media (max-width:1100px) { .stage { flex-direction:column; align-items:center; } .legend { width:100%; max-width:760px; } }
+</style>
+</head>
+<body>
+<header class="shell-h">
+  <div>
+    <h1>Musterseite 3 · Einstellungen › Ausnahmen</h1>
+    <p>Sonderzeiten, Sperrzeiten und Tischsperren in einer Liste. Farben und Schrift von Swayy, alle Inhalte erfunden. Alles lässt sich bedienen.</p>
+  </div>
+  <div class="ctrl">
+    <div class="seg" role="group" aria-label="Ansicht">
+      <button type="button" data-v="desktop" aria-pressed="true">Desktop</button>
+      <button type="button" data-v="phone" aria-pressed="false">Smartphone</button>
+    </div>
+    <div class="seg" role="group" aria-label="Zustand zeigen">
+      <button type="button" data-s="normal" aria-pressed="true">Normal</button>
+      <button type="button" data-s="drawer" aria-pressed="false">Anlegen</button>
+      <button type="button" data-s="edit" aria-pressed="false">Heiligabend bearbeiten</button>
+      <button type="button" data-s="empty" aria-pressed="false">Leer</button>
+    </div>
+    <div class="seg" role="group" aria-label="Erklärungen">
+      <button type="button" id="annoBtn" aria-pressed="true">Erklärungen</button>
+    </div>
+  </div>
+</header>
+
+<div class="stage" id="stage">
+  <div class="frame" id="frame"><iframe id="app" title="Musterseite Ausnahmen"></iframe></div>
+  <aside class="legend" id="legend" aria-label="Erklärungen">
+    <h2>Was hier nach Best Practice gebaut ist</h2>
+    <p>Die Nummern stehen im Bild. 3 und 4 erscheinen beim Anlegen oder Bearbeiten.</p>
+    <ol>
+      <li><span class="n">1</span><div><b>Ein Ort für alles, was an einem Tag anders ist</b>Heute verteilt auf drei Karten (Sonderöffnungszeiten, Sperrzeiten, Tisch sperren). Betreiber fragen „Was gilt an Heiligabend?“ und finden die Antwort jetzt in einer Zeile.<span class="src">NN/g: Struktur nach dem Denkmodell der Nutzer, nicht nach Datenarten</span></div></li>
+      <li><span class="n">2</span><div><b>Kalenderblatt und Wirkungen mit Symbol</b>Datum groß links, jede Wirkung als eigene Zeile mit Symbol und Wort. Die Liste ist nach Monaten gegliedert.<span class="src">Gestalt-Gesetz der Nähe · Zustände mit Form und Wort, nie Farbe allein (WCAG 1.4.1)</span></div></li>
+      <li><span class="n">3</span><div><b>„Was ist anders?“ als Auswahlkarten</b>Mehrere Wirkungen in einem Schritt. Felder erscheinen erst, wenn die Karte gewählt ist. „Geschlossen“ schließt die anderen aus.<span class="src">NN/g: Progressive Disclosure</span></div></li>
+      <li><span class="n">4</span><div><b>„So wirkt es“ vor dem Speichern</b>Die Zusammenfassung zeigt in einem Satz, was Gäste an diesem Tag erleben, inklusive letzter buchbarer Uhrzeit.<span class="src">Nielsen-Heuristik 1: Sichtbarkeit des Systemstatus</span></div></li>
+      <li><span class="n">5</span><div><b>Kommend und Vergangen getrennt</b>Vergangene Einträge stören die Planung nicht und bleiben trotzdem auffindbar.<span class="src">Fokus auf die häufige Aufgabe (Nielsen-Heuristik 8)</span></div></li>
+      <li><span class="n">6</span><div><b>Eine Hauptaktion im Seitenkopf</b>„+ Ausnahme“ steht immer an derselben Stelle, auf jeder Listenseite gleich.<span class="src">Konsistenz (Nielsen-Heuristik 4), Shopify Polaris Page-Header</span></div></li>
+    </ol>
+  </aside>
+</div>
+
+<template id="tpl">
+<style>
+  :root {
+    --s50:#fafaf9; --s100:#f5f5f4; --s200:#e7e5e4; --s300:#d6d3d1; --s400:#a8a29e; --s500:#78716c;
+    --s600:#57534e; --s700:#44403c; --s800:#292524; --s900:#1c1917;
+    --brand:#0f766e; --brand-50:#f0fdfa; --brand-100:#ccfbf1; --ring:rgba(15,118,110,.28);
+    --red:#b91c1c; --red-bg:#fef2f2; --amber:#b45309;
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body { font-family:'Inter', ui-sans-serif, system-ui, sans-serif; font-size:14px; line-height:1.5; color:var(--s900); background:var(--s100); -webkit-font-smoothing:antialiased; }
+  a { color:inherit; }
+  button, input, select { font:inherit; color:inherit; }
+  :focus-visible { outline:2px solid var(--brand); outline-offset:2px; }
+  svg.i { width:16px; height:16px; flex-shrink:0; }
+  [hidden] { display:none !important; }
+
+  .app { display:flex; min-height:100vh; }
+  .snav { width:248px; flex-shrink:0; background:var(--s900); color:#e7e5e4; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; }
+  .snav .brand { padding:18px 20px 6px; font-size:17px; font-weight:700; color:#fff; }
+  .snav .back { display:flex; align-items:center; gap:8px; margin:6px 12px 10px; padding:8px; border-radius:6px; font-size:13px; color:#d6d3d1; text-decoration:none; }
+  .snav .search { margin:0 12px 6px; position:relative; }
+  .snav .search svg { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--s400); }
+  .snav .search input { width:100%; height:36px; padding:0 10px 0 32px; border-radius:6px; border:1px solid var(--s700); background:var(--s800); color:#fff; font-size:13px; }
+  .snav .search input::placeholder { color:var(--s400); }
+  .snav nav { flex:1; overflow-y:auto; padding:2px 12px 16px; }
+  .grp { margin-top:14px; }
+  .grp-h { padding:0 8px 4px; font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--s400); }
+  .snav nav a { display:block; padding:6px 8px; border-radius:6px; font-size:14px; color:#e7e5e4; text-decoration:none; }
+  .snav nav a:hover { background:var(--s800); }
+  .snav nav a[aria-current="page"] { background:var(--s700); color:#fff; font-weight:600; }
+  .snav .user { border-top:1px solid var(--s700); padding:12px 20px; font-size:13px; color:#d6d3d1; }
+  .col { flex:1; min-width:0; display:flex; flex-direction:column; }
+  .mtop { display:none; position:sticky; top:0; z-index:6; background:var(--s900); color:#fff; padding:8px 12px; align-items:center; }
+  .mtop a { display:flex; align-items:center; gap:6px; min-height:40px; padding:0 8px; text-decoration:none; font-size:14px; color:#e7e5e4; }
+
+  main { flex:1; padding:28px 40px 72px; }
+  .wrap { max-width:960px; margin:0 auto; }
+  .crumb { font-size:13px; color:var(--s500); }
+  .ph { display:flex; flex-wrap:wrap; gap:14px 24px; align-items:flex-end; justify-content:space-between; margin:6px 0 20px; }
+  .ph h1 { margin:0; font-size:24px; line-height:1.25; font-weight:700; letter-spacing:-.015em; }
+  .ph p { margin:6px 0 0; max-width:600px; color:var(--s600); }
+  .ph .right { display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+  .scope { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--s600); }
+  .scope select { height:36px; padding:0 28px 0 10px; border:1px solid var(--s300); border-radius:4px; background:#fff; font-size:14px; font-weight:600; }
+
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:36px; padding:0 14px; border-radius:6px; border:1px solid transparent; font-size:14px; font-weight:600; cursor:pointer; text-decoration:none; white-space:nowrap; }
+  .btn-p { background:var(--s900); color:#fff; } .btn-p:hover { background:var(--s800); }
+  .btn-s { background:#fff; border-color:var(--s300); color:var(--s900); } .btn-s:hover { background:var(--s50); }
+  .btn-d { background:var(--red); color:#fff; }
+  .btn-sm { min-height:32px; padding:0 12px; font-size:13px; }
+  .iconbtn { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border:0; border-radius:6px; background:none; color:var(--s500); cursor:pointer; }
+  .iconbtn:hover { background:var(--s100); color:var(--s900); }
+  .iconbtn.danger:hover { background:var(--red-bg); color:var(--red); }
+
+  .tabs { display:flex; gap:4px; border-bottom:1px solid var(--s200); margin-bottom:20px; }
+  .tabs button { border:0; background:none; padding:10px 4px; margin-right:16px; font-size:14px; font-weight:600; color:var(--s500); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; }
+  .tabs button[aria-selected="true"] { color:var(--s900); border-bottom-color:var(--s900); }
+  .tabs .cnt { font-weight:500; color:var(--s400); margin-left:4px; }
+
+  .month { margin:22px 0 8px; font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--s500); }
+  .month:first-child { margin-top:0; }
+  .ex { display:grid; grid-template-columns:72px minmax(0,1fr) auto; gap:16px; align-items:start; padding:16px; background:#fff; border:1px solid var(--s200); border-radius:12px; margin-bottom:10px; box-shadow:0 1px 2px rgba(28,25,23,.04); }
+  .tile { width:72px; border-radius:10px; overflow:hidden; border:1px solid var(--s200); text-align:center; background:#fff; }
+  .tile .m { background:var(--s900); color:#fff; font-size:11px; font-weight:700; letter-spacing:.08em; padding:3px 0; }
+  .tile .d { font-size:20px; font-weight:700; line-height:1.2; padding:6px 2px 0; font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
+  .tile .d.range { font-size:16px; padding-top:8px; }
+  .tile .w { font-size:11px; color:var(--s500); padding:0 0 6px; }
+  .ex h3 { margin:2px 0 8px; font-size:15px; font-weight:600; }
+  .ex h3 small { font-weight:400; color:var(--s500); font-size:13px; margin-left:6px; }
+  .fx { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; }
+  .fx li { display:flex; align-items:center; gap:8px; font-size:14px; color:var(--s700); }
+  .fx li .ic { width:26px; height:26px; border-radius:7px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .fx .k-closed .ic { background:#fee2e2; color:var(--red); }
+  .fx .k-hours .ic { background:var(--brand-50); color:var(--brand); }
+  .fx .k-limit .ic { background:#fef3c7; color:var(--amber); }
+  .fx .k-block .ic { background:var(--s100); color:var(--s700); }
+  .fx small { color:var(--s500); font-size:13px; }
+  .acts { display:flex; align-items:center; gap:4px; }
+  .confirm { display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:8px; font-size:13px; color:var(--s700); max-width:240px; }
+  .empty { text-align:center; padding:40px 16px; background:#fff; border:1px dashed var(--s300); border-radius:12px; }
+  .empty .ico { width:48px; height:48px; margin:0 auto 12px; border-radius:12px; background:var(--s100); color:var(--s600); display:flex; align-items:center; justify-content:center; }
+  .empty p { margin:0 auto 16px; max-width:420px; color:var(--s600); }
+
+  /* Seitenleiste zum Anlegen */
+  .scrim { position:fixed; inset:0; background:rgba(28,25,23,.4); opacity:0; pointer-events:none; transition:opacity .15s; z-index:20; }
+  .drawer { position:fixed; top:0; right:0; bottom:0; width:500px; max-width:100%; background:#fff; z-index:21; display:flex; flex-direction:column; transform:translateX(100%); transition:transform .2s ease; box-shadow:-12px 0 32px rgba(28,25,23,.12); }
+  .open .scrim { opacity:1; pointer-events:auto; }
+  .open .drawer { transform:none; }
+  .dr-h { display:flex; align-items:center; justify-content:space-between; padding:18px 24px; border-bottom:1px solid var(--s200); }
+  .dr-h h2 { margin:0; font-size:17px; font-weight:600; }
+  .dr-b { flex:1; overflow-y:auto; padding:20px 24px 8px; }
+  .dr-f { display:flex; justify-content:flex-end; gap:8px; padding:14px 24px; border-top:1px solid var(--s200); background:var(--s50); }
+  .field { margin-bottom:18px; }
+  .l { display:block; margin-bottom:6px; font-weight:600; }
+  .opt { font-weight:400; color:var(--s500); }
+  .inp { width:100%; height:40px; padding:0 10px; border:1px solid var(--s300); border-radius:4px; background:#fff; font-size:14px; }
+  .inp:focus { outline:none; border-color:var(--brand); box-shadow:0 0 0 3px var(--ring); }
+  .inp[aria-invalid="true"] { border-color:var(--red); }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .help { margin:6px 0 0; font-size:13px; color:var(--s500); }
+  .err { display:flex; gap:6px; margin:6px 0 0; font-size:13px; color:var(--red); }
+  .chk { display:flex; align-items:center; gap:8px; min-height:32px; font-size:14px; cursor:pointer; }
+  .chk input { accent-color:var(--brand); width:16px; height:16px; }
+  .opts { display:flex; flex-direction:column; gap:8px; }
+  .optc { border:1px solid var(--s300); border-radius:10px; }
+  .optc.on { border-color:var(--brand); box-shadow:0 0 0 1px var(--brand); }
+  .optc.off { opacity:.5; }
+  .optc > label { display:flex; gap:12px; align-items:flex-start; padding:12px 14px; cursor:pointer; }
+  .optc > label input { accent-color:var(--brand); width:16px; height:16px; margin-top:3px; }
+  .optc b { display:block; font-weight:600; }
+  .optc .d { font-size:13px; color:var(--s500); }
+  .optc .more { padding:0 14px 14px 42px; }
+  .row { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+  .row .inp { width:auto; }
+  .num { width:84px !important; text-align:center; }
+  .t { width:92px !important; text-align:center; font-variant-numeric:tabular-nums; }
+  .pills { display:flex; flex-wrap:wrap; gap:6px; }
+  .pill { border:1px solid var(--s300); background:#fff; border-radius:999px; padding:4px 12px; font-size:13px; cursor:pointer; min-height:30px; }
+  .pill[aria-pressed="true"] { background:var(--s900); border-color:var(--s900); color:#fff; }
+  .sub { font-size:12px; font-weight:600; color:var(--s500); margin:10px 0 6px; text-transform:uppercase; letter-spacing:.05em; }
+  .summary { margin:4px 0 16px; padding:12px 14px; border-radius:10px; background:var(--brand-50); border:1px solid var(--brand-100); font-size:14px; color:#134e4a; }
+  .summary b { display:flex; align-items:center; gap:6px; font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px; }
+  .toast { position:fixed; left:50%; bottom:24px; transform:translate(-50%, 20px); opacity:0; display:flex; align-items:center; gap:10px; padding:10px 16px; border-radius:8px; background:var(--s900); color:#fff; font-size:14px; box-shadow:0 8px 24px rgba(28,25,23,.25); transition:all .2s; z-index:30; pointer-events:none; }
+  .toast.on { opacity:1; transform:translate(-50%, 0); }
+  .toast svg { color:#5eead4; }
+
+  .an { display:none; width:20px; height:20px; border-radius:50%; background:#c2410c; color:#fff; font-size:11px; font-weight:700; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 0 0 2px #fff; vertical-align:middle; }
+  .annos .an { display:inline-flex; }
+
+  @media (max-width:1023px) {
+    .snav { display:none; } .mtop { display:flex; }
+    main { padding:18px 16px 72px; }
+  }
+  @media (max-width:640px) {
+    .ex { grid-template-columns:56px minmax(0,1fr); gap:12px; padding:14px; }
+    .tile { width:56px; } .tile .d { font-size:17px; } .tile .d.range { font-size:13px; }
+    .acts { grid-column:1 / -1; justify-content:flex-end; border-top:1px solid var(--s100); padding-top:8px; }
+    .ph .right { width:100%; } .ph .right .btn-p { flex:1; }
+    .drawer { width:100%; }
+    .optc .more { padding-left:14px; }
+  }
+</style>
+
+<div class="app" id="root">
+  <aside class="snav" aria-label="Einstellungen">
+    <div class="brand">Swayy</div>
+    <a class="back" href="#"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 18l-6-6 6-6"/></svg>Zurück zum Betrieb</a>
+    <div class="search"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input type="search" placeholder="Einstellungen durchsuchen" aria-label="Einstellungen durchsuchen"></div>
+    <nav aria-label="Einstellungsbereiche">
+      <div class="grp"><div class="grp-h">Betrieb</div><a href="#">Allgemein</a><a href="#">Standorte</a><a href="#">Team &amp; Rollen</a><a href="#">Abo &amp; Rechnungen</a><a href="#">Daten &amp; Sicherheit</a></div>
+      <div class="grp"><div class="grp-h">Platz &amp; Zeiten</div><a href="#">Öffnungszeiten</a><a href="#" aria-current="page">Ausnahmen</a><a href="#">Räume &amp; Tische</a><a href="#">Kapazität &amp; Dauer</a></div>
+      <div class="grp"><div class="grp-h">Buchungen</div><a href="#">Buchungsregeln</a><a href="#">Buchungsformular</a><a href="#">Buchungsseite</a><a href="#">Tags</a></div>
+      <div class="grp"><div class="grp-h">Gästekommunikation</div><a href="#">Benachrichtigungen</a><a href="#">Vorlagen</a><a href="#">Absender &amp; Antworten</a><a href="#">SMS-Versand</a></div>
+      <div class="grp"><div class="grp-h">Zahlungen</div><a href="#">Zahlungsanbieter</a><a href="#">Anzahlungen</a><a href="#">Erstattungen</a></div>
+      <div class="grp"><div class="grp-h">Verbindungen</div><a href="#">Newsletter</a><a href="#">API-Schlüssel</a><a href="#">Webhooks</a></div>
+    </nav>
+    <div class="user">Demo-Konto · Mein Konto</div>
+  </aside>
+
+  <div class="col">
+    <div class="mtop"><a href="#"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 18l-6-6 6-6"/></svg>Einstellungen</a></div>
+    <main>
+      <div class="wrap">
+        <div class="crumb">Einstellungen › Platz &amp; Zeiten</div>
+        <div class="ph">
+          <div>
+            <h1>Ausnahmen <span class="an">1</span></h1>
+            <p>Alles, was an bestimmten Tagen anders ist als in der regulären Woche: geschlossen, andere Zeiten, weniger Gäste, gesperrte Räume oder Tische.</p>
+          </div>
+          <div class="right">
+            <label class="scope">Gilt für Standort <select aria-label="Standort wählen"><option>Sonne</option><option>Mond</option></select></label>
+            <button type="button" class="btn btn-p" id="newBtn"><span class="an">6</span><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Ausnahme</button>
+          </div>
+        </div>
+        <div class="tabs" role="tablist" aria-label="Zeitraum">
+          <button type="button" role="tab" aria-selected="true" data-tab="next">Kommend<span class="cnt" id="cntNext"></span></button>
+          <button type="button" role="tab" aria-selected="false" data-tab="past">Vergangen<span class="cnt" id="cntPast"></span></button>
+          <span class="an" style="align-self:center">5</span>
+        </div>
+        <div id="list"></div>
+      </div>
+    </main>
+  </div>
+
+  <div class="scrim" id="scrim"></div>
+  <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="dr-title">
+    <div class="dr-h"><h2 id="dr-title">Ausnahme anlegen</h2><button class="iconbtn" type="button" id="drClose" aria-label="Schließen"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="dr-b" id="drBody"></div>
+    <div class="dr-f"><button class="btn btn-s" type="button" id="drCancel">Abbrechen</button><button class="btn btn-p" type="button" id="drSave">Ausnahme speichern</button></div>
+  </aside>
+  <div class="toast" id="toast" role="status" aria-live="polite"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5L20 7"/></svg><span id="toastText"></span></div>
+</div>
+
+<script>
+(function () {
+  var I = {
+    lock: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>',
+    clock: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
+    users: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0M16 4.5a3.5 3.5 0 010 7M21.5 20a6.5 6.5 0 00-4-6"/></svg>',
+    block: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="M6 6l12 12"/></svg>',
+    trash: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
+    cal: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>',
+    eye: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+    err: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/></svg>'
+  };
+  var DURATION = 90;
+  var ROOMS = ['Gastraum', 'Terrasse', 'Saal'];
+  var TABLES = ['Tisch 1','Tisch 2','Tisch 3','Tisch 4','Tisch 5','Tisch 6','Tisch 7','Tisch 8','Tisch 9','Tisch 10'];
+  var MON = ['JAN','FEB','MÄR','APR','MAI','JUN','JUL','AUG','SEP','OKT','NOV','DEZ'];
+  var MONL = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+  var WD = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+  var DATA0 = [
+    { from: '2026-10-03', to: '', label: 'Tag der Deutschen Einheit', fx: { closed: true } },
+    { from: '2026-11-14', to: '', label: 'Geschlossene Gesellschaft', time: ['18:00','23:30'], fx: { rooms: ['Saal'] } },
+    { from: '2026-11-20', to: '2026-11-27', label: 'Reparatur', fx: { tables: ['Tisch 7'] } },
+    { from: '2026-12-24', to: '', label: 'Heiligabend', fx: { hours: ['12:00','15:00'], limit: 30, limitRoom: '', rooms: ['Terrasse'] } },
+    { from: '2026-12-25', to: '2026-12-26', label: 'Weihnachten', fx: { closed: true } },
+    { from: '2026-12-31', to: '', label: 'Silvester', fx: { hours: ['18:00','01:00'], limit: 60, limitRoom: '' } },
+    { from: '2027-01-04', to: '2027-01-15', label: 'Betriebsferien', fx: { closed: true } }
+  ];
+  var TODAY = '2026-10-07';
+  var data, tab = 'next', confirmIdx = -1, editIdx = -1, draft, lastFocus;
+  function $(id) { return document.getElementById(id); }
+  function clone(x) { return JSON.parse(JSON.stringify(x)); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function d(s) { var p = s.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function dm(s) { var p = s.split('-'); return p[2] + '.' + p[1] + '.'; }
+  function mins(t) { var p = t.split(':'); return +p[0] * 60 + +p[1]; }
+  function hhmm(m) { m = ((m % 1440) + 1440) % 1440; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); }
+  function lastStart(h) { var o = mins(h[0]), c = mins(h[1]); if (c <= o) c += 1440; return c - DURATION >= o ? hhmm(c - DURATION) : null; }
+  function overnight(h) { return mins(h[1]) <= mins(h[0]); }
+
+  function fxLines(e) {
+    var f = e.fx, out = [], when = e.time ? ' <small>' + e.time[0] + '–' + e.time[1] + ' Uhr</small>' : '';
+    if (f.closed) out.push(['closed', I.lock, 'Geschlossen, keine Online-Buchungen']);
+    if (f.hours) out.push(['hours', I.clock, 'Geöffnet ' + f.hours[0] + '–' + f.hours[1] + (overnight(f.hours) ? ' <small>bis zum Folgetag</small>' : '')]);
+    if (f.limit) out.push(['limit', I.users, 'Höchstens ' + f.limit + ' Gäste gleichzeitig' + (f.limitRoom ? ' <small>im Raum ' + esc(f.limitRoom) + '</small>' : '') + when]);
+    var bl = (f.rooms || []).concat(f.tables || []);
+    if (bl.length) out.push(['block', I.block, 'Gesperrt: ' + bl.map(esc).join(', ') + when]);
+    return out;
+  }
+  function tile(e) {
+    var a = d(e.from), b = e.to ? d(e.to) : null;
+    var m = MON[a.getMonth()] + (b && b.getMonth() !== a.getMonth() ? '–' + MON[b.getMonth()] : '');
+    var dd = b ? a.getDate() + '–' + b.getDate() : String(a.getDate());
+    var w = b ? WD[a.getDay()] + '–' + WD[b.getDay()] : WD[a.getDay()];
+    return '<div class="tile" aria-hidden="true"><div class="m">' + m + '</div><div class="d' + (b ? ' range' : '') + '">' + dd + '</div><div class="w">' + w + '</div></div>';
+  }
+  function dateText(e) {
+    var a = d(e.from), txt = WD[a.getDay()] + ', ' + dm(e.from) + a.getFullYear();
+    if (e.to) { var b = d(e.to); txt = WD[a.getDay()] + ', ' + dm(e.from) + ' bis ' + WD[b.getDay()] + ', ' + dm(e.to) + b.getFullYear(); }
+    return txt;
+  }
+  function isPast(e) { return (e.to || e.from) < TODAY; }
+
+  function renderList() {
+    var next = data.filter(function (e) { return !isPast(e); }), past = data.filter(isPast);
+    $('cntNext').textContent = next.length; $('cntPast').textContent = past.length;
+    document.querySelectorAll('[data-tab]').forEach(function (b) { b.setAttribute('aria-selected', b.dataset.tab === tab); });
+    var rows = tab === 'next' ? next : past.reverse();
+    if (!data.length || !rows.length) {
+      $('list').innerHTML = '<div class="empty"><div class="ico">' + I.cal + '</div><p>Hier stehen Tage, an denen etwas anders ist als sonst: Feiertage, Betriebsferien, eine Feier mit weniger Plätzen oder ein Tisch in Reparatur.</p><button type="button" class="btn btn-p" data-act="new">+ Ausnahme anlegen</button></div>';
+      return;
+    }
+    var h = '', lastMonth = '', first = true;
+    rows.forEach(function (e) {
+      var i = data.indexOf(e), a = d(e.from), mk = MONL[a.getMonth()] + ' ' + a.getFullYear();
+      if (mk !== lastMonth) { h += '<div class="month">' + mk + '</div>'; lastMonth = mk; }
+      h += '<article class="ex" aria-label="' + esc(dateText(e)) + '">' + tile(e) + '<div><h3>' + esc(e.label || 'Ausnahme') + '<small>' + dateText(e) + '</small>' + (first ? ' <span class="an">2</span>' : '') + '</h3><ul class="fx">';
+      fxLines(e).forEach(function (l) { h += '<li class="k-' + l[0] + '"><span class="ic" aria-hidden="true">' + l[1] + '</span><span>' + l[2] + '</span></li>'; });
+      h += '</ul></div><div class="acts">';
+      if (confirmIdx === i) h += '<div class="confirm" role="group" aria-label="Löschen bestätigen"><span>„' + esc(e.label || dateText(e)) + '“ löschen?</span><button type="button" class="btn btn-d btn-sm" data-act="del" data-i="' + i + '">Löschen</button><button type="button" class="btn btn-s btn-sm" data-act="nodel">Abbrechen</button></div>';
+      else h += '<button type="button" class="btn btn-s btn-sm" data-act="edit" data-i="' + i + '">Bearbeiten</button><button type="button" class="iconbtn danger" data-act="ask" data-i="' + i + '" aria-label="' + esc(e.label || dateText(e)) + ' löschen">' + I.trash + '</button>';
+      h += '</div></article>';
+      first = false;
+    });
+    $('list').innerHTML = h;
+  }
+  $('list').addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-act]'); if (!b) return; var i = +b.dataset.i;
+    if (b.dataset.act === 'new') openDrawer();
+    if (b.dataset.act === 'edit') openDrawer(i);
+    if (b.dataset.act === 'ask') { confirmIdx = i; renderList(); var n = document.querySelector('[data-act="nodel"]'); if (n) n.focus(); }
+    if (b.dataset.act === 'nodel') { confirmIdx = -1; renderList(); }
+    if (b.dataset.act === 'del') { var name = data[i].label || dateText(data[i]); data.splice(i, 1); confirmIdx = -1; renderList(); toast('„' + name + '“ gelöscht'); }
+  });
+  document.querySelectorAll('[data-tab]').forEach(function (b) { b.addEventListener('click', function () { tab = b.dataset.tab; confirmIdx = -1; renderList(); }); });
+  $('newBtn').addEventListener('click', function () { openDrawer(); });
+
+  /* ---------- Anlegen / Bearbeiten ---------- */
+  function emptyDraft() { return { from: '', to: '', label: '', time: null, fx: {}, on: { closed: false, hours: false, limit: false, block: false }, err: {} }; }
+  function toDraft(e) {
+    var x = emptyDraft(); x.from = e.from; x.to = e.to; x.label = e.label; x.time = e.time ? e.time.slice() : null;
+    x.fx = clone(e.fx); x.on.closed = !!e.fx.closed; x.on.hours = !!e.fx.hours; x.on.limit = !!e.fx.limit; x.on.block = !!((e.fx.rooms || []).length || (e.fx.tables || []).length);
+    return x;
+  }
+  function summary() {
+    if (!draft.from) return 'Wähle ein Datum, dann steht hier, was Gäste an diesem Tag erleben.';
+    var a = d(draft.from), when = WD[a.getDay()] + ', ' + dm(draft.from) + a.getFullYear() + (draft.to ? ' bis ' + dm(draft.to) : '');
+    if (draft.on.closed) return 'Am ' + when + ' ist der Standort geschlossen. Die Buchungsseite zeigt dort keine Uhrzeit.';
+    var parts = [];
+    if (draft.on.hours && draft.fx.hours) { var ls = lastStart(draft.fx.hours); parts.push(ls ? 'online buchbar ' + draft.fx.hours[0] + '–' + ls + ' Uhr (letzte Uhrzeit wegen ' + DURATION + ' Min. Besuch)' : 'in diesem Zeitfenster passt kein Besuch von ' + DURATION + ' Min.'); }
+    else parts.push('Öffnungszeiten wie in der regulären Woche');
+    if (draft.on.limit && draft.fx.limit) parts.push('höchstens ' + draft.fx.limit + ' Gäste gleichzeitig' + (draft.fx.limitRoom ? ' im Raum ' + draft.fx.limitRoom : ''));
+    var bl = (draft.fx.rooms || []).concat(draft.fx.tables || []);
+    if (draft.on.block && bl.length) parts.push(bl.join(', ') + ' gesperrt');
+    if (draft.time && (draft.on.limit || draft.on.block)) parts.push('Grenze und Sperre gelten ' + draft.time[0] + '–' + draft.time[1] + ' Uhr');
+    if (!draft.on.hours && !draft.on.limit && !draft.on.block) return 'Wähle unten aus, was an diesem Tag anders ist.';
+    return 'Am ' + when + ': ' + parts.join(' · ') + '.';
+  }
+  function pills(list, sel, kind) { return '<div class="pills">' + list.map(function (n) { return '<button type="button" class="pill" data-pill="' + kind + '" data-name="' + esc(n) + '" aria-pressed="' + (sel.indexOf(n) >= 0) + '">' + esc(n) + '</button>'; }).join('') + '</div>'; }
+  function renderDrawer() {
+    var x = draft, on = x.on, f = x.fx;
+    var h = '<div class="field"><div class="two"><div><label class="l" for="dFrom">Von</label><input class="inp" type="date" id="dFrom" value="' + x.from + '"' + (x.err.from ? ' aria-invalid="true" aria-describedby="eFrom"' : '') + '></div>' +
+      '<div><label class="l" for="dTo">Bis <span class="opt">(freiwillig)</span></label><input class="inp" type="date" id="dTo" value="' + x.to + '"></div></div>' +
+      (x.err.from ? '<p class="err" id="eFrom">' + I.err + '<span>' + x.err.from + '</span></p>' : '<p class="help">Für einen einzelnen Tag bleibt „Bis“ leer.</p>') + '</div>';
+    h += '<div class="field"><label class="l" for="dLabel">Bezeichnung <span class="opt">(freiwillig)</span></label><input class="inp" type="text" id="dLabel" value="' + esc(x.label) + '" placeholder="z. B. Heiligabend, Betriebsferien"></div>';
+    h += '<div class="field"><span class="l">Was ist anders? <span class="an">3</span></span>' + (x.err.fx ? '<p class="err" style="margin:0 0 8px">' + I.err + '<span>' + x.err.fx + '</span></p>' : '') + '<div class="opts">';
+    h += opt('closed', 'Geschlossen', 'Keine Online-Buchungen an diesen Tagen.', '', on.closed, false);
+    h += opt('hours', 'Andere Öffnungszeiten', 'Ersetzt die Zeitfenster der regulären Woche.',
+      '<div class="row"><input class="inp t" type="time" id="hFrom" aria-label="Geöffnet von" value="' + (f.hours ? f.hours[0] : '12:00') + '"><span>–</span><input class="inp t" type="time" id="hTo" aria-label="Geöffnet bis" value="' + (f.hours ? f.hours[1] : '15:00') + '"></div>' + (f.hours && overnight(f.hours) ? '<p class="help">Endet am Folgetag um ' + f.hours[1] + '.</p>' : ''), on.hours, on.closed);
+    h += opt('limit', 'Weniger Gäste', 'Begrenzt, wie viele Gäste gleichzeitig da sein dürfen, etwa bei Personalmangel oder einer Feier.',
+      '<div class="row">Höchstens <input class="inp num" type="number" min="1" id="lim" aria-label="Höchstzahl Gäste" value="' + (f.limit || 30) + '"> Gäste gleichzeitig</div><div class="row" style="margin-top:8px">gilt für <select class="inp" id="limRoom" aria-label="Geltungsbereich der Grenze" style="width:auto"><option value="">ganzen Standort</option>' + ROOMS.map(function (r) { return '<option' + (f.limitRoom === r ? ' selected' : '') + '>' + r + '</option>'; }).join('') + '</select></div>', on.limit, on.closed);
+    h += opt('block', 'Räume oder Tische sperren', 'Gesperrtes vergibt Swayy weder online noch von Hand; im Tischplan erscheint es als gesperrt.',
+      '<div class="sub">Räume</div>' + pills(ROOMS, f.rooms || [], 'rooms') + '<div class="sub">Tische</div>' + pills(TABLES, f.tables || [], 'tables'), on.block, on.closed);
+    h += '</div></div>';
+    if (on.limit || on.block) {
+      h += '<div class="field"><label class="chk"><input type="checkbox" id="timeOn"' + (x.time ? ' checked' : '') + '> Grenze und Sperre nur zu bestimmten Uhrzeiten</label>' +
+        (x.time ? '<div class="row" style="margin-top:6px"><input class="inp t" type="time" id="tFrom" aria-label="Von Uhrzeit" value="' + x.time[0] + '"><span>–</span><input class="inp t" type="time" id="tTo" aria-label="Bis Uhrzeit" value="' + x.time[1] + '"></div>' : '') + '</div>';
+    }
+    h += '<div class="summary" role="status" aria-live="polite"><b>' + I.eye + 'So wirkt es <span class="an">4</span></b>' + esc(summary()) + '</div>';
+    $('drBody').innerHTML = h;
+  }
+  function opt(k, title, desc, more, isOn, disabled) {
+    return '<div class="optc' + (isOn ? ' on' : '') + (disabled ? ' off' : '') + '"><label><input type="checkbox" data-opt="' + k + '"' + (isOn ? ' checked' : '') + (disabled ? ' disabled' : '') + '><span><b>' + title + '</b><span class="d">' + desc + '</span></span></label>' + (isOn && more ? '<div class="more">' + more + '</div>' : '') + '</div>';
+  }
+  function readDrawer() {
+    var g = function (id) { var el = $(id); return el ? el.value : null; };
+    draft.from = g('dFrom') || ''; draft.to = g('dTo') || ''; draft.label = g('dLabel') || '';
+    if ($('hFrom')) draft.fx.hours = [g('hFrom'), g('hTo')];
+    if ($('lim')) { draft.fx.limit = +g('lim') || 0; draft.fx.limitRoom = g('limRoom'); }
+    if ($('tFrom')) draft.time = [g('tFrom'), g('tTo')];
+  }
+  $('drBody').addEventListener('input', function () { readDrawer(); var s = document.querySelector('.summary'); if (s) s.lastChild.textContent = summary(); });
+  $('drBody').addEventListener('change', function (ev) {
+    var t = ev.target; readDrawer();
+    if (t.dataset.opt) {
+      draft.on[t.dataset.opt] = t.checked;
+      if (t.dataset.opt === 'closed' && t.checked) { draft.on.hours = draft.on.limit = draft.on.block = false; }
+      if (t.dataset.opt === 'hours' && t.checked && !draft.fx.hours) draft.fx.hours = ['12:00', '15:00'];
+      if (t.dataset.opt === 'limit' && t.checked && !draft.fx.limit) draft.fx.limit = 30;
+      draft.err = {}; var k = t.dataset.opt; renderDrawer(); var el = document.querySelector('[data-opt="' + k + '"]'); if (el) el.focus();
+    } else if (t.id === 'timeOn') { draft.time = t.checked ? ['18:00', '23:00'] : null; renderDrawer(); $('timeOn').focus(); }
+    else if (t.id === 'hFrom' || t.id === 'hTo') { renderDrawer(); var e2 = $(t.id); if (e2) e2.focus(); }
+  });
+  $('drBody').addEventListener('click', function (ev) {
+    var p = ev.target.closest('[data-pill]'); if (!p) return;
+    readDrawer();
+    var kind = p.dataset.pill, n = p.dataset.name, arr = draft.fx[kind] = draft.fx[kind] || [];
+    var k = arr.indexOf(n); if (k >= 0) arr.splice(k, 1); else arr.push(n);
+    renderDrawer(); var again = document.querySelector('[data-pill="' + kind + '"][data-name="' + n + '"]'); if (again) again.focus();
+  });
+  function openDrawer(i) {
+    lastFocus = document.activeElement; editIdx = i === undefined ? -1 : i;
+    draft = editIdx >= 0 ? toDraft(data[editIdx]) : emptyDraft();
+    $('dr-title').textContent = editIdx >= 0 ? 'Ausnahme bearbeiten' : 'Ausnahme anlegen';
+    renderDrawer(); $('root').classList.add('open'); setTimeout(function () { $('dFrom').focus(); }, 60);
+  }
+  function closeDrawer() { $('root').classList.remove('open'); if (lastFocus && lastFocus.focus) lastFocus.focus(); }
+  $('drClose').addEventListener('click', closeDrawer); $('drCancel').addEventListener('click', closeDrawer); $('scrim').addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && $('root').classList.contains('open')) closeDrawer(); });
+  $('drSave').addEventListener('click', function () {
+    readDrawer(); draft.err = {};
+    if (!draft.from) draft.err.from = 'Bitte ein Datum wählen.';
+    else if (draft.to && draft.to < draft.from) draft.err.from = '„Bis“ liegt vor „Von“. Bitte ein späteres Enddatum wählen oder „Bis“ leeren.';
+    var bl = (draft.fx.rooms || []).concat(draft.fx.tables || []);
+    if (!draft.on.closed && !draft.on.hours && !draft.on.limit && !(draft.on.block && bl.length)) draft.err.fx = 'Bitte wähle aus, was an diesem Tag anders ist.';
+    if (draft.err.from || draft.err.fx) { renderDrawer(); var f = draft.err.from ? $('dFrom') : document.querySelector('[data-opt="closed"]'); if (f) f.focus(); return; }
+    var fx = {};
+    if (draft.on.closed) fx.closed = true;
+    else {
+      if (draft.on.hours) fx.hours = draft.fx.hours;
+      if (draft.on.limit) { fx.limit = draft.fx.limit; fx.limitRoom = draft.fx.limitRoom || ''; }
+      if (draft.on.block) { fx.rooms = draft.fx.rooms || []; fx.tables = draft.fx.tables || []; }
+    }
+    var e = { from: draft.from, to: draft.to, label: draft.label.trim(), fx: fx };
+    if (draft.time && !draft.on.closed && (draft.on.limit || draft.on.block)) e.time = draft.time;
+    if (editIdx >= 0) data[editIdx] = e; else data.push(e);
+    data.sort(function (a, b) { return a.from < b.from ? -1 : 1; });
+    tab = isPast(e) ? 'past' : 'next'; renderList(); closeDrawer(); toast(editIdx >= 0 ? 'Ausnahme geändert' : 'Ausnahme gespeichert');
+  });
+
+  var tt;
+  function toast(m) { $('toastText').textContent = m; $('toast').classList.add('on'); clearTimeout(tt); tt = setTimeout(function () { $('toast').classList.remove('on'); }, 2800); }
+
+  window.setAnnos = function (on) { $('root').classList.toggle('annos', !!on); };
+  window.setDemoState = function (st) {
+    data = clone(DATA0); tab = 'next'; confirmIdx = -1; $('root').classList.remove('open');
+    if (st === 'empty') data = [];
+    renderList(); window.scrollTo(0, 0);
+    if (st === 'drawer') openDrawer();
+    if (st === 'edit') openDrawer(3);
+  };
+  window.setDemoState('normal');
+})();
+</script>
+</template>
+
+<script>
+(function () {
+  function $(id) { return document.getElementById(id); }
+  var iframe = $('app'), frame = $('frame'), stage = $('stage'), legend = $('legend');
+  var view = 'desktop', state = 'normal', annos = true;
+  var fonts = '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">';
+  iframe.srcdoc = '<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Ausnahmen</title>' + fonts + '</head><body>' + $('tpl').innerHTML + '</body></html>';
+  iframe.addEventListener('load', function () { var w = iframe.contentWindow; w.setDemoState(state); w.setAnnos(annos); });
+  function layout() {
+    legend.hidden = !annos;
+    var wide = window.innerWidth > 1100, avail = stage.clientWidth - 40 - (wide && annos ? 360 : 0);
+    var w = view === 'desktop' ? 1280 : 390, h = view === 'desktop' ? 820 : 800, b = view === 'phone' ? 20 : 0;
+    var scale = Math.min(1, avail / (w + b));
+    iframe.style.width = w + 'px'; iframe.style.height = h + 'px'; iframe.style.transform = 'scale(' + scale + ')';
+    frame.style.width = (w * scale + b) + 'px'; frame.style.height = (h * scale + b) + 'px';
+    frame.className = 'frame' + (view === 'phone' ? ' phone' : '');
+  }
+  function press(g, a, v) { document.querySelectorAll('[aria-label="' + g + '"] button').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute(a) === v ? 'true' : 'false'); }); }
+  document.querySelectorAll('[data-v]').forEach(function (b) { b.addEventListener('click', function () { view = b.dataset.v; press('Ansicht', 'data-v', view); layout(); }); });
+  document.querySelectorAll('[data-s]').forEach(function (b) { b.addEventListener('click', function () { state = b.dataset.s; press('Zustand zeigen', 'data-s', state); iframe.contentWindow.setDemoState(state); }); });
+  $('annoBtn').addEventListener('click', function () { annos = !annos; this.setAttribute('aria-pressed', annos); iframe.contentWindow.setAnnos(annos); layout(); });
+  window.addEventListener('resize', layout);
+  var qs = new URLSearchParams(location.search);
+  if (qs.get('view') === 'phone') { view = 'phone'; press('Ansicht', 'data-v', view); }
+  if (qs.get('state')) { state = qs.get('state'); press('Zustand zeigen', 'data-s', state); }
+  if (qs.get('annos') === '0') { annos = false; $('annoBtn').setAttribute('aria-pressed', 'false'); }
+  layout();
+})();
+</script>
+</body>
+</html>

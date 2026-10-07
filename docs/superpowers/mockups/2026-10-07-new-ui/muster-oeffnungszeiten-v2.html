@@ -1,0 +1,898 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Muster Öffnungszeiten v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --s50:#fafaf9; --s100:#f5f5f4; --s200:#e7e5e4; --s300:#d6d3d1; --s500:#78716c; --s600:#57534e; --s700:#44403c; --s900:#1c1917; --brand:#0f766e; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Inter', ui-sans-serif, system-ui, sans-serif; background:#d9d6d3; color:var(--s900); }
+  .shell-h { display:flex; flex-wrap:wrap; gap:12px 20px; align-items:center; justify-content:space-between; padding:12px 20px; background:#fff; border-bottom:1px solid var(--s300); }
+  .shell-h h1 { margin:0; font-size:15px; font-weight:600; }
+  .shell-h p { margin:2px 0 0; font-size:13px; color:var(--s600); max-width:640px; }
+  .ctrl { display:flex; flex-wrap:wrap; gap:8px; }
+  .seg { display:inline-flex; border:1px solid var(--s300); border-radius:6px; overflow:hidden; background:#fff; }
+  .seg button { font:inherit; font-size:13px; padding:7px 11px; border:0; background:transparent; color:var(--s700); cursor:pointer; min-height:34px; }
+  .seg button + button { border-left:1px solid var(--s200); }
+  .seg button[aria-pressed="true"] { background:var(--s900); color:#fff; }
+  .seg button:disabled { color:#b8b2ad; cursor:not-allowed; background:var(--s50); }
+  .seg button:focus-visible { outline:2px solid var(--brand); outline-offset:-2px; }
+  .stage { display:flex; gap:20px; align-items:flex-start; justify-content:center; padding:20px; }
+  .frame { position:relative; background:#fff; box-shadow:0 10px 30px rgba(28,25,23,.18); overflow:hidden; flex-shrink:0; }
+  .frame.phone { border-radius:28px; border:10px solid var(--s900); }
+  .frame iframe { border:0; display:block; transform-origin:0 0; background:var(--s100); }
+  .legend { width:340px; flex-shrink:0; background:#fff; border-radius:10px; padding:16px 18px; font-size:13px; line-height:1.5; box-shadow:0 4px 16px rgba(28,25,23,.08); }
+  .legend[hidden] { display:none; }
+  .legend h2 { margin:0 0 4px; font-size:14px; }
+  .legend > p { margin:0 0 12px; color:var(--s600); }
+  .legend ol { list-style:none; margin:0; padding:0; }
+  .legend li { display:grid; grid-template-columns:24px 1fr; gap:8px; padding:9px 0; border-top:1px solid var(--s200); }
+  .legend li b { display:block; font-size:13px; }
+  .legend li span.src { display:block; color:var(--s500); font-size:12px; margin-top:2px; }
+  .legend .n { width:22px; height:22px; border-radius:50%; background:#c2410c; color:#fff; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  @media (max-width:1100px) { .stage { flex-direction:column; align-items:center; } .legend { width:100%; max-width:760px; } }
+</style>
+</head>
+<body>
+<header class="shell-h">
+  <div>
+    <h1>Musterseite 2 · Einstellungen › Öffnungszeiten</h1>
+    <p>„Vorher“ ist aus dem heutigen Quelltext nachgebaut (Symbole vereinfacht), „Nachher“ ist der Entwurf. Farben und Schrift von Swayy, alle Inhalte erfunden. Alles lässt sich bedienen.</p>
+  </div>
+  <div class="ctrl">
+    <div class="seg" role="group" aria-label="Fassung">
+      <button type="button" data-f="before" aria-pressed="false">Vorher</button>
+      <button type="button" data-f="after" aria-pressed="true">Nachher</button>
+    </div>
+    <div class="seg" role="group" aria-label="Ansicht">
+      <button type="button" data-v="desktop" aria-pressed="true">Desktop</button>
+      <button type="button" data-v="phone" aria-pressed="false">Smartphone</button>
+    </div>
+    <div class="seg" role="group" aria-label="Zustand zeigen">
+      <button type="button" data-s="normal" aria-pressed="true">Normal</button>
+      <button type="button" data-s="dirty" aria-pressed="false">Geändert</button>
+      <button type="button" data-s="error" aria-pressed="false">Fehler</button>
+      <button type="button" data-s="empty" aria-pressed="false">Leer</button>
+      <button type="button" data-s="drawer" aria-pressed="false">Anlegen</button>
+    </div>
+    <div class="seg" role="group" aria-label="Erklärungen">
+      <button type="button" id="annoBtn" aria-pressed="true">Erklärungen</button>
+    </div>
+  </div>
+</header>
+
+<div class="stage" id="stage">
+  <div class="frame" id="frame"><iframe id="app" title="Musterseite Öffnungszeiten"></iframe></div>
+  <aside class="legend" id="legend" aria-label="Erklärungen">
+    <h2>Was hier nach Best Practice gebaut ist</h2>
+    <p>Die Nummern stehen im Bild. Manche Teile erscheinen erst in einem Zustand, das steht dann dabei.</p>
+    <ol>
+      <li><span class="n">1</span><div><b>Speicherleiste bei Änderungen</b>Erscheint, sobald etwas geändert ist, mit „Verwerfen“ und „Speichern“, und bleibt beim Scrollen sichtbar. Geänderte Tage tragen einen Punkt. Zustand „Geändert“.<span class="src">Vorbild Shopify Polaris „Contextual Save Bar“ · Nielsen-Heuristik 1: Sichtbarkeit des Systemstatus</span></div></li>
+      <li><span class="n">2</span><div><b>Eine Zeile je Wochentag</b>Schalter für offen oder geschlossen, Zeiten kompakt, der Name des Zeitfensters dezent daneben.<span class="src">Vorbild Calendly, Google Unternehmensprofil · Tuch et al. 2012: geringe visuelle Komplexität wirkt hochwertiger</span></div></li>
+      <li><span class="n">3</span><div><b>Zeiten übertragen</b>Die Zeitfenster eines Tages mit einem Klick auf andere Tage übernehmen, etwa Dienstag auf Mittwoch bis Freitag.<span class="src">Vorbild Calendly „Copy times to“ · Nielsen-Heuristik 7: Effizienz</span></div></li>
+      <li><span class="n">4</span><div><b>Vorschau für Gäste</b>Zeigt sofort die buchbaren Uhrzeiten des Tages, den du gerade bearbeitest, und warum die letzte Uhrzeit dort liegt. Gerechnet wie Swayy: Ende minus Besuchsdauer (90 Min.), im 30-Minuten-Takt.<span class="src">Nielsen-Heuristik 1 und 2: Status zeigen, Sprache der Nutzer</span></div></li>
+      <li><span class="n">5</span><div><b>Hinweise vor dem Speichern</b>„Endet am Folgetag“ bei Zeiten über Mitternacht. Warnung, wenn ein Zeitfenster kürzer ist als ein Besuch und dort niemand buchen kann (Zustand „Geändert“, Sonntag).<span class="src">Nielsen-Heuristik 5: Fehler vermeiden</span></div></li>
+      <li><span class="n">6</span><div><b>Fehler am Feld und als Liste</b>Ursache und nächster Schritt, der Link springt ins Feld. Zustand „Fehler“.<span class="src">NN/g-Richtlinien für Fehlermeldungen</span></div></li>
+      <li><span class="n">7</span><div><b>Geltungsbereich im Seitenkopf</b>Die Seite sagt, für welchen Standort sie gilt; gewechselt wird direkt dort.<span class="src">Klare Zuordnung Betrieb und Standort</span></div></li>
+      <li><span class="n">8</span><div><b>Suche in den Einstellungen</b>Findet auch Begriffe wie „Stornofrist“ oder „Erinnerung“ und zeigt den Treffer an.<span class="src">Vorbild Linear, GitHub</span></div></li>
+      <li><span class="n">9</span><div><b>Rückfrage in der Zeile</b>Nennt, was gelöscht wird, ohne Pop-up über der ganzen Seite.<span class="src">NN/g: Bestätigung nur bei endgültigen Aktionen, mit konkretem Objekt</span></div></li>
+    </ol>
+  </aside>
+</div>
+
+<!-- ============================ VORHER ============================ -->
+<template id="tplBefore">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style type="text/tailwindcss">
+  @theme { --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif; --radius-sm:.125rem; --radius-md:.1875rem; --radius-lg:.25rem; }
+  input:not([type='checkbox']), select { border:1px solid var(--color-stone-300); background:#fff; padding:.5rem .7rem; border-radius:.25rem; }
+  .tip { display:inline-flex; width:16px; height:16px; align-items:center; justify-content:center; border-radius:999px; background:var(--color-stone-200); color:var(--color-stone-600); font-size:10px; font-weight:700; vertical-align:middle; }
+</style>
+<div class="flex min-h-screen bg-stone-100 text-stone-900 antialiased font-sans">
+  <aside class="hidden w-60 shrink-0 flex-col bg-stone-900 text-stone-100 md:flex">
+    <div class="px-5 py-5 text-lg font-bold tracking-tight">Swayy</div>
+    <div class="px-5 pb-3 text-xs text-stone-400">Demo-Restaurant</div>
+    <div class="px-4 pb-4"><select class="w-full rounded-md border-0 bg-stone-800 px-2 py-1.5 text-sm text-stone-100" style="border:0;background:#292524;color:#f5f5f4"><option>Sonne</option><option>Mond</option></select></div>
+    <nav class="flex-1 space-y-0.5 px-3 text-sm" id="bnav"></nav>
+    <div class="border-t border-stone-700 p-4 text-sm"><div class="mb-2 text-stone-300">Demo-Konto</div><div class="mb-1 text-center text-xs text-stone-400">Mein Konto</div><div class="rounded-md bg-stone-700 px-3 py-1.5 text-center text-xs">Abmelden</div></div>
+  </aside>
+  <div class="flex min-w-0 flex-1 flex-col">
+    <div class="flex items-center gap-3 bg-stone-900 px-4 py-3 text-white md:hidden"><span class="text-2xl leading-none">☰</span><span class="font-bold">Swayy</span></div>
+    <main class="flex-1 p-4 md:p-8">
+      <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <h1 class="text-2xl font-bold">Einstellungen – Sonne</h1>
+        <a class="rounded-lg bg-stone-100 px-3 py-2 text-xs font-semibold text-teal-700">Buchungsseite ansehen ↗</a>
+      </div>
+      <div class="mb-6 flex flex-wrap gap-1 rounded-2xl bg-stone-200/60 p-1.5">
+        <span class="rounded-xl px-4 py-2 text-sm font-semibold text-stone-500">Allgemein</span>
+        <span class="rounded-xl px-4 py-2 text-sm font-semibold text-stone-500">Buchungsregeln</span>
+        <span class="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-stone-900 shadow-sm">Zeiten</span>
+        <span class="rounded-xl px-4 py-2 text-sm font-semibold text-stone-500">Räume &amp; Tags</span>
+        <span class="rounded-xl px-4 py-2 text-sm font-semibold text-stone-500">Zahlungen</span>
+        <span class="rounded-xl px-4 py-2 text-sm font-semibold text-stone-500">Integrationen</span>
+        <span class="rounded-xl px-4 py-2 text-sm font-semibold text-stone-500">Website-Widget</span>
+      </div>
+      <div class="grid gap-6 lg:grid-cols-2">
+        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
+          <h2 class="mb-3 font-bold">Öffnungszeiten</h2>
+          <div class="space-y-2 text-sm" id="bhours"></div>
+          <div class="mt-2 text-sm text-teal-700 underline">+ Zeitfenster hinzufügen</div>
+          <div><span class="mt-4 inline-block rounded-xl bg-stone-900 px-5 py-2.5 text-sm font-bold text-white">Öffnungszeiten speichern</span></div>
+        </div>
+        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
+          <h2 class="mb-3 font-bold">Sonderöffnungszeiten / Schließtage <span class="tip">?</span></h2>
+          <div class="grid grid-cols-2 gap-2 text-sm">
+            <input type="text" value="tt.mm.jjjj" class="rounded-lg"><input type="text" placeholder="z. B. Feiertag" class="rounded-lg">
+            <input type="text" value="--:--" class="rounded-lg"><input type="text" value="--:--" class="rounded-lg">
+            <label class="col-span-2 flex items-center gap-1.5 text-sm"><input type="checkbox"> Geschlossen <span class="tip">?</span></label>
+            <span class="col-span-2 rounded-lg bg-stone-900 px-4 py-2 text-center font-semibold text-white">Speichern</span>
+          </div>
+          <div class="mt-3 space-y-1 text-sm">
+            <div class="flex items-center justify-between rounded-lg bg-stone-50 px-3 py-2"><span>24.12.2026: 12:00–15:00 (Heiligabend)</span><span class="text-xs text-red-500">Löschen</span></div>
+            <div class="flex items-center justify-between rounded-lg bg-stone-50 px-3 py-2"><span>25.12.2026: 🔒 geschlossen (1. Weihnachtstag)</span><span class="text-xs text-red-500">Löschen</span></div>
+            <div class="flex items-center justify-between rounded-lg bg-stone-50 px-3 py-2"><span>26.12.2026: 🔒 geschlossen (2. Weihnachtstag)</span><span class="text-xs text-red-500">Löschen</span></div>
+            <div class="flex items-center justify-between rounded-lg bg-stone-50 px-3 py-2"><span>31.12.2026: 18:00–23:30 (Silvester)</span><span class="text-xs text-red-500">Löschen</span></div>
+          </div>
+        </div>
+        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
+          <h2 class="mb-3 font-bold">Sperrzeiten <span class="tip">?</span></h2>
+          <div class="grid grid-cols-2 gap-2 text-sm">
+            <label class="block">Von <input type="text" value="tt.mm.jjjj --:--" class="mt-1 w-full rounded-lg"></label>
+            <label class="block">Bis <input type="text" value="tt.mm.jjjj --:--" class="mt-1 w-full rounded-lg"></label>
+            <label class="block">Raum (optional) <select class="mt-1 w-full rounded-lg"><option>Ganzer Standort</option></select></label>
+            <label class="block">Max. Gäste (optional) <input type="text" placeholder="leer = voll gesperrt" class="mt-1 w-full rounded-lg"></label>
+            <input type="text" placeholder="Grund (z. B. Betriebsfeier)" class="col-span-2 rounded-lg">
+            <span class="col-span-2 rounded-lg bg-stone-900 px-4 py-2 text-center font-semibold text-white">Sperrzeit anlegen</span>
+          </div>
+          <p class="mt-3 text-xs text-stone-400">Keine aktiven Sperrzeiten.</p>
+        </div>
+        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
+          <h2 class="mb-1 font-bold">Tisch sperren <span class="tip">?</span></h2>
+          <p class="mb-3 text-xs text-stone-500">Sperrzeiten gelten für den ganzen Standort oder einen Raum – hier geht es um einzelne Tische.</p>
+          <div class="grid grid-cols-2 gap-2 text-sm">
+            <label class="col-span-2 block">Tisch <select class="mt-1 w-full rounded-lg"><option>T1 · Gastraum</option></select></label>
+            <label class="block">Von <input type="text" value="tt.mm.jjjj --:--" class="mt-1 w-full rounded-lg"></label>
+            <label class="block">Bis <input type="text" value="tt.mm.jjjj --:--" class="mt-1 w-full rounded-lg"></label>
+            <input type="text" placeholder="Grund (z. B. Tisch defekt)" class="col-span-2 rounded-lg">
+            <span class="col-span-2 rounded-lg bg-stone-900 px-4 py-2 text-center font-semibold text-white">Tisch sperren</span>
+          </div>
+          <p class="mt-3 text-xs text-stone-400">Kein Tisch gesperrt.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<script>
+(function () {
+  var nav = ['Dashboard','Live-Board','Reservierungen','Tischplan','Walk-ins','Warteliste','Kunden','Events','Rückerstattungen','Berichte','Einstellungen','Standorte','Benutzer','Abrechnung','E-Mail-Vorlagen','API','Marketing','Webhooks','Auditlog'];
+  document.getElementById('bnav').innerHTML = nav.map(function (n) {
+    var act = n === 'Einstellungen';
+    return '<div class="flex items-center gap-2 rounded-md px-3 py-2 ' + (act ? 'bg-stone-700 font-semibold' : '') + '"><span class="inline-block h-4 w-4 rounded-sm border border-stone-500"></span>' + n + '</div>';
+  }).join('');
+  var rows = [['Dienstag','11:30','14:30','Mittag'],['Dienstag','17:30','22:00','Abend'],['Mittwoch','11:30','14:30','Mittag'],['Mittwoch','17:30','22:00','Abend'],['Donnerstag','11:30','14:30','Mittag'],['Donnerstag','17:30','22:00','Abend'],['Freitag','11:30','14:30','Mittag'],['Freitag','17:30','01:00','Abend'],['Samstag','12:00','23:00',''],['Sonntag','12:00','21:00','']];
+  document.getElementById('bhours').innerHTML = rows.map(function (r) {
+    return '<div class="flex items-center gap-2"><select class="rounded-lg"><option>' + r[0] + '</option></select><input type="text" value="' + r[1] + '" class="w-24 rounded-lg"><span>–</span><input type="text" value="' + r[2] + '" class="w-24 rounded-lg"><input type="text" value="' + r[3] + '" placeholder="Service" class="w-24 rounded-lg"><span class="shrink-0 text-red-500">✕</span></div>';
+  }).join('');
+  window.setDemoState = function () {}; window.setAnnos = function () {};
+})();
+</script>
+</template>
+
+<!-- ============================ NACHHER ============================ -->
+<template id="tplAfter">
+<style>
+  :root {
+    --s50:#fafaf9; --s100:#f5f5f4; --s200:#e7e5e4; --s300:#d6d3d1; --s400:#a8a29e; --s500:#78716c;
+    --s600:#57534e; --s700:#44403c; --s800:#292524; --s900:#1c1917;
+    --brand:#0f766e; --brand-50:#f0fdfa; --brand-100:#ccfbf1; --ring:rgba(15,118,110,.28);
+    --red:#b91c1c; --red-bg:#fef2f2; --red-line:#fca5a5; --amber:#b45309; --amber-bg:#fffbeb; --amber-line:#fcd34d;
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body { font-family:'Inter', ui-sans-serif, system-ui, sans-serif; font-size:14px; line-height:1.5; color:var(--s900); background:var(--s100); -webkit-font-smoothing:antialiased; }
+  a { color:inherit; }
+  button, input, select { font:inherit; color:inherit; }
+  :focus-visible { outline:2px solid var(--brand); outline-offset:2px; }
+  svg.i { width:16px; height:16px; flex-shrink:0; }
+  [hidden] { display:none !important; }
+
+  .app { display:flex; min-height:100vh; }
+  .snav { width:248px; flex-shrink:0; background:var(--s900); color:#e7e5e4; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; }
+  .snav .brand { padding:18px 20px 6px; font-size:17px; font-weight:700; letter-spacing:-.01em; color:#fff; }
+  .snav .back { display:flex; align-items:center; gap:8px; margin:6px 12px 10px; padding:8px; border-radius:6px; font-size:13px; color:#d6d3d1; text-decoration:none; }
+  .snav .back:hover { background:var(--s800); color:#fff; }
+  .snav .search { margin:0 12px 6px; position:relative; }
+  .snav .search svg { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--s400); }
+  .snav .search input { width:100%; height:36px; padding:0 10px 0 32px; border-radius:6px; border:1px solid var(--s700); background:var(--s800); color:#fff; font-size:13px; }
+  .snav .search input::placeholder { color:var(--s400); }
+  .snav .search input:focus { outline:none; border-color:var(--brand); box-shadow:0 0 0 3px var(--ring); }
+  .snav nav { flex:1; overflow-y:auto; padding:2px 12px 16px; }
+  .grp { margin-top:14px; }
+  .grp-h { padding:0 8px 4px; font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--s400); }
+  .snav nav a { display:block; padding:6px 8px; border-radius:6px; font-size:14px; color:#e7e5e4; text-decoration:none; }
+  .snav nav a small { display:block; font-size:12px; color:#5eead4; }
+  .snav nav a:hover { background:var(--s800); }
+  .snav nav a[aria-current="page"] { background:var(--s700); color:#fff; font-weight:600; }
+  .noresult { margin:16px 8px; font-size:13px; color:var(--s400); }
+  .snav .user { border-top:1px solid var(--s700); padding:12px 20px; font-size:13px; color:#d6d3d1; }
+
+  .col { flex:1; min-width:0; display:flex; flex-direction:column; }
+  .mtop { display:none; position:sticky; top:0; z-index:6; background:var(--s900); color:#fff; padding:8px 12px; align-items:center; }
+  .mtop a { display:flex; align-items:center; gap:6px; min-height:40px; padding:0 8px; border-radius:6px; text-decoration:none; font-size:14px; color:#e7e5e4; }
+
+  /* Speicherleiste */
+  .savebar { position:sticky; top:0; z-index:8; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px 16px; padding:10px 40px; background:var(--s900); color:#fff; box-shadow:0 6px 16px rgba(28,25,23,.18); animation:drop .18s ease-out; }
+  @keyframes drop { from { transform:translateY(-100%); } to { transform:none; } }
+  .savebar .msg { display:flex; align-items:center; gap:10px; font-weight:600; }
+  .savebar .msg .dot { width:8px; height:8px; border-radius:50%; background:#fbbf24; }
+  .savebar .msg small { font-weight:400; color:#d6d3d1; }
+  .savebar.err .msg .dot { background:#f87171; }
+  .savebar .acts { display:flex; gap:8px; }
+  .btn-ghost-l { background:transparent; color:#fff; border:1px solid var(--s600); }
+  .btn-ghost-l:hover { background:var(--s800); }
+  .btn-light { background:#fff; color:var(--s900); }
+  .btn-light:hover { background:var(--s100); }
+
+  main { flex:1; padding:28px 40px 72px; }
+  .wrap { max-width:1060px; margin:0 auto; }
+  .crumb { font-size:13px; color:var(--s500); }
+  .crumb a { text-decoration:none; } .crumb a:hover { text-decoration:underline; }
+  .ph { display:flex; flex-wrap:wrap; gap:14px 24px; align-items:flex-end; justify-content:space-between; margin:6px 0 24px; padding-bottom:22px; border-bottom:1px solid var(--s200); }
+  .ph h1 { margin:0; font-size:24px; line-height:1.25; font-weight:700; letter-spacing:-.015em; }
+  .ph p { margin:6px 0 0; max-width:600px; color:var(--s600); }
+  .ph .right { display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+  .scope { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--s600); }
+  .scope select { height:36px; padding:0 28px 0 10px; border:1px solid var(--s300); border-radius:4px; background:#fff; font-size:14px; font-weight:600; color:var(--s900); }
+  .scope select:focus { outline:none; border-color:var(--brand); box-shadow:0 0 0 3px var(--ring); }
+
+  .sect { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,2fr); gap:32px; padding:4px 0 32px; align-items:start; }
+  .left { display:flex; flex-direction:column; gap:20px; position:sticky; top:72px; }
+  .sect + .sect { border-top:1px solid var(--s200); padding-top:32px; }
+  .ann h2 { margin:0 0 6px; font-size:16px; font-weight:600; }
+  .ann p { margin:0 0 8px; color:var(--s600); }
+  .ann a { color:var(--brand); }
+  .card { background:#fff; border:1px solid var(--s200); border-radius:12px; box-shadow:0 1px 2px rgba(28,25,23,.04); }
+  .card-b { padding:8px 20px; }
+
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:36px; padding:0 14px; border-radius:6px; border:1px solid transparent; font-size:14px; font-weight:600; cursor:pointer; text-decoration:none; white-space:nowrap; }
+  .btn-p { background:var(--s900); color:#fff; } .btn-p:hover { background:var(--s800); }
+  .btn-s { background:#fff; border-color:var(--s300); color:var(--s900); } .btn-s:hover { background:var(--s50); border-color:var(--s400); }
+  .btn-d { background:var(--red); color:#fff; }
+  .btn-sm { min-height:32px; padding:0 12px; font-size:13px; }
+  .iconbtn { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border:0; border-radius:6px; background:none; color:var(--s500); cursor:pointer; }
+  .iconbtn:hover { background:var(--s100); color:var(--s900); }
+  .iconbtn.danger:hover { background:var(--red-bg); color:var(--red); }
+
+  .errsum { margin:12px 0 4px; padding:12px 14px; border:1px solid var(--red-line); border-left:4px solid var(--red); border-radius:8px; background:var(--red-bg); color:var(--red); font-size:13px; }
+  .errsum strong { display:block; margin-bottom:2px; }
+  .errsum a { color:var(--red); font-weight:600; }
+
+  /* Woche: eine Zeile je Tag */
+  .day { position:relative; display:grid; grid-template-columns:150px minmax(0,1fr) auto; gap:4px 12px; padding:12px 0; border-top:1px solid var(--s100); align-items:start; }
+  .day:first-child { border-top:0; }
+  .day.focus { background:linear-gradient(90deg, var(--brand-50), transparent 70%); margin:0 -20px; padding-left:20px; padding-right:20px; }
+  .dh { display:flex; align-items:center; gap:10px; min-height:36px; }
+  .dname { width:88px; font-weight:600; display:flex; align-items:center; gap:6px; }
+  .cdot { width:7px; height:7px; border-radius:50%; background:#d97706; display:none; }
+  .day.changed .cdot { display:inline-block; }
+  .sw { position:relative; width:34px; height:20px; border-radius:999px; border:0; background:var(--s300); cursor:pointer; flex-shrink:0; }
+  .sw::after { content:""; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.2); transition:left .15s; }
+  .sw[aria-checked="true"] { background:var(--brand); }
+  .sw[aria-checked="true"]::after { left:16px; }
+  .rs { display:flex; flex-direction:column; gap:6px; min-width:0; }
+  .closedtxt { display:flex; align-items:center; min-height:36px; color:var(--s500); }
+  .r { display:flex; align-items:center; gap:6px; }
+  .r input.t { width:76px; height:36px; padding:0 8px; border:1px solid var(--s300); border-radius:4px; background:#fff; font-size:14px; font-variant-numeric:tabular-nums; text-align:center; }
+  .r input.t::-webkit-calendar-picker-indicator { display:none; }
+  .r input.nm { flex:1; min-width:0; height:36px; padding:0 8px; border:1px solid transparent; border-radius:4px; background:transparent; color:var(--s500); font-size:13px; }
+  .r input.nm:hover { border-color:var(--s200); }
+  .r input:focus { outline:none; border-color:var(--brand); box-shadow:0 0 0 3px var(--ring); background:#fff; color:var(--s900); }
+  .r input[aria-invalid="true"] { border-color:var(--red); box-shadow:0 0 0 3px rgba(185,28,28,.14); }
+  .dash { color:var(--s400); }
+  .note { display:flex; gap:6px; align-items:flex-start; margin:0 0 2px; font-size:13px; }
+  .note.info { color:var(--s500); }
+  .note.warn { color:var(--amber); }
+  .note.err { color:var(--red); }
+  .note svg { margin-top:2px; }
+  .da { display:flex; align-items:center; gap:2px; min-height:36px; }
+
+  /* Übertragen */
+  .pop { position:absolute; right:0; top:46px; z-index:7; width:290px; background:#fff; border:1px solid var(--s200); border-radius:10px; box-shadow:0 12px 32px rgba(28,25,23,.16); padding:14px; }
+  .pop h3 { margin:0 0 8px; font-size:13px; font-weight:600; }
+  .pop .quick { display:flex; gap:6px; margin-bottom:8px; }
+  .pop .quick button { font-size:12px; padding:3px 8px; border:1px solid var(--s300); border-radius:999px; background:#fff; cursor:pointer; }
+  .pop .days { display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; margin-bottom:12px; }
+  .pop label { display:flex; align-items:center; gap:8px; min-height:30px; font-size:14px; cursor:pointer; }
+  .pop input { accent-color:var(--brand); width:16px; height:16px; }
+  .pop .pf { display:flex; justify-content:flex-end; gap:8px; }
+
+  /* Vorschau */
+  .prevcard { background:#fff; border:1px solid var(--s200); border-radius:12px; padding:14px 16px; }
+  .prevcard h3 { margin:0 0 2px; font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; }
+  .prevcard > p { margin:0 0 10px; font-size:12px; color:var(--s500); }
+  .dtabs { display:flex; gap:2px; margin-bottom:12px; background:var(--s100); border-radius:6px; padding:2px; }
+  .dtabs button { flex:1; border:0; background:transparent; font-size:12px; font-weight:600; color:var(--s500); padding:5px 0; border-radius:4px; cursor:pointer; }
+  .dtabs button[aria-pressed="true"] { background:#fff; color:var(--s900); box-shadow:0 1px 2px rgba(0,0,0,.08); }
+  .wlabel { font-size:12px; font-weight:600; color:var(--s600); margin:8px 0 6px; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { font-size:13px; font-variant-numeric:tabular-nums; padding:4px 9px; border-radius:6px; background:var(--brand-50); color:var(--brand); border:1px solid var(--brand-100); }
+  .why { margin:10px 0 0; padding-top:10px; border-top:1px solid var(--s100); font-size:12px; color:var(--s600); }
+  .why a { color:var(--brand); }
+  .none { font-size:13px; color:var(--s500); }
+
+  /* Sonderzeiten */
+  .listhead { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 0 4px; }
+  .listhead h3 { margin:0; font-size:12px; font-weight:600; color:var(--s500); text-transform:uppercase; letter-spacing:.05em; }
+  .rows { list-style:none; margin:0; padding:0 0 8px; }
+  .rows li { display:flex; align-items:center; gap:12px; padding:11px 0; border-top:1px solid var(--s100); }
+  .rows .ico { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; background:var(--s100); color:var(--s600); flex-shrink:0; }
+  .rows .txt { flex:1; min-width:0; }
+  .rows .txt b { display:block; font-weight:600; }
+  .rows .txt span { display:block; font-size:13px; color:var(--s500); }
+  .rows .acts { display:flex; align-items:center; gap:4px; }
+  .confirm { display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:13px; color:var(--s700); }
+  .empty { text-align:center; padding:28px 16px 24px; }
+  .empty .ico { width:44px; height:44px; margin:0 auto 12px; border-radius:12px; background:var(--s100); color:var(--s600); display:flex; align-items:center; justify-content:center; }
+  .empty p { margin:0 auto 14px; max-width:360px; color:var(--s600); }
+
+  /* Seitenleiste zum Anlegen */
+  .scrim { position:fixed; inset:0; background:rgba(28,25,23,.4); opacity:0; pointer-events:none; transition:opacity .15s; z-index:20; }
+  .drawer { position:fixed; top:0; right:0; bottom:0; width:440px; max-width:100%; background:#fff; z-index:21; display:flex; flex-direction:column; transform:translateX(100%); transition:transform .2s ease; box-shadow:-12px 0 32px rgba(28,25,23,.12); }
+  .open .scrim { opacity:1; pointer-events:auto; }
+  .open .drawer { transform:none; }
+  .dr-h { display:flex; align-items:center; justify-content:space-between; padding:18px 24px; border-bottom:1px solid var(--s200); }
+  .dr-h h2 { margin:0; font-size:17px; font-weight:600; }
+  .dr-b { flex:1; overflow-y:auto; padding:20px 24px; }
+  .dr-f { display:flex; justify-content:flex-end; gap:8px; padding:14px 24px; border-top:1px solid var(--s200); background:var(--s50); }
+  .field { margin-bottom:18px; }
+  .field .l { display:block; margin-bottom:6px; font-weight:600; }
+  .field .opt { font-weight:400; color:var(--s500); }
+  .field input[type="date"], .field input[type="text"], .field input[type="time"] { width:100%; height:40px; padding:0 10px; border:1px solid var(--s300); border-radius:4px; background:#fff; font-size:14px; }
+  .field input:focus { outline:none; border-color:var(--brand); box-shadow:0 0 0 3px var(--ring); }
+  .field input[aria-invalid="true"] { border-color:var(--red); }
+  .help { margin:6px 0 0; font-size:13px; color:var(--s500); }
+  .radios { display:flex; flex-direction:column; gap:8px; }
+  .radios label { display:flex; gap:10px; align-items:flex-start; padding:12px; border:1px solid var(--s300); border-radius:8px; cursor:pointer; }
+  .radios label:has(input:checked) { border-color:var(--brand); box-shadow:0 0 0 1px var(--brand); }
+  .radios input { accent-color:var(--brand); margin-top:3px; }
+  .radios b { display:block; font-weight:600; }
+  .radios span span { font-size:13px; color:var(--s500); }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+  .toast { position:fixed; left:50%; bottom:24px; transform:translate(-50%, 20px); opacity:0; display:flex; align-items:center; gap:10px; padding:10px 16px; border-radius:8px; background:var(--s900); color:#fff; font-size:14px; box-shadow:0 8px 24px rgba(28,25,23,.25); transition:all .2s; z-index:30; pointer-events:none; }
+  .toast.on { opacity:1; transform:translate(-50%, 0); }
+  .toast svg { color:#5eead4; }
+
+  /* Erklärungsnummern */
+  .an { display:none; width:20px; height:20px; border-radius:50%; background:#c2410c; color:#fff; font-size:11px; font-weight:700; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 0 0 2px #fff; vertical-align:middle; }
+  .annos .an { display:inline-flex; }
+  .an.abs { position:absolute; z-index:9; }
+
+  @media (max-width:1023px) {
+    .snav { display:none; }
+    .mtop { display:flex; }
+    main { padding:18px 16px 96px; }
+    .savebar { position:fixed; top:auto; bottom:0; left:0; right:0; padding:10px 16px; animation:none; }
+    .sect { display:flex; flex-direction:column; gap:14px; }
+    .left { display:contents; }
+    .ann { order:1; } .cardwrap { order:2; } .prev { order:3; }
+    .card-b { padding:6px 16px; }
+    .day.focus { margin:0 -16px; padding-left:16px; padding-right:16px; }
+  }
+  @media (max-width:640px) {
+    .day { grid-template-columns:1fr auto; }
+    .dh { grid-column:1; }
+    .da { grid-column:2; grid-row:1; }
+    .rs { grid-column:1 / -1; }
+    .day.isclosed { grid-template-columns:auto 1fr auto; }
+    .day.isclosed .rs { grid-column:2; grid-row:1; }
+    .day.isclosed .da { grid-column:3; }
+    .r { flex-wrap:wrap; }
+    .r input.nm { flex-basis:100%; order:5; height:30px; padding:0 8px; }
+    .ph h1 { font-size:22px; }
+    .savebar .acts { width:100%; } .savebar .acts .btn { flex:1; }
+    .drawer { width:100%; }
+    .pop { right:-8px; width:min(290px, calc(100vw - 32px)); }
+  }
+</style>
+
+<div class="app" id="root">
+  <aside class="snav" aria-label="Einstellungen">
+    <div class="brand">Swayy</div>
+    <a class="back" href="#"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 18l-6-6 6-6"/></svg>Zurück zum Betrieb</a>
+    <div class="search">
+      <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input type="search" id="q" placeholder="Einstellungen durchsuchen" aria-label="Einstellungen durchsuchen" autocomplete="off">
+      <span class="an abs" style="right:-8px;top:-8px">8</span>
+    </div>
+    <nav id="snavList" aria-label="Einstellungsbereiche">
+      <div class="grp"><div class="grp-h">Betrieb</div>
+        <a href="#" data-k="Betriebsname, Betriebstyp, Markenfarbe, Impressum, Datenschutz, AGB, Restaurant, Salon">Allgemein</a>
+        <a href="#" data-k="Standort, Adresse, Logo, Zeitzone, Telefon">Standorte</a>
+        <a href="#" data-k="Benutzer, Einladen, Rollen, Zugang">Team &amp; Rollen</a>
+        <a href="#" data-k="Tarif, Abo, Lastschrift, Rechnung">Abo &amp; Rechnungen</a>
+        <a href="#" data-k="Auditlog, Export, Import, Betrieb löschen">Daten &amp; Sicherheit</a>
+      </div>
+      <div class="grp"><div class="grp-h">Platz &amp; Zeiten</div>
+        <a href="#" aria-current="page" data-k="Sonderzeiten, Feiertag, Schließtag, Ruhetag, Heiligabend, Betriebsferien">Öffnungszeiten</a>
+        <a href="#" data-k="Sperrzeit, Renovierung, Tisch sperren, Betriebsfeier">Sperrzeiten</a>
+        <a href="#" data-k="Raum, Tisch, Tischkombination, Tischplan bearbeiten">Räume &amp; Tische</a>
+        <a href="#" data-k="Kapazität, Besuchsdauer, Puffer, Slot-Intervall, Lückenoptimierung">Kapazität &amp; Dauer</a>
+      </div>
+      <div class="grp"><div class="grp-h">Buchungen</div>
+        <a href="#" data-k="Vorlauf, Vorausbuchung, Personen online, Große Gruppen, Stornofrist, Umbuchungsfrist, Bestätigung, Warteliste, Walk-ins">Buchungsregeln</a>
+        <a href="#" data-k="Formularfelder, Pflichtfeld, Telefon">Buchungsformular</a>
+        <a href="#" data-k="Website-Widget, Einbinden, Direktlink, Popup, Konfetti, Öffentlicher Tischplan">Buchungsseite</a>
+        <a href="#" data-k="Tags, Markierung, VIP, Allergie">Tags</a>
+      </div>
+      <div class="grp"><div class="grp-h">Gästekommunikation</div>
+        <a href="#" data-k="Erinnerung, Bestätigungsmail, Feedback, Benachrichtigung an den Betrieb">Benachrichtigungen</a>
+        <a href="#" data-k="Vorlagen, Mailtext, Nachrichtentext">Vorlagen</a>
+        <a href="#" data-k="Absendername, Antwortadresse, Antwort über Swayy">Absender &amp; Antworten</a>
+        <a href="#" data-k="SMS, seven.io, Absenderkennung">SMS-Versand</a>
+      </div>
+      <div class="grp"><div class="grp-h">Zahlungen</div>
+        <a href="#" data-k="Stripe, PayPal">Zahlungsanbieter</a>
+        <a href="#" data-k="Anzahlung, No-Show-Schutz">Anzahlungen</a>
+        <a href="#" data-k="Rückerstattung, Erstattungsregeln">Erstattungen</a>
+      </div>
+      <div class="grp"><div class="grp-h">Verbindungen</div>
+        <a href="#" data-k="Newsletter, MailWizz">Newsletter</a>
+        <a href="#" data-k="API, Schlüssel, Token">API-Schlüssel</a>
+        <a href="#" data-k="Webhook, Ereignisse">Webhooks</a>
+      </div>
+      <p class="noresult" id="noresult" hidden></p>
+    </nav>
+    <div class="user">Demo-Konto · Mein Konto</div>
+  </aside>
+
+  <div class="col">
+    <div class="mtop"><a href="#"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 18l-6-6 6-6"/></svg>Einstellungen</a></div>
+    <div class="savebar" id="savebar" hidden role="region" aria-label="Ungespeicherte Änderungen">
+      <div class="msg"><span class="an">1</span><span class="dot" aria-hidden="true"></span><span id="sbText">Ungespeicherte Änderungen</span><small id="sbSub"></small></div>
+      <div class="acts">
+        <button type="button" class="btn btn-ghost-l btn-sm" id="discard">Verwerfen</button>
+        <button type="button" class="btn btn-light btn-sm" id="save">Speichern</button>
+      </div>
+    </div>
+    <main>
+      <div class="wrap">
+        <div class="crumb"><a href="#">Einstellungen</a> › Platz &amp; Zeiten</div>
+        <div class="ph">
+          <div>
+            <h1>Öffnungszeiten</h1>
+            <p>Zu diesen Zeiten nimmt der Standort Reservierungen an. Feiertage und andere Ausnahmen stehen unten bei den Sonderzeiten.</p>
+          </div>
+          <div class="right">
+            <label class="scope"><span class="an">7</span>Gilt für Standort
+              <select aria-label="Standort wählen"><option>Sonne</option><option>Mond</option></select>
+            </label>
+            <a class="btn btn-s btn-sm" href="#">Buchungsseite ansehen ↗</a>
+          </div>
+        </div>
+
+        <section class="sect" aria-labelledby="h-week">
+          <div class="left">
+          <div class="ann">
+            <h2 id="h-week">Reguläre Woche</h2>
+            <p>Pro Tag sind mehrere Zeitfenster möglich, etwa Mittag und Abend. Ein Fenster darf über Mitternacht gehen.</p>
+          </div>
+          <div class="prev" id="prev"></div>
+          </div>
+          <div class="cardwrap">
+            <form class="card" id="weekForm" novalidate>
+              <div class="card-b" style="position:relative">
+                <span class="an abs" style="left:-10px;top:14px">2</span>
+                <div id="errsum"></div>
+                <div id="week"></div>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <section class="sect" aria-labelledby="h-special">
+          <div class="ann">
+            <h2 id="h-special">Sonderzeiten und Schließtage</h2>
+            <p>Ein Eintrag gilt für einen Tag und ersetzt dort die reguläre Woche, etwa an Heiligabend oder in den Betriebsferien.</p>
+          </div>
+          <div class="cardwrap"><div class="card"><div class="card-b" id="specials"></div></div></div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div class="scrim" id="scrim"></div>
+  <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="dr-title">
+    <div class="dr-h">
+      <h2 id="dr-title">Sonderzeit anlegen</h2>
+      <button class="iconbtn" type="button" id="drClose" aria-label="Schließen"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <form class="dr-b" id="spForm" novalidate>
+      <div class="field">
+        <label class="l" for="spDate">Datum</label>
+        <input type="date" id="spDate" aria-describedby="spDateErr">
+        <p class="note err" id="spDateErr" hidden></p>
+      </div>
+      <div class="field">
+        <label class="l" for="spLabel">Bezeichnung <span class="opt">(freiwillig)</span></label>
+        <input type="text" id="spLabel" placeholder="z. B. Heiligabend">
+        <p class="help">Erscheint nur in deiner Übersicht.</p>
+      </div>
+      <div class="field">
+        <span class="l">An diesem Tag</span>
+        <div class="radios">
+          <label><input type="radio" name="spMode" value="closed" checked><span><b>Ganztägig geschlossen</b><span>Online-Buchungen für diesen Tag sind gesperrt.</span></span></label>
+          <label><input type="radio" name="spMode" value="open"><span><b>Geöffnet mit eigenen Zeiten</b><span>Ersetzt die Zeitfenster der regulären Woche.</span></span></label>
+        </div>
+      </div>
+      <div class="field" id="spTimes" hidden>
+        <div class="two">
+          <div><label class="l" for="spFrom">Von</label><input type="time" id="spFrom" value="12:00"></div>
+          <div><label class="l" for="spTo">Bis</label><input type="time" id="spTo" value="15:00"></div>
+        </div>
+        <p class="help" id="spHint"></p>
+      </div>
+    </form>
+    <div class="dr-f">
+      <button class="btn btn-s" type="button" id="drCancel">Abbrechen</button>
+      <button class="btn btn-p" type="button" id="drSave">Sonderzeit speichern</button>
+    </div>
+  </aside>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5L20 7"/></svg><span id="toastText"></span></div>
+</div>
+
+<script>
+(function () {
+  var ICON = {
+    cal: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>',
+    lock: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>',
+    trash: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
+    x: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    plus: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>',
+    copy: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/></svg>',
+    moon: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></svg>',
+    warn: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.01"/></svg>',
+    err: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/></svg>',
+    eye: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>'
+  };
+  var DURATION = 90, INTERVAL = 30;
+  var NAMES = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
+  var SHORT = ['Mo','Di','Mi','Do','Fr','Sa','So'];
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function clone(x) { return JSON.parse(JSON.stringify(x)); }
+  function $(id) { return document.getElementById(id); }
+  function mins(t) { var p = t.split(':'); return +p[0] * 60 + +p[1]; }
+  function hhmm(m) { m = ((m % 1440) + 1440) % 1440; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); }
+
+  var WEEK0 = [
+    { open: false, r: [] },
+    { open: true, r: [['11:30','14:30','Mittag'], ['17:30','22:00','Abend']] },
+    { open: true, r: [['11:30','14:30','Mittag'], ['17:30','22:00','Abend']] },
+    { open: true, r: [['11:30','14:30','Mittag'], ['17:30','22:00','Abend']] },
+    { open: true, r: [['11:30','14:30','Mittag'], ['17:30','01:00','Abend']] },
+    { open: true, r: [['12:00','23:00','']] },
+    { open: true, r: [['12:00','21:00','']] }
+  ];
+  var SPEC0 = [
+    { date: '2026-12-24', label: 'Heiligabend', closed: false, from: '12:00', to: '15:00' },
+    { date: '2026-12-25', label: '1. Weihnachtstag', closed: true },
+    { date: '2026-12-26', label: '2. Weihnachtstag', closed: true },
+    { date: '2026-12-31', label: 'Silvester', closed: false, from: '18:00', to: '23:30' }
+  ];
+  var saved, week, specials, errors = [], confirmIdx = -1, previewDay = 1, popDay = -1;
+
+  function isChanged(i) { return JSON.stringify(week[i]) !== JSON.stringify(saved[i]); }
+  function dirtyDays() { var n = 0; for (var i = 0; i < 7; i++) if (isChanged(i)) n++; return n; }
+
+  function windowInfo(r) {
+    if (!r[0] || !r[1]) return null;
+    var o = mins(r[0]), c = mins(r[1]); var next = false;
+    if (c <= o) { c += 1440; next = true; }
+    return { o: o, c: c, next: next, len: c - o };
+  }
+
+  /* ---------- Woche ---------- */
+  function renderWeek() {
+    var h = '';
+    week.forEach(function (day, i) {
+      var cls = 'day' + (day.open ? '' : ' isclosed') + (isChanged(i) ? ' changed' : '') + (i === previewDay ? ' focus' : '');
+      h += '<div class="' + cls + '" data-day="' + i + '">';
+      h += '<div class="dh"><span class="dname" id="dn' + i + '"><span class="cdot" title="geändert"></span>' + NAMES[i] + (isChanged(i) ? '<span style="position:absolute;width:1px;height:1px;overflow:hidden">, geändert</span>' : '') + '</span>' +
+        '<button type="button" class="sw" role="switch" aria-checked="' + day.open + '" aria-labelledby="dn' + i + '" data-act="toggle" data-i="' + i + '"></button></div>';
+      h += '<div class="rs">';
+      if (!day.open) h += '<div class="closedtxt">Geschlossen</div>';
+      day.r.forEach(function (r, j) {
+        if (!day.open) return;
+        var err = errors.filter(function (e) { return e.i === i && e.j === j; })[0];
+        var n = j + 1, info = windowInfo(r);
+        h += '<div class="r">' +
+          '<input class="t" type="time" value="' + r[0] + '" data-i="' + i + '" data-j="' + j + '" data-k="0" aria-label="' + NAMES[i] + ', Zeitfenster ' + n + ', Beginn">' +
+          '<span class="dash" aria-hidden="true">–</span>' +
+          '<input class="t" id="end' + i + '_' + j + '" type="time" value="' + r[1] + '" data-i="' + i + '" data-j="' + j + '" data-k="1" aria-label="' + NAMES[i] + ', Zeitfenster ' + n + ', Ende"' + (err ? ' aria-invalid="true" aria-describedby="e' + i + '_' + j + '"' : '') + '>' +
+          '<input class="nm" type="text" value="' + esc(r[2]) + '" placeholder="Name" data-i="' + i + '" data-j="' + j + '" data-k="2" aria-label="' + NAMES[i] + ', Zeitfenster ' + n + ', Name">' +
+          '<button type="button" class="iconbtn danger" data-act="rm" data-i="' + i + '" data-j="' + j + '" aria-label="' + NAMES[i] + ', Zeitfenster ' + n + ' entfernen">' + ICON.x + '</button></div>';
+        if (err) h += '<p class="note err" id="e' + i + '_' + j + '">' + ICON.err + '<span>' + err.msg + '</span></p>';
+        else if (info && info.len < DURATION) h += '<p class="note warn">' + ICON.warn + '<span>Das Fenster dauert ' + info.len + ' Min., ein Besuch ' + DURATION + ' Min. Hier finden Gäste keine Uhrzeit. <span class="an">5</span></span></p>';
+        else if (info && info.next) h += '<p class="note info">' + ICON.moon + '<span>Endet am Folgetag (' + NAMES[(i + 1) % 7] + ') um ' + r[1] + '. <span class="an">5</span></span></p>';
+      });
+      h += '</div>';
+      h += '<div class="da">' + (i === 1 ? '<span class="an" style="margin-right:2px">3</span>' : '') +
+        (day.open ? '<button type="button" class="iconbtn" data-act="add" data-i="' + i + '" aria-label="' + NAMES[i] + ': Zeitfenster hinzufügen" title="Zeitfenster hinzufügen">' + ICON.plus + '</button>' +
+          '<button type="button" class="iconbtn" data-act="copy" data-i="' + i + '" aria-label="Zeiten von ' + NAMES[i] + ' auf andere Tage übertragen" title="Auf andere Tage übertragen" aria-expanded="' + (popDay === i) + '">' + ICON.copy + '</button>' : '') + '</div>';
+      if (popDay === i) h += renderPop(i);
+      h += '</div>';
+    });
+    $('week').innerHTML = h;
+    renderErrSum(); renderSaveBar(); renderPreview();
+  }
+  function renderPop(i) {
+    var h = '<div class="pop" role="dialog" aria-label="Zeiten übertragen"><h3>Zeiten von ' + NAMES[i] + ' übertragen auf</h3>' +
+      '<div class="quick"><button type="button" data-act="qwork">Mo–Fr</button><button type="button" data-act="qall">Alle Tage</button></div><div class="days">';
+    NAMES.forEach(function (n, k) { if (k !== i) h += '<label><input type="checkbox" value="' + k + '">' + n + '</label>'; });
+    return h + '</div><div class="pf"><button type="button" class="btn btn-s btn-sm" data-act="popx">Abbrechen</button><button type="button" class="btn btn-p btn-sm" data-act="popok" data-i="' + i + '">Übertragen</button></div></div>';
+  }
+  function renderErrSum() {
+    if (!errors.length) { $('errsum').innerHTML = ''; return; }
+    var h = '<div class="errsum" role="alert" tabindex="-1" id="errbox"><span class="an" style="float:right">6</span><strong>Bitte ' + (errors.length === 1 ? 'eine Angabe' : errors.length + ' Angaben') + ' prüfen</strong>';
+    errors.forEach(function (e) { h += '<a href="#end' + e.i + '_' + e.j + '" data-act="jump" data-target="end' + e.i + '_' + e.j + '">' + NAMES[e.i] + ', Zeitfenster ' + (e.j + 1) + '</a><br>'; });
+    $('errsum').innerHTML = h + '</div>';
+  }
+  function renderSaveBar() {
+    var n = dirtyDays(), bar = $('savebar');
+    bar.hidden = n === 0;
+    bar.classList.toggle('err', errors.length > 0);
+    $('sbText').textContent = errors.length ? 'Bitte ' + (errors.length === 1 ? 'eine Angabe' : errors.length + ' Angaben') + ' prüfen' : 'Ungespeicherte Änderungen';
+    $('sbSub').textContent = n === 1 ? '1 Tag geändert' : n + ' Tage geändert';
+  }
+
+  /* ---------- Vorschau ---------- */
+  function renderPreview() {
+    var day = week[previewDay];
+    var h = '<div class="prevcard"><h3>' + ICON.eye + 'So sehen Gäste es <span class="an">4</span></h3><p>Buchbare Uhrzeiten auf der Buchungsseite</p><div class="dtabs" role="group" aria-label="Tag für die Vorschau">';
+    SHORT.forEach(function (s, k) { h += '<button type="button" data-pd="' + k + '" aria-pressed="' + (k === previewDay) + '" aria-label="' + NAMES[k] + '">' + s + '</button>'; });
+    h += '</div>';
+    if (!day.open) h += '<p class="none">' + NAMES[previewDay] + ' ist geschlossen. Die Buchungsseite bietet diesen Tag zur Auswahl an, zeigt dort aber keine Uhrzeit.</p>';
+    else {
+      var lasts = [];
+      day.r.forEach(function (r, j) {
+        var info = windowInfo(r); if (!info) return;
+        h += '<div class="wlabel">' + (r[2] ? esc(r[2]) + ' · ' : '') + r[0] + '–' + r[1] + '</div>';
+        var chips = [];
+        for (var m = info.o; m <= info.c - DURATION; m += INTERVAL) chips.push(hhmm(m));
+        if (chips.length) { h += '<div class="chips">' + chips.map(function (c) { return '<span class="chip">' + c + '</span>'; }).join('') + '</div>'; lasts.push([chips[chips.length - 1], r[1]]); }
+        else h += '<p class="none">In dieses Fenster passt kein Besuch.</p>';
+      });
+      if (lasts.length) {
+        var l = lasts[0];
+        h += '<p class="why">Letzte Uhrzeit ' + l[0] + ', weil ein Besuch ' + DURATION + ' Min. dauert und das Fenster um ' + l[1] + ' endet. Ändern unter <a href="#">Kapazität &amp; Dauer</a>.</p>';
+      }
+    }
+    $('prev').innerHTML = h + '</div>';
+  }
+  $('prev').addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-pd]'); if (!b) return;
+    previewDay = +b.dataset.pd; renderWeek();
+    var nb = document.querySelector('[data-pd="' + previewDay + '"]'); if (nb) nb.focus();
+  });
+
+  /* ---------- Bedienung Woche ---------- */
+  $('week').addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-act]'); if (!b) return;
+    var i = +b.dataset.i, j = +b.dataset.j, act = b.dataset.act;
+    if (act === 'toggle') {
+      week[i].open = !week[i].open;
+      if (week[i].open && !week[i].r.length) week[i].r.push(['12:00', '22:00', '']);
+      if (!week[i].open) week[i].r = [];
+      errors = errors.filter(function (e) { return e.i !== i; }); previewDay = i;
+      renderWeek(); var sw = document.querySelector('.sw[data-i="' + i + '"]'); if (sw) sw.focus();
+    } else if (act === 'rm') {
+      week[i].r.splice(j, 1); if (!week[i].r.length) week[i].open = false;
+      errors = []; previewDay = i; renderWeek();
+    } else if (act === 'add') {
+      var last = week[i].r[week[i].r.length - 1];
+      week[i].r.push([last ? last[1] : '17:00', '22:00', '']); previewDay = i; renderWeek();
+      var ins = document.querySelectorAll('.day[data-day="' + i + '"] .r'); var inp = ins[ins.length - 1] && ins[ins.length - 1].querySelector('input'); if (inp) inp.focus();
+    } else if (act === 'copy') {
+      popDay = popDay === i ? -1 : i; renderWeek();
+      var first = document.querySelector('.pop input'); if (first) first.focus();
+    } else if (act === 'popx') { var d = popDay; popDay = -1; renderWeek(); var cb = document.querySelector('[data-act="copy"][data-i="' + d + '"]'); if (cb) cb.focus(); }
+    else if (act === 'qwork' || act === 'qall') {
+      document.querySelectorAll('.pop input').forEach(function (c) { c.checked = act === 'qall' || +c.value <= 4; });
+    } else if (act === 'popok') {
+      var targets = []; document.querySelectorAll('.pop input:checked').forEach(function (c) { targets.push(+c.value); });
+      targets.forEach(function (k) { week[k] = clone(week[i]); });
+      popDay = -1; renderWeek();
+      if (targets.length) toast('Zeiten von ' + NAMES[i] + ' auf ' + targets.length + (targets.length === 1 ? ' Tag' : ' Tage') + ' übertragen');
+    }
+  });
+  $('week').addEventListener('focusin', function (ev) {
+    var d = ev.target.closest('.day'); if (!d) return;
+    var k = +d.dataset.day; if (k !== previewDay) { previewDay = k; document.querySelectorAll('.day').forEach(function (x) { x.classList.toggle('focus', +x.dataset.day === k); }); renderPreview(); }
+  });
+  $('week').addEventListener('input', function (ev) {
+    var t = ev.target; if (!t.dataset || t.dataset.k === undefined) return;
+    week[+t.dataset.i].r[+t.dataset.j][+t.dataset.k] = t.value;
+    var dayEl = t.closest('.day'); dayEl.classList.toggle('changed', isChanged(+t.dataset.i));
+    renderSaveBar(); renderPreview();
+  });
+  $('week').addEventListener('change', function (ev) { if (ev.target.classList && ev.target.classList.contains('t')) { var id = ev.target.id || null; var pos = [ev.target.dataset.i, ev.target.dataset.j, ev.target.dataset.k]; renderWeek(); var el = document.querySelector('input[data-i="' + pos[0] + '"][data-j="' + pos[1] + '"][data-k="' + pos[2] + '"]'); if (el) el.focus(); } });
+  $('errsum').addEventListener('click', function (ev) {
+    var a = ev.target.closest('[data-act="jump"]'); if (!a) return;
+    ev.preventDefault(); var f = $(a.dataset.target); if (f) f.focus();
+  });
+  function validate() {
+    errors = [];
+    week.forEach(function (day, i) {
+      if (!day.open) return;
+      day.r.forEach(function (r, j) {
+        if (!r[0]) errors.push({ i: i, j: j, msg: 'Bitte eine Uhrzeit für den Beginn eintragen.' });
+        else if (!r[1]) errors.push({ i: i, j: j, msg: 'Bitte eine Uhrzeit für das Ende eintragen. Geht das Fenster über Mitternacht, etwa bis 01:00, einfach die Uhrzeit des Folgetags eintragen.' });
+      });
+    });
+    return !errors.length;
+  }
+  $('save').addEventListener('click', function () {
+    if (!validate()) { renderWeek(); var bx = $('errbox'); if (bx) { bx.scrollIntoView({ block: 'center' }); bx.focus(); } return; }
+    saved = clone(week); errors = []; renderWeek(); toast('Öffnungszeiten gespeichert');
+  });
+  $('discard').addEventListener('click', function () { week = clone(saved); errors = []; popDay = -1; renderWeek(); toast('Änderungen verworfen'); });
+
+  /* ---------- Sonderzeiten ---------- */
+  var WD = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+  function fmt(d) { var p = d.split('-'); var dt = new Date(+p[0], +p[1] - 1, +p[2]); return WD[dt.getDay()] + ', ' + p[2] + '.' + p[1] + '.' + p[0]; }
+  function renderSpecials() {
+    var h;
+    if (!specials.length) {
+      h = '<div class="empty"><div class="ico">' + ICON.cal + '</div><p>Hier stehen Feiertage, Betriebsferien und andere Tage mit eigenen Zeiten. Ein Eintrag ersetzt für diesen Tag die reguläre Woche.</p>' +
+        '<button type="button" class="btn btn-p" data-act="new">' + ICON.plus + 'Sonderzeit anlegen</button></div>';
+    } else {
+      h = '<div class="listhead"><h3>Kommende Tage</h3><button type="button" class="btn btn-s btn-sm" data-act="new">' + ICON.plus + 'Sonderzeit</button></div><ul class="rows">';
+      specials.forEach(function (s, i) {
+        var title = fmt(s.date) + (s.label ? ' · ' + esc(s.label) : '');
+        var sub = s.closed ? 'Ganztägig geschlossen' : s.from + '–' + s.to + ' Uhr';
+        h += '<li><div class="ico" aria-hidden="true">' + (s.closed ? ICON.lock : ICON.cal) + '</div><div class="txt"><b>' + title + '</b><span>' + sub + '</span></div><div class="acts">';
+        if (confirmIdx === i) {
+          h += '<div class="confirm" role="group" aria-label="Löschen bestätigen"><span>„' + esc(s.label || fmt(s.date)) + '“ löschen?</span>' +
+            '<button type="button" class="btn btn-d btn-sm" data-act="del" data-i="' + i + '">Löschen</button><button type="button" class="btn btn-s btn-sm" data-act="nodel">Abbrechen</button></div>';
+        } else {
+          h += (i === 0 ? '<span class="an">9</span>' : '') + '<button type="button" class="btn btn-s btn-sm" data-act="edit" data-i="' + i + '">Bearbeiten</button>' +
+            '<button type="button" class="iconbtn danger" data-act="ask" data-i="' + i + '" aria-label="' + esc(title) + ' löschen">' + ICON.trash + '</button>';
+        }
+        h += '</div></li>';
+      });
+      h += '</ul>';
+    }
+    $('specials').innerHTML = h;
+  }
+  $('specials').addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-act]'); if (!b) return;
+    var i = +b.dataset.i;
+    switch (b.dataset.act) {
+      case 'new': openDrawer(); break;
+      case 'edit': openDrawer(specials[i], i); break;
+      case 'ask': confirmIdx = i; renderSpecials(); var d = document.querySelector('[data-act="nodel"]'); if (d) d.focus(); break;
+      case 'nodel': confirmIdx = -1; renderSpecials(); break;
+      case 'del': var name = specials[i].label || fmt(specials[i].date); specials.splice(i, 1); confirmIdx = -1; renderSpecials(); toast('„' + name + '“ gelöscht'); break;
+    }
+  });
+
+  var editIdx = -1, lastFocus = null;
+  function setMode(open) { $('spTimes').hidden = !open; spHint(); }
+  function spHint() { var f = $('spFrom').value, t = $('spTo').value; $('spHint').textContent = (f && t && t <= f) ? 'Endet am Folgetag um ' + t + '.' : ''; }
+  ['spFrom', 'spTo'].forEach(function (id) { $(id).addEventListener('input', spHint); });
+  document.querySelectorAll('input[name="spMode"]').forEach(function (r) { r.addEventListener('change', function () { setMode(r.value === 'open' && r.checked); }); });
+  function openDrawer(s, i) {
+    lastFocus = document.activeElement; editIdx = (i === undefined ? -1 : i);
+    $('spDateErr').hidden = true; $('spDate').removeAttribute('aria-invalid');
+    $('dr-title').textContent = editIdx < 0 ? 'Sonderzeit anlegen' : 'Sonderzeit bearbeiten';
+    $('spDate').value = s ? s.date : ''; $('spLabel').value = s ? s.label : '';
+    var open = s && !s.closed;
+    document.querySelector('input[name="spMode"][value="' + (open ? 'open' : 'closed') + '"]').checked = true;
+    $('spFrom').value = open ? s.from : '12:00'; $('spTo').value = open ? s.to : '15:00'; setMode(open);
+    $('root').classList.add('open'); setTimeout(function () { $('spDate').focus(); }, 60);
+  }
+  function closeDrawer() { $('root').classList.remove('open'); if (lastFocus && lastFocus.focus) lastFocus.focus(); }
+  $('drClose').addEventListener('click', closeDrawer); $('drCancel').addEventListener('click', closeDrawer); $('scrim').addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key !== 'Escape') return;
+    if ($('root').classList.contains('open')) closeDrawer();
+    else if (popDay >= 0) { popDay = -1; renderWeek(); }
+  });
+  $('drSave').addEventListener('click', function () {
+    var date = $('spDate').value, open = document.querySelector('input[name="spMode"]:checked').value === 'open';
+    if (!date) { $('spDateErr').innerHTML = ICON.err + '<span>Bitte ein Datum wählen.</span>'; $('spDateErr').hidden = false; $('spDate').setAttribute('aria-invalid', 'true'); $('spDate').focus(); return; }
+    var s = { date: date, label: $('spLabel').value.trim(), closed: !open, from: $('spFrom').value, to: $('spTo').value };
+    if (editIdx >= 0) specials[editIdx] = s; else specials.push(s);
+    specials.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    renderSpecials(); closeDrawer(); toast(editIdx >= 0 ? 'Sonderzeit geändert' : 'Sonderzeit gespeichert');
+  });
+
+  var tt;
+  function toast(msg) { $('toastText').textContent = msg; $('toast').classList.add('on'); clearTimeout(tt); tt = setTimeout(function () { $('toast').classList.remove('on'); }, 2800); }
+
+  /* ---------- Suche ---------- */
+  $('q').addEventListener('input', function () {
+    var q = this.value.trim().toLowerCase(), any = false;
+    document.querySelectorAll('#snavList .grp').forEach(function (g) {
+      var vis = 0;
+      g.querySelectorAll('a').forEach(function (a) {
+        if (!a.dataset.label) a.dataset.label = a.textContent;
+        var label = a.dataset.label, hit = '', match = !q || label.toLowerCase().indexOf(q) >= 0;
+        if (!match) { a.dataset.k.split(',').forEach(function (k) { if (!hit && k.trim().toLowerCase().indexOf(q) >= 0) hit = k.trim(); }); match = !!hit; }
+        a.innerHTML = esc(label) + (hit ? '<small>' + esc(hit) + '</small>' : '');
+        a.hidden = !match; if (match) vis++;
+      });
+      g.hidden = !vis; if (vis) any = true;
+    });
+    var nr = $('noresult'); nr.hidden = any;
+    if (!any) nr.textContent = 'Zu „' + this.value.trim() + '“ passt keine Einstellung. Versuch einen anderen Begriff, etwa „Erinnerung“ oder „Stornofrist“.';
+  });
+
+  /* ---------- Vorführung ---------- */
+  window.setAnnos = function (on) { $('root').classList.toggle('annos', !!on); };
+  window.setDemoState = function (st) {
+    saved = clone(WEEK0); week = clone(WEEK0); specials = clone(SPEC0); errors = []; confirmIdx = -1; popDay = -1; previewDay = 1;
+    $('root').classList.remove('open');
+    if (st === 'dirty') { week[6].r[0][1] = '13:00'; week[5].r[0][1] = '23:30'; previewDay = 6; }
+    if (st === 'error') { week[4].r[1][1] = ''; previewDay = 4; validate(); }
+    if (st === 'empty') specials = [];
+    renderWeek(); renderSpecials();
+    window.scrollTo(0, 0);
+    if (st === 'drawer') openDrawer();
+    if (st === 'error') { var bx = $('errbox'); if (bx) bx.scrollIntoView({ block: 'start' }); window.scrollBy(0, -70); }
+    if (st === 'dirty') { var sun = document.querySelector('.day[data-day="6"]'); if (sun) sun.scrollIntoView({ block: 'center' }); }
+    if (st === 'empty') $('h-special').scrollIntoView({ block: 'start' });
+  };
+  window.setDemoState('normal');
+})();
+</script>
+</template>
+
+<script>
+(function () {
+  var iframe = $('app'), frame = $('frame'), stage = $('stage'), legend = $('legend');
+  function $(id) { return document.getElementById(id); }
+  var fass = 'after', view = 'desktop', state = 'normal', annos = true;
+  var fonts = '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">';
+  function load() {
+    var tpl = $(fass === 'after' ? 'tplAfter' : 'tplBefore').innerHTML;
+    iframe.srcdoc = '<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Öffnungszeiten</title>' + fonts + '</head><body>' + tpl + '</body></html>';
+  }
+  iframe.addEventListener('load', function () {
+    var w = iframe.contentWindow;
+    if (w.setDemoState) w.setDemoState(state);
+    if (w.setAnnos) w.setAnnos(annos);
+  });
+  function layout() {
+    legend.hidden = !(annos && fass === 'after');
+    var wide = window.innerWidth > 1100;
+    var avail = stage.clientWidth - 40 - (wide && !legend.hidden ? 360 : 0);
+    var w = view === 'desktop' ? 1280 : 390, h = view === 'desktop' ? 820 : 800, b = view === 'phone' ? 20 : 0;
+    var scale = Math.min(1, avail / (w + b));
+    iframe.style.width = w + 'px'; iframe.style.height = h + 'px';
+    iframe.style.transform = 'scale(' + scale + ')';
+    frame.style.width = (w * scale + b) + 'px'; frame.style.height = (h * scale + b) + 'px';
+    frame.className = 'frame' + (view === 'phone' ? ' phone' : '');
+  }
+  function press(group, attr, val) { document.querySelectorAll('[aria-label="' + group + '"] button').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute(attr) === val ? 'true' : 'false'); }); }
+  function stateButtons() { document.querySelectorAll('[data-s]').forEach(function (b) { b.disabled = fass === 'before'; }); $('annoBtn').disabled = fass === 'before'; }
+  document.querySelectorAll('[data-f]').forEach(function (b) { b.addEventListener('click', function () { fass = b.dataset.f; press('Fassung', 'data-f', fass); stateButtons(); load(); layout(); }); });
+  document.querySelectorAll('[data-v]').forEach(function (b) { b.addEventListener('click', function () { view = b.dataset.v; press('Ansicht', 'data-v', view); layout(); }); });
+  document.querySelectorAll('[data-s]').forEach(function (b) { b.addEventListener('click', function () { state = b.dataset.s; press('Zustand zeigen', 'data-s', state); var w = iframe.contentWindow; if (w && w.setDemoState) w.setDemoState(state); }); });
+  $('annoBtn').addEventListener('click', function () { annos = !annos; this.setAttribute('aria-pressed', annos); var w = iframe.contentWindow; if (w && w.setAnnos) w.setAnnos(annos); layout(); });
+  window.addEventListener('resize', layout);
+  var qs = new URLSearchParams(location.search);
+  if (qs.get('f') === 'before') { fass = 'before'; press('Fassung', 'data-f', fass); }
+  if (qs.get('view') === 'phone') { view = 'phone'; press('Ansicht', 'data-v', view); }
+  if (qs.get('state')) { state = qs.get('state'); press('Zustand zeigen', 'data-s', state); }
+  if (qs.get('annos') === '0') { annos = false; $('annoBtn').setAttribute('aria-pressed', 'false'); }
+  stateButtons(); load(); layout();
+})();
+</script>
+</body>
+</html>
