@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.130.1] – 2026-10-07
+
+### Datumsfilter der Buchungsliste und des Exports geprüft
+
+Ein unleserliches Datum in der Adresse der Buchungsliste oder des CSV-Exports
+(`from`, `to`, `until`, `date`) brach bisher mit einem Serverfehler ab, weil die
+Datenbank den Wert nicht als Datum lesen konnte. Solche Werte kommen von
+manipulierten Adressen oder Sicherheitsscannern. Jetzt prüft die Anwendung die
+Datumsgrenzen vorab und antwortet mit einer verständlichen Meldung, die das
+erwartete Format nennt (JJJJ-MM-TT). Gültige Filter arbeiten unverändert.
+
+Der Befund stammt aus einem lokalen Penetrationstest; eine SQL-Injection war es
+nicht (die Werte gehen gebunden in die Abfrage), wohl aber ein unsauberer
+Fehlerweg.
+
 ## [1.130.0] – 2026-10-07
 
 ### Antwortadresse über Swayy: Gästeantworten landen im Verlauf und beim Betrieb

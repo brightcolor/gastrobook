@@ -37,6 +37,11 @@ class ReservationBookController extends Controller
         $location = $this->context->location();
         abort_if($location === null, 404);
 
+        // Datumsfilter prüfen, bevor sie in die Abfrage gehen. Ein unleserliches
+        // Datum (manipulierte Adresse, Fuzzer) brach vorher mit einem 500 ab,
+        // weil die Datenbank den Wert nicht als Datum lesen konnte.
+        $request->validate($this->dateFilterRules(['from', 'to', 'date']), $this->dateFilterMessages());
+
         [$from, $to, $preset] = $this->resolveDateRange($request, $location->timezone);
 
         $query = Reservation::query()
@@ -191,6 +196,36 @@ class ReservationBookController extends Controller
      *
      * @return array{0: ?string, 1: ?string, 2: string}
      */
+    /**
+     * Prüfregeln für die Datumsfilter einer Liste/eines Exports. Jedes Feld
+     * ist freiwillig, muss aber – wenn gesetzt – ein Datum im Format JJJJ-MM-TT
+     * sein, damit es die Datenbank als Datum lesen kann.
+     *
+     * @param  list<string>  $fields
+     * @return array<string, list<string>>
+     */
+    private function dateFilterRules(array $fields): array
+    {
+        return array_fill_keys($fields, ['nullable', 'date_format:Y-m-d']);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function dateFilterMessages(): array
+    {
+        $text = __('Bitte ein gültiges Datum im Format JJJJ-MM-TT angeben, zum Beispiel :beispiel.', [
+            'beispiel' => CarbonImmutable::now()->toDateString(),
+        ]);
+
+        return [
+            'from.date_format' => $text,
+            'to.date_format' => $text,
+            'until.date_format' => $text,
+            'date.date_format' => $text,
+        ];
+    }
+
     private function resolveDateRange(Request $request, string $tz): array
     {
         $now = CarbonImmutable::now($tz);
@@ -704,6 +739,11 @@ class ReservationBookController extends Controller
     {
         $location = $this->context->location();
         abort_if($location === null, 404);
+
+        // Wie die Buchungsliste: Datumsgrenzen prüfen, bevor sie in whereBetween
+        // gehen. Ein unleserliches Datum ergab sonst einen 500 statt einer
+        // Meldung, die sagt, was einzugeben ist.
+        $request->validate($this->dateFilterRules(['from', 'until']), $this->dateFilterMessages());
 
         $from = $request->input('from', now()->subMonth()->toDateString());
         $until = $request->input('until', now()->addMonth()->toDateString());
