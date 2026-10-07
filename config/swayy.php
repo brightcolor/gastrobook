@@ -275,10 +275,10 @@ return [
     | Oberfläche der Verwaltung
     |--------------------------------------------------------------------------
     |
-    | toast_ms: wie lange ein Hinweis wie „Gespeichert” stehen bleibt, in
+    | toast_ms: wie lange ein Hinweis wie „Gespeichert“ stehen bleibt, in
     | Millisekunden. reload_delay_ms: Wartezeit, bevor die Seite nach einer
     | Änderung neu lädt, die Navigation oder Aufbau betrifft (etwa der
-    | Betriebstyp), in Millisekunden; so bleibt „Gespeichert” lesbar.
+    | Betriebstyp), in Millisekunden; so bleibt „Gespeichert“ lesbar.
     | default_brand_color: Markenfarbe, solange ein Betrieb keine eigene
     | gewählt hat (Buchungsseite, Buchungsknopf, Farbwahl in den Einstellungen).
     |

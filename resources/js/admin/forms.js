@@ -96,7 +96,7 @@ function showProblems(form, json, messages) {
 }
 
 // Werte beim Absenden. Nach dem Speichern werden sie zur Vorgabe, auf die
-// „Verwerfen" (form.reset) zurückkehrt.
+// „Verwerfen“ (form.reset) zurückkehrt.
 function readValues(form) {
     const values = new Map();
     for (const el of form.elements) {
@@ -126,7 +126,7 @@ function commitDefaults(values) {
 }
 
 // Neu geladen wird erst, wenn keine Anfrage mehr läuft. Die Wartezeit kommt
-// aus config/swayy.php (ui.reload_delay_ms), damit „Gespeichert" lesbar bleibt.
+// aus config/swayy.php (ui.reload_delay_ms), damit „Gespeichert“ lesbar bleibt.
 function reloadWhenIdle() {
     setTimeout(() => {
         if (inFlight === 0) window.location.reload();

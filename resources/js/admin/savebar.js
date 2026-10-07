@@ -1,6 +1,6 @@
 // Speicherleiste (x-save-bar): erscheint, sobald ein Formular mit
-// data-savebar geändert ist. „Speichern" schickt die geänderten Formulare
-// nacheinander ab, „Verwerfen" setzt sie auf den gespeicherten Stand zurück.
+// data-savebar geändert ist. „Speichern“ schickt die geänderten Formulare
+// nacheinander ab, „Verwerfen“ setzt sie auf den gespeicherten Stand zurück.
 // Wer die Seite mit Änderungen verlässt, bekommt die Rückfrage des Browsers.
 // Formulare mit data-savebar enthalten keine Dateifelder; Uploads speichern
 // sofort über eigene Formulare.
