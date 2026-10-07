@@ -244,6 +244,7 @@ class CapCaptchaTest extends TestCase
         // Machine to machine, authenticated by signature instead.
         'POST webhooks/gocardless',
         'POST webhooks/stripe',
+        'POST webhooks/postal',
 
         // Laravel's own temporary-upload route, only registered while the
         // local disk serves signed URLs.
