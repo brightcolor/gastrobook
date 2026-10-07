@@ -981,6 +981,7 @@ class SettingsController extends Controller
         $validated = $request->validate([
             'mail_from_name' => ['nullable', 'string', 'max:100', 'not_regex:/[<>@\r\n"]/'],
             'mail_reply_to' => ['nullable', 'email:rfc', 'max:200'],
+            'mail_relay_enabled' => ['sometimes', 'boolean'],
         ], [
             'mail_from_name.max' => __('Der Absendername darf höchstens 100 Zeichen haben. Bitte kürzen.'),
             'mail_from_name.not_regex' => __('Der Absendername darf keine Zeichen wie <, >, @ oder Anführungszeichen enthalten. Bitte nur den Namen des Betriebs eintragen.'),
@@ -988,11 +989,21 @@ class SettingsController extends Controller
             'mail_reply_to.max' => __('Die Antwortadresse darf höchstens 200 Zeichen haben.'),
         ]);
 
+        // Die Swayy-Antwortadresse lässt sich nur aktivieren, wenn die Domain
+        // eingerichtet ist – sonst zeigte sie ins Leere.
+        $relayAn = $request->boolean('mail_relay_enabled');
+        if ($relayAn && ! \App\Services\Mail\GuestReplyAddress::isConfigured()) {
+            return back()->withErrors([
+                'mail_relay_enabled' => __('Die Antwortadresse über Swayy ist noch nicht eingerichtet (es fehlt die Domain). Bitte wende dich an den Betreiber, bevor du sie aktivierst.'),
+            ]);
+        }
+
         $neu = [
             'mail_from_name' => trim((string) ($validated['mail_from_name'] ?? '')) ?: null,
             'mail_reply_to' => trim((string) ($validated['mail_reply_to'] ?? '')) ?: null,
+            'mail_relay_enabled' => $relayAn,
         ];
-        $old = ['mail_from_name' => $tenant->mail_from_name, 'mail_reply_to' => $tenant->mail_reply_to];
+        $old = ['mail_from_name' => $tenant->mail_from_name, 'mail_reply_to' => $tenant->mail_reply_to, 'mail_relay_enabled' => $tenant->mail_relay_enabled];
         $tenant->update($neu);
 
         $this->audit->log('tenant.guest_mail_updated', $tenant, $old, $neu);

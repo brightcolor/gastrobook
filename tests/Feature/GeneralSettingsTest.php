@@ -64,4 +64,31 @@ class GeneralSettingsTest extends TestCase
             'business_name' => 'Hack', 'location_name' => 'X', 'timezone' => 'Europe/Berlin',
         ])->assertForbidden();
     }
+
+    public function test_relay_cannot_be_enabled_without_domain(): void
+    {
+        config(['swayy.guest_mail_relay.domain' => '']);
+        $setup = $this->createTenantSetup();
+        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
+        $this->clearTenantContext();
+
+        $this->actingAs($admin)->from('/admin/settings')
+            ->put('/admin/settings/guest-mail', ['mail_relay_enabled' => '1'])
+            ->assertSessionHasErrors('mail_relay_enabled');
+
+        $this->assertFalse($setup['tenant']->fresh()->mail_relay_enabled);
+    }
+
+    public function test_relay_enabled_with_domain(): void
+    {
+        config(['swayy.guest_mail_relay.domain' => 'antwort.swayy.de']);
+        $setup = $this->createTenantSetup();
+        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
+        $this->clearTenantContext();
+
+        $this->actingAs($admin)->put('/admin/settings/guest-mail', ['mail_relay_enabled' => '1'])
+            ->assertSessionHasNoErrors();
+
+        $this->assertTrue($setup['tenant']->fresh()->mail_relay_enabled);
+    }
 }

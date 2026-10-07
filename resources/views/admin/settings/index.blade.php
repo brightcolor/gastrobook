@@ -159,8 +159,22 @@
                     @endif
                 </span>
             </label>
+            <label class="flex items-start gap-2 sm:col-span-2">
+                <input type="checkbox" name="mail_relay_enabled" value="1" class="mt-1" @checked(old('mail_relay_enabled', $tenant->mail_relay_enabled))>
+                <span>
+                    <span class="font-semibold">Antwortadresse über Swayy</span>
+                    <span class="mt-1 block text-xs text-stone-500">
+                        @if(\App\Services\Mail\GuestReplyAddress::isConfigured())
+                            Gästemails bekommen eine Swayy-eigene Antwortadresse (z. B. <code>{{ $tenant->slug }}+R-ABC123.a1b2c3d4@{{ config('swayy.guest_mail_relay.domain') }}</code>). Antworten erscheinen im Buchungsverlauf und gehen zusätzlich an deine Adresse.
+                        @else
+                            Die Antwortadresse ist noch nicht eingerichtet (es fehlt die Domain). Wende dich an den Betreiber.
+                        @endif
+                    </span>
+                </span>
+            </label>
             @error('mail_from_name')<p class="text-xs text-red-600 sm:col-span-2">{{ $message }}</p>@enderror
             @error('mail_reply_to')<p class="text-xs text-red-600 sm:col-span-2">{{ $message }}</p>@enderror
+            @error('mail_relay_enabled')<p class="text-xs text-red-600 sm:col-span-2">{{ $message }}</p>@enderror
             <div class="sm:col-span-2">
                 <button class="rounded-xl bg-stone-900 px-5 py-2.5 font-bold text-white">Speichern</button>
             </div>
