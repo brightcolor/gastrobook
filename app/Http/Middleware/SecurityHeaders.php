@@ -60,17 +60,21 @@ class SecurityHeaders
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000', false);
         }
 
+        $base = trim((string) config('swayy.security.csp_base'));
+        $base = $base === '' ? '' : $base.'; ';
+
         if ($this->isEmbeddable($request)) {
-            // Ausdruecklich offen. Ohne diese Zeile setzt kein Header die
-            // Einbettung frei - sie ist die Erlaubnis, nicht ihr Fehlen.
-            $response->headers->set('Content-Security-Policy', 'frame-ancestors *', false);
+            // Ausdruecklich offen fuer fremde Seiten - das ist der Zweck des
+            // Widgets. Die uebrige Richtlinie (self, kein object, kein wildcard)
+            // gilt trotzdem.
+            $response->headers->set('Content-Security-Policy', $base.'frame-ancestors *', false);
 
             return $response;
         }
 
         // frame-ancestors ist die geltende Regel, X-Frame-Options der
         // Rueckfall fuer aeltere Browser. Beide setzen, keiner allein.
-        $response->headers->set('Content-Security-Policy', "frame-ancestors 'none'", false);
+        $response->headers->set('Content-Security-Policy', $base."frame-ancestors 'none'", false);
         $response->headers->set('X-Frame-Options', 'DENY', false);
 
         return $response;

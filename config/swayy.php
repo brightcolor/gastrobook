@@ -99,6 +99,38 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Content-Security-Policy für die ausgelieferten Seiten
+    |--------------------------------------------------------------------------
+    |
+    | Die Grundrichtlinie ohne `frame-ancestors` – die setzt die Middleware
+    | App\Http\Middleware\SecurityHeaders je Seite: `'none'` für Verwaltung,
+    | Plattform und Anmeldung, `*` für die öffentlichen Buchungsseiten und die
+    | Einbett-Widgets.
+    |
+    | `script-src`/`style-src` behalten `'unsafe-inline'`: Die Oberfläche nutzt
+    | Inline-Stilattribute und Inline-Ereignisbehandlung (onclick usw.). Eine
+    | strengere Fassung über Nonces ist ein eigener Umbau. Changebar über
+    | `SWAYY_CSP_BASE`, etwa um einen Zahlungsanbieter als `frame-src` zu
+    | ergänzen.
+    |
+    */
+    'security' => [
+        'csp_base' => env('SWAYY_CSP_BASE', implode('; ', [
+            "default-src 'self'",
+            "base-uri 'self'",
+            "form-action 'self'",
+            "object-src 'none'",
+            "img-src 'self' data:",
+            "font-src 'self' data:",
+            "style-src 'self' 'unsafe-inline'",
+            "script-src 'self' 'unsafe-inline'",
+            "connect-src 'self'",
+            "frame-src 'self'",
+        ])),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Mails an Gäste: Absendername und Antwortadresse
     |--------------------------------------------------------------------------
     |
