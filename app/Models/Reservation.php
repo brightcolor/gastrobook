@@ -99,8 +99,8 @@ class Reservation extends Model
         return $this->belongsTo(Location::class);
     }
 
-    /** @return \Illuminate\Database\Eloquent\Relations\HasMany<GuestMailReply, $this> */
-    public function mailReplies(): \Illuminate\Database\Eloquent\Relations\HasMany
+    /** @return HasMany<GuestMailReply, $this> */
+    public function mailReplies(): HasMany
     {
         return $this->hasMany(GuestMailReply::class);
     }
