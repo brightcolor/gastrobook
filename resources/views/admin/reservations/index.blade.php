@@ -93,7 +93,7 @@
                     </button>
                 @endforeach
             </div>
-            <div class="flex items-end gap-1.5">
+            <div class="flex flex-wrap items-end gap-1.5">
                 <div>
                     <label class="mb-0.5 block text-[10px] text-stone-400">Von</label>
                     <input type="date" name="from" value="{{ $from }}" class="rounded-lg border-stone-200 text-sm">
