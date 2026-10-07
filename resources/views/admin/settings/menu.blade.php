@@ -21,7 +21,7 @@
                 @foreach($group->items as $item)
                     <a href="{{ $item->url }}" data-settings-item data-nav-key="{{ $item->key }}"
                        data-label="{{ $item->label }}" data-keywords="{{ implode('|', $item->keywords) }}"
-                       class="flex min-h-12 items-center justify-between gap-3 px-4 py-3 hover:bg-stone-50 focus-visible:bg-stone-50">
+                       class="flex min-h-12 items-center justify-between gap-3 px-4 py-3 hover:bg-stone-50 focus-visible:bg-stone-50 focus-visible:outline-offset-[-2px]">
                         <span>
                             <span class="block font-medium">{{ $item->label }}</span>
                             <small data-settings-hit hidden class="block text-xs text-teal-800"></small>

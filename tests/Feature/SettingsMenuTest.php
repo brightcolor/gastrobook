@@ -24,6 +24,7 @@ class SettingsMenuTest extends TestCase
             ->assertSeeInOrder(['Betrieb', 'Allgemein', 'Platz & Zeiten', 'Öffnungszeiten', 'Verbindungen', 'Webhooks'], false)
             ->assertSee('data-keywords="Tarif|Abo|Lastschrift|Rechnung"', false)
             ->assertSee('data-settings-search', false);
+        $this->assertSame(url('/admin/settings/menu'), route('admin.settings.menu'));
     }
 
     public function test_salon_sees_services_and_staff_instead_of_rooms(): void
@@ -49,5 +50,19 @@ class SettingsMenuTest extends TestCase
         $this->actingAs($staff)->get('/admin/settings/menu')
             ->assertForbidden()
             ->assertSee('Für die Einstellungen fehlt die Berechtigung.');
+    }
+
+    public function test_a_role_sees_only_the_pages_it_may_open(): void
+    {
+        $setup = $this->createTenantSetup();
+        $manager = $this->createMember($setup['tenant'], 'marketing_manager');
+        $this->clearTenantContext();
+
+        $this->actingAs($manager)->get('/admin/settings/menu')
+            ->assertOk()
+            ->assertSee('data-nav-key="templates"', false)
+            ->assertDontSee('data-nav-key="webhooks"', false)
+            ->assertDontSee('data-nav-key="general"', false)
+            ->assertDontSee('Gästekommunikation', false);
     }
 }

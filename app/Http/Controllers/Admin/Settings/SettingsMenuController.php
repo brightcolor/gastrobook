@@ -12,7 +12,7 @@ use Illuminate\View\View;
 
 /**
  * Liste aller erlaubten Einstellungsseiten. Auf dem Smartphone der Einstieg
- * in den Einstellungsbereich; auf breiten Bildschirmen führt „Einstellungen"
+ * in den Einstellungsbereich; auf breiten Bildschirmen führt „Einstellungen“
  * direkt zur ersten erlaubten Seite.
  */
 class SettingsMenuController extends Controller
