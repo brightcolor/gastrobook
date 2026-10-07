@@ -1,5 +1,13 @@
 {
     "(and :count more error)": "(und :count weiterer Fehler)",
     "(and :count more errors)": "(und :count weitere Fehler)",
-    "The given data was invalid.": "Die Eingaben wurden abgelehnt. Bitte sie prüfen und es noch einmal versuchen."
+    "The given data was invalid.": "Die Eingaben wurden abgelehnt. Bitte sie prüfen und es noch einmal versuchen.",
+    "Unauthorized": "Anmeldung erforderlich",
+    "Payment Required": "Zahlung erforderlich",
+    "Forbidden": "Keine Berechtigung",
+    "Not Found": "Seite nicht gefunden",
+    "Page Expired": "Sitzung abgelaufen",
+    "Too Many Requests": "Zu viele Anfragen",
+    "Server Error": "Serverfehler",
+    "Service Unavailable": "Vorübergehend nicht erreichbar"
 }
