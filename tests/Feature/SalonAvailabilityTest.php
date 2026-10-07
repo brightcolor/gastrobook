@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Enums\ReservationStatus;
 use App\Enums\TenantType;
+use App\Models\BlackoutPeriod;
 use App\Models\Location;
 use App\Models\OpeningHour;
 use App\Models\Reservation;
@@ -14,10 +15,12 @@ use App\Models\StaffAbsence;
 use App\Models\StaffMember;
 use App\Models\StaffWorkingHour;
 use App\Models\Tenant;
+use App\Services\ReservationLifecycleService;
 use App\Services\SalonAvailabilityService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class SalonAvailabilityTest extends TestCase
@@ -456,6 +459,99 @@ class SalonAvailabilityTest extends TestCase
 
         $reservation = Reservation::withoutGlobalScopes()->sole();
         $this->assertSame($tag->addDay()->toDateString(), $reservation->reservation_date->toDateString());
+    }
+
+    public function test_a_guest_limit_counts_concurrent_appointments(): void
+    {
+        Mail::fake();
+
+        $bert = StaffMember::create([
+            'tenant_id' => $this->tenant->id,
+            'location_id' => $this->location->id,
+            'name' => 'Bert',
+            'is_active' => true,
+        ]);
+        $bert->services()->attach($this->service);
+
+        $start = CarbonImmutable::parse('next monday', 'Europe/Berlin')->setTime(10, 0);
+        Reservation::create([
+            'tenant_id' => $this->tenant->id,
+            'location_id' => $this->location->id,
+            'staff_member_id' => $this->staff->id,
+            'party_size' => 1,
+            'reservation_date' => $start->toDateString(),
+            'start_at' => $start->utc(),
+            'end_at' => $start->addMinutes(30)->utc(),
+            'timezone' => 'Europe/Berlin',
+            'status' => ReservationStatus::Confirmed,
+            'source' => 'online',
+            'guest_name_snapshot' => 'Kundin',
+        ]);
+        // Nur eine Kundin gleichzeitig, etwa wegen eines einzigen Waschplatzes.
+        BlackoutPeriod::create([
+            'tenant_id' => $this->tenant->id,
+            'location_id' => $this->location->id,
+            'reduce_covers_to' => 1,
+            'starts_at' => $start->subHour()->utc(),
+            'ends_at' => $start->addHours(2)->utc(),
+        ]);
+
+        $this->post('/book/'.$this->tenant->slug.'/'.$this->location->slug, [
+            'service_ids' => [$this->service->id],
+            'staff_member_id' => $bert->id,
+            'date' => $start->toDateString(),
+            'time' => '10:00',
+            'name' => 'Test Kunde',
+            'email' => 'kunde@example.test',
+            'privacy_accepted' => '1',
+        ])->assertSessionHasErrors([
+            'time' => 'Zu diesem Zeitpunkt sind leider alle Termine vergeben – bitte wählen Sie eine andere Uhrzeit.',
+        ]);
+
+        $this->assertSame(1, Reservation::withoutGlobalScopes()->count());
+    }
+
+    public function test_a_guest_limit_applies_when_moving_an_appointment(): void
+    {
+        $bert = StaffMember::create([
+            'tenant_id' => $this->tenant->id,
+            'location_id' => $this->location->id,
+            'name' => 'Bert',
+            'is_active' => true,
+        ]);
+        $bert->services()->attach($this->service);
+
+        $start = CarbonImmutable::parse('next monday', 'Europe/Berlin')->setTime(10, 0);
+        $termin = fn (StaffMember $staff, CarbonImmutable $at) => Reservation::create([
+            'tenant_id' => $this->tenant->id,
+            'location_id' => $this->location->id,
+            'staff_member_id' => $staff->id,
+            'party_size' => 1,
+            'reservation_date' => $at->toDateString(),
+            'start_at' => $at->utc(),
+            'end_at' => $at->addMinutes(30)->utc(),
+            'timezone' => 'Europe/Berlin',
+            'status' => ReservationStatus::Confirmed,
+            'source' => 'online',
+            'guest_name_snapshot' => 'Kundin',
+        ]);
+        $termin($this->staff, $start);
+        $bertsTermin = $termin($bert, $start->addHour());
+        BlackoutPeriod::create([
+            'tenant_id' => $this->tenant->id,
+            'location_id' => $this->location->id,
+            'reduce_covers_to' => 1,
+            'starts_at' => $start->subHour()->utc(),
+            'ends_at' => $start->addHours(3)->utc(),
+        ]);
+
+        $lifecycle = app(ReservationLifecycleService::class);
+
+        // Der eigene Termin zählt nicht gegen die Grenze: 11:30 bleibt möglich.
+        $lifecycle->reschedule($bertsTermin, $start->addMinutes(90), null, null, 'staff');
+
+        $this->expectException(ValidationException::class);
+        $lifecycle->reschedule($bertsTermin->refresh(), $start, null, null, 'staff');
     }
 
     /**

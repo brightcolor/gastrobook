@@ -597,7 +597,11 @@ class ReservationLifecycleService
             // blackouts just like creating one. Without this a guest could
             // reschedule straight into a closed day – finding a free table says
             // nothing about whether the business is open at all.
-            $blockReason = $this->availability->bookingBlockReason($location, $newStartLocal, $startUtc, $endUtc);
+            // Mit Personenzahl, damit "Max. Gaeste" einer Sperrzeit auch hier
+            // gilt (im Salon gibt es keine andere Pruefung dafuer). Die eigene
+            // Reservierung zaehlt dabei nicht mit.
+            $platz = ['party_size' => $partySize, 'exclude_reservation_id' => $reservation->id];
+            $blockReason = $this->availability->bookingBlockReason($location, $newStartLocal, $startUtc, $endUtc, [], $platz);
             if ($blockReason !== null) {
                 throw ValidationException::withMessages([
                     'time' => $this->availabilityMessage($blockReason),
@@ -644,7 +648,7 @@ class ReservationLifecycleService
                 if ($tableIds !== null) {
                     // The picked table may sit in a room that is blocked for this
                     // window even though the location as a whole is open.
-                    $roomBlock = $this->availability->bookingBlockReason($location, $newStartLocal, $startUtc, $endUtc, $tableIds);
+                    $roomBlock = $this->availability->bookingBlockReason($location, $newStartLocal, $startUtc, $endUtc, $tableIds, $platz);
                     if ($roomBlock !== null) {
                         throw ValidationException::withMessages([
                             'time' => $this->availabilityMessage($roomBlock),
