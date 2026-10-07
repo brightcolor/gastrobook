@@ -53,7 +53,7 @@
         @csrf
         @method('PUT')
         <x-field name="brand_primary_color" label="Farbe" help="Ein Klick auf das Farbfeld öffnet die Auswahl.">
-            <input id="f-brand_primary_color" type="color" name="brand_primary_color" value="{{ old('brand_primary_color', $brandColor) }}"
+            <input id="f-brand_primary_color" type="color" name="brand_primary_color" value="{{ preg_match('/^#[0-9a-fA-F]{6}$/', (string) old('brand_primary_color')) ? old('brand_primary_color') : $brandColor }}"
                    @error('brand_primary_color') aria-invalid="true" aria-describedby="f-brand_primary_color-help f-brand_primary_color-error" @else aria-describedby="f-brand_primary_color-help" @enderror
                    class="h-10 w-16 cursor-pointer rounded border border-stone-300 bg-white p-1">
         </x-field>

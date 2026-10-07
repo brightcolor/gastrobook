@@ -135,9 +135,10 @@ class SettingsGeneralPageTest extends TestCase
             ->assertSee('Termine je Mitarbeiter und Leistung');
     }
 
-    public function test_a_rejected_brand_color_is_marked_on_the_field_and_keeps_the_input(): void
+    public function test_a_rejected_brand_color_is_marked_on_the_field_and_shows_the_saved_color(): void
     {
         $setup = $this->createTenantSetup();
+        $setup['tenant']->update(['brand_primary_color' => '#abcdef']);
         $owner = $this->createMember($setup['tenant'], 'tenant_owner');
         $this->clearTenantContext();
 
@@ -146,9 +147,11 @@ class SettingsGeneralPageTest extends TestCase
             ->put('/admin/settings/branding', ['brand_primary_color' => 'rot'])
             ->assertRedirect('/admin/settings/general');
 
+        // Ein Farbfeld kann „rot“ nicht anzeigen und zeigte Schwarz; es bleibt die gespeicherte Farbe.
         $this->actingAs($owner)->get('/admin/settings/general')
             ->assertOk()
-            ->assertSee('value="rot"', false)
+            ->assertSee('value="#abcdef"', false)
+            ->assertDontSee('value="rot"', false)
             ->assertSee('aria-invalid="true"', false)
             ->assertSee('aria-describedby="f-brand_primary_color-help f-brand_primary_color-error"', false);
     }

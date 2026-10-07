@@ -6,7 +6,7 @@
     <title>@yield('title', 'Reservierung')</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @include('partials.favicons')
-    @php($primary = $tenant->brand_primary_color ?? '#0f766e')
+    @php($primary = $tenant->brand_primary_color ?: config('swayy.ui.default_brand_color'))
     <style>
         :root { --brand: {{ $primary }}; --brand-strong: color-mix(in oklab, {{ $primary }} 82%, black); }
         .text-brand { color: var(--brand); }
