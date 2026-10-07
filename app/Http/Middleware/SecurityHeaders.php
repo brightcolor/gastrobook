@@ -60,7 +60,7 @@ class SecurityHeaders
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000', false);
         }
 
-        $base = trim((string) config('swayy.security.csp_base'));
+        $base = $this->withCaptchaSources(trim((string) config('swayy.security.csp_base')));
         $base = $base === '' ? '' : $base.'; ';
 
         if ($this->isEmbeddable($request)) {
@@ -83,5 +83,67 @@ class SecurityHeaders
     private function isEmbeddable(Request $request): bool
     {
         return $request->isMethod('GET') && $request->is(...self::EMBEDDABLE);
+    }
+
+    /**
+     * Erweitert die Richtlinie um die Quellen des Cap-Captchas, wenn es aktiv
+     * ist. Das Widget laedt Skript und WebAssembly vom Cap-Server, ruft dessen
+     * API und rechnet den Proof-of-Work in einem Worker. Ohne diese Quellen
+     * blockt die eigene CSP das Captcha - und ohne geloestes Captcha laesst
+     * sich kein oeffentliches Formular (Reservierung, Anmeldung) absenden.
+     *
+     * Der Server kommt aus der Einstellung (cap.server_url), steht also nicht
+     * fest im Code.
+     */
+    private function withCaptchaSources(string $policy): string
+    {
+        if (! config('cap.enabled')) {
+            return $policy;
+        }
+
+        $origin = $this->originOf((string) config('cap.server_url'));
+        if ($origin === null) {
+            return $policy;
+        }
+
+        $directives = [];
+        foreach (array_filter(array_map('trim', explode(';', $policy))) as $part) {
+            [$name, $sources] = array_pad(preg_split('/\s+/', $part, 2), 2, '');
+            $directives[$name] = $sources === '' ? [] : preg_split('/\s+/', $sources);
+        }
+
+        $add = function (string $directive, array $sources, array $seed = []) use (&$directives) {
+            if (! isset($directives[$directive])) {
+                $directives[$directive] = $seed;
+            }
+            foreach ($sources as $source) {
+                if (! in_array($source, $directives[$directive], true)) {
+                    $directives[$directive][] = $source;
+                }
+            }
+        };
+
+        $add('script-src', ["'wasm-unsafe-eval'", $origin], ["'self'"]);
+        $add('connect-src', [$origin], ["'self'"]);
+        $add('worker-src', ["'self'", 'blob:']);
+
+        return implode('; ', array_map(
+            fn (string $name, array $sources) => trim($name.' '.implode(' ', $sources)),
+            array_keys($directives),
+            $directives,
+        ));
+    }
+
+    /**
+     * Schema://Host[:Port] einer URL, oder null, wenn unbrauchbar.
+     */
+    private function originOf(string $url): ?string
+    {
+        $parts = parse_url($url);
+        if (! isset($parts['scheme'], $parts['host'])) {
+            return null;
+        }
+
+        return $parts['scheme'].'://'.$parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
     }
 }

@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.134.2] – 2026-10-08
+
+### Captcha-Quellen in der CSP kommen aus dem Code
+
+Die vollständige Content-Security-Policy (1.129.1) ließ nur eigene Quellen zu.
+Das Cap-Captcha lädt Widget und WebAssembly aber vom Cap-Server und rechnet
+seinen Proof-of-Work in einem Worker. Bisher hielt eine von Hand gesetzte
+Einstellung (`SWAYY_CSP_BASE`) das Captcha auf swayy.de am Laufen.
+
+- **Ist das Cap-Captcha aktiv, ergänzt die Anwendung die CSP selbst** um den
+  Cap-Server (`script-src`, `connect-src`), `'wasm-unsafe-eval'` und
+  `worker-src 'self' blob:`. Der Server kommt aus `CAP_SERVER_URL`.
+- Ist das Captcha aus, bleibt die Richtlinie eng.
+- Die Hilfseinstellung `SWAYY_CSP_BASE` in der `.env` ist damit überflüssig.
+
 ## [1.134.1] – 2026-10-07
 
 ### „Max. Gäste" einer Sperrzeit wirkt in jedem Modus und auch je Raum

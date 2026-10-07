@@ -101,6 +101,38 @@ class SecurityHeadersTest extends TestCase
         );
     }
 
+    /**
+     * Ist das Cap-Captcha aktiv, muss die CSP seinen Server, WebAssembly und
+     * einen Worker zulassen - sonst laedt das Widget nicht und kein
+     * oeffentliches Formular laesst sich absenden.
+     */
+    public function test_the_csp_allows_the_captcha_when_enabled(): void
+    {
+        config([
+            'cap.enabled' => true,
+            'cap.server_url' => 'https://cap.test',
+            'cap.site_key' => 'abc',
+            'cap.secret_key' => 'geheim',
+        ]);
+
+        $csp = $this->get('/login')->assertOk()->headers->get('Content-Security-Policy');
+
+        $this->assertStringContainsString("script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cap.test", $csp);
+        $this->assertStringContainsString('connect-src', $csp);
+        $this->assertStringContainsString('https://cap.test', explode('connect-src', $csp)[1]);
+        $this->assertStringContainsString("worker-src 'self' blob:", $csp);
+    }
+
+    public function test_the_csp_omits_captcha_sources_when_disabled(): void
+    {
+        config(['cap.enabled' => false]);
+
+        $csp = $this->get('/login')->assertOk()->headers->get('Content-Security-Policy');
+
+        $this->assertStringNotContainsString('wasm-unsafe-eval', $csp);
+        $this->assertStringNotContainsString('worker-src', $csp);
+    }
+
     public function test_every_response_carries_the_basic_headers(): void
     {
         $antwort = $this->get('/')->assertOk();
