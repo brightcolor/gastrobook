@@ -16,9 +16,9 @@
         </div>
     </div>
 
-    {{-- Daten mitnehmen (nur für Inhaber) --}}
+    {{-- Daten mitnehmen (nur für Inhaber); Ziel des Eintrags „Daten“ in den Einstellungen --}}
     @if($isOwner && $tenant !== null)
-        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
+        <div id="daten" class="scroll-mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
             <h2 class="mb-1 font-bold">Alle Daten exportieren<span class="tip" tabindex="0" data-tip="Speichert deinen kompletten Betrieb in einer Datei – als Sicherung oder um zu einem anderen Anbieter umzuziehen. Es wird nichts gelöscht oder verändert, du bekommst nur eine Kopie.">?</span></h2>
             <p class="mb-4 text-sm text-stone-500">
                 Lädt den kompletten Betrieb <strong>„{{ $tenant->name }}"</strong> als Datei herunter:

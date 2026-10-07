@@ -53,6 +53,18 @@ class SettingsMenuTest extends TestCase
             ->assertSee('Für die Einstellungen fehlt die Berechtigung.');
     }
 
+    public function test_the_data_entry_lands_on_the_export_section(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        // Eintrag 'data' in config/navigation.php: admin.account.show#daten
+        $this->actingAs($owner)->get(route('admin.account.show'))
+            ->assertOk()
+            ->assertSee('id="daten"', false);
+    }
+
     public function test_a_role_sees_only_the_pages_it_may_open(): void
     {
         $setup = $this->createTenantSetup();
