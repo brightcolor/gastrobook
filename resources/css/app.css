@@ -277,8 +277,11 @@
     transition: opacity 0.12s;
     z-index: 9999;
 }
+/* Verborgen nimmt der Hinweis keinen Platz ein; am rechten Rand ließe er
+   sonst die ganze Seite seitlich scrollen. */
+.tip::before, .tip::after { display: none; }
 .tip:hover::before, .tip:focus::before,
-.tip:hover::after,  .tip:focus::after { opacity: 1; }
+.tip:hover::after,  .tip:focus::after { display: block; opacity: 1; }
 
 /* Am linken/rechten Rand würde der Kasten aus dem Bild laufen. */
 .tip-left::before  { left: auto; right: -4px; transform: none; }
