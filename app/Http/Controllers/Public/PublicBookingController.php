@@ -983,7 +983,7 @@ class PublicBookingController extends Controller
 
     /**
      * Popup-button widget: injects a branded button that opens the booking page in a modal overlay.
-     * Usage: <script src=".../widget/{tenant}/{location}/popup.js" data-label="Reservieren" data-color="#0d9488" data-float="1" defer></script>
+     * Usage: <script src=".../widget/{tenant}/{location}/popup.js" data-label="Reservieren" data-color="#0f766e" data-float="1" defer></script>
      */
     public function popupScript(string $tenantSlug, string $locationSlug): Response
     {
@@ -991,7 +991,9 @@ class PublicBookingController extends Controller
 
         $src = $this->jsString(route('booking.show', [$tenantSlug, $locationSlug]));
         $title = $this->jsString('Reservierung – '.$location->name);
-        $defColor = $this->jsString($tenant->brand_primary_color ?: '#0d9488');
+        // Markenfarbe des Betriebs, sonst die Vorgabe aus den Einstellungen.
+        $defaultColor = (string) config('swayy.ui.default_brand_color');
+        $defColor = $this->jsString($tenant->brand_primary_color ?: $defaultColor);
 
         $js = <<<JS
 (function () {
@@ -1004,7 +1006,7 @@ class PublicBookingController extends Controller
 
     var css = document.createElement('style');
     css.textContent =
-        '.swayy-btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;background:var(--swayy-c,#0d9488);color:#fff;border:none;border-radius:10px;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;line-height:1.25;transition:filter .15s;white-space:nowrap}' +
+        '.swayy-btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;background:var(--swayy-c,{$defaultColor});color:#fff;border:none;border-radius:10px;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;line-height:1.25;transition:filter .15s;white-space:nowrap}' +
         '.swayy-btn:hover{filter:brightness(1.1)}' +
         '.swayy-btn--float{position:fixed;bottom:24px;right:24px;z-index:9998;box-shadow:0 4px 24px rgba(0,0,0,.22)}' +
         '.swayy-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:flex-end;justify-content:center}' +

@@ -76,7 +76,9 @@ class GeneralController extends Controller
         if (! $request->has('location_name')) {
             $this->audit->log('tenant.general_updated', $tenant, $old, $tenantValues);
 
-            return $this->saved($request, __('Stammdaten gespeichert.'));
+            // reload bei neuem Namen: Seitenleiste und Kopfzeile der Verwaltung
+            // zeigen den Betriebsnamen.
+            return $this->saved($request, __('Stammdaten gespeichert.'), reload: $tenant->wasChanged('name'));
         }
 
         // Slug stays fixed on rename so existing booking links keep working.

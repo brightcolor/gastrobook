@@ -253,7 +253,7 @@ return [
         'duration_rules.*.max_party' => 'Tischzeit: Bis (Personen)',
         'duration_rules.*.duration' => 'Tischzeit (Minuten)',
         // Stammdaten, Marke, Formularfelder
-        'business_name' => 'Betriebsname',
+        'business_name' => 'Name des Betriebs',
         'timezone' => 'Zeitzone',
         'address_line1' => 'Straße & Nr.',
         'postal_code' => 'PLZ',

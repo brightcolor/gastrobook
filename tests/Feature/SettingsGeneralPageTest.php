@@ -89,4 +89,67 @@ class SettingsGeneralPageTest extends TestCase
             ->assertStatus(422)
             ->assertJsonPath('errors.imprint_url.0', 'Die Adresse des Impressums ist ungültig. Bitte vollständig eintragen, etwa https://dein-betrieb.de/impressum.');
     }
+
+    public function test_renaming_the_business_reloads_the_page_so_the_navigation_shows_the_new_name(): void
+    {
+        $setup = $this->createTenantSetup();
+        $setup['tenant']->update(['name' => 'Nordlicht Events']);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)
+            ->putJson('/admin/settings/general', ['business_name' => 'Nordlicht Catering'])
+            ->assertOk()
+            ->assertJsonPath('reload', true);
+
+        $this->actingAs($owner)
+            ->putJson('/admin/settings/general', [
+                'business_name' => 'Nordlicht Catering',
+                'imprint_url' => 'https://nordlicht.test/impressum',
+            ])
+            ->assertOk()
+            ->assertJsonMissingPath('reload');
+    }
+
+    public function test_a_location_name_without_timezone_names_the_missing_field(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)
+            ->putJson('/admin/settings/general', ['business_name' => 'Nordlicht Events', 'location_name' => 'Hafen'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('timezone');
+    }
+
+    public function test_the_type_cards_describe_each_business_type(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->get('/admin/settings/general')
+            ->assertOk()
+            ->assertSee('Räume, Tische und Reservierungen')
+            ->assertSee('Termine je Mitarbeiter und Leistung');
+    }
+
+    public function test_a_rejected_brand_color_is_marked_on_the_field_and_keeps_the_input(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)
+            ->from('/admin/settings/general')
+            ->put('/admin/settings/branding', ['brand_primary_color' => 'rot'])
+            ->assertRedirect('/admin/settings/general');
+
+        $this->actingAs($owner)->get('/admin/settings/general')
+            ->assertOk()
+            ->assertSee('value="rot"', false)
+            ->assertSee('aria-invalid="true"', false)
+            ->assertSee('aria-describedby="f-brand_primary_color-help f-brand_primary_color-error"', false);
+    }
 }

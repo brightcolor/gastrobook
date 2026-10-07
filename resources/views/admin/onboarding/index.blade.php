@@ -304,10 +304,10 @@
                         <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
                             <h2 class="mb-3 font-bold text-stone-800">Markenfarbe</h2>
                             <div class="flex items-center gap-4">
-                                <input id="obBrandColor" type="color" value="{{ $tenant->brand_primary_color ?: '#0d9488' }}"
+                                <input id="obBrandColor" type="color" value="{{ $tenant->brand_primary_color ?: config('swayy.ui.default_brand_color') }}"
                                        class="h-10 w-16 cursor-pointer rounded-xl border-2 border-stone-200">
                                 <span id="obColorPreview" class="rounded-xl px-4 py-2 text-sm font-semibold text-white"
-                                      style="background:{{ $tenant->brand_primary_color ?: '#0d9488' }}">
+                                      style="background:{{ $tenant->brand_primary_color ?: config('swayy.ui.default_brand_color') }}">
                                     Jetzt reservieren
                                 </span>
                             </div>

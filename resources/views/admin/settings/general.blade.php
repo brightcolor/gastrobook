@@ -2,6 +2,7 @@
 @section('title', 'Allgemein')
 
 @section('content')
+@use('App\Enums\TenantType')
 <x-save-bar />
 <x-page-header title="Allgemein" :crumb="['Einstellungen', 'Betrieb']" scope="tenant"
                description="Name, Art und Auftritt deines Betriebs." />
@@ -31,14 +32,12 @@
         @method('PUT')
         <fieldset class="grid gap-3 sm:grid-cols-2">
             <legend class="sr-only">Betriebstyp</legend>
-            @foreach(\App\Enums\TenantType::cases() as $type)
-                <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-stone-300 p-4 has-[:checked]:border-teal-700 has-[:checked]:ring-1 has-[:checked]:ring-teal-700">
+            @foreach(TenantType::cases() as $type)
+                <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-stone-300 p-4 has-[:checked]:border-teal-700 has-[:checked]:ring-1 has-[:checked]:ring-teal-700 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-teal-700">
                     <input type="radio" name="type" value="{{ $type->value }}" @checked($tenant->type === $type) class="mt-1">
                     <span>
                         <span class="block font-semibold">{{ $type->label() }}</span>
-                        <span class="block text-[13px] text-stone-500">
-                            {{ $type === \App\Enums\TenantType::Salon ? 'Termine je Mitarbeiter und Leistung' : 'Räume, Tische und Reservierungen' }}
-                        </span>
+                        <span class="block text-[13px] text-stone-500">{{ $type->summary() }}</span>
                     </span>
                 </label>
             @endforeach
@@ -54,8 +53,8 @@
         @csrf
         @method('PUT')
         <x-field name="brand_primary_color" label="Farbe" help="Ein Klick auf das Farbfeld öffnet die Auswahl.">
-            <input id="f-brand_primary_color" type="color" name="brand_primary_color" value="{{ $brandColor }}"
-                   aria-describedby="f-brand_primary_color-help"
+            <input id="f-brand_primary_color" type="color" name="brand_primary_color" value="{{ old('brand_primary_color', $brandColor) }}"
+                   @error('brand_primary_color') aria-invalid="true" aria-describedby="f-brand_primary_color-help f-brand_primary_color-error" @else aria-describedby="f-brand_primary_color-help" @enderror
                    class="h-10 w-16 cursor-pointer rounded border border-stone-300 bg-white p-1">
         </x-field>
     </form>

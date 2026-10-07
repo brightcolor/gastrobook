@@ -214,12 +214,12 @@
             <div>
                 <label for="brandColor" class="mb-1 block text-xs font-semibold text-stone-500">Primärfarbe <span class="tip" tabindex="0" data-tip="Klick auf das Farbfeld und wähle deine Wunschfarbe. Die Vorschau rechts zeigt sofort, wie dein Buchungsbutton aussehen wird.">?</span></label>
                 <input type="color" id="brandColor" name="brand_primary_color"
-                       value="{{ $tenant->brand_primary_color ?: '#0d9488' }}"
+                       value="{{ $tenant->brand_primary_color ?: config('swayy.ui.default_brand_color') }}"
                        class="h-10 w-20 cursor-pointer rounded-xl border-2 border-stone-200">
             </div>
             <div id="brandColorPreview" class="flex items-center gap-3">
                 <span class="rounded-xl px-4 py-2 text-sm font-semibold text-white"
-                      style="background:{{ $tenant->brand_primary_color ?: '#0d9488' }}">
+                      style="background:{{ $tenant->brand_primary_color ?: config('swayy.ui.default_brand_color') }}">
                     Jetzt reservieren
                 </span>
                 <span class="text-xs text-stone-400">Vorschau</span>
@@ -1156,7 +1156,7 @@
                 </div>
                 <div>
                     <label for="wColor" class="mb-1 block text-xs font-semibold">Farbe <span class="tip" tabindex="0" data-tip="Die Hintergrundfarbe deines Buchungsbuttons. Passt sich automatisch an deine Markenfarbe an – hier kannst du aber auch etwas Eigenes wählen.">?</span></label>
-                    <input type="color" id="wColor" value="{{ $tenant->brand_primary_color ?: '#0d9488' }}" class="h-10 w-full cursor-pointer rounded-xl border-2 border-stone-200">
+                    <input type="color" id="wColor" value="{{ $tenant->brand_primary_color ?: config('swayy.ui.default_brand_color') }}" class="h-10 w-full cursor-pointer rounded-xl border-2 border-stone-200">
                 </div>
             </div>
             <label class="mb-3 flex items-center gap-2 text-sm">
@@ -1189,7 +1189,7 @@
                 </div>
                 <div>
                     <label for="wLinkColor" class="mb-1 block text-xs font-semibold">Farbe <span class="tip" tabindex="0" data-tip="Die Hintergrundfarbe des Link-Buttons. Wird nicht von der Markenfarbe beeinflusst, da das ein statischer HTML-Link ist.">?</span></label>
-                    <input type="color" id="wLinkColor" value="{{ $tenant->brand_primary_color ?: '#0d9488' }}" class="h-10 w-full cursor-pointer rounded-xl border-2 border-stone-200">
+                    <input type="color" id="wLinkColor" value="{{ $tenant->brand_primary_color ?: config('swayy.ui.default_brand_color') }}" class="h-10 w-full cursor-pointer rounded-xl border-2 border-stone-200">
                 </div>
             </div>
             <div class="relative">
@@ -1573,10 +1573,10 @@ document.getElementById('addDurationRule')?.addEventListener('click', () => {
 
     function updateSnippets() {
         var label     = document.getElementById('wLabel')?.value     || 'Jetzt reservieren';
-        var color     = document.getElementById('wColor')?.value     || '#0d9488';
+        var color     = document.getElementById('wColor')?.value     || @json(config('swayy.ui.default_brand_color'));
         var isFloat   = document.getElementById('wFloat')?.checked;
         var linkLabel = document.getElementById('wLinkLabel')?.value || 'Jetzt reservieren';
-        var linkColor = document.getElementById('wLinkColor')?.value || '#0d9488';
+        var linkColor = document.getElementById('wLinkColor')?.value || @json(config('swayy.ui.default_brand_color'));
 
         var popupAttrs = ' data-color="' + color + '"';
         if (label !== 'Jetzt reservieren') popupAttrs = ' data-label="' + label + '"' + popupAttrs;

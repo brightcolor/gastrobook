@@ -32,4 +32,12 @@ enum TenantType: string
             self::Salon => 'Termin buchen',
         };
     }
+
+    public function summary(): string
+    {
+        return match ($this) {
+            self::Restaurant => 'Räume, Tische und Reservierungen',
+            self::Salon => 'Termine je Mitarbeiter und Leistung',
+        };
+    }
 }
