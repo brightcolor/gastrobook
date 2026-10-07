@@ -69,6 +69,14 @@ class Location extends Model
         return $this->hasMany(BlackoutPeriod::class);
     }
 
+    public function seasonPeriods(): HasMany
+    {
+        return $this->hasMany(SeasonPeriod::class)
+            ->orderBy('sort_order')
+            ->orderBy('start_month')
+            ->orderBy('start_day');
+    }
+
     /** @return HasMany<Reservation, $this> */
     public function reservations(): HasMany
     {
