@@ -136,7 +136,9 @@ class NavigationLayoutTest extends TestCase
         $this->assertStringContainsString('href="'.route('admin.dashboard').'"', $header[0]);
         $this->assertStringContainsString('Übersicht', $header[0]);
         $this->assertStringNotContainsString('href="'.route('admin.settings.menu').'"', $header[0]);
-        $this->assertStringContainsString('data-settings-noresult hidden role="status"', $html);
+        // Die Live-Region bleibt sichtbar im Dokument; nur ihr Text wechselt.
+        $this->assertStringContainsString('data-settings-noresult role="status"', $html);
+        $this->assertStringNotContainsString('data-settings-noresult hidden', $html);
     }
 
     public function test_layout_and_navigation_use_no_inline_event_handlers(): void

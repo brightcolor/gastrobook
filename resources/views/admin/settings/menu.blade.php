@@ -32,6 +32,6 @@
             </div>
         </section>
     @endforeach
-    <p data-settings-noresult hidden role="status" class="text-sm text-stone-600"></p>
+    <p data-settings-noresult role="status" class="text-sm text-stone-600"></p>
 </div>
 @endsection

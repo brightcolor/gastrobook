@@ -132,11 +132,15 @@ export function initSettingsSearch() {
                 if (visible > 0) any = true;
             });
 
+            // Die Live-Region bleibt im Dokument, nur ihr Text wechselt; so sagt
+            // der Screenreader den Hinweis an. Die Beispiele kommen aus den
+            // Suchbegriffen der Einträge (config/navigation.php).
             if (noResult) {
-                noResult.hidden = any;
-                noResult.textContent = any
-                    ? ''
-                    : `Zu „${input.value.trim()}“ passt keine Einstellung. Versuch einen anderen Begriff, etwa „Erinnerung“ oder „Stornofrist“.`;
+                const examples = [...list.querySelectorAll('[data-settings-item]')]
+                    .flatMap((link) => (link.dataset.keywords || '').split('|').filter(Boolean))
+                    .slice(0, 2);
+                const hint = examples.length === 2 ? ` Versuch einen anderen Begriff, etwa „${examples[0]}“ oder „${examples[1]}“.` : '';
+                noResult.textContent = any ? '' : `Zu „${input.value.trim()}“ passt keine Einstellung.${hint}`;
             }
         });
     });

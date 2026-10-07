@@ -27,5 +27,5 @@
             @endforeach
         </div>
     @endforeach
-    <p data-settings-noresult hidden role="status" class="mt-4 px-2 text-sm text-stone-400"></p>
+    <p data-settings-noresult role="status" class="mt-4 px-2 text-sm text-stone-400 empty:mt-0"></p>
 </div>
