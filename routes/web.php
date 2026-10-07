@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ReservationAttachmentController;
 use App\Http\Controllers\Admin\ReservationBookController;
 use App\Http\Controllers\Admin\ServiceController;
+use App\Http\Controllers\Admin\Settings\GeneralController;
 use App\Http\Controllers\Admin\Settings\SettingsMenuController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\StaffCalendarController;
@@ -412,11 +413,13 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
             ->middleware('permission:blackouts.manage')->name('settings.table-blocks.store');
         Route::delete('/settings/table-blocks/{block}', [SettingsController::class, 'deleteTableBlock'])
             ->middleware('permission:blackouts.manage')->name('settings.table-blocks.delete');
-        Route::put('/settings/general', [SettingsController::class, 'updateGeneral'])
+        Route::get('/settings/general', [GeneralController::class, 'show'])
+            ->middleware('permission:tenant.settings.manage')->name('settings.general.show');
+        Route::put('/settings/general', [GeneralController::class, 'update'])
             ->middleware('permission:tenant.settings.manage')->name('settings.general');
-        Route::put('/settings/tenant-type', [SettingsController::class, 'updateTenantType'])
+        Route::put('/settings/tenant-type', [GeneralController::class, 'updateTenantType'])
             ->middleware('permission:tenant.settings.manage')->name('settings.tenant-type');
-        Route::put('/settings/branding', [SettingsController::class, 'updateBranding'])
+        Route::put('/settings/branding', [GeneralController::class, 'updateBranding'])
             ->middleware('permission:tenant.settings.manage')->name('settings.branding');
         Route::put('/settings/guest-mail', [SettingsController::class, 'updateGuestMail'])
             ->middleware('permission:tenant.settings.manage')->name('settings.guest-mail');

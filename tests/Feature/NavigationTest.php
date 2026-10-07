@@ -105,7 +105,7 @@ class NavigationTest extends TestCase
             array_column($shape, 0),
         );
         $this->assertSame(['opening-hours', 'exceptions', 'rooms', 'capacity'], $shape[1][1]);
-        $this->assertSame(route('admin.settings.index').'#allgemein', $nav->firstSettingsUrl($owner, $setup['tenant'], $setup['location']));
+        $this->assertSame(route('admin.settings.general.show'), $nav->firstSettingsUrl($owner, $setup['tenant'], $setup['location']));
     }
 
     public function test_settings_entry_follows_the_first_allowed_page(): void

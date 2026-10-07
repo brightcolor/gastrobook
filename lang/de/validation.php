@@ -141,7 +141,19 @@ return [
         ],
         // Einstellungsseite
         'brand_primary_color' => [
-            'regex' => 'Die Markenfarbe muss ein Farbwert wie #0d9488 sein. Bitte die Farbe über das Farbfeld wählen.',
+            'regex' => 'Die Farbe muss im Format #rrggbb angegeben sein, etwa #0f766e. Bitte über das Farbfeld auswählen.',
+        ],
+        'business_name' => [
+            'required' => 'Bitte den Namen des Betriebs eintragen.',
+        ],
+        'imprint_url' => [
+            'url' => 'Die Adresse des Impressums ist ungültig. Bitte vollständig eintragen, etwa https://dein-betrieb.de/impressum.',
+        ],
+        'privacy_url' => [
+            'url' => 'Die Adresse der Datenschutzhinweise ist ungültig. Bitte vollständig eintragen, etwa https://dein-betrieb.de/datenschutz.',
+        ],
+        'terms_url' => [
+            'url' => 'Die Adresse der AGB ist ungültig. Bitte vollständig eintragen, etwa https://dein-betrieb.de/agb.',
         ],
         'hours' => [
             'required' => 'Bitte mindestens ein Zeitfenster eintragen. Einzelne Schließtage stehen unter „Sonderöffnungszeiten“.',

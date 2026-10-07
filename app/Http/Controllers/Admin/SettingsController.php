@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\ReservationStatus;
-use App\Enums\TenantType;
+use App\Http\Controllers\Admin\Settings\Concerns\RespondsToSettingsForms;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\BlackoutPeriod;
@@ -36,6 +36,8 @@ use Illuminate\Validation\ValidationException;
 
 class SettingsController extends Controller
 {
+    use RespondsToSettingsForms;
+
     public function __construct(
         private readonly TenantContext $context,
         private readonly AuditLogger $audit,
@@ -906,77 +908,6 @@ class SettingsController extends Controller
     }
 
     /**
-     * Core master data: business (tenant) name + this location's contact data.
-     * Lives in Settings → Allgemein so single-location operators find it where
-     * they expect (instead of only on the separate Standorte page).
-     */
-    public function updateGeneral(Request $request)
-    {
-        $location = $this->context->location();
-        abort_if($location === null, 404);
-        $tenant = $location->tenant;
-
-        $validated = $request->validate([
-            'business_name' => ['required', 'string', 'max:120'],
-            'location_name' => ['required', 'string', 'max:120'],
-            'timezone' => ['required', 'timezone'],
-            'phone' => ['nullable', 'string', 'max:40'],
-            'email' => ['nullable', 'email:rfc', 'max:200'],
-            'address_line1' => ['nullable', 'string', 'max:200'],
-            'postal_code' => ['nullable', 'string', 'max:20'],
-            'city' => ['nullable', 'string', 'max:100'],
-            'public_intro' => ['nullable', 'string', 'max:1000'],
-            // Die Buchungsseite verlangt vom Gast ein Pflichthaekchen auf die
-            // Datenschutzhinweise. Ohne diese Felder gab es keinen Weg, dorthin
-            // zu verlinken - der Gast bestaetigte, etwas gelesen zu haben, das
-            // auf der Seite gar nicht erreichbar war.
-            'imprint_url' => ['nullable', 'url', 'max:255'],
-            'privacy_url' => ['nullable', 'url', 'max:255'],
-            'terms_url' => ['nullable', 'url', 'max:255'],
-        ]);
-
-        $tenant->update([
-            'name' => $validated['business_name'],
-            'imprint_url' => $validated['imprint_url'] ?? null,
-            'privacy_url' => $validated['privacy_url'] ?? null,
-            'terms_url' => $validated['terms_url'] ?? null,
-        ]);
-
-        // Slug stays fixed on rename so existing booking links keep working.
-        $location->update([
-            'name' => $validated['location_name'],
-            'timezone' => $validated['timezone'],
-            'phone' => $validated['phone'] ?? null,
-            'email' => $validated['email'] ?? null,
-            'address_line1' => $validated['address_line1'] ?? null,
-            'postal_code' => $validated['postal_code'] ?? null,
-            'city' => $validated['city'] ?? null,
-            'public_intro' => $validated['public_intro'] ?? null,
-        ]);
-
-        $this->audit->log('location.general_updated', $location, null, $validated);
-
-        return $this->saved($request, __('Stammdaten gespeichert.'), reload: true);
-    }
-
-    public function updateBranding(Request $request)
-    {
-        $tenant = $this->context->tenant();
-        abort_if($tenant === null, 404);
-
-        $validated = $request->validate([
-            'brand_primary_color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
-        ]);
-
-        $old = ['brand_primary_color' => $tenant->brand_primary_color];
-        $tenant->update($validated);
-
-        $this->audit->log('tenant.branding_updated', $tenant, $old, $validated);
-
-        return $this->saved($request, __('Markenfarbe gespeichert.'));
-    }
-
-    /**
      * Absendername und Antwortadresse fuer Mails an Gaeste. Leer heisst:
      * Ersatz aus config/swayy.php (guest_mail), siehe GuestMailSender.
      */
@@ -1016,28 +947,6 @@ class SettingsController extends Controller
         $this->audit->log('tenant.guest_mail_updated', $tenant, $old, $neu);
 
         return $this->saved($request, __('E-Mail-Einstellungen gespeichert.'), reload: true);
-    }
-
-    public function updateTenantType(Request $request)
-    {
-        $tenant = $this->context->tenant();
-
-        $validated = $request->validate([
-            'type' => ['required', 'string', 'in:restaurant,salon'],
-        ], [], ['type' => __('Betriebstyp')]);
-
-        $old = $tenant->getRawOriginal('type');
-        $tenant->update(['type' => TenantType::from($validated['type'])]);
-
-        $this->audit->log('tenant.type_changed', $tenant, ['type' => $old], ['type' => $validated['type']]);
-
-        // reload: true — der Typwechsel ändert Navigation, Labels und die
-        // öffentliche Buchungsseite. Ohne Reload schickt das AJAX-Settings-JS
-        // das Formular ab und speichert zwar, aber die UI spiegelt den neuen
-        // Typ nicht wider ("umschalten geht nicht").
-        return $this->saved($request, __('Betriebstyp geändert auf: :type', [
-            'type' => TenantType::from($validated['type'])->label(),
-        ]), reload: true);
     }
 
     public function storeSpecialHours(Request $request)
@@ -1377,42 +1286,5 @@ class SettingsController extends Controller
         $this->audit->log('table.updated', $table, $old, $validated);
 
         return $this->saved($request, __('Tisch gespeichert.'));
-    }
-
-    private function saved(Request $request, string $message, bool $reload = false): mixed
-    {
-        if ($request->wantsJson()) {
-            $data = ['message' => $message];
-            if ($reload) {
-                $data['reload'] = true;
-            }
-
-            return response()->json($data);
-        }
-
-        return back()->with('success', $message);
-    }
-
-    private function failed(Request $request, string $field, string $message): mixed
-    {
-        return $this->rejected($request, [$field => $message]);
-    }
-
-    /**
-     * Ablehnung in derselben Form wie ein Pruefungsfehler von Laravel: per
-     * fetch als JSON mit "message" und "errors", sonst zurueck zur Seite.
-     *
-     * @param  array<string, string>  $errors  Feld => Meldung
-     */
-    private function rejected(Request $request, array $errors): mixed
-    {
-        if ($request->wantsJson()) {
-            return response()->json([
-                'message' => implode(' ', $errors),
-                'errors' => array_map(fn (string $message) => [$message], $errors),
-            ], 422);
-        }
-
-        return back()->withErrors($errors);
     }
 }

@@ -144,6 +144,7 @@ class AuditLog extends Model
         'integration.stripe_updated' => 'Stripe-Anbindung geändert',
         'location.field_rules_updated' => 'Standort: Feldregeln geändert',
         'location.general_updated' => 'Standort: Stammdaten geändert',
+        'tenant.general_updated' => 'Betrieb: Stammdaten geändert',
         'location.settings_updated' => 'Standort: Einstellungen geändert',
         'reservation.attachment_added' => 'Reservierung: Anhang hinzugefügt',
         'reservation.attachment_deleted' => 'Reservierung: Anhang gelöscht',

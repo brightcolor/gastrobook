@@ -66,7 +66,7 @@ return [
 
     'settings' => [
         ['label' => 'Betrieb', 'items' => [
-            ['key' => 'general', 'label' => 'Allgemein', 'route' => 'admin.settings.index', 'fragment' => 'allgemein', 'active' => [], 'scope' => 'tenant', 'can' => ['tables.manage', 'tenant.settings.manage'],
+            ['key' => 'general', 'label' => 'Allgemein', 'route' => 'admin.settings.general.show', 'scope' => 'tenant', 'can' => ['tables.manage', 'tenant.settings.manage'],
                 'keywords' => ['Betriebsname', 'Betriebstyp', 'Restaurant', 'Salon', 'Markenfarbe', 'Impressum', 'Datenschutz', 'AGB']],
             ['key' => 'locations', 'label' => 'Standorte', 'route' => 'admin.locations.index', 'scope' => 'tenant', 'can' => ['locations.manage'],
                 'keywords' => ['Standort', 'Adresse', 'Zeitzone', 'Telefon', 'Logo']],
