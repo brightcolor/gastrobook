@@ -125,11 +125,15 @@ function commitDefaults(values) {
     });
 }
 
-// Neu geladen wird erst, wenn keine Anfrage mehr läuft. Die Wartezeit kommt
-// aus config/swayy.php (ui.reload_delay_ms), damit „Gespeichert“ lesbar bleibt.
+// Neu geladen wird erst, wenn keine Anfrage mehr läuft, und nur einmal je
+// Anforderung. Die Wartezeit kommt aus config/swayy.php (ui.reload_delay_ms),
+// damit „Gespeichert“ lesbar bleibt.
 function reloadWhenIdle() {
     setTimeout(() => {
-        if (inFlight === 0) window.location.reload();
+        if (inFlight === 0 && reloadRequested) {
+            reloadRequested = false;
+            window.location.reload();
+        }
     }, window.SwayyAdmin?.ui?.reloadDelayMs);
 }
 

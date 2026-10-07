@@ -38,10 +38,12 @@ export function initSaveBar() {
     };
 
     // Verschwindet die Leiste mit dem fokussierten Knopf, wandert der Fokus
-    // ins erste Feld des Formulars.
+    // ins erste Feld des Formulars. Gescrollt wird nur bei Bedienung per
+    // Tastatur; nach einem Klick bleibt die Ansicht stehen.
     const moveFocusOut = (form) => {
-        if (form && dirtyForms().length === 0 && bar.contains(document.activeElement)) {
-            firstField(form)?.focus();
+        const active = document.activeElement;
+        if (form && dirtyForms().length === 0 && bar.contains(active)) {
+            firstField(form)?.focus({ preventScroll: !active.matches(':focus-visible') });
         }
     };
 
