@@ -340,3 +340,25 @@
     border-color: #b91c1c;
     box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.15);
 }
+
+/* Sichtbare Speicherleiste: Fokus, letzter Inhalt und Hinweis bleiben frei (WCAG 2.4.11).
+   Am Smartphone sitzt sie über der unteren Leiste, ab 768 px oben im Inhalt. */
+@media (max-width: 767.98px) {
+    html:has([data-save-bar]:not([hidden])) {
+        scroll-padding-bottom: 10rem;
+    }
+
+    html:has([data-save-bar]:not([hidden])) #main-content {
+        padding-bottom: 12rem;
+    }
+
+    html:has([data-save-bar]:not([hidden])) #swayyToast {
+        bottom: 10.5rem;
+    }
+}
+
+@media (min-width: 768px) {
+    html:has([data-save-bar]:not([hidden])) {
+        scroll-padding-top: 5rem;
+    }
+}

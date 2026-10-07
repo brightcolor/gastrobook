@@ -113,6 +113,7 @@ class PageComponentsTest extends TestCase
             ->assertSee('data-save-bar hidden', false)
             ->assertSee('Ungespeicherte Änderungen')
             ->assertSee('data-save-bar-discard', false)
-            ->assertSee('data-save-bar-save', false);
+            ->assertSee('data-save-bar-save', false)
+            ->assertSee('<p class="sr-only" role="status" data-save-bar-status></p>', false);
     }
 }

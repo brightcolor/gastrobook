@@ -2,6 +2,7 @@
      Am Smartphone über der unteren Leiste, ab 768 px oben im Inhalt und beim Scrollen stehend.
      Die Hülle hat ab 768 px weder Höhe noch Außenabstand: Die Leiste legt sich über den Seitenkopf, der Inhalt darunter bleibt an seinem Platz. --}}
 <div class="md:sticky md:top-6 md:z-40 md:-mx-6 md:h-0">
+    <p class="sr-only" role="status" data-save-bar-status></p>
     <div data-save-bar hidden role="region" aria-label="Ungespeicherte Änderungen"
          class="fixed inset-x-0 bottom-14 z-40 flex flex-wrap items-center justify-between gap-3 bg-stone-900 px-4 py-3 text-white shadow-[0_-6px_16px_rgba(28,25,23,0.18)] md:relative md:-top-6 md:px-6 md:shadow-[0_6px_16px_rgba(28,25,23,0.18)]">
         <p class="flex items-center gap-2.5 text-sm font-semibold">
