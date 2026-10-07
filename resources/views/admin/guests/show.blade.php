@@ -48,6 +48,27 @@
                 @endforelse
             </div>
         </div>
+
+        {{-- Nachrichten vom Gast (über die Antwortadresse eingegangen) --}}
+        @if($guest->mailReplies->isNotEmpty())
+        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
+            <h2 class="mb-3 font-bold">Nachrichten vom Gast</h2>
+            <ul class="space-y-3 text-sm">
+                @foreach($guest->mailReplies->sortByDesc('received_at') as $reply)
+                    <li class="rounded-lg bg-stone-50 p-3">
+                        <div class="flex justify-between text-xs text-stone-400">
+                            <span>{{ $reply->received_at?->format('d.m.Y H:i') }}</span>
+                            @if($reply->reservation_id)
+                                <a href="{{ route('admin.reservations.show', $reply->reservation_id) }}" class="text-brand hover:underline">zur Buchung</a>
+                            @endif
+                        </div>
+                        @if($reply->subject)<p class="font-semibold text-stone-700">{{ $reply->subject }}</p>@endif
+                        <p class="whitespace-pre-line text-stone-600">{{ $reply->body_text }}</p>
+                    </li>
+                @endforeach
+            </ul>
+        </div>
+        @endif
     </div>
 
     <div class="space-y-6">

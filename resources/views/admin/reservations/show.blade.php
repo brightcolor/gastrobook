@@ -133,6 +133,31 @@
                 @endforeach
             </div>
         </div>
+
+        {{-- Antworten des Gastes (über die Antwortadresse eingegangen) --}}
+        @if($reservation->mailReplies->isNotEmpty())
+        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
+            <h2 class="mb-3 font-bold">Antworten vom Gast</h2>
+            <ul class="space-y-3 text-sm">
+                @foreach($reservation->mailReplies->sortByDesc('received_at') as $reply)
+                    <li class="rounded-lg bg-stone-50 p-3">
+                        <div class="flex justify-between text-xs text-stone-400">
+                            <span>{{ $reply->from_email }}</span>
+                            <span>{{ $reply->received_at?->copy()->setTimezone($location?->timezone ?? config('app.timezone'))->format('d.m. H:i') }}</span>
+                        </div>
+                        @if($reply->subject)<p class="font-semibold text-stone-700">{{ $reply->subject }}</p>@endif
+                        <p class="whitespace-pre-line text-stone-600">{{ $reply->body_text }}</p>
+                        @if($reply->has_attachments)
+                            <p class="mt-1 text-xs text-stone-400">Anhänge (beim Betrieb): {{ collect($reply->attachments_meta)->pluck('name')->implode(', ') }}</p>
+                        @endif
+                        @if($reply->forward_status === 'failed')
+                            <p class="mt-1 text-xs text-red-600">Weiterleitung an den Betrieb fehlgeschlagen.</p>
+                        @endif
+                    </li>
+                @endforeach
+            </ul>
+        </div>
+        @endif
     </div>
 
     <div class="space-y-6">
