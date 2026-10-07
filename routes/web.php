@@ -33,6 +33,7 @@ use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\RegistrationController;
 use App\Http\Controllers\GoCardlessWebhookController;
+use App\Http\Controllers\PostalInboundController;
 use App\Http\Controllers\Public\FeedbackController;
 use App\Http\Controllers\Public\GuestPortalController;
 use App\Http\Controllers\Public\MarketingController;
@@ -109,6 +110,7 @@ Route::get('/pay/stripe/return/{intent}', [PaymentController::class, 'stripeRetu
     ->middleware('throttle:booking')->name('pay.stripe.return');
 Route::post('/webhooks/stripe', [PaymentController::class, 'stripeWebhook'])->name('webhooks.stripe');
 Route::post('/webhooks/gocardless', [GoCardlessWebhookController::class, 'handle'])->name('webhooks.gocardless');
+Route::post('/webhooks/postal', [PostalInboundController::class, 'handle'])->name('webhooks.postal');
 
 Route::get('/reservation/{code}/confirmed/{token}', [PublicBookingController::class, 'confirmation'])
     ->middleware('throttle:booking-slots')->name('booking.confirmation');
