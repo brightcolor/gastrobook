@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.132.0] – 2026-10-07
+
+### Sperrzeiten: klar bedienbar und ohne stille Fehleingaben
+
+Eine gemeinte Betriebsschließung ließ sich versehentlich als „Raum X, weniger
+Gäste" anlegen und wirkte dann gar nicht, ohne jeden Hinweis – genau so war bei
+einem Betrieb eine Schließung eingetragen, und man konnte trotzdem buchen. Das
+Formular führt jetzt verständlich durch die Auswahl.
+
+- **Klares Formular:** zuerst der Bereich („Ganzer Betrieb" oder ein Raum), dann
+  die Art („Komplett geschlossen" oder „Weniger Gäste als sonst"). „Weniger
+  Gäste" steht nur dort, wo es wirkt – beim ganzen Betrieb und wenn nach Plätzen
+  gebucht wird; sonst ausgegraut samt Hinweis.
+- **Keine stillen Fehleingaben:** Eine Gästezahl-Begrenzung für einen einzelnen
+  Raum oder im Modus „nach Tischen" wird mit einer verständlichen Meldung
+  abgelehnt, die den nächsten Schritt nennt.
+- **Bestehende wirkungslose Sperren** erscheinen in der Liste mit der Markierung
+  „wirkt nicht", damit sie auffallen und sich korrigieren lassen.
+
 ## [1.131.2] – 2026-10-07
 
 ### Reservierung mit eigener Dauer legt wieder an
