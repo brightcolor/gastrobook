@@ -109,7 +109,23 @@ class EnvSettingTest extends TestCase
         $this->set('owner_notification_email,support_email');
 
         $this->assertSame($erlaubt, $this->capture(fn () => EnvSetting::choiceList(self::VARIABLE, default: $erlaubt, allowed: $erlaubt)));
-        $this->assertStringContainsString(self::VARIABLE.': Der Eintrag „support_email“ ist unbekannt. Es gilt die Vorgabe location_email,owner_notification_email.', $this->warnings);
+        $this->assertStringContainsString(self::VARIABLE.': Der Eintrag „support_email” ist unbekannt. Es gilt die Vorgabe location_email,owner_notification_email.', $this->warnings);
+    }
+
+    public function test_a_hex_color_is_used_in_lower_case(): void
+    {
+        $this->set('#0D9488');
+
+        $this->assertSame('#0d9488', $this->capture(fn () => EnvSetting::hexColor(self::VARIABLE, default: '#0f766e')));
+        $this->assertSame('', $this->warnings);
+    }
+
+    public function test_an_invalid_hex_color_falls_back_to_the_default_with_a_warning(): void
+    {
+        $this->set('teal');
+
+        $this->assertSame('#0f766e', $this->capture(fn () => EnvSetting::hexColor(self::VARIABLE, default: '#0f766e')));
+        $this->assertStringContainsString(self::VARIABLE.'=„teal” ist keine Farbe in der Schreibweise #rrggbb. Es gilt die Vorgabe #0f766e.', $this->warnings);
     }
 
     private function set(string $value): void

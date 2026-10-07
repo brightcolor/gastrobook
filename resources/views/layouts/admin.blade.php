@@ -4,6 +4,17 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'Swayy') – Swayy</title>
+    @php
+        $swayyAdminData = [
+            'ui' => [
+                'toastMs' => config('swayy.ui.toast_ms'),
+            ],
+            'problemTexts' => \App\Support\AdminJsonErrors::forClient(),
+        ];
+    @endphp
+    <script>
+        window.SwayyAdmin = @json($swayyAdminData);
+    </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @include('partials.favicons')
 </head>

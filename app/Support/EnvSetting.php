@@ -113,6 +113,25 @@ final class EnvSetting
     }
 
     /**
+     * Farbe in der Schreibweise #rrggbb, kleingeschrieben.
+     */
+    public static function hexColor(string $variable, string $default): string
+    {
+        $raw = self::raw($variable);
+        if ($raw === null) {
+            return $default;
+        }
+
+        if (preg_match('/^#[0-9a-fA-F]{6}$/', $raw) !== 1) {
+            self::warn("{$variable}=„{$raw}“ ist keine Farbe in der Schreibweise #rrggbb. Es gilt die Vorgabe {$default}. Bitte einen Wert wie #0f766e in der .env eintragen.");
+
+            return $default;
+        }
+
+        return strtolower($raw);
+    }
+
+    /**
      * Komma-Liste aus IP-Adressen und Netzen in CIDR-Schreibweise. Ungueltige
      * Eintraege entfallen mit Warnung, die uebrigen gelten.
      *

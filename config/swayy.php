@@ -269,4 +269,20 @@ return [
         // Vorgabe 60,600.
         'backoff' => EnvSetting::integerList('SWAYY_NEWSLETTER_BACKOFF', default: [60, 600], min: 1, max: 86400),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Oberfläche der Verwaltung
+    |--------------------------------------------------------------------------
+    |
+    | toast_ms: wie lange ein Hinweis wie „Gespeichert" stehen bleibt, in
+    | Millisekunden. default_brand_color: Markenfarbe, solange ein Betrieb
+    | keine eigene gewählt hat (Buchungsseite, Buchungsknopf, Farbwahl in den
+    | Einstellungen).
+    |
+    */
+    'ui' => [
+        'toast_ms' => EnvSetting::integer('SWAYY_UI_TOAST_MS', default: 3200, min: 1000, max: 20000),
+        'default_brand_color' => EnvSetting::hexColor('SWAYY_UI_DEFAULT_BRAND_COLOR', default: '#0f766e'),
+    ],
 ];
