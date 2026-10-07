@@ -1238,6 +1238,13 @@
 
     var hash = (location.hash || '').replace('#', '');
     activateTab(TABS.includes(hash) ? hash : 'allgemein');
+
+    // Die Einstellungsnavigation verlinkt die Reiter als #…; ein Klick dort
+    // lädt die Seite nicht neu, er ändert nur den Anker.
+    window.addEventListener('hashchange', function () {
+        var next = (location.hash || '').replace('#', '');
+        if (TABS.includes(next)) activateTab(next);
+    });
 })();
 </script>
 
