@@ -37,7 +37,13 @@ class TableAssignmentService
             $this->busyTableIds($location, $windowStart, $windowEnd, $options['exclude_reservation_id'] ?? null),
             array_map('intval', $options['busy_table_ids'] ?? []),
         );
-        $blockedRoomIds = $this->blockedRoomIds($location, $windowStart, $windowEnd);
+        // Geschlossene Räume und Räume, deren Gästegrenze diese Gruppe
+        // überschreiten würde. Die Grenze zählt Personen im Buchungsfenster
+        // selbst, ohne Puffer – wie das Platzlimit des ganzen Betriebs.
+        $blockedRoomIds = array_merge(
+            $this->blockedRoomIds($location, $windowStart, $windowEnd),
+            $this->roomsOverGuestLimit($location, $startUtc, $endUtc, $partySize, $options['exclude_reservation_id'] ?? null),
+        );
 
         $tables = $location->tables()
             ->where('is_active', true)
@@ -171,7 +177,7 @@ class TableAssignmentService
      *
      * @return array<int>
      */
-    private function blockedRoomIds(Location $location, CarbonImmutable $startUtc, CarbonImmutable $endUtc): array
+    public function blockedRoomIds(Location $location, CarbonImmutable $startUtc, CarbonImmutable $endUtc): array
     {
         return $location->blackoutPeriods()
             ->whereNotNull('room_id')
@@ -180,6 +186,50 @@ class TableAssignmentService
             ->where('ends_at', '>', $startUtc)
             ->pluck('room_id')
             ->all();
+    }
+
+    /**
+     * Räume, in denen eine Gruppe dieser Größe die Gästegrenze einer Sperrzeit
+     * („Max. Gäste" mit Raum) überschreiten würde.
+     *
+     * Gezählt werden die Personen aller aktiven Reservierungen im Fenster, die
+     * mindestens einen Tisch in diesem Raum belegen. Überschneiden sich mehrere
+     * Grenzen für denselben Raum, gilt die kleinste.
+     *
+     * @return array<int>
+     */
+    public function roomsOverGuestLimit(
+        Location $location,
+        CarbonImmutable $startUtc,
+        CarbonImmutable $endUtc,
+        int $partySize,
+        ?int $excludeReservationId = null
+    ): array {
+        $limits = $location->blackoutPeriods()
+            ->whereNotNull('room_id')
+            ->whereNotNull('reduce_covers_to')
+            ->where('starts_at', '<', $endUtc)
+            ->where('ends_at', '>', $startUtc)
+            ->get(['room_id', 'reduce_covers_to'])
+            ->groupBy('room_id')
+            ->map(fn (Collection $rows) => (int) $rows->min('reduce_covers_to'));
+
+        $full = [];
+        foreach ($limits as $roomId => $limit) {
+            $seated = (int) $location->reservations()
+                ->whereIn('status', ReservationStatus::activeStatuses())
+                ->when($excludeReservationId, fn ($q) => $q->where('reservations.id', '!=', $excludeReservationId))
+                ->where('start_at', '<', $endUtc)
+                ->where('end_at', '>', $startUtc)
+                ->whereHas('tables', fn ($q) => $q->where('restaurant_tables.room_id', $roomId))
+                ->sum('party_size');
+
+            if ($seated + $partySize > $limit) {
+                $full[] = (int) $roomId;
+            }
+        }
+
+        return $full;
     }
 
     /**

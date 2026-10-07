@@ -262,19 +262,21 @@ class ReservationAvailabilityService
         // Platzlimit. Es steckte bisher nur in checkSlotDetailed, also im Weg
         // ohne gewaehlten Tisch. Im Modus "Plaetze" oder "gemischt" lief der
         // Deckenzaehler damit gar nicht, sobald jemand einen Tisch mitbrachte.
+        // "Max. Gaeste" einer Sperrzeit gilt in jedem Modus.
         $partySize = $options['party_size'] ?? null;
-        if ($partySize !== null && in_array($settings->capacity_mode, ['person', 'hybrid'], true)) {
-            $maxCovers = $this->effectiveMaxCovers($location, $startUtc, $endUtc, $settings->max_covers_per_slot);
+        if ($partySize !== null) {
+            $excludeId = $options['exclude_reservation_id'] ?? null;
+            $maxCovers = $this->effectiveMaxCovers($location, $startUtc, $endUtc, $this->configuredMaxCovers($location));
 
-            if ($maxCovers !== null) {
-                $belegt = (int) $location->reservations()
-                    ->whereIn('status', ReservationStatus::activeStatuses())
-                    ->when($options['exclude_reservation_id'] ?? null, fn ($q, $id) => $q->where('reservations.id', '!=', $id))
-                    ->where('start_at', '<', $endUtc)
-                    ->where('end_at', '>', $startUtc)
-                    ->sum('party_size');
+            if ($maxCovers !== null && $this->coversInWindow($location, $startUtc, $endUtc, $excludeId) + $partySize > $maxCovers) {
+                return 'covers_full';
+            }
 
-                if ($belegt + $partySize > $maxCovers) {
+            // "Max. Gaeste" fuer einen Raum betrifft nur Buchungen an Tischen
+            // dieses Raums.
+            if ($tableIds !== []) {
+                $fullRooms = $this->tableAssignment->roomsOverGuestLimit($location, $startUtc, $endUtc, (int) $partySize, $excludeId);
+                if ($fullRooms !== [] && $location->tables()->whereIn('id', $tableIds)->whereIn('room_id', $fullRooms)->exists()) {
                     return 'covers_full';
                 }
             }
@@ -394,34 +396,31 @@ class ReservationAvailabilityService
 
         $mode = $settings->capacity_mode;
 
-        if ($mode === 'person' || $mode === 'hybrid') {
-            $maxCovers = $this->effectiveMaxCovers($location, $startUtc, $endUtc, $settings->max_covers_per_slot);
-            if ($maxCovers !== null) {
-                $currentCovers = (int) $location->reservations()
-                    ->whereIn('status', ReservationStatus::activeStatuses())
-                    // Beim Umbuchen darf sich die eigene Reservierung nicht
-                    // selbst gegen das Platzlimit zaehlen.
-                    ->when($options['exclude_reservation_id'] ?? null, fn ($q, $id) => $q->where('reservations.id', '!=', $id))
-                    ->where('start_at', '<', $endUtc)
-                    ->where('end_at', '>', $startUtc)
-                    ->sum('party_size');
-                // Zusaetzliche Plaetze, die zwar zugesagt, aber noch nicht
-                // gebucht sind: offene Wartelistenangebote. Ohne sie zaehlt der
-                // Betrieb dieselben Plaetze mehrfach zu.
-                //
-                // Nur hier, nicht in bookingBlockReason: Dort geht es um eine
-                // Buchung, die JETZT entsteht, und dagegen darf eine blosse
-                // Zusage nicht sperren. Der Betrieb soll den Tisch vergeben
-                // koennen, auch wenn noch ein Angebot offen steht.
-                $zugesagt = (int) ($options['extra_covers'] ?? 0);
+        // Platzlimit: "Max. Gaeste" einer Sperrzeit fuer den ganzen Betrieb
+        // gilt in jedem Modus, die feste Grenze je Zeitfenster nur beim Buchen
+        // nach Plaetzen. Die Grenze eines Raums prueft die Tischsuche.
+        $maxCovers = $this->effectiveMaxCovers($location, $startUtc, $endUtc, $this->configuredMaxCovers($location));
+        if ($maxCovers !== null) {
+            // Beim Umbuchen darf sich die eigene Reservierung nicht selbst
+            // gegen das Platzlimit zaehlen.
+            $currentCovers = $this->coversInWindow($location, $startUtc, $endUtc, $options['exclude_reservation_id'] ?? null);
+            // Zusaetzliche Plaetze, die zwar zugesagt, aber noch nicht
+            // gebucht sind: offene Wartelistenangebote. Ohne sie zaehlt der
+            // Betrieb dieselben Plaetze mehrfach zu.
+            //
+            // Nur hier, nicht in bookingBlockReason: Dort geht es um eine
+            // Buchung, die JETZT entsteht, und dagegen darf eine blosse
+            // Zusage nicht sperren. Der Betrieb soll den Tisch vergeben
+            // koennen, auch wenn noch ein Angebot offen steht.
+            $zugesagt = (int) ($options['extra_covers'] ?? 0);
 
-                if ($currentCovers + $partySize + $zugesagt > $maxCovers) {
-                    return [false, 'covers_full', []];
-                }
+            if ($currentCovers + $partySize + $zugesagt > $maxCovers) {
+                return [false, 'covers_full', []];
             }
-            if ($mode === 'person') {
-                return [true, null, []];
-            }
+        }
+
+        if ($mode === 'person') {
+            return [true, null, []];
         }
 
         // table / hybrid: need an actual table
@@ -441,6 +440,35 @@ class ReservationAvailabilityService
         return [true, null, $assignment['table_ids']];
     }
 
+    /**
+     * Feste Personengrenze je Zeitfenster aus den Buchungsregeln. Sie gilt nur,
+     * wenn der Betrieb nach Plaetzen oder gemischt bucht.
+     */
+    private function configuredMaxCovers(Location $location): ?int
+    {
+        $settings = $location->effectiveSettings();
+
+        return in_array($settings->capacity_mode, ['person', 'hybrid'], true) ? $settings->max_covers_per_slot : null;
+    }
+
+    /**
+     * Personen aller aktiven Reservierungen, die sich mit dem Fenster
+     * ueberschneiden.
+     */
+    private function coversInWindow(Location $location, CarbonImmutable $startUtc, CarbonImmutable $endUtc, ?int $excludeReservationId): int
+    {
+        return (int) $location->reservations()
+            ->whereIn('status', ReservationStatus::activeStatuses())
+            ->when($excludeReservationId, fn ($q, $id) => $q->where('reservations.id', '!=', $id))
+            ->where('start_at', '<', $endUtc)
+            ->where('end_at', '>', $startUtc)
+            ->sum('party_size');
+    }
+
+    /**
+     * Personengrenze fuer den ganzen Betrieb: die kleinste "Max. Gaeste"-Angabe
+     * der ueberlappenden Sperrzeiten ohne Raum, zusammen mit der festen Grenze.
+     */
     private function effectiveMaxCovers(Location $location, CarbonImmutable $startUtc, CarbonImmutable $endUtc, ?int $configured): ?int
     {
         $reduced = $location->blackoutPeriods()

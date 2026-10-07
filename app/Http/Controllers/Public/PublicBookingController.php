@@ -436,13 +436,12 @@ class PublicBookingController extends Controller
                 'color' => $z->color, 'opacity' => $z->opacity, 'points' => $z->points,
             ])->values());
 
-        $blockedRooms = $location->blackoutPeriods()
-            ->whereNotNull('room_id')
-            ->whereNull('reduce_covers_to')
-            ->where('starts_at', '<', $windowEnd)
-            ->where('ends_at', '>', $windowStart)
-            ->pluck('room_id')
-            ->all();
+        // Geschlossene Räume und Räume, deren Gästegrenze diese Gruppe
+        // überschreiten würde – dieselbe Regel wie in der Tischsuche.
+        $blockedRooms = array_merge(
+            $this->tableAssignment->blockedRoomIds($location, $windowStart, $windowEnd),
+            $this->tableAssignment->roomsOverGuestLimit($location, $startUtc, $startUtc->addMinutes($duration), $partySize),
+        );
 
         $rooms = $location->rooms()
             ->where('is_active', true)
@@ -685,7 +684,9 @@ class PublicBookingController extends Controller
             // Zweige der Fehlermeldung unten waren toter Code, weil
             // bookingBlockReason sie gar nicht kannte. Ein Termin "in zwei
             // Minuten" ging trotz 60 Minuten Vorlauf durch.
-            ['online' => true],
+            // Ein Termin zaehlt als eine Person, so greift "Max. Gaeste" einer
+            // Sperrzeit auch im Salon.
+            ['online' => true, 'party_size' => 1],
         );
         // Manche Salons pflegen nur Arbeitszeiten je Mitarbeiter und gar keine
         // Öffnungszeiten des Standorts. Dort ist "ausserhalb der Öffnungszeiten"
@@ -701,6 +702,7 @@ class PublicBookingController extends Controller
                 'lead_time' => __('Für diesen Termin ist es leider etwas zu kurzfristig – bitte wählen Sie einen späteren Zeitpunkt.'),
                 'too_far_ahead' => __('Dieser Termin liegt noch zu weit in der Zukunft.'),
                 'blackout' => __('Zu diesem Zeitpunkt haben wir leider geschlossen. Bitte wählen Sie einen anderen Tag.'),
+                'covers_full' => __('Zu diesem Zeitpunkt sind leider alle Termine vergeben – bitte wählen Sie eine andere Uhrzeit.'),
                 default => __('Zu dieser Uhrzeit haben wir leider geschlossen. Bitte wählen Sie eine Zeit innerhalb der Öffnungszeiten.'),
             };
 
