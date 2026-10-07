@@ -19,6 +19,7 @@ class ReservationAvailabilityService
     public function __construct(
         private readonly TimeSlotService $timeSlots,
         private readonly TableAssignmentService $tableAssignment,
+        private readonly SeasonService $seasons,
     ) {}
 
     /**
@@ -239,6 +240,11 @@ class ReservationAvailabilityService
             return 'blackout';
         }
 
+        // Außerhalb der buchbaren Saison nimmt die Online-Buchung nichts an.
+        if (! $this->seasons->isBookable($location, $startLocal)) {
+            return 'outside_season';
+        }
+
         // Room-specific blackout covering any of the chosen tables.
         if ($tableIds !== []) {
             $blockedRooms = $location->blackoutPeriods()
@@ -380,6 +386,10 @@ class ReservationAvailabilityService
             ->exists();
         if ($fullBlackout) {
             return [false, 'blackout', []];
+        }
+
+        if (! $this->seasons->isBookable($location, $startLocal)) {
+            return [false, 'outside_season', []];
         }
 
         $mode = $settings->capacity_mode;
