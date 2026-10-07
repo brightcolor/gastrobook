@@ -1,4 +1,4 @@
-// Kurzer Hinweis unten („Gespeichert"), per Live-Region angesagt.
+// Kurzer Hinweis unten („Gespeichert“), per Live-Region angesagt.
 // Anzeigedauer aus config/swayy.php (ui.toast_ms) über window.SwayyAdmin.
 
 let timer;

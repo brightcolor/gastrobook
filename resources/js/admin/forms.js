@@ -82,7 +82,7 @@ function showProblems(form, json, messages) {
     (first ?? box).focus();
 }
 
-// Nach dem Speichern gilt der gespeicherte Stand als Vorgabe: „Verwerfen"
+// Nach dem Speichern gilt der gespeicherte Stand als Vorgabe: „Verwerfen“
 // (form.reset) kehrt dann zu ihm zurück.
 function commitDefaults(form) {
     for (const el of form.elements) {
