@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.130.3] – 2026-10-07
+
+### Antwortadresse: Schlüssel samt abschließendem Semikolon annehmen
+
+`postal default-dkim-record` beendet den Eintrag mit `;`. Wer den Wert hinter
+`p=` herauskopiert, bekommt das Semikolon mit, und der Schlüssel war dann
+unlesbar: Jede Gästeantwort wäre mit 401 abgewiesen worden. Beim Scharfschalten
+auf swayy.de ist genau das aufgefallen.
+
+- `SWAYY_GUEST_MAIL_RELAY_PUBLIC_KEY` behält vom nackten p=-Wert nur die
+  base64-Zeichen. Ein abschließendes `;`, Anführungszeichen und Umbrüche stören
+  nicht mehr.
+- Tests mit dem exakten Format aus Postal (Eintrag mit `;` am Ende, p=-Wert mit
+  `;`, Wert in Anführungszeichen).
+
 ## [1.130.2] – 2026-10-07
 
 ### Antwortadresse: Signatur so prüfen, wie Postal sie schickt

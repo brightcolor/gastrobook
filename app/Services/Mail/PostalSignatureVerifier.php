@@ -63,7 +63,9 @@ final class PostalSignatureVerifier
             if (preg_match('/(?:^|;)\s*p=([A-Za-z0-9+\/=\s]+)/', $raw, $m)) {
                 $raw = $m[1];
             }
-            $base64 = (string) preg_replace('/\s+/', '', $raw);
+            // Nur base64-Zeichen behalten: Postal beendet den DKIM-Eintrag mit
+            // „;", beim Kopieren kommen gern Anführungszeichen oder Umbrüche mit.
+            $base64 = (string) preg_replace('/[^A-Za-z0-9+\/=]/', '', $raw);
             $raw = "-----BEGIN PUBLIC KEY-----\n".chunk_split($base64, 64, "\n")."-----END PUBLIC KEY-----\n";
         }
 
