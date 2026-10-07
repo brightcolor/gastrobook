@@ -62,6 +62,12 @@ class Guest extends Model
         return $this->hasMany(Reservation::class);
     }
 
+    /** @return HasMany<GuestMailReply, $this> */
+    public function mailReplies(): HasMany
+    {
+        return $this->hasMany(GuestMailReply::class);
+    }
+
     /** @return HasMany<GuestNote, $this> */
     public function notes(): HasMany
     {
