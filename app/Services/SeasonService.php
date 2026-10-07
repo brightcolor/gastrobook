@@ -60,6 +60,36 @@ class SeasonService
         return null;
     }
 
+    /**
+     * Erster und letzter buchbarer Tag zwischen $from und $until (beide
+     * einschließlich) – für die Grenzen des Kalenders auf der Buchungsseite.
+     * Ohne Fenster ist das der ganze Zeitraum; null, wenn darin kein einziger
+     * Tag in Saison liegt.
+     *
+     * @return array{first: CarbonImmutable, last: CarbonImmutable}|null
+     */
+    public function bookableWindow(Location $location, CarbonImmutable $from, CarbonImmutable $until): ?array
+    {
+        $from = $from->startOfDay();
+        $until = $until->startOfDay();
+
+        if ($location->seasonPeriods->isEmpty()) {
+            return ['first' => $from, 'last' => $until];
+        }
+
+        $first = null;
+        $last = null;
+
+        for ($day = $from; $day->lte($until); $day = $day->addDay()) {
+            if ($this->isBookable($location, $day)) {
+                $first ??= $day;
+                $last = $day;
+            }
+        }
+
+        return $first === null || $last === null ? null : ['first' => $first, 'last' => $last];
+    }
+
     private function withinWindow(int $md, SeasonPeriod $period): bool
     {
         $start = $period->start_month * 100 + $period->start_day;

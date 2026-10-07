@@ -488,10 +488,12 @@ details > summary::-webkit-details-marker { display: none; }
                     <button type="button" class="sp-edit ml-3 text-xs font-semibold text-brand hover:underline" onclick="event.stopPropagation();editStep(2)">Ändern</button>
                 </div>
                 <div class="sp-body space-y-4 px-5 pb-5 sm:px-6">
+                    {{-- Grenzen aus dem Controller: bei gesetzter Saison beginnt
+                         der Kalender am ersten Saisontag. --}}
                     <input type="date" name="date" id="date" required
-                           min="{{ now($location->timezone)->toDateString() }}"
-                           max="{{ now($location->timezone)->addDays($settings->max_advance_days)->toDateString() }}"
-                           value="{{ old('date', now($location->timezone)->toDateString()) }}"
+                           min="{{ $dateMin }}"
+                           max="{{ $dateMax }}"
+                           value="{{ old('date', $dateMin) }}"
                            class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3 text-base">
                     @error('date')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
 
@@ -867,6 +869,20 @@ details > summary::-webkit-details-marker { display: none; }
                         note.className = 'col-span-full rounded-2xl border-2 border-brand/20 bg-brand/5 px-4 py-4 text-center text-sm font-medium text-stone-700';
                         note.textContent = data.season_notice.text;
                         slotContainer.appendChild(note);
+                        // Ein Tipp bis zum ersten buchbaren Tag – nur, wenn er im
+                        // Buchungshorizont liegt; sonst bliebe die Auswahl leer.
+                        const next = data.season_notice.next_date;
+                        if (next && data.season_notice.jump_label && (!dateInput.max || next <= dateInput.max)) {
+                            const jump = document.createElement('button');
+                            jump.type = 'button';
+                            jump.className = 'btn-brand col-span-full mt-1 rounded-xl px-4 py-3 text-sm font-bold text-white transition-all active:scale-[0.99]';
+                            jump.textContent = data.season_notice.jump_label;
+                            jump.addEventListener('click', () => {
+                                dateInput.value = next;
+                                dateInput.dispatchEvent(new Event('change'));
+                            });
+                            slotContainer.appendChild(jump);
+                        }
                         return;
                     }
                     if (data.oversized) {

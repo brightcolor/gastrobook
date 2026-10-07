@@ -49,7 +49,14 @@ class SeasonNoticeTest extends TestCase
         $resp = $this->getJson($this->slotsUrl($setup, '2026-12-02'))->assertOk();
 
         $resp->assertJsonPath('season_notice.next_date', '2027-04-01');
-        $this->assertStringContainsString('ab dem 1. April', (string) $resp->json('season_notice.text'));
+        $resp->assertJsonPath('season_notice.jump_label', 'Zum 1. April');
+
+        // Gebucht werden kann schon jetzt – nur der gewählte Tag liegt außerhalb.
+        // Der Text darf nicht klingen, als öffne die Buchung erst zum Saisonstart.
+        $text = (string) $resp->json('season_notice.text');
+        $this->assertStringContainsString('schon jetzt', $text);
+        $this->assertStringContainsString('ab dem 1. April', $text);
+        $this->assertStringNotContainsString('wieder ab dem', $text);
     }
 
     public function test_the_notice_follows_the_informal_tone(): void
@@ -62,6 +69,7 @@ class SeasonNoticeTest extends TestCase
         $text = (string) $this->getJson($this->slotsUrl($setup, '2026-12-02'))->assertOk()->json('season_notice.text');
 
         $this->assertStringContainsString('du da bist', $text);
+        $this->assertStringContainsString('Reservieren kannst du schon jetzt', $text);
         $this->assertStringNotContainsString('Sie da sind', $text);
     }
 

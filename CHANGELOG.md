@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.134.0] – 2026-10-07
+
+### Kalender beginnt am ersten Saisontag
+
+Ist eine buchbare Saison gesetzt, lässt sich im Kalender der Buchungsseite erst
+ab dem ersten Saisontag ein Datum wählen, und er endet am letzten buchbaren Tag im
+Buchungshorizont. Gebucht werden kann weiter schon heute – nur eben für Tage in
+der Saison. Ein Weihnachtsmarkt ab dem 23. November zeigt im Oktober also direkt
+den 23. November als ersten wählbaren Tag.
+
+- Gilt auch für die Umbuchungsseite.
+- Ohne Saison bleibt der Kalender wie bisher (heute bis Buchungshorizont).
+- Liegen zwischen mehreren Saisons Lücken, bleiben diese Tage wählbar und zeigen
+  den freundlichen Saison-Hinweis mit Sprung-Knopf.
+
+## [1.133.1] – 2026-10-07
+
+### Saison-Hinweis: Buchen geht schon jetzt
+
+Der Hinweis außerhalb der Saison lautete „Reservierungen nehmen wir wieder ab
+dem 23. November entgegen" und klang, als ließe sich erst ab dann buchen. Gebucht
+werden kann aber jederzeit – nur der gewählte Tag liegt außerhalb der Saison.
+
+- Neuer Text: „An diesem Tag haben wir geschlossen. Reservieren können Sie schon
+  jetzt – wählen Sie einfach einen Tag ab dem 23. November." (Ton Sie/du)
+- Knopf „Zum 23. November" stellt den ersten buchbaren Tag direkt im Formular
+  ein, sofern er im Buchungshorizont liegt.
+
 ## [1.133.0] – 2026-10-07
 
 ### Buchbare Saison für Saisonbetriebe

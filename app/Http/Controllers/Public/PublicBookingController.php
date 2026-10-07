@@ -159,12 +159,16 @@ class PublicBookingController extends Controller
             ->where('starts_at', '>', now())
             ->count();
 
+        [$dateMin, $dateMax] = $this->calendarBounds($location);
+
         $data = [
             'tenant' => $tenant,
             'location' => $location,
             'settings' => $location->effectiveSettings(),
             'upcomingEvents' => $upcomingEvents,
             'storeUrl' => $storeUrl ?: route('booking.store', [$tenant->slug, $location->slug]),
+            'dateMin' => $dateMin,
+            'dateMax' => $dateMax,
         ];
 
         if ($tenant->isSalon()) {
@@ -177,6 +181,26 @@ class PublicBookingController extends Controller
         }
 
         return view('public.booking', $data);
+    }
+
+    /**
+     * Grenzen des Kalenders: ab heute bis zum Buchungshorizont, bei gesetzter
+     * Saison gekürzt auf den ersten und letzten buchbaren Tag darin. Liegt im
+     * Horizont kein Saisontag, bleibt der volle Zeitraum – der Saison-Hinweis
+     * nennt dann den nächsten Start.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function calendarBounds(Location $location): array
+    {
+        $today = CarbonImmutable::now($location->timezone)->startOfDay();
+        $horizon = $today->addDays((int) $location->effectiveSettings()->max_advance_days);
+        $window = $this->seasons->bookableWindow($location, $today, $horizon);
+
+        return [
+            ($window['first'] ?? $today)->toDateString(),
+            ($window['last'] ?? $horizon)->toDateString(),
+        ];
     }
 
     public function slots(Request $request, string $tenantSlug, string $locationSlug)
@@ -238,10 +262,12 @@ class PublicBookingController extends Controller
 
     /**
      * Warmer Hinweis, wenn der angefragte Tag außerhalb der buchbaren Saison
-     * liegt: nennt den nächsten Saisonstart. null, wenn der Tag in Saison liegt
-     * oder gar keine Saison gesetzt ist.
+     * liegt. Gebucht werden kann jederzeit – nur dieser Tag liegt außerhalb.
+     * Darum nennt der Text den ersten buchbaren Tag, und der Sprung-Knopf
+     * stellt ihn im Formular ein. null, wenn der Tag in Saison liegt oder gar
+     * keine Saison gesetzt ist.
      *
-     * @return array{text: string, next_date: ?string}|null
+     * @return array{text: string, next_date: ?string, jump_label: ?string}|null
      */
     private function seasonNotice(Location $location, CarbonImmutable $localDate): ?array
     {
@@ -252,16 +278,23 @@ class PublicBookingController extends Controller
         $next = $this->seasons->nextOpening($location, $localDate);
         $du = $location->effectiveSettings()->du();
 
-        if ($next !== null) {
-            $tag = $next->locale('de')->translatedFormat('j. F');
-            $text = $du
-                ? 'Schön, dass du da bist! Reservierungen nehmen wir wieder ab dem '.$tag.' entgegen. Schau gern bis dahin noch einmal vorbei.'
-                : 'Schön, dass Sie da sind! Reservierungen nehmen wir wieder ab dem '.$tag.' entgegen. Schauen Sie gern bis dahin noch einmal vorbei.';
-        } else {
-            $text = 'In diesem Zeitraum nehmen wir gerade keine Reservierungen entgegen.';
+        if ($next === null) {
+            return [
+                'text' => $du ? 'An diesem Tag haben wir geschlossen. Wähl gern einen anderen Tag.' : 'An diesem Tag haben wir geschlossen. Wählen Sie gern einen anderen Tag.',
+                'next_date' => null,
+                'jump_label' => null,
+            ];
         }
 
-        return ['text' => $text, 'next_date' => $next?->toDateString()];
+        $tag = $next->locale('de')->translatedFormat('j. F');
+
+        return [
+            'text' => $du
+                ? 'Schön, dass du da bist! An diesem Tag haben wir geschlossen. Reservieren kannst du schon jetzt – wähl einfach einen Tag ab dem '.$tag.'.'
+                : 'Schön, dass Sie da sind! An diesem Tag haben wir geschlossen. Reservieren können Sie schon jetzt – wählen Sie einfach einen Tag ab dem '.$tag.'.',
+            'next_date' => $next->toDateString(),
+            'jump_label' => 'Zum '.$tag,
+        ];
     }
 
     /**
@@ -842,11 +875,15 @@ class PublicBookingController extends Controller
             ]);
         }
 
+        [$dateMin, $dateMax] = $this->calendarBounds($location);
+
         return view('public.reschedule', [
             'reservation' => $reservation,
             'location' => $location,
             'tenant' => $tenant,
             'settings' => $settings,
+            'dateMin' => $dateMin,
+            'dateMax' => $dateMax,
             'tooLate' => false,
             'isSalon' => $tenant?->isSalon() ?? false,
             'serviceIds' => $reservation->services->pluck('id')->all(),
