@@ -175,7 +175,7 @@ class AuditLog extends Model
         'floorplan' => 'Tischplan', 'billing' => 'Abrechnung', 'integration' => 'Integration',
         'waitlist' => 'Warteliste', 'payment' => 'Zahlung', 'saas' => 'Plattform-Benutzer',
         'marketing_campaign' => 'Marketing-Kampagne', 'table_block' => 'Tischsperre',
-        'account' => 'Konto',
+        'account' => 'Konto', 'season' => 'Saison',
     ];
 
     /** @var array<string, string> Endung der Aktion => Taetigkeit */
