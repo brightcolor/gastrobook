@@ -103,6 +103,8 @@ final class Navigation
      */
     private function groups(array $groups, User $user, Tenant $tenant, ?Location $location, ?string $currentRoute): array
     {
+        // Ohne Eintrag heading_min_items zeigt jede Gruppe ihre Überschrift.
+        $headingMinItems = (int) ($this->config['heading_min_items'] ?? 0);
         $result = [];
         foreach ($groups as $group) {
             $items = [];
@@ -116,7 +118,7 @@ final class Navigation
                 continue;
             }
 
-            $label = count($items) >= 2 ? ($group['label'] ?? null) : null;
+            $label = count($items) >= $headingMinItems ? ($group['label'] ?? null) : null;
             $result[] = new NavGroup($label, $items);
         }
 

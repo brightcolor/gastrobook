@@ -10,13 +10,15 @@ use App\Support\EnvSetting;
 | Eine Quelle für Seitenleiste, Symbolleiste (Tablet), untere Leiste
 | (Smartphone), „Mehr“ und den Einstellungsbereich. App\Support\Navigation
 | liest diese Datei, filtert nach Rechten und Betriebstyp und wendet die
-| Regel an: Eine Gruppenüberschrift erscheint erst ab zwei sichtbaren
-| Einträgen.
+| Regel an: Eine Gruppenüberschrift erscheint erst ab heading_min_items
+| sichtbaren Einträgen.
 |
 | Einstellungen der Navigation:
 |   mobile_bar_max   Einträge in der unteren Leiste auf dem Smartphone (1–4),
 |                    dazu kommt „Mehr“; Umgebungsvariable SWAYY_NAV_MOBILE_BAR_MAX
 |   settings_routes  Routenmuster, die immer zum Einstellungsbereich gehören
+|   heading_min_items  sichtbare Einträge, ab denen eine Gruppe ihre Überschrift
+|                    zeigt (1–10); Umgebungsvariable SWAYY_NAV_HEADING_MIN_ITEMS
 |
 | Felder je Eintrag:
 |   key         eindeutiger Schlüssel (Tests, data-nav-key)
@@ -38,6 +40,8 @@ return [
     'mobile_bar_max' => EnvSetting::integer('SWAYY_NAV_MOBILE_BAR_MAX', default: 4, min: 1, max: 4),
 
     'settings_routes' => ['admin.settings.*'],
+
+    'heading_min_items' => EnvSetting::integer('SWAYY_NAV_HEADING_MIN_ITEMS', default: 2, min: 1, max: 10),
 
     'main' => [
         ['label' => null, 'items' => [

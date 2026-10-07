@@ -62,6 +62,22 @@ class NavigationTest extends TestCase
         ], $this->shape($groups));
     }
 
+    public function test_the_heading_threshold_comes_from_the_settings(): void
+    {
+        config(['navigation.heading_min_items' => 1]);
+        $setup = $this->createTenantSetup();
+        $host = $this->createMember($setup['tenant'], 'host');
+
+        $groups = Navigation::fromConfig()->main($host, $setup['tenant'], $setup['location'], null);
+
+        $this->assertSame([
+            [null, ['dashboard']],
+            ['Service', ['board', 'floorplan', 'walkins', 'waitlist']],
+            ['Buchungen', ['reservations']],
+            ['Gäste', ['guests']],
+        ], $this->shape($groups));
+    }
+
     public function test_salon_gets_its_own_items_and_labels(): void
     {
         $setup = $this->createTenantSetup();
