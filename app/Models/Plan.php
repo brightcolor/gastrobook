@@ -24,6 +24,17 @@ class Plan extends Model
         ];
     }
 
+    /**
+     * Gewährt dieser Tarif eine Testfrist? Nur dann unterliegt ein Betrieb
+     * der Trial-Sperre. Bezahlte Tarife (trial_days 0) haben keine Frist –
+     * ein Betrieb darauf darf nie wegen einer abgelaufenen Testfrist
+     * ausgesperrt werden.
+     */
+    public function grantsTrial(): bool
+    {
+        return (int) $this->trial_days > 0;
+    }
+
     public function tenants(): HasMany
     {
         return $this->hasMany(Tenant::class);

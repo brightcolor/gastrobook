@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.130.1] – 2026-10-07
+
+### Bezahlte Betriebe werden nicht mehr von einer alten Testfrist ausgesperrt
+
+Wechselte ein Betrieb vom Test- auf einen bezahlten Tarif, blieb sein altes
+`trial_ends_at` stehen. Lief diese Frist ab, sperrte die Anwendung den
+zahlenden Betrieb aus (Weiterleitung auf die Seite "Testphase abgelaufen"),
+und ein erneutes Setzen des Tarifs half nicht, weil die Frist blieb.
+
+- **Ein bezahlter Tarif unterliegt keiner Testfrist mehr.** Ein Betrieb auf
+  einem Tarif ohne Testtage wird nie wegen einer abgelaufenen Frist gesperrt;
+  ein dadurch faelschlich gesperrter Betrieb wird beim naechsten Aufruf wieder
+  aktiv geschaltet.
+- **Der Tarifwechsel richtet die Frist am Tarif aus:** bezahlter Tarif ohne
+  Frist, Testtarif mit frischer Frist, und der Betrieb wird aktiv. So greift
+  das Speichern des Tarifs sofort.
+
 ## [1.130.0] – 2026-10-07
 
 ### Antwortadresse über Swayy: Gästeantworten landen im Verlauf und beim Betrieb

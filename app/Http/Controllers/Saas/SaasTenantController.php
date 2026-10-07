@@ -170,10 +170,24 @@ class SaasTenantController extends Controller
         $this->authorizeSaas($request, write: true);
 
         $validated = $request->validate(['plan_id' => ['required', 'exists:plans,id']]);
-        $old = $tenant->plan_id;
-        $tenant->update(['plan_id' => $validated['plan_id']]);
+        $plan = Plan::findOrFail($validated['plan_id']);
+        $old = ['plan_id' => $tenant->plan_id, 'trial_ends_at' => $tenant->trial_ends_at?->toDateTimeString(), 'status' => $tenant->status];
 
-        $this->audit->log('tenant.plan_changed', $tenant, ['plan_id' => $old], $validated, null, $request->user(), $tenant->id);
+        // Testfrist am neuen Tarif ausrichten (wie beim Anlegen): ein bezahlter
+        // Tarif hat keine Frist, ein Testtarif bekommt eine frische. Ohne das
+        // blieb eine alte Frist stehen und sperrte den zahlenden Betrieb aus,
+        // sobald sie ablief. Der Wechsel schaltet den Betrieb wieder aktiv.
+        $tenant->update([
+            'plan_id' => $plan->id,
+            'trial_ends_at' => $plan->grantsTrial() ? now()->addDays((int) $plan->trial_days) : null,
+            'status' => 'active',
+        ]);
+
+        $this->audit->log('tenant.plan_changed', $tenant, $old, [
+            'plan_id' => $plan->id,
+            'trial_ends_at' => $tenant->trial_ends_at?->toDateTimeString(),
+            'status' => 'active',
+        ], null, $request->user(), $tenant->id);
 
         return back()->with('success', __('Tarif geändert.'));
     }

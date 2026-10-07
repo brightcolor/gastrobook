@@ -17,6 +17,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $trial_ends_at
  * @property Carbon|null $trial_warning_sent_at
  * @property Carbon|null $onboarding_completed_at
+ * @property-read Plan|null $plan
  */
 class Tenant extends Model
 {
