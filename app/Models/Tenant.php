@@ -26,7 +26,7 @@ class Tenant extends Model
         'name', 'slug', 'type', 'plan_id', 'status', 'trial_ends_at', 'trial_warning_sent_at', 'onboarding_completed_at',
         'default_locale', 'default_currency',
         'brand_logo_path', 'brand_primary_color', 'brand_accent_color',
-        'mail_from_name', 'mail_reply_to',
+        'mail_from_name', 'mail_reply_to', 'mail_relay_enabled',
         'imprint_url', 'privacy_url', 'terms_url',
         'guest_retention_months', 'settings', 'feature_overrides',
     ];
@@ -40,6 +40,7 @@ class Tenant extends Model
             'onboarding_completed_at' => 'datetime',
             'settings' => 'array',
             'feature_overrides' => 'array',
+            'mail_relay_enabled' => 'boolean',
         ];
     }
 
