@@ -225,8 +225,17 @@ return [
         'hmac_length' => EnvSetting::integer('SWAYY_GUEST_MAIL_RELAY_HMAC_LENGTH', default: 8, min: 6, max: 32),
         'separator_tag' => env('SWAYY_GUEST_MAIL_RELAY_SEP_TAG', '+'),
         'separator_hmac' => env('SWAYY_GUEST_MAIL_RELAY_SEP_HMAC', '.'),
+        // Öffentlicher Schlüssel, mit dem Postal signiert: der Wert hinter p=
+        // aus `postal default-dkim-record` auf dem Postal-Server. Angenommen
+        // werden auch der ganze Eintrag „v=DKIM1; …; p=…" und ein PEM-Block.
         'inbound_public_key' => env('SWAYY_GUEST_MAIL_RELAY_PUBLIC_KEY', ''),
-        'inbound_signature_algo' => env('SWAYY_GUEST_MAIL_RELAY_SIGNATURE_ALGO', 'sha256'),
+        // Verfahren der Signatur: sha256 (Vorgabe) oder sha1.
+        'inbound_signature_algo' => EnvSetting::choiceList('SWAYY_GUEST_MAIL_RELAY_SIGNATURE_ALGO', default: ['sha256'], allowed: ['sha256', 'sha1'])[0] ?? 'sha256',
+        // Kopfzeile mit der Signatur. Postal schickt beide: X-Postal-Signature-256
+        // (SHA-256) und X-Postal-Signature (SHA-1). Leer: passend zum Verfahren.
+        'inbound_signature_header' => env('SWAYY_GUEST_MAIL_RELAY_SIGNATURE_HEADER', ''),
+        // Optionales Geheimnis in der Kopfzeile X-Postal-Shared-Secret, etwa für
+        // einen vorgeschalteten Proxy. Postal selbst schickt nur die Signatur.
         'inbound_shared_secret' => env('SWAYY_GUEST_MAIL_RELAY_SHARED_SECRET', ''),
         'max_message_bytes' => EnvSetting::integer('SWAYY_GUEST_MAIL_RELAY_MAX_BYTES', default: 10485760, min: 65536, max: 52428800),
         'forward_subject_prefix' => env('SWAYY_GUEST_MAIL_RELAY_SUBJECT_PREFIX', 'Antwort von'),

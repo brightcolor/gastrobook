@@ -10,6 +10,12 @@ use Illuminate\Support\Facades\Mail;
 use Tests\Concerns\CreatesTenants;
 use Tests\TestCase;
 
+/**
+ * Nimmt Aufrufe so entgegen, wie Postal 3.x sie schickt: HTTP-Endpunkt mit
+ * Format RawMessage, Body als JSON, Signatur in X-Postal-Signature-256
+ * (SHA-256) und X-Postal-Signature (SHA-1), Schlüssel als p=-Wert aus
+ * `postal default-dkim-record`.
+ */
 class PostalInboundWebhookTest extends TestCase
 {
     use CreatesTenants, RefreshDatabase;
@@ -61,7 +67,8 @@ class PostalInboundWebhookTest extends TestCase
     {
         parent::setUp();
         config(['swayy.guest_mail_relay.domain' => 'antwort.swayy.de']);
-        config(['swayy.guest_mail_relay.inbound_public_key' => $this->pem(self::PUBLIC_KEY)]);
+        // So, wie es in der .env steht: nur der p=-Wert.
+        config(['swayy.guest_mail_relay.inbound_public_key' => $this->bare(self::PUBLIC_KEY)]);
     }
 
     private function pem(string $pem): string
@@ -69,35 +76,58 @@ class PostalInboundWebhookTest extends TestCase
         return implode("\n", array_map('trim', explode("\n", trim($pem))));
     }
 
-    private function sign(string $payload): string
+    private function bare(string $pem): string
     {
-        openssl_sign($payload, $sig, $this->pem(self::PRIVATE_KEY), OPENSSL_ALGO_SHA256);
+        return implode('', array_filter(
+            array_map('trim', explode("\n", trim($pem))),
+            fn (string $zeile) => $zeile !== '' && ! str_starts_with($zeile, '-----'),
+        ));
+    }
+
+    private function sign(string $payload, int $algo = OPENSSL_ALGO_SHA256): string
+    {
+        openssl_sign($payload, $sig, $this->pem(self::PRIVATE_KEY), $algo);
 
         return base64_encode($sig);
     }
 
+    /** Payload wie Postal 3.x im Format RawMessage (base64 mit Umbruch alle 60 Zeichen). */
     private function payload(string $rcpt): string
     {
         $raw = "From: Gast <gast@example.test>\r\nSubject: Re: Buchung\r\nMessage-ID: <w1@example.test>\r\n\r\nHallo.";
 
-        return (string) json_encode(['id' => 1, 'rcpt_to' => $rcpt, 'mail_from' => 'gast@example.test', 'message' => base64_encode($raw)]);
+        return (string) json_encode([
+            'id' => 4711,
+            'rcpt_to' => $rcpt,
+            'mail_from' => 'gast@example.test',
+            'message' => chunk_split(base64_encode($raw), 60, "\n"),
+            'base64' => true,
+            'size' => strlen($raw),
+        ]);
     }
 
-    private function postWebhook(string $body, string $signature)
+    private function postWebhook(string $body, string $signature, string $header = 'X-Postal-Signature-256')
     {
         return $this->call('POST', '/webhooks/postal', [], [], [], [
-            'HTTP_X-Postal-Signature' => $signature,
+            'HTTP_'.$header => $signature,
             'CONTENT_TYPE' => 'application/json',
         ], $body);
+    }
+
+    private function relayAddress(): array
+    {
+        $setup = $this->createTenantSetup();
+        $setup['location']->update(['email' => 'betrieb@example.test']);
+        $reservation = Reservation::factory()->create(['location_id' => $setup['location']->id])->load('tenant');
+
+        return [$reservation, GuestReplyAddress::forReservation($reservation)];
     }
 
     public function test_valid_signed_reply_is_accepted_and_forwarded(): void
     {
         Mail::fake();
-        $setup = $this->createTenantSetup();
-        $setup['location']->update(['email' => 'betrieb@example.test']);
-        $reservation = Reservation::factory()->create(['location_id' => $setup['location']->id])->load('tenant');
-        $body = $this->payload(GuestReplyAddress::forReservation($reservation));
+        [$reservation, $addr] = $this->relayAddress();
+        $body = $this->payload($addr);
 
         $this->postWebhook($body, $this->sign($body))->assertOk();
 
@@ -114,5 +144,25 @@ class PostalInboundWebhookTest extends TestCase
     {
         $body = 'not json';
         $this->postWebhook($body, $this->sign($body))->assertStatus(400);
+    }
+
+    public function test_sha256_signature_in_the_sha1_header_is_rejected(): void
+    {
+        $body = $this->payload('x+y.z@antwort.swayy.de');
+
+        // Vorgabe SHA-256: geprüft wird X-Postal-Signature-256, nicht X-Postal-Signature.
+        $this->postWebhook($body, $this->sign($body), 'X-Postal-Signature')->assertStatus(401);
+    }
+
+    public function test_sha1_mode_reads_the_sha1_header(): void
+    {
+        Mail::fake();
+        config(['swayy.guest_mail_relay.inbound_signature_algo' => 'sha1']);
+        [$reservation, $addr] = $this->relayAddress();
+        $body = $this->payload($addr);
+
+        $this->postWebhook($body, $this->sign($body, OPENSSL_ALGO_SHA1), 'X-Postal-Signature')->assertOk();
+
+        $this->assertDatabaseHas('guest_mail_replies', ['reservation_id' => $reservation->id]);
     }
 }
