@@ -241,6 +241,7 @@ Jede heutige Einstellung hat genau einen Platz. Feldnamen aus
 | Buchungsregeln › Erinnerungen | `reminder_enabled`, `reminder_hours_before`, `sms_reminder_enabled` | Gästekommunikation › Benachrichtigungen |
 | Buchungsregeln › Benachrichtigung an den Betrieb | `owner_notification_enabled`, `owner_notification_email` | Gästekommunikation › Benachrichtigungen |
 | Buchungsregeln › Feedback | `feedback_enabled`, `feedback_hours_after`, `feedback_external_url`, `feedback_redirect_min_score` | Gästekommunikation › Benachrichtigungen |
+| Buchungsregeln › Anrede | `guest_address` (du/Sie gegenüber Gästen) | Gästekommunikation › Benachrichtigungen (erste Karte „Anrede“) |
 | Buchungsregeln › Rückerstattung der Anzahlung | `refund_mode`, `refund_percent`, `refund_processing` | Zahlungen › Anzahlungen |
 | Zeiten › Öffnungszeiten | `hours[]` | Platz & Zeiten › Öffnungszeiten |
 | Zeiten › Buchbare Saison | `label`, `start_day`, `start_month`, `end_day`, `end_month` | Platz & Zeiten › Öffnungszeiten (Karte „Buchbare Saison“) |
@@ -359,8 +360,9 @@ Ein Ort für alles, was an bestimmten Tagen anders ist. Ersetzt die Karten
   Zeile, Übertragen, Vorschau-Abruf. Neuer Code nutzt keine `onclick`/`onchange`/
   `onsubmit` im HTML (heute 20 in Sammelseite und Layout).
 - Verhaltenswerte der Oberfläche (Anzeigedauer des Hinweises, Verzögerung der
-  Vorschau-Abfrage) stehen mit Vorgaben in `config/ui.php` und lassen sich per
-  Umgebungsvariable ändern.
+  Vorschau-Abfrage) stehen mit Vorgaben im Abschnitt `ui` von `config/swayy.php`,
+  gelesen über `App\Support\EnvSetting` mit Grenzen, und lassen sich per
+  Umgebungsvariable ändern (Muster der übrigen Einstellungen dort).
 
 ### Einstellungen aufteilen
 
