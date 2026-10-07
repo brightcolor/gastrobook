@@ -43,9 +43,11 @@ class GeneralController extends Controller
      */
     public function update(Request $request)
     {
-        $location = $this->context->location();
-        abort_if($location === null, 404);
-        $tenant = $location->tenant;
+        $tenant = $this->context->tenant();
+        abort_if($tenant === null, 404);
+        // Den aktuellen Standort braucht nur die alte Sammelseite, die seine Daten mitschickt.
+        $location = $request->has('location_name') ? $this->context->location() : null;
+        abort_if($request->has('location_name') && $location === null, 404);
 
         $validated = $request->validate([
             'business_name' => ['required', 'string', 'max:120'],
