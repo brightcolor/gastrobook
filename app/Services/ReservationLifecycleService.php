@@ -52,7 +52,10 @@ class ReservationLifecycleService
         $online = $data['source'] === 'online';
         $settings = $location->effectiveSettings();
         $startLocal = $data['start_local'];
-        $duration = $data['duration_minutes'] ?? $settings->durationFor($data['party_size']);
+        // Int erzwingen: Die "integer"-Regel der Validierung prüft nur, sie
+        // castet nicht. Eine Dauer aus dem Formular käme sonst als String in
+        // addMinutes() und bricht unter strengem Carbon-Typ mit TypeError ab.
+        $duration = (int) ($data['duration_minutes'] ?? $settings->durationFor($data['party_size']));
         $startUtc = $startLocal->utc();
         $endUtc = $startUtc->addMinutes($duration);
 

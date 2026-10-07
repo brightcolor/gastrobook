@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.131.2] – 2026-10-07
+
+### Reservierung mit eigener Dauer legt wieder an
+
+Das Reservierungsformular schickt jedes Feld als Text. Eine eingetragene Dauer
+kam dadurch als Zeichenkette bis in die Zeitberechnung und ließ das Anlegen mit
+einem Serverfehler (500) abbrechen. Die „integer"-Regel der Validierung prüft
+den Wert, wandelt ihn aber nicht um.
+
+- Die Dauer wird beim Anlegen einer Reservierung als Zahl behandelt.
+  Reservierungen mit eigener Dauer gehen wieder durch.
+
 ## [1.131.1] – 2026-10-07
 
 ### Großgruppen-Hinweis nennt die passende Personenzahl
