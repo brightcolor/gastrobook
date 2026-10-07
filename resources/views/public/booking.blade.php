@@ -432,8 +432,9 @@ details > summary::-webkit-details-marker { display: none; }
                     <button type="button" class="sp-edit ml-3 text-xs font-semibold text-brand hover:underline" onclick="event.stopPropagation();editStep(1)">Ändern</button>
                 </div>
                 <div class="sp-body px-5 pb-5 sm:px-6">
+                    @php $onlineMax = min($settings->max_party_online, $settings->min_party_online + 8); @endphp
                     <div class="grid grid-cols-4 gap-2 sm:grid-cols-5" id="partyButtons">
-                        @for($i = $settings->min_party_online; $i <= min($settings->max_party_online, $settings->min_party_online + 8); $i++)
+                        @for($i = $settings->min_party_online; $i <= $onlineMax; $i++)
                             <button type="button" data-party="{{ $i }}"
                                     class="party-btn rounded-2xl border-2 border-stone-200 py-3.5 text-xl font-black transition-all duration-150 hover:border-brand hover:bg-brand/5 active:scale-95">
                                 {{ $i }}
@@ -454,7 +455,7 @@ details > summary::-webkit-details-marker { display: none; }
             {{-- ── Große Gruppen: warmer Hinweis zur E-Mail (per "Mehr" aufgedeckt) ── --}}
             @if($settings->large_group_email)
                 @php
-                    $grpFrom = $settings->max_party_online + 1;
+                    $grpFrom = $onlineMax + 1;
                     $grpSubject = rawurlencode('Gruppenanfrage – '.$location->name);
                 @endphp
                 <div id="largeGroupNotice" class="px-5 pb-6 pt-5 sm:px-6">

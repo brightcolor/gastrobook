@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.131.1] – 2026-10-07
+
+### Großgruppen-Hinweis nennt die passende Personenzahl
+
+Die Buchungsseite zeigt höchstens neun Personen-Knöpfe (von der kleinsten
+erlaubten Gruppe an). Lässt ein Betrieb hinten mehr zu – etwa 30 für
+Kombinationen über die interne Maske –, richtete sich der „Mehr"-Hinweis nach
+diesem rohen Maximum und nannte eine zu hohe Zahl.
+
+- Die Schwelle folgt jetzt der letzten wählbaren Personenzahl. Bei Knöpfen bis
+  10 lautet der Hinweis „ab 11 Personen".
+
 ## [1.131.0] – 2026-10-07
 
 ### Große Gruppen bekommen einen warmen Weg zur Anfrage

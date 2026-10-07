@@ -30,6 +30,7 @@ class LargeGroupNoticeTest extends TestCase
     {
         $setup = $this->createTenantSetup();
         $setup['location']->settings()->update([
+            'min_party_online' => 2,
             'max_party_online' => 10,
             'large_group_email' => 'gruppen@example.test',
             'guest_address' => 'Sie',
@@ -41,10 +42,31 @@ class LargeGroupNoticeTest extends TestCase
             ->assertSee('id="partyMoreBtn"', false)
             ->assertSee('id="largeGroupNotice"', false)
             ->assertSee('Große Runde? Wie schön!', false)
-            // Schwelle = Online-Maximum + 1.
+            // Schwelle = letzte wählbare Personenzahl + 1.
             ->assertSee('ab 11 Personen', false)
             ->assertSee('mailto:gruppen@example.test', false)
             ->assertSee('Schreiben Sie uns kurz', false);
+    }
+
+    /**
+     * Die Personen-Buttons kappen bei min + 8, auch wenn der Betrieb hinten
+     * mehr zulässt (etwa 30 für Kombinationen über die interne Maske). Der
+     * Hinweis nennt die Zahl hinter dem letzten Knopf, nicht das rohe Maximum.
+     */
+    public function test_the_threshold_follows_the_last_selectable_button(): void
+    {
+        $setup = $this->createTenantSetup();
+        $setup['location']->settings()->update([
+            'min_party_online' => 2,
+            'max_party_online' => 30,
+            'large_group_email' => 'gruppen@example.test',
+        ]);
+        $this->clearTenantContext();
+
+        $this->get($this->buchungsUrl($setup))
+            ->assertOk()
+            ->assertSee('ab 11 Personen', false)
+            ->assertDontSee('ab 31', false);
     }
 
     public function test_neither_appears_without_an_address(): void
