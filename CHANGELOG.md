@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.129.1] – 2026-10-07
+
+### Härtung der Sicherheitskopfzeilen
+
+Ein lokaler ZAP-Vollscan (angemeldet, aktiv, über 6.500 Adressen) und eine
+eigene Prüfung fanden keine hohe Lücke und keine Verletzung der
+Mandantentrennung. Offen blieben Punkte bei den Antwort-Kopfzeilen, die hiermit
+geschlossen werden.
+
+- **Vollständige Content-Security-Policy** statt nur `frame-ancestors`:
+  `default-src 'self'`, dazu `base-uri`, `form-action`, `object-src 'none'`,
+  `img-src`/`font-src` mit `data:`, `connect-src` und `frame-src`. Das schließt
+  die ZAP-Funde „Wildcard“ und „fehlendes Fallback“. `script-src`/`style-src`
+  behalten `'unsafe-inline'`, weil die Oberfläche Inline-Handler und -Stile
+  nutzt; eine strengere Fassung über Nonces ist ein eigener Umbau. Die
+  Richtlinie steht als Einstellung `SWAYY_CSP_BASE` (Vorgabe in
+  `config/swayy.php`), die Middleware hängt nur `frame-ancestors` an – `'none'`
+  für Verwaltung und Anmeldung, `*` für Buchungsseiten und Widgets.
+- **Sicherheitskopfzeilen auch für statische Dateien:** nginx setzt
+  `X-Content-Type-Options: nosniff` und (über TLS) HSTS jetzt auch auf CSS, JS,
+  Schriften und Bilder, die es direkt ausliefert. Dynamische Antworten bleiben
+  Sache der Middleware, damit kein Header doppelt steht.
+- **Keine PHP-Version mehr im Header:** `expose_php = Off` entfernt
+  `X-Powered-By` aus jeder Antwort.
+
 ## [1.129.0] – 2026-10-06
 
 ### Antworten von Gästen landen beim Betrieb

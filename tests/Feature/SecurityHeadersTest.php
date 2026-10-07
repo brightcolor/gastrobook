@@ -29,7 +29,12 @@ class SecurityHeadersTest extends TestCase
 
         $antwort = $this->actingAs($admin)->get('/admin')->assertOk();
 
-        $this->assertSame("frame-ancestors 'none'", $antwort->headers->get('Content-Security-Policy'));
+        $csp = $antwort->headers->get('Content-Security-Policy');
+        $this->assertStringContainsString("frame-ancestors 'none'", $csp);
+        $this->assertStringContainsString("default-src 'self'", $csp);
+        $this->assertStringContainsString("object-src 'none'", $csp);
+        $this->assertStringContainsString("base-uri 'self'", $csp);
+        $this->assertStringContainsString("form-action 'self'", $csp);
         $this->assertSame('DENY', $antwort->headers->get('X-Frame-Options'));
     }
 
@@ -37,7 +42,7 @@ class SecurityHeadersTest extends TestCase
     {
         $antwort = $this->get('/login')->assertOk();
 
-        $this->assertSame("frame-ancestors 'none'", $antwort->headers->get('Content-Security-Policy'));
+        $this->assertStringContainsString("frame-ancestors 'none'", $antwort->headers->get('Content-Security-Policy'));
     }
 
     /**
@@ -58,7 +63,9 @@ class SecurityHeadersTest extends TestCase
         foreach ($pfade as $pfad) {
             $antwort = $this->get($pfad)->assertOk();
 
-            $this->assertSame('frame-ancestors *', $antwort->headers->get('Content-Security-Policy'), $pfad);
+            $csp = $antwort->headers->get('Content-Security-Policy');
+            $this->assertStringContainsString('frame-ancestors *', $csp, $pfad);
+            $this->assertStringContainsString("default-src 'self'", $csp, $pfad.' traegt die Grundrichtlinie nicht.');
             $this->assertNull($antwort->headers->get('X-Frame-Options'), $pfad.' sperrt sich selbst aus.');
         }
     }
@@ -74,7 +81,24 @@ class SecurityHeadersTest extends TestCase
 
         $antwort = $this->get('/konto/'.$setup['tenant']->slug)->assertOk();
 
-        $this->assertSame("frame-ancestors 'none'", $antwort->headers->get('Content-Security-Policy'));
+        $this->assertStringContainsString("frame-ancestors 'none'", $antwort->headers->get('Content-Security-Policy'));
+    }
+
+    /**
+     * Die Grundrichtlinie kommt aus den Einstellungen (SWAYY_CSP_BASE), damit
+     * ein Betrieb sie anpassen kann, etwa um einen Zahlungsanbieter als
+     * frame-src zu ergaenzen. Die Middleware haengt nur frame-ancestors an.
+     */
+    public function test_the_csp_base_comes_from_configuration(): void
+    {
+        config(['swayy.security.csp_base' => "default-src 'self'; frame-src 'self' https://pay.example"]);
+
+        $antwort = $this->get('/login')->assertOk();
+
+        $this->assertSame(
+            "default-src 'self'; frame-src 'self' https://pay.example; frame-ancestors 'none'",
+            $antwort->headers->get('Content-Security-Policy')
+        );
     }
 
     public function test_every_response_carries_the_basic_headers(): void
