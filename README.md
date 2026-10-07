@@ -110,7 +110,7 @@ Seite; Hinweise dazu in [`docs/handbuch/00-import-hinweis.md`](docs/handbuch/00-
 | Multi-Tenancy (Tenants → Standorte) mit globalem Scope + expliziten Checks | ✅ |
 | SEPA-Lastschrift fürs Abo (GoCardless): jederzeit buchen/kündigen, Mail an beide | ✅ |
 | Standort-Verwaltung im Admin (anlegen/umbenennen/aktivieren, Tarif-Limit) | ✅ |
-| Sperrzeiten/Blackouts (pro Standort/Raum, voll gesperrt oder Cover-Limit) | ✅ |
+| Sperrzeiten/Blackouts (pro Standort/Raum, voll gesperrt oder Gästegrenze in jedem Kapazitätsmodus) | ✅ |
 | Einzelne Tische sperren (defekt/reserviert; Zeitraum + Grund, wirkt auf Auto-Vergabe, Handauswahl, Tischplan, Board) | ✅ |
 | Räume & Tische editieren, Events nachträglich bearbeiten, Sonderzeiten löschen | ✅ |
 | SaaS-Adminbereich: Dashboard, Mandanten-Karten, Plattform-Benutzerverwaltung, Supportzugriff (Auditlog) | ✅ |
