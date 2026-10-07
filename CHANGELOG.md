@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.131.0] – 2026-10-07
+
+### Große Gruppen bekommen einen warmen Weg zur Anfrage
+
+Hinter der größten online buchbaren Personenzahl steht jetzt ein „Mehr"-Knopf.
+Ein Klick deckt einen freundlichen Hinweis auf: Für größere Runden genügt eine
+kurze E-Mail an den Betrieb, der übrige Teil des Formulars tritt dafür zurück.
+
+- **Neue Einstellung je Standort** unter Buchungsregeln › „E-Mail für große
+  Gruppen". Steht dort eine Adresse, erscheint der „Mehr"-Knopf; leer blendet
+  ihn aus.
+- **Schwelle richtet sich nach „Max. Personen online".** Der Hinweis nennt
+  automatisch die nächste Gruppengröße (etwa „ab 11 Personen") und übernimmt
+  den Ton aus der Anrede (Sie/du).
+- **E-Mail mit Betreff** „Gruppenanfrage – <Standort>", damit die Anfrage beim
+  Betrieb gleich zugeordnet ist.
+
 ## [1.130.3] – 2026-10-07
 
 ### Antwortadresse: Schlüssel samt abschließendem Semikolon annehmen

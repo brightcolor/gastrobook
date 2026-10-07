@@ -22,6 +22,13 @@
 .step-panel[data-state="done"]    .sp-num { background: color-mix(in oklab, var(--brand) 13%, white); color: var(--brand); }
 .step-panel[data-state="locked"]  .sp-num { background: #e7e5e4; color: #a8a29e; }
 .step-panel[data-state="done"]    .sp-header { cursor: pointer; }
+/* Große Gruppen: "Mehr" blendet den Rest des Formulars aus und zeigt den Hinweis */
+#largeGroupNotice { display: none; }
+#bookingForm.inquiry-mode #sp2,
+#bookingForm.inquiry-mode #floorplanSection,
+#bookingForm.inquiry-mode #sp3 { display: none !important; }
+#bookingForm.inquiry-mode #largeGroupNotice { display: block; }
+#partyMoreBtn.is-active { border-style: solid; border-color: var(--brand); color: var(--brand); background: color-mix(in oklab, var(--brand) 6%, white); }
 /* Hide native details marker; custom chevron is used instead */
 details > summary { list-style: none; }
 details > summary::-webkit-details-marker { display: none; }
@@ -432,11 +439,44 @@ details > summary::-webkit-details-marker { display: none; }
                                 {{ $i }}
                             </button>
                         @endfor
+                        @if($settings->large_group_email)
+                            <button type="button" id="partyMoreBtn" aria-expanded="false" aria-controls="largeGroupNotice"
+                                    class="party-more-btn rounded-2xl border-2 border-dashed border-stone-300 py-3.5 text-base font-bold text-stone-500 transition-all duration-150 hover:border-brand hover:bg-brand/5 hover:text-brand active:scale-95">
+                                Mehr
+                            </button>
+                        @endif
                     </div>
                     <input type="hidden" name="party_size" id="partySize" value="{{ old('party_size') }}" required>
                     @error('party_size')<p class="mt-2 text-xs text-red-600">{{ $message }}</p>@enderror
                 </div>
             </div>
+
+            {{-- ── Große Gruppen: warmer Hinweis zur E-Mail (per "Mehr" aufgedeckt) ── --}}
+            @if($settings->large_group_email)
+                @php
+                    $grpFrom = $settings->max_party_online + 1;
+                    $grpSubject = rawurlencode('Gruppenanfrage – '.$location->name);
+                @endphp
+                <div id="largeGroupNotice" class="px-5 pb-6 pt-5 sm:px-6">
+                    <div class="rounded-2xl border-2 border-brand/20 bg-brand/5 p-6 text-center">
+                        <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand/15 text-2xl" aria-hidden="true">🥂</div>
+                        <h3 class="text-lg font-bold text-stone-800">Große Runde? Wie schön!</h3>
+                        <p class="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-stone-600">
+                            {{ $du
+                                ? 'Für Gruppen ab '.$grpFrom.' Personen finden wir gemeinsam den passenden Platz. Schreib uns kurz, worum es geht – wir melden uns schnell mit einem persönlichen Vorschlag.'
+                                : 'Für Gruppen ab '.$grpFrom.' Personen finden wir gemeinsam den passenden Platz. Schreiben Sie uns kurz, worum es geht – wir melden uns schnell mit einem persönlichen Vorschlag.' }}
+                        </p>
+                        <a href="mailto:{{ $settings->large_group_email }}?subject={{ $grpSubject }}"
+                           class="btn-brand mt-5 inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-base font-bold text-white transition-all active:scale-[0.99]">
+                            ✉️ E-Mail schreiben
+                        </a>
+                        <p class="mt-3 text-xs text-stone-400">{{ $settings->large_group_email }}</p>
+                        <button type="button" id="partyLessBtn" class="mt-4 text-xs font-semibold text-stone-500 transition-colors hover:text-brand hover:underline">
+                            ← Zurück zur Auswahl
+                        </button>
+                    </div>
+                </div>
+            @endif
 
             {{-- ── Step 2: Datum & Uhrzeit ──────────────────────────────────── --}}
             <div id="sp2" class="step-panel" data-state="locked">
@@ -691,6 +731,7 @@ details > summary::-webkit-details-marker { display: none; }
         }
 
         function selectParty(btn) {
+            hideGroupInquiry();
             document.querySelectorAll('.party-btn').forEach(b => {
                 b.classList.remove('border-brand', 'bg-brand', 'text-white');
                 b.querySelectorAll('span').forEach(s => { s.classList.remove('text-white'); s.classList.add('text-stone-400'); });
@@ -705,6 +746,29 @@ details > summary::-webkit-details-marker { display: none; }
             loadSlots();
         }
         document.querySelectorAll('.party-btn').forEach(btn => btn.addEventListener('click', () => selectParty(btn)));
+
+        // Große Gruppen: "Mehr" deckt den E-Mail-Hinweis auf und blendet den Rest aus.
+        const bookingForm  = document.getElementById('bookingForm');
+        const partyMoreBtn = document.getElementById('partyMoreBtn');
+        const partyLessBtn = document.getElementById('partyLessBtn');
+        function showGroupInquiry() {
+            partyInput.value = '';
+            document.querySelectorAll('.party-btn').forEach(b => {
+                b.classList.remove('border-brand', 'bg-brand', 'text-white');
+                b.querySelectorAll('span').forEach(s => { s.classList.remove('text-white'); s.classList.add('text-stone-400'); });
+            });
+            sp1Summary.textContent = '';
+            if (bookingForm) bookingForm.classList.add('inquiry-mode');
+            if (partyMoreBtn) { partyMoreBtn.classList.add('is-active'); partyMoreBtn.setAttribute('aria-expanded', 'true'); }
+            document.getElementById('largeGroupNotice')?.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+        }
+        function hideGroupInquiry() {
+            if (bookingForm) bookingForm.classList.remove('inquiry-mode');
+            if (partyMoreBtn) { partyMoreBtn.classList.remove('is-active'); partyMoreBtn.setAttribute('aria-expanded', 'false'); }
+        }
+        if (partyMoreBtn) partyMoreBtn.addEventListener('click', showGroupInquiry);
+        if (partyLessBtn) partyLessBtn.addEventListener('click', hideGroupInquiry);
+
         dateInput.addEventListener('change', loadSlots);
 
         function resetFp() {
