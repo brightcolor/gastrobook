@@ -208,5 +208,8 @@ export function initAjaxForms() {
             e.preventDefault();
             submitForm(form);
         });
+        // Zurückgesetzt („Verwerfen“) gilt der gespeicherte Stand; Fehlerhinweise
+        // zu den verworfenen Eingaben verschwinden mit ihnen.
+        form.addEventListener('reset', () => clearProblems(form));
     });
 }
