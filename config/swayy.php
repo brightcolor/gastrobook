@@ -275,7 +275,7 @@ return [
     | Oberfläche der Verwaltung
     |--------------------------------------------------------------------------
     |
-    | toast_ms: wie lange ein Hinweis wie „Gespeichert" stehen bleibt, in
+    | toast_ms: wie lange ein Hinweis wie „Gespeichert“ stehen bleibt, in
     | Millisekunden. default_brand_color: Markenfarbe, solange ein Betrieb
     | keine eigene gewählt hat (Buchungsseite, Buchungsknopf, Farbwahl in den
     | Einstellungen).

@@ -125,7 +125,7 @@ class EnvSettingTest extends TestCase
         $this->set('teal');
 
         $this->assertSame('#0f766e', $this->capture(fn () => EnvSetting::hexColor(self::VARIABLE, default: '#0f766e')));
-        $this->assertStringContainsString(self::VARIABLE."=„teal“ ist keine Farbe in der Schreibweise #rrggbb. Es gilt die Vorgabe #0f766e.", $this->warnings);
+        $this->assertStringContainsString(self::VARIABLE.'=„teal“ ist keine Farbe in der Schreibweise #rrggbb. Es gilt die Vorgabe #0f766e.', $this->warnings);
     }
 
     private function set(string $value): void
