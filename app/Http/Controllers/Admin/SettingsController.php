@@ -103,6 +103,9 @@ class SettingsController extends Controller
                     ->get()
                 : collect(),
             'settings' => $location->effectiveSettings(),
+            // „Weniger Gäste" bei Sperrzeiten wirkt nur im Platz-Modus – das
+            // Formular blendet die Option sonst aus.
+            'coversMode' => in_array($location->effectiveSettings()->capacity_mode, ['person', 'hybrid'], true),
             'rooms' => $location->rooms()->withCount('tables')->orderBy('sort_order')->get(),
             'tables' => $location->tables()->with('room')->orderBy('sort_order')->get(),
             'openingHours' => $location->openingHours()->orderBy('weekday')->orderBy('opens_at')->get(),
@@ -1153,6 +1156,19 @@ class SettingsController extends Controller
                 return $this->failed($request, 'room_id', __('Dieser Raum gehört nicht zu diesem Standort. Bitte die Seite neu laden und einen Raum aus der Liste wählen.'));
             }
             $roomId = (int) $validated['room_id'];
+        }
+
+        // "Max. Gäste" (reduce_covers_to) wirkt nur für den ganzen Betrieb und
+        // nur, wenn nach Plätzen gebucht wird. Für einen Raum oder im
+        // Tisch-Modus täte es gar nichts. Statt die Eingabe stillschweigend
+        // wirkungslos zu speichern, wird sie mit einem klaren Hinweis abgelehnt.
+        if (($validated['reduce_covers_to'] ?? null) !== null) {
+            if ($roomId !== null) {
+                return $this->failed($request, 'reduce_covers_to', __('Eine begrenzte Gästezahl lässt sich nur für den ganzen Betrieb einstellen. Für einen einzelnen Raum bitte „ganz schließen" wählen und das Feld „Max. Gäste" leer lassen.'));
+            }
+            if ($location->effectiveSettings()->capacity_mode === 'table') {
+                return $this->failed($request, 'reduce_covers_to', __('Eine begrenzte Gästezahl wirkt nur, wenn ihr nach Plätzen bucht. Dieser Betrieb bucht nach Tischen – hier bitte „ganz schließen" wählen und das Feld „Max. Gäste" leer lassen. Den Buchungs-Modus ändert ihr unter „Buchungsregeln".'));
+            }
         }
 
         // Interpret the wall-clock input in the location timezone, store UTC

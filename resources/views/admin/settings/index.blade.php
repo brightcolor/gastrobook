@@ -548,8 +548,9 @@
 
     {{-- Sperrzeiten (Blackouts) --}}
     <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
-        <h2 class="mb-3 font-bold">Sperrzeiten <span class="tip" tabindex="0" data-tip="Blockiere einen Zeitraum komplett (z. B. Betriebsfeier, Renovierung) oder reduziere die Gästezahl. Sperrzeiten gelten für den ganzen Standort oder einen einzelnen Raum und blockieren neue Online-Buchungen im Zeitraum.">?</span></h2>
-        <form method="POST" action="{{ route('admin.settings.blackouts.store') }}" class="grid grid-cols-2 gap-2 text-sm">
+        <h2 class="mb-1 font-bold">Sperrzeiten <span class="tip" tabindex="0" data-tip="Schließe den Betrieb (oder einen Raum) für einen Zeitraum – z. B. Betriebsfeier, Feiertag, Renovierung. In dieser Zeit sind keine Online-Buchungen möglich.">?</span></h2>
+        <p class="mb-3 text-xs text-stone-500">Zum Beispiel eine Betriebsfeier oder ein Feiertag. In der gewählten Zeit kann niemand mehr online buchen.</p>
+        <form method="POST" action="{{ route('admin.settings.blackouts.store') }}" id="blackoutForm" class="grid grid-cols-2 gap-3 text-sm">
             @csrf
             <label class="block">Von
                 <input type="datetime-local" name="starts_at" required class="mt-1 w-full rounded-lg border-stone-200">
@@ -557,28 +558,87 @@
             <label class="block">Bis
                 <input type="datetime-local" name="ends_at" required class="mt-1 w-full rounded-lg border-stone-200">
             </label>
-            <label class="block">Raum (optional)
-                <select name="room_id" class="mt-1 w-full rounded-lg border-stone-200">
-                    <option value="">Ganzer Standort</option>
+            <label class="col-span-2 block">Welcher Bereich?
+                <select name="room_id" id="boRoom" class="mt-1 w-full rounded-lg border-stone-200">
+                    <option value="">Ganzer Betrieb</option>
                     @foreach($rooms as $room)
-                        <option value="{{ $room->id }}">{{ $room->name }}</option>
+                        <option value="{{ $room->id }}">Nur: {{ $room->name }}</option>
                     @endforeach
                 </select>
             </label>
-            <label class="block">Max. Gäste (optional)
-                <input type="number" name="reduce_covers_to" min="0" placeholder="leer = voll gesperrt" class="mt-1 w-full rounded-lg border-stone-200">
-            </label>
-            <input type="text" name="reason" placeholder="Grund (z. B. Betriebsfeier)" class="col-span-2 rounded-lg border-stone-200">
+
+            <div class="col-span-2 space-y-2 rounded-xl bg-stone-50 p-3">
+                <span class="block font-semibold text-stone-600">Was gilt in dieser Zeit?</span>
+                <label class="flex items-start gap-2">
+                    <input type="radio" name="bo_type" value="closed" checked class="mt-1" data-bo-type>
+                    <span><span class="font-medium">Komplett geschlossen</span>
+                        <span class="block text-xs text-stone-500">Niemand kann in dieser Zeit online buchen.</span></span>
+                </label>
+                <label class="flex items-start gap-2" id="boLimitRow">
+                    <input type="radio" name="bo_type" value="limit" class="mt-1" data-bo-type @disabled(! $coversMode)>
+                    <span>
+                        <span class="font-medium">Weniger Gäste als sonst</span>
+                        <span class="ml-1 inline-flex items-center gap-1 text-stone-600">– höchstens
+                            <input type="number" name="reduce_covers_to" min="1" id="boLimitInput" disabled
+                                   placeholder="z. B. 20" class="w-20 rounded-lg border-stone-200"> Gäste
+                        </span>
+                        @unless($coversMode)
+                            <span class="block text-xs text-amber-700">Nur möglich, wenn der Betrieb nach Plätzen bucht. Umstellen unter „Buchungsregeln" › Kapazitätsmodus.</span>
+                        @endunless
+                        <span class="hidden text-xs text-amber-700" id="boLimitRoomHint">Für einen einzelnen Raum gibt es nur „komplett geschlossen".</span>
+                    </span>
+                </label>
+            </div>
+
+            <input type="text" name="reason" placeholder="Grund (z. B. Betriebsfeier, Feiertag)" class="col-span-2 rounded-lg border-stone-200 px-3 py-2">
+            @error('reduce_covers_to')<p class="col-span-2 text-xs text-red-600">{{ $message }}</p>@enderror
             <button class="col-span-2 rounded-lg bg-stone-900 px-4 py-2 font-semibold text-white">Sperrzeit anlegen</button>
         </form>
+        <script>
+        (function () {
+            var form = document.getElementById('blackoutForm');
+            if (!form) return;
+            var room = document.getElementById('boRoom');
+            var input = document.getElementById('boLimitInput');
+            var roomHint = document.getElementById('boLimitRoomHint');
+            var limitRadio = form.querySelector('input[name="bo_type"][value="limit"]');
+            var closedRadio = form.querySelector('input[name="bo_type"][value="closed"]');
+            var coversMode = @json($coversMode);
+
+            function syncInput() {
+                var on = limitRadio && limitRadio.checked && !limitRadio.disabled;
+                if (!input) return;
+                input.disabled = !on;
+                input.required = on;
+                if (!on) input.value = '';
+            }
+            function syncRoom() {
+                var roomChosen = room && room.value !== '';
+                var allowLimit = coversMode && !roomChosen;
+                if (limitRadio) {
+                    limitRadio.disabled = !allowLimit;
+                    if (!allowLimit && limitRadio.checked && closedRadio) closedRadio.checked = true;
+                }
+                if (roomHint) roomHint.classList.toggle('hidden', !(roomChosen && coversMode));
+                syncInput();
+            }
+            form.querySelectorAll('[data-bo-type]').forEach(function (r) { r.addEventListener('change', syncInput); });
+            if (room) room.addEventListener('change', syncRoom);
+            syncRoom();
+        })();
+        </script>
         <div class="mt-3 space-y-1 text-sm">
             @forelse($blackouts as $bo)
-                <div class="flex items-center justify-between rounded-lg bg-stone-50 px-3 py-2">
+                <div class="flex items-center justify-between rounded-lg {{ ($bo->reduce_covers_to !== null && ($bo->room_id !== null || ! $coversMode)) ? 'bg-red-50 ring-1 ring-red-200' : 'bg-stone-50' }} px-3 py-2">
                     <span>
                         {{ $bo->starts_at->setTimezone($location->timezone)->format('d.m.Y H:i') }}–{{ $bo->ends_at->setTimezone($location->timezone)->format('d.m.Y H:i') }}
-                        · {{ $bo->room?->name ?? 'ganzer Standort' }}
-                        · {{ $bo->reduce_covers_to === null ? 'voll gesperrt' : 'max. '.$bo->reduce_covers_to.' Gäste' }}
+                        · {{ $bo->room?->name ?? 'ganzer Betrieb' }}
+                        · {{ $bo->reduce_covers_to === null ? 'komplett geschlossen' : 'max. '.$bo->reduce_covers_to.' Gäste' }}
                         @if($bo->reason) ({{ $bo->reason }}) @endif
+                        @if($bo->reduce_covers_to !== null && ($bo->room_id !== null || ! $coversMode))
+                            <span class="ml-1 inline-block rounded bg-red-600 px-1.5 py-0.5 text-[11px] font-semibold text-white" tabindex="0"
+                                  title="Diese Sperre bewirkt nichts: „Weniger Gäste" gilt nur für den ganzen Betrieb und nur, wenn nach Plätzen gebucht wird. Bitte löschen und als „komplett geschlossen" neu anlegen.">wirkt nicht</span>
+                        @endif
                     </span>
                     <form method="POST" action="{{ route('admin.settings.blackouts.delete', $bo) }}"
                           onsubmit="return confirm('Sperrzeit löschen?')">
