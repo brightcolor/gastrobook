@@ -130,6 +130,7 @@ class SettingsController extends Controller
             'max_advance_days' => ['required', 'integer', 'min:1', 'max:730'],
             'min_party_online' => ['required', 'integer', 'min:1', 'max:50'],
             'max_party_online' => ['required', 'integer', 'min:1', 'max:100', 'gte:min_party_online'],
+            'large_group_email' => ['nullable', 'email:rfc', 'max:200'],
             'booking_confirmation_mode' => ['required', 'in:auto,manual'],
             'capacity_mode' => ['required', 'in:table,person,hybrid'],
             'max_covers_per_slot' => ['nullable', 'integer', 'min:1', 'max:2000'],

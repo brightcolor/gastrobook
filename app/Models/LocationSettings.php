@@ -15,7 +15,7 @@ class LocationSettings extends Model
     protected $fillable = [
         'tenant_id', 'location_id',
         'slot_interval_minutes', 'default_duration_minutes', 'duration_rules', 'buffer_minutes',
-        'min_lead_minutes', 'max_advance_days', 'min_party_online', 'max_party_online',
+        'min_lead_minutes', 'max_advance_days', 'min_party_online', 'max_party_online', 'large_group_email',
         'auto_confirm', 'request_only', 'capacity_mode', 'max_covers_per_slot',
         'waitlist_enabled', 'walkins_enabled',
         'cancellation_deadline_minutes', 'modification_deadline_minutes',

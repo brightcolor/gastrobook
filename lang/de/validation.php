@@ -219,6 +219,7 @@ return [
         'max_advance_days' => 'Max. Vorausbuchung',
         'min_party_online' => 'Min. Personen (online)',
         'max_party_online' => 'Max. Personen (online)',
+        'large_group_email' => 'E-Mail für große Gruppen',
         'max_covers_per_slot' => 'Max. Gäste pro Slot',
         'capacity_mode' => 'Kapazitätsmodus',
         'cancellation_deadline_minutes' => 'Stornofrist',

@@ -331,6 +331,9 @@
                 <input type="number" name="min_party_online" value="{{ $settings->min_party_online }}" class="w-full rounded-lg border-stone-200"></div>
             <div><label class="mb-1 block text-xs font-semibold text-stone-500">Max. Personen online <span class="tip" tabindex="0" data-tip="Größere Gruppen sollen sich lieber telefonisch melden – für alles darüber zeigt die Buchungsseite keine Verfügbarkeit an.">?</span></label>
                 <input type="number" name="max_party_online" value="{{ $settings->max_party_online }}" class="w-full rounded-lg border-stone-200"></div>
+            <div class="sm:col-span-3"><label class="mb-1 block text-xs font-semibold text-stone-500">E-Mail für große Gruppen <span class="tip" tabindex="0" data-tip="Erscheint als freundlicher &#39;Mehr&#39;-Knopf hinter der größten online buchbaren Gruppe. Noch größere Runden bekommen damit einen warmen Hinweis und schreiben dir direkt. Leer blendet den Knopf aus.">?</span></label>
+                <input type="email" name="large_group_email" value="{{ $settings->large_group_email }}" placeholder="gruppen@betrieb.de" class="w-full rounded-lg border-stone-200">
+                @error('large_group_email')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror</div>
             <div><label class="mb-1 block text-xs font-semibold text-stone-500">Kapazitätsmodus <span class="tip" tabindex="0" data-tip="&#39;Tischbasiert&#39; prüft ob noch Tische frei sind. &#39;Personenbasiert&#39; zählt Gesamtplätze. &#39;Hybrid&#39; kombiniert beides – ideal wenn du sowohl kleine als auch große Tische hast.">?</span></label>
                 <select name="capacity_mode" class="w-full rounded-lg border-stone-200">
                     <option value="table"  @selected($settings->capacity_mode === 'table')>Tischbasiert</option>
