@@ -211,6 +211,35 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Antwortadresse über Swayy (eingehende Gästeantworten)
+    |--------------------------------------------------------------------------
+    |
+    | Gäste antworten an <slug>+<code>.<hmac>@<domain>. Postal nimmt die Mail an
+    | und ruft POST /webhooks/postal. Leere Domain heißt: Relay aus, es gilt das
+    | direkte Reply-To (guest_mail). Ein ungültiger Wert legt nichts lahm: Es
+    | gilt die Vorgabe oder die nächste Grenze, eine Warnung nennt die Variable.
+    |
+    */
+    'guest_mail_relay' => [
+        'domain' => env('SWAYY_GUEST_MAIL_RELAY_DOMAIN', ''),
+        'hmac_length' => EnvSetting::integer('SWAYY_GUEST_MAIL_RELAY_HMAC_LENGTH', default: 8, min: 6, max: 32),
+        'separator_tag' => env('SWAYY_GUEST_MAIL_RELAY_SEP_TAG', '+'),
+        'separator_hmac' => env('SWAYY_GUEST_MAIL_RELAY_SEP_HMAC', '.'),
+        'inbound_public_key' => env('SWAYY_GUEST_MAIL_RELAY_PUBLIC_KEY', ''),
+        'inbound_signature_algo' => env('SWAYY_GUEST_MAIL_RELAY_SIGNATURE_ALGO', 'sha256'),
+        'inbound_shared_secret' => env('SWAYY_GUEST_MAIL_RELAY_SHARED_SECRET', ''),
+        'max_message_bytes' => EnvSetting::integer('SWAYY_GUEST_MAIL_RELAY_MAX_BYTES', default: 10485760, min: 65536, max: 52428800),
+        'forward_subject_prefix' => env('SWAYY_GUEST_MAIL_RELAY_SUBJECT_PREFIX', 'Antwort von'),
+        // Marker einer automatischen Mail (Schleifenschutz). Komma-Liste, überschreibbar.
+        'auto_mail_headers' => array_values(array_filter(array_map('trim', explode(
+            ',',
+            env('SWAYY_GUEST_MAIL_RELAY_AUTO_HEADERS', 'Auto-Submitted,Precedence,List-Id,List-Unsubscribe')
+        )))),
+        'rate_per_sender' => EnvSetting::integer('SWAYY_GUEST_MAIL_RELAY_RATE_PER_SENDER', default: 20, min: 1, max: 1000),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Newsletter-Anbindung (MailWizz)
     |--------------------------------------------------------------------------
     |
