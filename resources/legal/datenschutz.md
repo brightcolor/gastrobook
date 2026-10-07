@@ -163,6 +163,16 @@ Abbuchungen. Das Mandat kann jederzeit im Konto gekündigt werden.
   und Zahlungs-/Stornoinformationen versenden wir per E-Mail über einen
   SMTP-Dienstleister. Antworten Sie auf eine solche E-Mail, geht Ihre Antwort
   direkt an die E-Mail-Adresse des Betriebs, bei dem Sie gebucht haben.
+- **Antworten über unsere Antwortadresse (sofern der Betrieb dies aktiviert):**
+  Ihre Antwort kann an eine eigene Antwortadresse des Dienstes gehen (Form
+  `<Kennung>@[Antwort-Domain]`). Wir nehmen sie an, ordnen sie Ihrer Buchung zu,
+  speichern den Nachrichtentext und die Angaben zu mitgesendeten Anhängen
+  (Dateiname, Größe, Typ; die Dateien selbst speichern wir hierbei nicht) und
+  leiten die Nachricht an den Betrieb weiter. Diese Daten sind mit Ihrer Buchung
+  und Ihrem Gästeprofil verknüpft und werden mit der Buchung gelöscht bzw. bei
+  einer Anonymisierung von den personenbezogenen Angaben befreit (siehe
+  Ziff. 14). Die Annahme erfolgt über unseren Mailserver als
+  Auftragsverarbeiter (siehe Ziff. 12).
 - **SMS (sofern aktiviert):** Terminerinnerungen per SMS über den deutschen
   Anbieter **seven.io** (seven communications GmbH). Hierzu wird Ihre
   Telefonnummer an den Anbieter als Auftragsverarbeiter übermittelt.
