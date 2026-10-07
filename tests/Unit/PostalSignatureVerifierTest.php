@@ -111,9 +111,23 @@ class PostalSignatureVerifierTest extends TestCase
 
     public function test_full_dkim_record_is_accepted(): void
     {
-        config(['swayy.guest_mail_relay.inbound_public_key' => 'v=DKIM1; t=s; h=sha256; p='.$this->bareBase64()]);
+        // Genau so gibt `postal default-dkim-record` den Eintrag aus, mit „;" am Ende.
+        config(['swayy.guest_mail_relay.inbound_public_key' => 'v=DKIM1; t=s; h=sha256; p='.$this->bareBase64().';']);
         $payload = '{"rcpt_to":"x"}';
 
+        $this->assertTrue((new PostalSignatureVerifier)->verify($payload, $this->sign($payload)));
+    }
+
+    public function test_p_value_with_trailing_semicolon_or_quotes_is_accepted(): void
+    {
+        $payload = '{"rcpt_to":"x"}';
+
+        // Wert hinter p= samt abschließendem Semikolon, wie beim Herauskopieren.
+        config(['swayy.guest_mail_relay.inbound_public_key' => $this->bareBase64().';']);
+        $this->assertTrue((new PostalSignatureVerifier)->verify($payload, $this->sign($payload)));
+
+        // Mit Anführungszeichen aus der .env.
+        config(['swayy.guest_mail_relay.inbound_public_key' => '"'.$this->bareBase64().'"']);
         $this->assertTrue((new PostalSignatureVerifier)->verify($payload, $this->sign($payload)));
     }
 
