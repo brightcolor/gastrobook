@@ -9,6 +9,7 @@ use App\Support\Navigation\NavGroup;
 use App\Support\Navigation\Navigation;
 use App\Support\Navigation\NavItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Tests\Concerns\CreatesTenants;
 use Tests\TestCase;
 
@@ -136,6 +137,7 @@ class NavigationTest extends TestCase
         $setup = $this->createTenantSetup();
         $owner = $this->createMember($setup['tenant'], 'tenant_owner');
         $host = $this->createMember($setup['tenant'], 'host');
+        $marketing = $this->createMember($setup['tenant'], 'marketing_manager');
         $nav = new Navigation([
             'mobile_bar_max' => 1,
             'main' => [
@@ -143,14 +145,60 @@ class NavigationTest extends TestCase
                     ['key' => 'a', 'label' => 'A', 'route' => 'admin.dashboard', 'icon' => 'dashboard', 'mobile_bar' => true],
                     ['key' => 'b', 'label' => 'B', 'route' => 'admin.board', 'icon' => 'board', 'only' => 'salon', 'mobile_bar' => true],
                     ['key' => 'c', 'label' => 'C', 'route' => 'admin.reports.index', 'icon' => 'reports', 'can_any' => ['marketing.manage', 'audit.view']],
+                    ['key' => 'd', 'label' => 'D', 'route' => 'admin.walkins.index', 'icon' => 'walkins', 'mobile_bar' => true],
                 ]],
             ],
             'settings' => [],
         ]);
 
-        $this->assertSame([['Gruppe', ['a', 'c']]], $this->shape($nav->main($owner, $setup['tenant'], $setup['location'], null)));
-        $this->assertSame([[null, ['a']]], $this->shape($nav->main($host, $setup['tenant'], $setup['location'], null)));
-        $this->assertCount(1, $nav->mobileBar($owner, $setup['tenant'], $setup['location'], null));
+        $this->assertSame([['Gruppe', ['a', 'c', 'd']]], $this->shape($nav->main($owner, $setup['tenant'], $setup['location'], null)));
+        $this->assertSame([['Gruppe', ['a', 'd']]], $this->shape($nav->main($host, $setup['tenant'], $setup['location'], null)));
+        // The marketing manager holds marketing.manage but not audit.view: one of the two is enough.
+        $this->assertSame([['Gruppe', ['a', 'c', 'd']]], $this->shape($nav->main($marketing, $setup['tenant'], $setup['location'], null)));
+        $this->assertSame(['a'], array_map(fn (NavItem $item) => $item->key, $nav->mobileBar($owner, $setup['tenant'], $setup['location'], null)));
         $this->assertNull($nav->firstSettingsUrl($owner, $setup['tenant'], $setup['location']));
+    }
+
+    public function test_mobile_bar_without_a_limit_returns_every_candidate(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $nav = new Navigation([
+            'main' => [
+                ['label' => null, 'items' => [
+                    ['key' => 'a', 'label' => 'A', 'route' => 'admin.dashboard', 'icon' => 'dashboard', 'mobile_bar' => true],
+                    ['key' => 'b', 'label' => 'B', 'route' => 'admin.board', 'icon' => 'board', 'mobile_bar' => true],
+                    ['key' => 'c', 'label' => 'C', 'route' => 'admin.walkins.index', 'icon' => 'walkins', 'mobile_bar' => true],
+                    ['key' => 'd', 'label' => 'D', 'route' => 'admin.waitlist.index', 'icon' => 'waitlist', 'mobile_bar' => true],
+                    ['key' => 'e', 'label' => 'E', 'route' => 'admin.reservations.index', 'icon' => 'reservations', 'mobile_bar' => true],
+                ]],
+            ],
+        ]);
+
+        $this->assertSame(['a', 'b', 'c', 'd', 'e'], array_map(fn (NavItem $item) => $item->key, $nav->mobileBar($owner, $setup['tenant'], $setup['location'], null)));
+    }
+
+    public function test_settings_routes_follow_the_config(): void
+    {
+        $nav = new Navigation(['settings_routes' => ['admin.billing.*'], 'settings' => []]);
+
+        $this->assertTrue($nav->isSettingsRoute('admin.billing.show'));
+        $this->assertFalse($nav->isSettingsRoute('admin.settings.index'));
+    }
+
+    public function test_every_configured_route_exists_and_keys_are_unique(): void
+    {
+        $keys = [];
+        foreach (['main', 'settings'] as $section) {
+            foreach ((array) config('navigation.'.$section) as $group) {
+                foreach ($group['items'] as $item) {
+                    $this->assertTrue(Route::has($item['route']), "Route {$item['route']} of entry {$item['key']} ({$section}) does not exist.");
+                    $keys[] = $item['key'];
+                }
+            }
+        }
+
+        $duplicates = array_keys(array_filter(array_count_values($keys), fn (int $count) => $count > 1));
+        $this->assertSame([], $duplicates, 'Navigation keys must be unique: '.implode(', ', $duplicates));
     }
 }

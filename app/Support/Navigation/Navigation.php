@@ -17,9 +17,6 @@ use Illuminate\Support\Str;
  */
 final class Navigation
 {
-    /** Routen, die immer zum Einstellungsbereich gehören. */
-    private const SETTINGS_ROUTES = 'admin.settings.*';
-
     /**
      * @param  array<string, mixed>  $config
      */
@@ -60,7 +57,11 @@ final class Navigation
             }
         }
 
-        return array_slice($items, 0, (int) ($this->config['mobile_bar_max'] ?? 4));
+        if (! isset($this->config['mobile_bar_max'])) {
+            return $items;
+        }
+
+        return array_slice($items, 0, max(0, (int) $this->config['mobile_bar_max']));
     }
 
     public function firstSettingsUrl(User $user, Tenant $tenant, ?Location $location): ?string
@@ -80,7 +81,8 @@ final class Navigation
             return false;
         }
 
-        if (Str::is(self::SETTINGS_ROUTES, $currentRoute)) {
+        $settingsRoutes = array_values(array_map('strval', (array) ($this->config['settings_routes'] ?? [])));
+        if (Str::is($settingsRoutes, $currentRoute)) {
             return true;
         }
 
