@@ -8,6 +8,8 @@ use App\Mail\GuestLinkMail;
 use App\Mail\TemplatedMail;
 use App\Models\GuestAuthToken;
 use App\Models\Reservation;
+use App\Services\GuestMailSender;
+use App\Services\Mail\GuestReplyAddress;
 use App\Services\ReservationLifecycleService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -197,6 +199,33 @@ class GuestMailReplyToTest extends TestCase
 
         Mail::assertQueued(TemplatedMail::class, fn (TemplatedMail $m) => str_contains($m->mailSubject, 'storniert')
             && $m->hasReplyTo('antwort@waldhaus.test'));
+    }
+
+    // ── Relay-Antwortadresse über Swayy ───────────────────────────────────
+
+    public function test_relay_address_used_when_tenant_opted_in(): void
+    {
+        config(['swayy.guest_mail_relay.domain' => 'antwort.swayy.de']);
+        $setup = $this->setupWith(tenant: ['mail_reply_to' => 'direkt@example.test']);
+        $setup['tenant']->update(['mail_relay_enabled' => true]);
+        $reservation = Reservation::factory()->create(['location_id' => $setup['location']->id])->load('tenant');
+
+        $mail = app(GuestMailSender::class)->toGuest('Betreff', 'Text', $setup['tenant'], $setup['location'], $reservation);
+
+        $this->assertTrue($mail->hasReplyTo(GuestReplyAddress::forReservation($reservation)));
+        $this->assertStringContainsString($setup['tenant']->slug.'+'.$reservation->code.'.', $mail->envelope()->replyTo[0]->address);
+    }
+
+    public function test_direct_reply_to_when_relay_disabled(): void
+    {
+        config(['swayy.guest_mail_relay.domain' => 'antwort.swayy.de']);
+        $setup = $this->setupWith(tenant: ['mail_reply_to' => 'direkt@example.test']);
+        // mail_relay_enabled bleibt false (Vorgabe)
+        $reservation = Reservation::factory()->create(['location_id' => $setup['location']->id])->load('tenant');
+
+        $mail = app(GuestMailSender::class)->toGuest('Betreff', 'Text', $setup['tenant'], $setup['location'], $reservation);
+
+        $this->assertTrue($mail->hasReplyTo('direkt@example.test'));
     }
 
     // ── Einstellungsseite ─────────────────────────────────────────────────
