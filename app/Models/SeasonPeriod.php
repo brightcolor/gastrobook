@@ -37,4 +37,23 @@ class SeasonPeriod extends Model
     {
         return $this->belongsTo(Location::class);
     }
+
+    /** @return array<int, string> */
+    public static function months(): array
+    {
+        return [
+            1 => 'Januar', 2 => 'Februar', 3 => 'März', 4 => 'April',
+            5 => 'Mai', 6 => 'Juni', 7 => 'Juli', 8 => 'August',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Dezember',
+        ];
+    }
+
+    /** Lesbare Spanne, z. B. „1. April – 31. Oktober". */
+    public function rangeLabel(): string
+    {
+        $months = self::months();
+        $part = fn (int $m, int $d): string => $d.'. '.($months[$m] ?? '');
+
+        return $part($this->start_month, $this->start_day).' – '.$part($this->end_month, $this->end_day);
+    }
 }

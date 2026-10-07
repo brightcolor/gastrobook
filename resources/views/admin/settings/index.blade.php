@@ -652,6 +652,56 @@
         </div>
     </div>
 
+    {{-- Buchbare Saison --}}
+    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
+        <h2 class="mb-1 font-bold">Buchbare Saison <span class="tip" tabindex="0" data-tip="Für Saisonbetriebe: Lege fest, in welchen Zeiträumen Gäste online buchen können. Außerhalb nimmt die Buchungsseite keine Reservierungen an und zeigt, ab wann es wieder losgeht. Die Zeiträume gelten jedes Jahr.">?</span></h2>
+        <p class="mb-3 text-xs text-stone-500">Lege fest, wann Gäste online buchen können – gilt jedes Jahr. Ohne Eintrag ist das ganze Jahr buchbar.</p>
+        <form method="POST" action="{{ route('admin.settings.seasons.store') }}" class="grid grid-cols-2 gap-3 text-sm">
+            @csrf
+            <label class="col-span-2 block">Bezeichnung (optional)
+                <input type="text" name="label" maxlength="60" placeholder="z. B. Sommersaison" class="mt-1 w-full rounded-lg border-stone-200">
+            </label>
+            <div>
+                <span class="mb-1 block text-xs font-semibold text-stone-500">Von (Tag · Monat)</span>
+                <div class="flex gap-2">
+                    <input type="number" name="start_day" min="1" max="31" required placeholder="Tag" class="w-16 rounded-lg border-stone-200">
+                    <select name="start_month" required class="w-full rounded-lg border-stone-200">
+                        @foreach(\App\Models\SeasonPeriod::months() as $num => $name)<option value="{{ $num }}">{{ $name }}</option>@endforeach
+                    </select>
+                </div>
+            </div>
+            <div>
+                <span class="mb-1 block text-xs font-semibold text-stone-500">Bis (Tag · Monat)</span>
+                <div class="flex gap-2">
+                    <input type="number" name="end_day" min="1" max="31" required placeholder="Tag" class="w-16 rounded-lg border-stone-200">
+                    <select name="end_month" required class="w-full rounded-lg border-stone-200">
+                        @foreach(\App\Models\SeasonPeriod::months() as $num => $name)<option value="{{ $num }}" @selected($num === 12)>{{ $name }}</option>@endforeach
+                    </select>
+                </div>
+            </div>
+            @error('start_day')<p class="col-span-2 text-xs text-red-600">{{ $message }}</p>@enderror
+            @error('end_day')<p class="col-span-2 text-xs text-red-600">{{ $message }}</p>@enderror
+            <button class="col-span-2 rounded-lg bg-stone-900 px-4 py-2 font-semibold text-white">Saison hinzufügen</button>
+        </form>
+        <div class="mt-3 space-y-1 text-sm">
+            @forelse($seasons as $s)
+                <div class="flex items-center justify-between rounded-lg bg-stone-50 px-3 py-2">
+                    <span>
+                        {{ $s->rangeLabel() }}
+                        @if($s->label) · {{ $s->label }} @endif
+                    </span>
+                    <form method="POST" action="{{ route('admin.settings.seasons.delete', $s) }}"
+                          onsubmit="return confirm('Saison löschen?')">
+                        @csrf @method('DELETE')
+                        <button class="text-xs text-red-500 hover:text-red-700">Löschen</button>
+                    </form>
+                </div>
+            @empty
+                <p class="text-xs text-stone-400">Keine Saison gesetzt – das ganze Jahr ist buchbar.</p>
+            @endforelse
+        </div>
+    </div>
+
     {{-- Einzelne Tische sperren --}}
     <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
         <h2 class="mb-1 font-bold">Tisch sperren <span class="tip" tabindex="0" data-tip="Nimmt einen einzelnen Tisch für einen Zeitraum aus dem Verkehr – z. B. weil er wackelt, repariert wird oder für etwas anderes gebraucht wird. Der Tisch wird dann weder automatisch vergeben noch lässt er sich von Hand belegen und erscheint im Tischplan und auf dem Live-Board als gesperrt.">?</span></h2>
