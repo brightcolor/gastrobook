@@ -1,5 +1,36 @@
 # Changelog
 
+## [1.130.0] – 2026-10-07
+
+### Antwortadresse über Swayy: Gästeantworten landen im Verlauf und beim Betrieb
+
+Aufbauend auf der direkten Antwortadresse (1.129.0) kann jeder Betrieb eine
+Swayy-eigene Antwortadresse nutzen. Gäste antworten an
+`<slug>+<code>.<hmac>@<Antwort-Domain>`; Swayy nimmt die Antwort über Postal an,
+ordnet sie der Buchung zu, legt sie im Buchungsverlauf und Gästeprofil ab und
+leitet sie an den Betrieb weiter. Antworten des Betriebs gehen per Reply-To
+direkt an den Gast.
+
+- **Opt-in je Betrieb** unter Einstellungen › E-Mails an Gäste, Vorgabe aus.
+  Ohne Aktivierung, ohne eingerichtete Domain oder bei Mails ohne Buchungsbezug
+  gilt weiter die direkte Antwortadresse aus 1.129.0.
+- **Eingangs-Webhook** `POST /webhooks/postal`: prüft die Postal-Signatur,
+  ordnet über einen HMAC aus dem Reservierungscode der Buchung zu und erkennt
+  Doppelzustellungen, automatische Mails und zu große Nachrichten.
+- **Zuordnung und Weiterleitung:** Passt nur der Slug, geht die Mail mit Vermerk
+  „nicht zugeordnet“ an den Betrieb; bei unbekanntem Slug bleibt ein
+  Protokolleintrag. Anhänge gehen an den Betrieb, bei Swayy stehen Text und
+  Anhang-Metadaten (Name, Größe, Typ).
+- **Datenschutz:** Die Antworten hängen an Buchung und Gast; Löschung und
+  Anonymisierung greifen mit. Die Datenschutzerklärung führt die neue
+  Verarbeitung (Abschnitt 9).
+- **Alles einstellbar** in `config/swayy.php` → `guest_mail_relay`: Domain,
+  HMAC-Länge, Trenner, Public Key, Signaturverfahren, Größengrenze,
+  Betreff-Präfix, Schleifen-Marker, Ratengrenze.
+- Die Subdomain mit MX auf Postal, die Postal-Eingangsroute und der Public Key
+  werden beim Betreiber eingerichtet. Bis die Domain gesetzt ist, bleibt das
+  Verhalten wie in 1.129.x.
+
 ## [1.129.1] – 2026-10-07
 
 ### Härtung der Sicherheitskopfzeilen

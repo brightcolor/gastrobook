@@ -143,6 +143,7 @@ Seite; Hinweise dazu in [`docs/handbuch/00-import-hinweis.md`](docs/handbuch/00-
 | Kundenkonto per Magic-Link (passwortlos): Termine ansehen, umbuchen, stornieren | ✅ |
 | E-Mail-Bestätigung aktivierbar (Gast bestätigt **jede** Buchung per Klick; unbestätigte geben den Tisch nach 24 h wieder frei; bei Freigabe von Hand bekommt der Gast nach dem Klick eine Eingangsbestätigung) | ✅ |
 | E-Mail-Vorlagen (pro Tenant/Standort überschreibbar, Platzhalter, DE/EN) | ✅ |
+| Antwortadresse für Gästemails: Reply-To an den Betrieb, optional eine Swayy-eigene Adresse je Betrieb (Postal-Eingang, Zuordnung zur Buchung, Verlauf, Weiterleitung an den Betrieb) | ✅ |
 | Reminder- & Feedback-Follow-up-Jobs (Scheduler) | ✅ |
 | Feedback-Booster (intern erfassen, positives Feedback → externes Portal) | ✅ |
 | Berichte (No-Show-Rate, Auslastung, Quellen, Covers, CSV-Exporte) | ✅ |
