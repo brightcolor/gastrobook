@@ -8,6 +8,7 @@
         $swayyAdminData = [
             'ui' => [
                 'toastMs' => config('swayy.ui.toast_ms'),
+                'reloadDelayMs' => config('swayy.ui.reload_delay_ms'),
             ],
             'problemTexts' => \App\Support\AdminJsonErrors::forClient(),
         ];

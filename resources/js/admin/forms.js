@@ -6,9 +6,22 @@
 import { showToast } from './toast.js';
 
 let problemCount = 0;
+let inFlight = 0;
+let reloadRequested = false;
+const pending = new WeakMap();
+const sentSnapshots = new WeakMap();
 
 function texts() {
     return window.SwayyAdmin?.problemTexts ?? {};
+}
+
+// Stand eines Formulars als Text; die Speicherleiste vergleicht damit.
+export const snapshot = (form) => new URLSearchParams(new FormData(form)).toString();
+
+// Stand beim letzten erfolgreichen Absenden. Eingaben während der Anfrage
+// gehören nicht dazu und bleiben danach ungespeichert.
+export function savedSnapshot(form) {
+    return sentSnapshots.get(form);
 }
 
 async function readJson(res) {
@@ -82,28 +95,51 @@ function showProblems(form, json, messages) {
     (first ?? box).focus();
 }
 
-// Nach dem Speichern gilt der gespeicherte Stand als Vorgabe: „Verwerfen“
-// (form.reset) kehrt dann zu ihm zurück.
-function commitDefaults(form) {
+// Werte beim Absenden. Nach dem Speichern werden sie zur Vorgabe, auf die
+// „Verwerfen" (form.reset) zurückkehrt.
+function readValues(form) {
+    const values = new Map();
     for (const el of form.elements) {
         if (el instanceof HTMLInputElement) {
-            if (el.type === 'checkbox' || el.type === 'radio') {
-                el.defaultChecked = el.checked;
-            } else if (el.type !== 'file') {
-                el.defaultValue = el.value;
-            }
+            values.set(el, el.type === 'checkbox' || el.type === 'radio' ? el.checked : el.value);
         } else if (el instanceof HTMLTextAreaElement) {
-            el.defaultValue = el.value;
+            values.set(el, el.value);
         } else if (el instanceof HTMLSelectElement) {
-            for (const option of el.options) option.defaultSelected = option.selected;
+            values.set(el, [...el.options].map((option) => option.selected));
         }
     }
+    return values;
 }
 
-export async function submitForm(form) {
+function commitDefaults(values) {
+    values.forEach((value, el) => {
+        if (el instanceof HTMLSelectElement) {
+            [...el.options].forEach((option, i) => {
+                option.defaultSelected = value[i] ?? false;
+            });
+        } else if (el.type === 'checkbox' || el.type === 'radio') {
+            el.defaultChecked = value;
+        } else if (el.type !== 'file') {
+            el.defaultValue = value;
+        }
+    });
+}
+
+// Neu geladen wird erst, wenn keine Anfrage mehr läuft. Die Wartezeit kommt
+// aus config/swayy.php (ui.reload_delay_ms), damit „Gespeichert" lesbar bleibt.
+function reloadWhenIdle() {
+    setTimeout(() => {
+        if (inFlight === 0) window.location.reload();
+    }, window.SwayyAdmin?.ui?.reloadDelayMs);
+}
+
+async function send(form) {
     clearProblems(form);
     const submitter = form.querySelector('[type="submit"]');
     submitter?.setAttribute('aria-busy', 'true');
+    const values = readValues(form);
+    const sent = snapshot(form);
+    inFlight++;
 
     try {
         const multipart = form.enctype === 'multipart/form-data';
@@ -135,10 +171,11 @@ export async function submitForm(form) {
             return false;
         }
 
-        commitDefaults(form);
+        commitDefaults(values);
+        sentSnapshots.set(form, sent);
         form.dispatchEvent(new CustomEvent('swayy:saved', { detail: json }));
         showToast(json.message);
-        if (json.reload) setTimeout(() => window.location.reload(), 700);
+        if (json.reload) reloadRequested = true;
         return true;
     } catch {
         const message = texts().network || '';
@@ -147,7 +184,18 @@ export async function submitForm(form) {
         return false;
     } finally {
         submitter?.removeAttribute('aria-busy');
+        inFlight--;
+        if (reloadRequested) reloadWhenIdle();
     }
+}
+
+// Ein zweiter Aufruf während der Anfrage (Doppelklick, Enter und Speicherleiste)
+// bekommt dieselbe Anfrage zurück; abgeschickt wird nur einmal.
+export function submitForm(form) {
+    if (!pending.has(form)) {
+        pending.set(form, send(form).finally(() => pending.delete(form)));
+    }
+    return pending.get(form);
 }
 
 export function initAjaxForms() {

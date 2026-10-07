@@ -275,14 +275,17 @@ return [
     | Oberfläche der Verwaltung
     |--------------------------------------------------------------------------
     |
-    | toast_ms: wie lange ein Hinweis wie „Gespeichert“ stehen bleibt, in
-    | Millisekunden. default_brand_color: Markenfarbe, solange ein Betrieb
-    | keine eigene gewählt hat (Buchungsseite, Buchungsknopf, Farbwahl in den
-    | Einstellungen).
+    | toast_ms: wie lange ein Hinweis wie „Gespeichert” stehen bleibt, in
+    | Millisekunden. reload_delay_ms: Wartezeit, bevor die Seite nach einer
+    | Änderung neu lädt, die Navigation oder Aufbau betrifft (etwa der
+    | Betriebstyp), in Millisekunden; so bleibt „Gespeichert” lesbar.
+    | default_brand_color: Markenfarbe, solange ein Betrieb keine eigene
+    | gewählt hat (Buchungsseite, Buchungsknopf, Farbwahl in den Einstellungen).
     |
     */
     'ui' => [
         'toast_ms' => EnvSetting::integer('SWAYY_UI_TOAST_MS', default: 3200, min: 1000, max: 20000),
+        'reload_delay_ms' => EnvSetting::integer('SWAYY_UI_RELOAD_DELAY_MS', default: 1200, min: 0, max: 10000),
         'default_brand_color' => EnvSetting::hexColor('SWAYY_UI_DEFAULT_BRAND_COLOR', default: '#0f766e'),
     ],
 ];

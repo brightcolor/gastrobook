@@ -27,9 +27,15 @@ export function showToast(message, { error = false, undo = null } = {}) {
     el.dataset.state = error ? 'error' : 'ok';
     el.classList.remove('opacity-0', 'pointer-events-none');
     clearTimeout(timer);
-    timer = setTimeout(() => hide(el), window.SwayyAdmin?.ui?.toastMs ?? 3200);
+    timer = setTimeout(() => hide(el), window.SwayyAdmin?.ui?.toastMs);
 }
 
+// Knöpfe eines ausgeblendeten Hinweises sind inert: weder per Tab noch für
+// Screenreader erreichbar. Die Live-Region selbst bleibt erreichbar, damit
+// der nächste Hinweis angesagt wird.
 function hide(el) {
     el.classList.add('opacity-0', 'pointer-events-none');
+    el.querySelectorAll('button').forEach((button) => {
+        button.inert = true;
+    });
 }

@@ -1,12 +1,18 @@
 // Speicherleiste (x-save-bar): erscheint, sobald ein Formular mit
-// data-savebar geändert ist. „Speichern“ schickt die geänderten Formulare
-// nacheinander ab, „Verwerfen“ setzt sie auf den gespeicherten Stand zurück.
+// data-savebar geändert ist. „Speichern" schickt die geänderten Formulare
+// nacheinander ab, „Verwerfen" setzt sie auf den gespeicherten Stand zurück.
 // Wer die Seite mit Änderungen verlässt, bekommt die Rückfrage des Browsers.
+// Formulare mit data-savebar enthalten keine Dateifelder; Uploads speichern
+// sofort über eigene Formulare.
 
-import { submitForm } from './forms.js';
+import { savedSnapshot, snapshot, submitForm } from './forms.js';
 import { showToast } from './toast.js';
 
-const snapshot = (form) => new URLSearchParams(new FormData(form)).toString();
+// Erstes bedienbares Feld eines Formulars.
+const firstField = (form) =>
+    [...form.elements].find(
+        (el) => el.matches('input:not([type="hidden"]), select, textarea') && !el.disabled && el.getClientRects().length > 0,
+    );
 
 export function initSaveBar() {
     const bar = document.querySelector('[data-save-bar]');
@@ -15,9 +21,9 @@ export function initSaveBar() {
 
     const base = new Map(forms.map((form) => [form, snapshot(form)]));
     const dirtyForms = () => forms.filter((form) => snapshot(form) !== base.get(form));
-
     const status = document.querySelector('[data-save-bar-status]');
     let wasDirty = false;
+    let saving = false;
 
     const render = () => {
         const dirty = dirtyForms();
@@ -31,30 +37,55 @@ export function initSaveBar() {
         }
     };
 
+    // Verschwindet die Leiste mit dem fokussierten Knopf, wandert der Fokus
+    // ins erste Feld des Formulars.
+    const moveFocusOut = (form) => {
+        if (form && dirtyForms().length === 0 && bar.contains(document.activeElement)) {
+            firstField(form)?.focus();
+        }
+    };
+
     forms.forEach((form) => {
         form.addEventListener('input', render);
         form.addEventListener('change', render);
-        const rebase = () => {
+        form.addEventListener('swayy:saved', () => {
+            base.set(form, savedSnapshot(form) ?? snapshot(form));
+            moveFocusOut(form);
+            render();
+        });
+        form.addEventListener('swayy:rebase', () => {
             base.set(form, snapshot(form));
             render();
-        };
-        form.addEventListener('swayy:saved', rebase);
-        form.addEventListener('swayy:rebase', rebase);
+        });
     });
 
     bar.querySelector('[data-save-bar-discard]')?.addEventListener('click', () => {
-        dirtyForms().forEach((form) => {
+        if (saving) return;
+        const dirty = dirtyForms();
+        dirty.forEach((form) => {
             form.reset();
             form.dispatchEvent(new CustomEvent('swayy:discarded'));
         });
+        moveFocusOut(dirty[0]);
         render();
         showToast('Änderungen verworfen');
     });
 
+    // Speichern prüft zuerst die Eingaben im Browser (Pflichtfelder, Zahlenbereiche),
+    // wie beim Absenden mit Enter. Solange die Anfragen laufen, nehmen beide
+    // Knöpfe keine weiteren Klicks an.
     bar.querySelector('[data-save-bar-save]')?.addEventListener('click', async () => {
-        for (const form of dirtyForms()) {
-            const ok = await submitForm(form);
-            if (!ok) break;
+        if (saving) return;
+        saving = true;
+        bar.setAttribute('aria-busy', 'true');
+        try {
+            for (const form of dirtyForms()) {
+                if (!form.reportValidity()) break;
+                if (!(await submitForm(form))) break;
+            }
+        } finally {
+            saving = false;
+            bar.removeAttribute('aria-busy');
         }
         render();
     });
