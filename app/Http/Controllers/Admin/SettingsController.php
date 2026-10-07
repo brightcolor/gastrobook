@@ -20,6 +20,7 @@ use App\Models\TableBlock;
 use App\Models\TableCombination;
 use App\Rules\AllowedOutboundUrl;
 use App\Services\AuditLogger;
+use App\Services\Mail\GuestReplyAddress;
 use App\Services\Newsletter\MailwizzProvider;
 use App\Services\PlanLimitService;
 use App\Services\Sms\SevenIoProvider;
@@ -992,7 +993,7 @@ class SettingsController extends Controller
         // Die Swayy-Antwortadresse lässt sich nur aktivieren, wenn die Domain
         // eingerichtet ist – sonst zeigte sie ins Leere.
         $relayAn = $request->boolean('mail_relay_enabled');
-        if ($relayAn && ! \App\Services\Mail\GuestReplyAddress::isConfigured()) {
+        if ($relayAn && ! GuestReplyAddress::isConfigured()) {
             return back()->withErrors([
                 'mail_relay_enabled' => __('Die Antwortadresse über Swayy ist noch nicht eingerichtet (es fehlt die Domain). Bitte wende dich an den Betreiber, bevor du sie aktivierst.'),
             ]);

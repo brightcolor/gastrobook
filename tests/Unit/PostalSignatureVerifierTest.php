@@ -76,17 +76,17 @@ class PostalSignatureVerifierTest extends TestCase
     public function test_valid_signature_passes(): void
     {
         $payload = '{"rcpt_to":"x"}';
-        $this->assertTrue((new PostalSignatureVerifier())->verify($payload, $this->sign($payload)));
+        $this->assertTrue((new PostalSignatureVerifier)->verify($payload, $this->sign($payload)));
     }
 
     public function test_tampered_payload_fails(): void
     {
-        $this->assertFalse((new PostalSignatureVerifier())->verify('{"rcpt_to":"y"}', $this->sign('{"rcpt_to":"x"}')));
+        $this->assertFalse((new PostalSignatureVerifier)->verify('{"rcpt_to":"y"}', $this->sign('{"rcpt_to":"x"}')));
     }
 
     public function test_without_key_fails(): void
     {
         config(['swayy.guest_mail_relay.inbound_public_key' => '']);
-        $this->assertFalse((new PostalSignatureVerifier())->verify('x', 'x'));
+        $this->assertFalse((new PostalSignatureVerifier)->verify('x', 'x'));
     }
 }

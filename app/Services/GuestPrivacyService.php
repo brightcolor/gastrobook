@@ -7,6 +7,7 @@ use App\Models\EventBooking;
 use App\Models\FeedbackRequest;
 use App\Models\FeedbackResponse;
 use App\Models\Guest;
+use App\Models\GuestMailReply;
 use App\Models\GuestMergeLog;
 use App\Models\NotificationLog;
 use App\Models\Reservation;
@@ -177,7 +178,7 @@ class GuestPrivacyService
             // Eingehende Antworten des Gastes fuehren Absender und Inhalt im
             // Klartext. Sie haengen ueber guest_id am Gast und werden geleert;
             // der Datensatz bleibt fuer den Verlauf, ohne Personenbezug.
-            \App\Models\GuestMailReply::withoutGlobalScopes()
+            GuestMailReply::withoutGlobalScopes()
                 ->where('guest_id', $guest->id)
                 ->update(['from_email' => null, 'from_name' => null, 'subject' => null, 'body_text' => null]);
 
