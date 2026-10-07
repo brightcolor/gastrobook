@@ -1,3 +1,5 @@
+import { initAdmin } from './admin/index.js';
+
 // Global, dependency-free UX behaviors for admin + public pages.
 
 // ---------------------------------------------------------------------------
@@ -73,3 +75,11 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => el.remove(), 260);
     }
 });
+
+// ---------------------------------------------------------------------------
+// Verwaltung (layouts/admin.blade.php setzt data-admin): Navigation,
+// Formulare, Speicherleiste.
+// ---------------------------------------------------------------------------
+if (document.body?.hasAttribute('data-admin')) {
+    initAdmin();
+}

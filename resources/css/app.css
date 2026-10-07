@@ -286,3 +286,54 @@
 
 /* Auf dunklem Grund (Live-Board, Vollbild) */
 .tip-dark { background: var(--color-stone-700); color: var(--color-stone-300); }
+
+/* Navigation der Verwaltung (layouts/admin.blade.php, resources/js/admin/nav.js). */
+.nav-rail {
+    width: 15rem;
+    transition: width 0.15s ease;
+}
+.nav-rail-only {
+    display: none;
+}
+@media (min-width: 768px) and (max-width: 1279.98px) {
+    .nav-rail[data-collapsed='true'][data-nav-mode='main'] {
+        width: 4.25rem;
+    }
+    .nav-rail[data-collapsed='true'][data-nav-mode='main'] .nav-label,
+    .nav-rail[data-collapsed='true'][data-nav-mode='main'] .nav-heading {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+    .nav-rail[data-collapsed='true'][data-nav-mode='main'] .nav-full {
+        display: none;
+    }
+    .nav-rail[data-collapsed='true'][data-nav-mode='main'] .nav-rail-only {
+        display: flex;
+    }
+    .nav-rail[data-collapsed='true'][data-nav-mode='main'] [data-nav-key] {
+        justify-content: center;
+    }
+}
+@media (min-width: 1280px) {
+    .nav-collapse {
+        display: none;
+    }
+}
+.nav-rail[data-nav-mode='settings'] .nav-collapse {
+    display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+    .nav-rail {
+        transition: none;
+    }
+}
+
+/* Felder, die der Server als fehlerhaft meldet (resources/js/admin/forms.js). */
+[aria-invalid='true'] {
+    border-color: #b91c1c;
+    box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.15);
+}

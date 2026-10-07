@@ -155,7 +155,7 @@ class FloorPlanEditorTest extends TestCase
         // But the scoped one is still there, so the edit toggle keeps working.
         $this->assertStringContainsString('[class*="fp-"].hidden', $html);
         // And the navigation is on the page, including its own entry.
-        $this->assertStringContainsString('hidden w-60', $html);
+        $this->assertMatchesRegularExpression('/<aside[^>]*data-nav-rail[^>]*\bhidden\b[^>]*\bmd:flex\b/', $html);
         $this->assertStringContainsString('Tischplan', $html);
     }
 }
