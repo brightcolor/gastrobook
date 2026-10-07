@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.133.0] – 2026-10-07
+
+### Buchbare Saison für Saisonbetriebe
+
+Saisonbetriebe legen jetzt fest, in welchen Zeiträumen online gebucht werden
+kann, statt die geschlossene Zeit mit vielen Sperren auszuschließen. Mehrere
+wiederkehrende Fenster je Standort sind möglich (z. B. Sommersaison und
+Weihnachtsmarkt), auch über den Jahreswechsel.
+
+- **Einstellung „Buchbare Saison"** (neben den Sperrzeiten): „Von Tag/Monat bis
+  Tag/Monat", gilt jedes Jahr. Ohne Eintrag bleibt das ganze Jahr buchbar.
+- **Außerhalb der Saison** nimmt die Online-Buchung keine Reservierung an und
+  zeigt dem Gast einen warmen Hinweis mit dem nächsten Saisonstart.
+- Sperrzeiten gelten weiter als Ausnahmen innerhalb der Saison; das Personal
+  kann eine Buchung außerhalb der Saison von Hand übersteuern.
+
 ## [1.132.0] – 2026-10-07
 
 ### Sperrzeiten: klar bedienbar und ohne stille Fehleingaben
