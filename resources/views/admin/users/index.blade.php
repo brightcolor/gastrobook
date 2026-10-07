@@ -4,7 +4,7 @@
 <h1 class="mb-5 text-2xl font-bold">Benutzer & Rollen<span class="tip" tabindex="0" data-tip="Wer darf sich anmelden und was darf er tun. Jede Person bekommt eine eigene Anmeldung – bitte keine gemeinsamen Zugänge, sonst steht im Änderungsprotokoll später nicht, wer etwas gemacht hat.">?</span></h1>
 
 <div class="grid gap-6 lg:grid-cols-3">
-    <div class="lg:col-span-2">
+    <div class="min-w-0 lg:col-span-2">
         <div class="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-stone-100">
             <table class="w-full min-w-[42rem] text-sm">
                 <thead class="border-b border-stone-100 text-left text-xs font-semibold uppercase tracking-wide text-stone-500">
