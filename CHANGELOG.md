@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.134.1] – 2026-10-07
+
+### „Max. Gäste" einer Sperrzeit wirkt in jedem Modus und auch je Raum
+
+Eine Sperrzeit mit „Max. Gäste" begrenzte die Gästezahl nur, wenn der Betrieb
+nach Plätzen oder gemischt bucht, und nur für den ganzen Betrieb. Im
+Standardmodus „nach Tischen" und bei jeder Grenze für einen einzelnen Raum
+wurde die Angabe gespeichert und blieb ohne Wirkung: Online und im Admin waren
+weiter alle Tische buchbar.
+
+- **Grenze für den ganzen Betrieb:** zählt in jedem Kapazitätsmodus die
+  Personen aller aktiven Reservierungen, die sich mit dem gewünschten Zeitraum
+  überschneiden. Ist sie erreicht, ist die Zeit nicht mehr buchbar („alle
+  Plätze vergeben"). Im Modus „nach Plätzen" gilt zusätzlich wie bisher die
+  feste Grenze je Zeitfenster.
+- **Grenze für einen Raum:** zählt nur Reservierungen an Tischen dieses Raums
+  und begrenzt nur Buchungen in diesem Raum. Die automatische Tischwahl weicht
+  in andere Räume aus; ein von Hand gewählter Tisch im vollen Raum wird mit
+  „alle Plätze vergeben" abgelehnt. Der Tischplan zeigt die Tische dieses Raums
+  als gesperrt, im Admin und auf der Buchungsseite.
+- **Umbuchen:** Die eigene Reservierung zählt beim Verschieben nicht gegen die
+  Grenze.
+- **Salons:** Jeder Termin zählt als eine Person. Eine Grenze für den ganzen
+  Betrieb begrenzt damit die gleichzeitigen Termine, beim Buchen und beim
+  Verschieben, mit eigener Meldung „alle Termine vergeben".
+- **Einstellungen:** Eine Sperrzeit mit „Max. Gäste" lässt sich jetzt auch für
+  einen einzelnen Raum und im Modus „nach Tischen" speichern.
+
 ## [1.134.0] – 2026-10-07
 
 ### Kalender beginnt am ersten Saisontag
