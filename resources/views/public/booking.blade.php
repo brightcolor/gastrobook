@@ -488,10 +488,12 @@ details > summary::-webkit-details-marker { display: none; }
                     <button type="button" class="sp-edit ml-3 text-xs font-semibold text-brand hover:underline" onclick="event.stopPropagation();editStep(2)">Ändern</button>
                 </div>
                 <div class="sp-body space-y-4 px-5 pb-5 sm:px-6">
+                    {{-- Grenzen aus dem Controller: bei gesetzter Saison beginnt
+                         der Kalender am ersten Saisontag. --}}
                     <input type="date" name="date" id="date" required
-                           min="{{ now($location->timezone)->toDateString() }}"
-                           max="{{ now($location->timezone)->addDays($settings->max_advance_days)->toDateString() }}"
-                           value="{{ old('date', now($location->timezone)->toDateString()) }}"
+                           min="{{ $dateMin }}"
+                           max="{{ $dateMax }}"
+                           value="{{ old('date', $dateMin) }}"
                            class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3 text-base">
                     @error('date')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
 

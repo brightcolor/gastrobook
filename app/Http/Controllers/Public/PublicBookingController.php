@@ -159,12 +159,16 @@ class PublicBookingController extends Controller
             ->where('starts_at', '>', now())
             ->count();
 
+        [$dateMin, $dateMax] = $this->calendarBounds($location);
+
         $data = [
             'tenant' => $tenant,
             'location' => $location,
             'settings' => $location->effectiveSettings(),
             'upcomingEvents' => $upcomingEvents,
             'storeUrl' => $storeUrl ?: route('booking.store', [$tenant->slug, $location->slug]),
+            'dateMin' => $dateMin,
+            'dateMax' => $dateMax,
         ];
 
         if ($tenant->isSalon()) {
@@ -177,6 +181,26 @@ class PublicBookingController extends Controller
         }
 
         return view('public.booking', $data);
+    }
+
+    /**
+     * Grenzen des Kalenders: ab heute bis zum Buchungshorizont, bei gesetzter
+     * Saison gekürzt auf den ersten und letzten buchbaren Tag darin. Liegt im
+     * Horizont kein Saisontag, bleibt der volle Zeitraum – der Saison-Hinweis
+     * nennt dann den nächsten Start.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function calendarBounds(Location $location): array
+    {
+        $today = CarbonImmutable::now($location->timezone)->startOfDay();
+        $horizon = $today->addDays((int) $location->effectiveSettings()->max_advance_days);
+        $window = $this->seasons->bookableWindow($location, $today, $horizon);
+
+        return [
+            ($window['first'] ?? $today)->toDateString(),
+            ($window['last'] ?? $horizon)->toDateString(),
+        ];
     }
 
     public function slots(Request $request, string $tenantSlug, string $locationSlug)
@@ -849,11 +873,15 @@ class PublicBookingController extends Controller
             ]);
         }
 
+        [$dateMin, $dateMax] = $this->calendarBounds($location);
+
         return view('public.reschedule', [
             'reservation' => $reservation,
             'location' => $location,
             'tenant' => $tenant,
             'settings' => $settings,
+            'dateMin' => $dateMin,
+            'dateMax' => $dateMax,
             'tooLate' => false,
             'isSalon' => $tenant?->isSalon() ?? false,
             'serviceIds' => $reservation->services->pluck('id')->all(),
