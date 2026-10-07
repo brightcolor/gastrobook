@@ -20,6 +20,7 @@ use App\Services\RefundService;
 use App\Services\ReservationAvailabilityService;
 use App\Services\ReservationLifecycleService;
 use App\Services\SalonAvailabilityService;
+use App\Services\SeasonService;
 use App\Services\TableAssignmentService;
 use App\Services\WaitlistService;
 use Carbon\CarbonImmutable;
@@ -41,6 +42,7 @@ class PublicBookingController extends Controller
         private readonly TableAssignmentService $tableAssignment,
         private readonly RefundService $refunds,
         private readonly GuestAuthService $guestAuth,
+        private readonly SeasonService $seasons,
     ) {}
 
     /**
@@ -206,6 +208,14 @@ class PublicBookingController extends Controller
         ];
 
         if ($available === []) {
+            // Außerhalb der buchbaren Saison: warmer Hinweis statt Alternativen.
+            $seasonNotice = $this->seasonNotice($location, $localDate);
+            if ($seasonNotice !== null) {
+                $response['season_notice'] = $seasonNotice;
+
+                return response()->json($response);
+            }
+
             $partySize = (int) $validated['party_size'];
             $maxParty = $this->largestBookableParty($location);
 
@@ -224,6 +234,34 @@ class PublicBookingController extends Controller
         }
 
         return response()->json($response);
+    }
+
+    /**
+     * Warmer Hinweis, wenn der angefragte Tag außerhalb der buchbaren Saison
+     * liegt: nennt den nächsten Saisonstart. null, wenn der Tag in Saison liegt
+     * oder gar keine Saison gesetzt ist.
+     *
+     * @return array{text: string, next_date: ?string}|null
+     */
+    private function seasonNotice(Location $location, CarbonImmutable $localDate): ?array
+    {
+        if ($this->seasons->isBookable($location, $localDate)) {
+            return null;
+        }
+
+        $next = $this->seasons->nextOpening($location, $localDate);
+        $du = $location->effectiveSettings()->du();
+
+        if ($next !== null) {
+            $tag = $next->locale('de')->translatedFormat('j. F');
+            $text = $du
+                ? 'Schön, dass du da bist! Reservierungen nehmen wir wieder ab dem '.$tag.' entgegen. Schau gern bis dahin noch einmal vorbei.'
+                : 'Schön, dass Sie da sind! Reservierungen nehmen wir wieder ab dem '.$tag.' entgegen. Schauen Sie gern bis dahin noch einmal vorbei.';
+        } else {
+            $text = 'In diesem Zeitraum nehmen wir gerade keine Reservierungen entgegen.';
+        }
+
+        return ['text' => $text, 'next_date' => $next?->toDateString()];
     }
 
     /**
