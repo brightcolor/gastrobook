@@ -25,7 +25,7 @@ class PostalInboundController extends Controller
     {
         $payload = $request->getContent();
 
-        if (! $this->verifier->verify($payload, (string) $request->header('X-Postal-Signature'))) {
+        if (! $this->verifier->verify($payload, (string) $request->header($this->verifier->headerName()))) {
             return response()->json(['error' => 'Signatur der Anfrage fehlt oder stimmt nicht. Die Nachricht wurde nicht verarbeitet.'], 401);
         }
 

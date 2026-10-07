@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.130.2] – 2026-10-07
+
+### Antwortadresse: Signatur so prüfen, wie Postal sie schickt
+
+Der Abgleich mit dem laufenden Postal (3.3.7) zeigte zwei Abweichungen, die
+jede echte Gästeantwort mit 401 abgewiesen hätten. Beide sind behoben, bevor die
+Antwortadresse scharf geschaltet wird.
+
+- **Richtige Kopfzeile:** Postal schickt die SHA-256-Signatur in
+  `X-Postal-Signature-256`; `X-Postal-Signature` trägt die SHA-1-Signatur.
+  Geprüft wird jetzt die zum eingestellten Verfahren passende Kopfzeile
+  (Vorgabe SHA-256). Neue Einstellung `SWAYY_GUEST_MAIL_RELAY_SIGNATURE_HEADER`,
+  leer heißt: passend zum Verfahren. Ein unbekanntes Verfahren meldet das Log und
+  fällt auf SHA-256 zurück.
+- **Schlüssel wie Postal ihn ausgibt:** `SWAYY_GUEST_MAIL_RELAY_PUBLIC_KEY`
+  nimmt den Wert hinter `p=` aus `postal default-dkim-record`, den ganzen
+  DKIM-Eintrag oder einen PEM-Block. Lässt sich der Schlüssel nicht lesen,
+  nennt eine Warnung im Log die Variable und den richtigen Wert.
+- Tests bilden den Aufruf von Postal nach: Format `RawMessage`, Body als JSON,
+  base64 mit Zeilenumbrüchen, beide Signaturkopfzeilen.
+
 ## [1.130.1] – 2026-10-07
 
 ### Bezahlte Betriebe werden nicht mehr von einer alten Testfrist ausgesperrt

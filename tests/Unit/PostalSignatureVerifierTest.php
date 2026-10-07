@@ -89,4 +89,49 @@ class PostalSignatureVerifierTest extends TestCase
         config(['swayy.guest_mail_relay.inbound_public_key' => '']);
         $this->assertFalse((new PostalSignatureVerifier)->verify('x', 'x'));
     }
+
+    /** PEM ohne Rahmen und Umbrüche: der p=-Wert, wie Postal ihn ausgibt. */
+    private function bareBase64(): string
+    {
+        $zeilen = array_filter(
+            array_map('trim', explode("\n", trim(self::PUBLIC_KEY))),
+            fn (string $zeile) => $zeile !== '' && ! str_starts_with($zeile, '-----'),
+        );
+
+        return implode('', $zeilen);
+    }
+
+    public function test_bare_p_value_from_postal_is_accepted(): void
+    {
+        config(['swayy.guest_mail_relay.inbound_public_key' => $this->bareBase64()]);
+        $payload = '{"rcpt_to":"x"}';
+
+        $this->assertTrue((new PostalSignatureVerifier)->verify($payload, $this->sign($payload)));
+    }
+
+    public function test_full_dkim_record_is_accepted(): void
+    {
+        config(['swayy.guest_mail_relay.inbound_public_key' => 'v=DKIM1; t=s; h=sha256; p='.$this->bareBase64()]);
+        $payload = '{"rcpt_to":"x"}';
+
+        $this->assertTrue((new PostalSignatureVerifier)->verify($payload, $this->sign($payload)));
+    }
+
+    public function test_unreadable_key_fails(): void
+    {
+        config(['swayy.guest_mail_relay.inbound_public_key' => 'kein-schluessel']);
+
+        $this->assertFalse((new PostalSignatureVerifier)->verify('x', base64_encode('x')));
+    }
+
+    public function test_header_follows_the_algorithm(): void
+    {
+        $this->assertSame('X-Postal-Signature-256', (new PostalSignatureVerifier)->headerName());
+
+        config(['swayy.guest_mail_relay.inbound_signature_algo' => 'sha1']);
+        $this->assertSame('X-Postal-Signature', (new PostalSignatureVerifier)->headerName());
+
+        config(['swayy.guest_mail_relay.inbound_signature_header' => 'X-Eigene-Signatur']);
+        $this->assertSame('X-Eigene-Signatur', (new PostalSignatureVerifier)->headerName());
+    }
 }
