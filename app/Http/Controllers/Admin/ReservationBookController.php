@@ -252,7 +252,7 @@ class ReservationBookController extends Controller
     {
         $this->authorizeReservation($reservation);
 
-        $reservation->load(['tables.room', 'guest.tags', 'guest.notes', 'statusHistories.user', 'notes.user', 'tags', 'attachments.uploader']);
+        $reservation->load(['tables.room', 'guest.tags', 'guest.notes', 'statusHistories.user', 'notes.user', 'tags', 'attachments.uploader', 'mailReplies']);
 
         return view('admin.reservations.show', [
             'reservation' => $reservation,
