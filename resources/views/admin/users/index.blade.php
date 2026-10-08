@@ -35,15 +35,18 @@
                 </div>
                 <div>
                     @if($canEdit && array_key_exists($m->role, $roleOptions))
-                        <form method="POST" action="{{ route('admin.users.role', $m) }}" data-ajax data-reset-on-error class="space-y-2">
+                        {{-- Gespeichert wird erst mit dem Knopf: Pfeiltasten wechseln unter Windows die Auswahl schon beim Durchblättern. --}}
+                        <form method="POST" action="{{ route('admin.users.role', $m) }}" data-ajax data-reset-on-error
+                              class="flex flex-wrap items-center gap-2 [&>[data-form-problems]]:basis-full">
                             @csrf
                             @method('PUT')
                             <label for="role-{{ $m->id }}" class="sr-only">Rolle von {{ $m->user?->name }}</label>
-                            <select id="role-{{ $m->id }}" name="role" data-autosubmit class="w-full">
+                            <select id="role-{{ $m->id }}" name="role" class="min-w-0 flex-1">
                                 @foreach($roleOptions as $role => $label)
                                     <option value="{{ $role }}" @selected($m->role === $role)>{{ $label }}</option>
                                 @endforeach
                             </select>
+                            <button type="submit" class="btn btn-secondary">Speichern<span class="sr-only"> Rolle von „{{ $m->user?->name }}“</span></button>
                         </form>
                     @else
                         <p class="text-sm">{{ __('roles.'.$m->role.'.label') }}</p>
@@ -51,7 +54,7 @@
                 </div>
                 <div class="flex flex-wrap items-start gap-1 md:justify-end">
                     @if($canEdit && $hasSeveralLocations)
-                        <button type="button" data-drawer-open="zugang-{{ $m->id }}" class="btn btn-quiet">Standorte</button>
+                        <button type="button" data-drawer-open="zugang-{{ $m->id }}" class="btn btn-quiet">Standorte<span class="sr-only"> von „{{ $m->user?->name }}“</span></button>
                     @endif
                     @if($canEdit)
                         <x-inline-confirm id="entfernen-{{ $m->id }}" :action="route('admin.users.remove', $m)" method="DELETE"
@@ -84,9 +87,14 @@
                         <p class="font-semibold [overflow-wrap:anywhere]">{{ $inv->email }}</p>
                         <p class="text-[0.8125rem] text-stone-600">{{ __('roles.'.$inv->role.'.label') }} · gültig bis {{ $inv->expires_at->copy()->setTimezone($tz)->format('d.m.Y') }}</p>
                     </div>
-                    <button type="button" class="btn btn-secondary"
-                            data-copy="{{ route('invitation.accept', $inv->token) }}"
-                            data-copy-message="Link für {{ $inv->email }} kopiert.">Link kopieren</button>
+                    @php($link = route('invitation.accept', $inv->token))
+                    <div class="flex w-full min-w-0 items-center gap-2 sm:w-auto sm:flex-1">
+                        <label for="invite-link-{{ $inv->id }}" class="sr-only">Einladungslink für {{ $inv->email }}</label>
+                        <input id="invite-link-{{ $inv->id }}" type="text" readonly value="{{ $link }}" class="min-w-0 flex-1 text-[0.8125rem] text-stone-700">
+                        <button type="button" class="btn btn-secondary shrink-0"
+                                data-copy="{{ $link }}"
+                                data-copy-message="Link für {{ $inv->email }} kopiert.">Link kopieren<span class="sr-only"> für {{ $inv->email }}</span></button>
+                    </div>
                 </li>
             @endforeach
         </ul>

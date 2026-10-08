@@ -47,6 +47,11 @@ class TeamPageTest extends TestCase
         $this->assertStringContainsString('data-copy="'.route('invitation.accept', $invitation->token).'"', $html);
         $this->assertStringContainsString('data-reset-on-error', $html);
         $this->assertStringNotContainsString('>staff<', $html);
+        // Rollenwechsel speichert erst per Knopf; Pfeiltasten im Auswahlfeld lösen nichts aus.
+        $this->assertStringNotContainsString('data-autosubmit', $html);
+        $this->assertMatchesRegularExpression('/<button type="submit" class="btn btn-secondary">Speichern<span class="sr-only"> Rolle von „[^“]+“<\/span><\/button>/u', $html);
+        // Der Link steht sichtbar zum Markieren da, falls der Browser das Kopieren verweigert.
+        $this->assertMatchesRegularExpression('/id="invite-link-'.$invitation->id.'" type="text" readonly value="'.preg_quote(e(route('invitation.accept', $invitation->token)), '/').'"/', $html);
 
         foreach (['index', 'partials/locations'] as $view) {
             $source = (string) file_get_contents(resource_path("views/admin/users/{$view}.blade.php"));
