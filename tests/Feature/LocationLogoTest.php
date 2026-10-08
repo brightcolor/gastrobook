@@ -82,6 +82,37 @@ class LocationLogoTest extends TestCase
             ->assertJsonPath('errors.logo.0', 'Das Logo ist größer als 100 KB. Bitte eine kleinere Datei wählen.');
     }
 
+    public function test_a_limit_between_whole_megabytes_is_named_exactly(): void
+    {
+        Storage::fake('public');
+        config(['swayy.uploads.logo_max_kb' => 1536]);
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->postJson(route('admin.locations.logo.store', $setup['location']), [
+            'logo' => UploadedFile::fake()->image('logo.png', 120, 60)->size(1600),
+        ])->assertStatus(422)
+            ->assertJsonPath('errors.logo.0', 'Das Logo ist größer als 1,5 MB. Bitte eine kleinere Datei wählen.');
+
+        $this->actingAs($owner)->get('/admin/locations')->assertOk()->assertSee('bis 1,5 MB.');
+    }
+
+    public function test_another_tenants_logo_cannot_be_removed(): void
+    {
+        Storage::fake('public');
+        $setup = $this->createTenantSetup();
+        $other = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        Storage::disk('public')->put('logos/'.$other['location']->id.'/fremd.png', 'x');
+        $other['location']->update(['brand_logo_path' => 'logos/'.$other['location']->id.'/fremd.png']);
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->deleteJson(route('admin.locations.logo.destroy', $other['location']))->assertNotFound();
+
+        Storage::disk('public')->assertExists('logos/'.$other['location']->id.'/fremd.png');
+    }
+
     public function test_the_allowed_formats_come_from_the_settings(): void
     {
         Storage::fake('public');

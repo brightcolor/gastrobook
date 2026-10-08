@@ -9,10 +9,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Location;
 use App\Services\AuditLogger;
 use App\Services\PlanLimitService;
+use App\Support\FileSize;
 use App\Support\TenantContext;
 use DateTimeZone;
 use Illuminate\Http\Request;
-use Illuminate\Support\Number;
 use Illuminate\Support\Str;
 
 /**
@@ -55,7 +55,7 @@ class LocationController extends Controller
             'logoAccept' => implode(',', array_map(fn (string $type) => '.'.$type, $types)),
             'logoHelp' => __('Als :types, bis :size.', [
                 'types' => LocationLogoController::typeList($types),
-                'size' => Number::fileSize((int) config('swayy.uploads.logo_max_kb') * 1024),
+                'size' => FileSize::fromKilobytes((int) config('swayy.uploads.logo_max_kb')),
             ]),
         ]);
     }

@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Support\FileSize;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
-use Illuminate\Support\Number;
 use Illuminate\View\View;
 
 /**
@@ -32,7 +32,7 @@ class DataController extends Controller
         return view('admin.settings.data', [
             'tenant' => $tenant,
             'isLastOwner' => $tenant->memberships()->where('role', 'tenant_owner')->count() <= 1,
-            'importLimit' => Number::fileSize((int) config('swayy.uploads.import_max_kb') * 1024),
+            'importLimit' => FileSize::fromKilobytes((int) config('swayy.uploads.import_max_kb')),
         ]);
     }
 }

@@ -8,10 +8,10 @@ use App\Http\Controllers\Admin\Settings\Concerns\RespondsToSettingsForms;
 use App\Http\Controllers\Controller;
 use App\Models\Location;
 use App\Services\AuditLogger;
+use App\Support\FileSize;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Number;
 
 /**
  * Logo je Standort (Einstellungen › Betrieb › Standorte, Seitenleiste des
@@ -45,7 +45,7 @@ class LocationLogoController extends Controller
             'logo.uploaded' => __('Das Logo kam nicht vollständig an. Bitte eine kleinere Datei wählen oder es erneut versuchen.'),
             'logo.image' => $wrongType,
             'logo.mimes' => $wrongType,
-            'logo.max' => __('Das Logo ist größer als :size. Bitte eine kleinere Datei wählen.', ['size' => Number::fileSize($maxKb * 1024)]),
+            'logo.max' => __('Das Logo ist größer als :size. Bitte eine kleinere Datei wählen.', ['size' => FileSize::fromKilobytes($maxKb)]),
         ]);
 
         if ($location->brand_logo_path) {

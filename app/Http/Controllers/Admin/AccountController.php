@@ -11,10 +11,10 @@ use App\Services\AccountExportService;
 use App\Services\AccountImportService;
 use App\Services\AuditLogger;
 use App\Services\TenantDeletionService;
+use App\Support\FileSize;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Number;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -97,7 +97,7 @@ class AccountController extends Controller
             'file.required' => __('Bitte die Export-Datei auswählen.'),
             'file.mimetypes' => __('Die Datei ist keine Export-Datei von Swayy. Bitte die JSON-Datei aus „Daten herunterladen“ wählen.'),
             'file.max' => __('Die Datei ist größer als :size, mehr nimmt der Import nicht an. Bitte den Support von Swayy fragen.', [
-                'size' => Number::fileSize($maxKb * 1024),
+                'size' => FileSize::fromKilobytes($maxKb),
             ]),
             'confirm.required' => __('Bitte bestätige, dass die Daten zum aktuellen Betrieb hinzugefügt werden.'),
             'confirm.accepted' => __('Bitte bestätige, dass die Daten zum aktuellen Betrieb hinzugefügt werden.'),
