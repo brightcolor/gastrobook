@@ -295,6 +295,32 @@ class NavigationTest extends TestCase
         $this->assertSame(route('admin.settings.index').'#zeiten', $url);
     }
 
+    public function test_the_settings_menu_shares_the_layouts_navigation(): void
+    {
+        $setup = $this->createTenantSetup();
+        $manager = $this->createMember($setup['tenant'], 'location_manager', false);
+        DB::table('location_user')->insert([
+            'location_id' => $setup['location']->id,
+            'user_id' => $manager->id,
+            'tenant_id' => $setup['tenant']->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $this->clearTenantContext();
+        $count = function (string $url) use ($manager): int {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $this->actingAs($manager)->get($url)->assertOk();
+            $queries = array_filter(DB::getQueryLog(), fn (array $query) => str_contains($query['query'], 'location_user'));
+            DB::disableQueryLog();
+
+            return count($queries);
+        };
+
+        // Das Menü baut keine zweite Navigation: nicht mehr Standortabfragen als jede andere Seite.
+        $this->assertSame($count('/admin'), $count('/admin/settings/menu'));
+    }
+
     public function test_a_member_without_access_to_the_location_sees_only_unrestricted_entries(): void
     {
         $setup = $this->createTenantSetup();

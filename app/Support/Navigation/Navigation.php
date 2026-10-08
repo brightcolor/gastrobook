@@ -7,6 +7,7 @@ namespace App\Support\Navigation;
 use App\Models\Location;
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 /**
@@ -33,6 +34,21 @@ final class Navigation
     public static function fromConfig(): self
     {
         return new self((array) config('navigation', []));
+    }
+
+    /**
+     * Eine Instanz je Anfrage, gemeinsam für Controller und Layout: Rechte
+     * und Standortzugriff werden so je Anfrage nur einmal geprüft.
+     */
+    public static function forRequest(Request $request): self
+    {
+        $navigation = $request->attributes->get(self::class);
+        if (! $navigation instanceof self) {
+            $navigation = self::fromConfig();
+            $request->attributes->set(self::class, $navigation);
+        }
+
+        return $navigation;
     }
 
     /**

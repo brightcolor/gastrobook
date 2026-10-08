@@ -27,7 +27,7 @@
     $location = $ctx->location();
     $user = auth()->user();
     $routeName = request()->route()?->getName();
-    $nav = \App\Support\Navigation\Navigation::fromConfig();
+    $nav = \App\Support\Navigation\Navigation::forRequest(request());
     $settingsMode = $nav->isSettingsRoute($routeName);
     $mainGroups = $tenant ? $nav->main($user, $tenant, $location, $routeName) : [];
     $settingsGroups = $tenant && $settingsMode ? $nav->settings($user, $tenant, $location, $routeName) : [];

@@ -24,7 +24,7 @@ class SettingsMenuController extends Controller
         $tenant = $this->context->tenant();
         abort_if($tenant === null, 404);
 
-        $groups = Navigation::fromConfig()->settings($request->user(), $tenant, $this->context->location(), null);
+        $groups = Navigation::forRequest($request)->settings($request->user(), $tenant, $this->context->location(), null);
         abort_if($groups === [], 403, __('Für die Einstellungen fehlt die Berechtigung. Bitte einen Administrator des Betriebs fragen.'));
 
         return view('admin.settings.menu', ['groups' => $groups]);
