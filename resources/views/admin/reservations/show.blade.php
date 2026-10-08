@@ -121,7 +121,13 @@
 
         {{-- History --}}
         <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
-            <h2 class="mb-3 font-bold">Verlauf<span class="tip" tabindex="0" data-tip="Lückenlose Historie dieser Reservierung: wer wann welchen Schritt gemacht hat. Hilft, wenn im Nachhinein unklar ist, wer etwas geändert oder storniert hat.">?</span></h2>
+            <div class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                <h2 class="font-bold">Verlauf<span class="tip" tabindex="0" data-tip="Lückenlose Historie dieser Reservierung: wer wann welchen Schritt gemacht hat. Hilft, wenn im Nachhinein unklar ist, wer etwas geändert oder storniert hat.">?</span></h2>
+                @if($canSeeAudit)
+                    <a href="{{ route('admin.audit.index', ['entity' => 'reservation', 'entity_id' => $reservation->id]) }}"
+                       class="text-sm font-semibold underline underline-offset-2">Alle Änderungen im Protokoll</a>
+                @endif
+            </div>
             <div class="space-y-2 text-sm">
                 @foreach($reservation->statusHistories->sortByDesc('created_at') as $h)
                     <div class="flex items-center gap-3 border-l-2 border-stone-200 pl-3">

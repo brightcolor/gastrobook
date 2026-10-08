@@ -262,6 +262,7 @@ class ReservationBookController extends Controller
             'location' => $reservation->location()->withoutGlobalScope('tenant')->first()
                 ?? $this->context->location(),
             'canEditReservation' => request()->user()->canInTenant('reservations.update', $this->context->tenant()),
+            'canSeeAudit' => request()->user()->canInTenant('audit.view', $this->context->tenant()),
         ]);
     }
 

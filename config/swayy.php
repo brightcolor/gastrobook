@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\Guest;
+use App\Models\Location;
+use App\Models\Reservation;
 use App\Support\EnvSetting;
 
 return [
@@ -268,6 +271,26 @@ return [
         // letzte Wert gilt für alle weiteren Versuche. Je Wert 1 bis 86400,
         // Vorgabe 60,600.
         'backoff' => EnvSetting::integerList('SWAYY_NEWSLETTER_BACKOFF', default: [60, 600], min: 1, max: 86400),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Protokoll
+    |--------------------------------------------------------------------------
+    |
+    | per_page: Einträge je Seite im Protokoll (10–500).
+    | entities: Kürzel in der Adresse (?entity=…&entity_id=…) und das Modell,
+    | dessen Änderungen der Filter „nur dieser Eintrag“ zeigt. Die
+    | Reservierungsdetails verlinken mit dem Kürzel „reservation“.
+    |
+    */
+    'audit' => [
+        'per_page' => EnvSetting::integer('SWAYY_AUDIT_PER_PAGE', default: 100, min: 10, max: 500),
+        'entities' => [
+            'reservation' => Reservation::class,
+            'guest' => Guest::class,
+            'location' => Location::class,
+        ],
     ],
 
     /*
