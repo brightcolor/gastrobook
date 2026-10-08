@@ -78,6 +78,22 @@ class AuditLog extends Model
         'plan_id' => 'Tarif',
         'guest_address' => 'Anrede',
         'timezone' => 'Zeitzone',
+        // Standorte (LocationController)
+        'address_line1' => 'Straße und Hausnummer',
+        'postal_code' => 'PLZ',
+        'city' => 'Ort',
+        'public_intro' => 'Begrüßung',
+        // Team & Rollen (UserManagementController)
+        'all_locations' => 'Alle Standorte',
+        'location_ids' => 'Standorte',
+        'user_id' => 'Benutzer-Nr.',
+        // Allgemein (GeneralController)
+        'imprint_url' => 'Impressum',
+        'privacy_url' => 'Datenschutzhinweise',
+        'terms_url' => 'AGB',
+        'brand_primary_color' => 'Markenfarbe',
+        // 'type' auch bei Marketing-Kampagnen, deshalb allgemein
+        'type' => 'Art',
     ];
 
     /**
@@ -287,6 +303,9 @@ class AuditLog extends Model
         }
         if (str_ends_with($field, '_minor') && is_numeric($value)) {
             return number_format(((float) $value) / 100, 2, ',', '.').' €';
+        }
+        if ($field === 'role' && is_string($value) && trans()->has('roles.'.$value.'.label', 'de')) {
+            return __('roles.'.$value.'.label', [], 'de');
         }
         if ($field === 'guest_address' && is_string($value)) {
             return $value === 'du' ? 'Du' : 'Sie';
