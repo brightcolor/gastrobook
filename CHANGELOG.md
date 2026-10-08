@@ -25,6 +25,70 @@ und Kündigung neuer Betriebe.
   nehmen jetzt auch das Logo des Betriebs von der Platte.
 - Meldung „Dieser Mandant ist gesperrt.“ nennt den nächsten Schritt.
 
+## [1.134.2] – 2026-10-08
+
+### Sicherheitsprüfung wieder lösbar: CSP passt zum Cap-Captcha
+
+Seit der vollständigen Content-Security-Policy (1.129.1, 07.10.2026) konnte
+niemand mehr online buchen: Das Captcha lud zwar, seine Browserprüfung brach aber
+ab. Cap prüft den Browser mit einem Skript in einem srcdoc-iframe, das unsere
+CSP erbt und `eval`/`new Function` aufruft – das blockierte die Richtlinie. Das
+Widget wartete 20 Sekunden („instr_timeout") und lieferte kein Token; Gäste sahen
+„Fehler. Erneut versuchen".
+
+- **Ist das Cap-Captcha aktiv, ergänzt die Anwendung die CSP selbst** um den
+  Cap-Server (`script-src`, `connect-src`), `'unsafe-eval'`,
+  `'wasm-unsafe-eval'` und `worker-src 'self' blob:`. Der Server kommt aus
+  `CAP_SERVER_URL`.
+- `'unsafe-eval'` kostet wenig zusätzlichen Schutz, weil `script-src` ohnehin
+  `'unsafe-inline'` erlaubt; dafür bleibt Caps Erkennung automatisierter Browser
+  aktiv.
+- Ist das Captcha aus, bleibt die Richtlinie eng.
+- Die Hilfseinstellung `SWAYY_CSP_BASE` in der `.env` ist damit überflüssig.
+
+## [1.134.1] – 2026-10-07
+
+### „Max. Gäste" einer Sperrzeit wirkt in jedem Modus und auch je Raum
+
+Eine Sperrzeit mit „Max. Gäste" begrenzte die Gästezahl nur, wenn der Betrieb
+nach Plätzen oder gemischt bucht, und nur für den ganzen Betrieb. Im
+Standardmodus „nach Tischen" und bei jeder Grenze für einen einzelnen Raum
+wurde die Angabe gespeichert und blieb ohne Wirkung: Online und im Admin waren
+weiter alle Tische buchbar.
+
+- **Grenze für den ganzen Betrieb:** zählt in jedem Kapazitätsmodus die
+  Personen aller aktiven Reservierungen, die sich mit dem gewünschten Zeitraum
+  überschneiden. Ist sie erreicht, ist die Zeit nicht mehr buchbar („alle
+  Plätze vergeben"). Im Modus „nach Plätzen" gilt zusätzlich wie bisher die
+  feste Grenze je Zeitfenster.
+- **Grenze für einen Raum:** zählt nur Reservierungen an Tischen dieses Raums
+  und begrenzt nur Buchungen in diesem Raum. Die automatische Tischwahl weicht
+  in andere Räume aus; ein von Hand gewählter Tisch im vollen Raum wird mit
+  „alle Plätze vergeben" abgelehnt. Der Tischplan zeigt die Tische dieses Raums
+  als gesperrt, im Admin und auf der Buchungsseite.
+- **Umbuchen:** Die eigene Reservierung zählt beim Verschieben nicht gegen die
+  Grenze.
+- **Salons:** Jeder Termin zählt als eine Person. Eine Grenze für den ganzen
+  Betrieb begrenzt damit die gleichzeitigen Termine, beim Buchen und beim
+  Verschieben, mit eigener Meldung „alle Termine vergeben".
+- **Einstellungen:** Eine Sperrzeit mit „Max. Gäste" lässt sich jetzt auch für
+  einen einzelnen Raum und im Modus „nach Tischen" speichern.
+
+## [1.134.0] – 2026-10-07
+
+### Kalender beginnt am ersten Saisontag
+
+Ist eine buchbare Saison gesetzt, lässt sich im Kalender der Buchungsseite erst
+ab dem ersten Saisontag ein Datum wählen, und er endet am letzten buchbaren Tag im
+Buchungshorizont. Gebucht werden kann weiter schon heute – nur eben für Tage in
+der Saison. Ein Weihnachtsmarkt ab dem 23. November zeigt im Oktober also direkt
+den 23. November als ersten wählbaren Tag.
+
+- Gilt auch für die Umbuchungsseite.
+- Ohne Saison bleibt der Kalender wie bisher (heute bis Buchungshorizont).
+- Liegen zwischen mehreren Saisons Lücken, bleiben diese Tage wählbar und zeigen
+  den freundlichen Saison-Hinweis mit Sprung-Knopf.
+
 ## [1.133.1] – 2026-10-07
 
 ### Saison-Hinweis: Buchen geht schon jetzt

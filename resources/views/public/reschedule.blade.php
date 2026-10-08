@@ -50,9 +50,9 @@
             <div>
                 <label for="date" class="mb-2 block text-sm font-semibold">Neues Datum</label>
                 <input type="date" name="date" id="date" required
-                       min="{{ now($location->timezone)->toDateString() }}"
-                       max="{{ now($location->timezone)->addDays($settings->max_advance_days)->toDateString() }}"
-                       value="{{ old('date', now($location->timezone)->toDateString()) }}"
+                       min="{{ $dateMin }}"
+                       max="{{ $dateMax }}"
+                       value="{{ old('date', $dateMin) }}"
                        class="w-full rounded-xl border-2 border-stone-200 px-4 py-3 text-lg">
             </div>
             <div>

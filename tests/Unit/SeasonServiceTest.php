@@ -97,6 +97,46 @@ class SeasonServiceTest extends TestCase
         );
     }
 
+    public function test_the_bookable_window_is_trimmed_to_the_season(): void
+    {
+        $location = $this->location();
+        $this->addSeason($location, 11, 23, 1, 10); // Weihnachtsmarkt
+        $svc = app(SeasonService::class);
+        $loc = $location->fresh();
+
+        $window = $svc->bookableWindow($loc, CarbonImmutable::parse('2026-10-07'), CarbonImmutable::parse('2027-10-07'));
+        $this->assertSame('2026-11-23', $window['first']->toDateString());
+        $this->assertSame('2027-01-10', $window['last']->toDateString());
+
+        // Endet der Buchungshorizont mitten in der Saison, ist er die Grenze.
+        $short = $svc->bookableWindow($loc, CarbonImmutable::parse('2026-10-07'), CarbonImmutable::parse('2027-01-05'));
+        $this->assertSame('2027-01-05', $short['last']->toDateString());
+    }
+
+    public function test_without_windows_the_bookable_window_is_the_whole_horizon(): void
+    {
+        $window = app(SeasonService::class)->bookableWindow(
+            $this->location()->fresh(),
+            CarbonImmutable::parse('2026-10-07'),
+            CarbonImmutable::parse('2027-01-05'),
+        );
+
+        $this->assertSame('2026-10-07', $window['first']->toDateString());
+        $this->assertSame('2027-01-05', $window['last']->toDateString());
+    }
+
+    public function test_no_bookable_day_within_the_horizon_gives_null(): void
+    {
+        $location = $this->location();
+        $this->addSeason($location, 4, 1, 4, 30);
+
+        $this->assertNull(app(SeasonService::class)->bookableWindow(
+            $location->fresh(),
+            CarbonImmutable::parse('2026-10-07'),
+            CarbonImmutable::parse('2027-01-05'),
+        ));
+    }
+
     public function test_next_opening_is_null_without_windows(): void
     {
         $location = $this->location();

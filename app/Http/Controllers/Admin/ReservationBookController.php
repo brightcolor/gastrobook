@@ -311,13 +311,12 @@ class ReservationBookController extends Controller
 
         $busy = $this->tableAssignment->busyTableIds($location, $windowStart, $windowEnd, null);
 
-        $blockedRooms = $location->blackoutPeriods()
-            ->whereNotNull('room_id')
-            ->whereNull('reduce_covers_to')
-            ->where('starts_at', '<', $windowEnd)
-            ->where('ends_at', '>', $windowStart)
-            ->pluck('room_id')
-            ->all();
+        // Geschlossene Räume und Räume, deren Gästegrenze diese Gruppe
+        // überschreiten würde – dieselbe Regel wie in der Tischsuche.
+        $blockedRooms = array_merge(
+            $this->tableAssignment->blockedRoomIds($location, $windowStart, $windowEnd),
+            $this->tableAssignment->roomsOverGuestLimit($location, $startUtc, $startUtc->addMinutes($duration), $partySize),
+        );
 
         $rooms = $location->rooms()
             ->where('is_active', true)

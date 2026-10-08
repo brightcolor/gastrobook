@@ -10,11 +10,9 @@ use Tests\Concerns\CreatesTenants;
 use Tests\TestCase;
 
 /**
- * Eine Sperrzeit mit „weniger Gäste" wirkt nur für den ganzen Betrieb und nur,
- * wenn nach Plätzen gebucht wird. Für einen einzelnen Raum oder im Modus
- * „nach Tischen" tut sie nichts – genau so wurde bei Sternenwald eine gemeinte
- * Betriebsschließung angelegt, und man konnte trotzdem buchen. Solche stillen
- * Fehleingaben werden jetzt mit einer verständlichen Meldung abgelehnt.
+ * Eine Sperrzeit mit „weniger Gäste" wirkt in jedem Kapazitätsmodus, für den
+ * ganzen Betrieb und für einen einzelnen Raum (siehe GuestLimitBlackoutTest).
+ * Der Controller nimmt deshalb jede dieser Kombinationen an.
  */
 class BlackoutClarityTest extends TestCase
 {
@@ -35,7 +33,7 @@ class BlackoutClarityTest extends TestCase
         ], $extra);
     }
 
-    public function test_a_guest_limit_for_a_single_room_is_refused(): void
+    public function test_a_guest_limit_for_a_single_room_is_accepted(): void
     {
         $setup = $this->createTenantSetup();
         $admin = $this->createMember($setup['tenant'], 'tenant_owner');
@@ -46,31 +44,28 @@ class BlackoutClarityTest extends TestCase
                 'room_id' => $setup['room']->id,
                 'reduce_covers_to' => 20,
             ]))
-            ->assertStatus(422)
-            ->assertJsonPath(
-                'errors.reduce_covers_to.0',
-                'Eine begrenzte Gästezahl lässt sich nur für den ganzen Betrieb einstellen. Für einen einzelnen Raum bitte „ganz schließen" wählen und das Feld „Max. Gäste" leer lassen.'
-            );
+            ->assertOk()
+            ->assertJsonPath('message', 'Sperrzeit gespeichert.');
 
-        $this->assertDatabaseCount('blackout_periods', 0);
+        $bo = BlackoutPeriod::withoutGlobalScopes()->sole();
+        $this->assertSame($setup['room']->id, $bo->room_id);
+        $this->assertSame(20, (int) $bo->reduce_covers_to);
     }
 
-    public function test_a_guest_limit_without_person_mode_is_refused(): void
+    public function test_a_guest_limit_in_table_mode_is_accepted(): void
     {
-        // Vorgabe ist „nach Tischen" (table) – dort wirkt eine Gästezahl nicht.
-        $setup = $this->createTenantSetup();
+        $setup = $this->createTenantSetup(); // Vorgabe: nach Tischen
         $admin = $this->createMember($setup['tenant'], 'tenant_owner');
         $this->clearTenantContext();
 
         $this->actingAs($admin)
-            ->postJson(self::URL, $this->payload(['reduce_covers_to' => 20]))
-            ->assertStatus(422)
-            ->assertJsonPath(
-                'errors.reduce_covers_to.0',
-                'Eine begrenzte Gästezahl wirkt nur, wenn ihr nach Plätzen bucht. Dieser Betrieb bucht nach Tischen – hier bitte „ganz schließen" wählen und das Feld „Max. Gäste" leer lassen. Den Buchungs-Modus ändert ihr unter „Buchungsregeln".'
-            );
+            ->postJson(self::URL, $this->payload(['reduce_covers_to' => 12]))
+            ->assertOk()
+            ->assertJsonPath('message', 'Sperrzeit gespeichert.');
 
-        $this->assertDatabaseCount('blackout_periods', 0);
+        $bo = BlackoutPeriod::withoutGlobalScopes()->sole();
+        $this->assertNull($bo->room_id);
+        $this->assertSame(12, (int) $bo->reduce_covers_to);
     }
 
     public function test_a_full_closure_is_accepted(): void
@@ -121,7 +116,8 @@ class BlackoutClarityTest extends TestCase
     {
         $setup = $this->createTenantSetup(); // Vorgabe: nach Tischen
         $admin = $this->createMember($setup['tenant'], 'tenant_owner');
-        // Alt-Bestand wie bei Sternenwald: Raum + Gästezahl = wirkungslos.
+        // Die bisherige Karte markiert Raum + Gästezahl weiter mit „wirkt
+        // nicht". Die Liste „Ausnahmen" auf new-ui löst diese Karte ab.
         BlackoutPeriod::create([
             'tenant_id' => $setup['tenant']->id,
             'location_id' => $setup['location']->id,

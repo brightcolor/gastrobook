@@ -159,12 +159,16 @@ class PublicBookingController extends Controller
             ->where('starts_at', '>', now())
             ->count();
 
+        [$dateMin, $dateMax] = $this->calendarBounds($location);
+
         $data = [
             'tenant' => $tenant,
             'location' => $location,
             'settings' => $location->effectiveSettings(),
             'upcomingEvents' => $upcomingEvents,
             'storeUrl' => $storeUrl ?: route('booking.store', [$tenant->slug, $location->slug]),
+            'dateMin' => $dateMin,
+            'dateMax' => $dateMax,
         ];
 
         if ($tenant->isSalon()) {
@@ -177,6 +181,26 @@ class PublicBookingController extends Controller
         }
 
         return view('public.booking', $data);
+    }
+
+    /**
+     * Grenzen des Kalenders: ab heute bis zum Buchungshorizont, bei gesetzter
+     * Saison gekürzt auf den ersten und letzten buchbaren Tag darin. Liegt im
+     * Horizont kein Saisontag, bleibt der volle Zeitraum – der Saison-Hinweis
+     * nennt dann den nächsten Start.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function calendarBounds(Location $location): array
+    {
+        $today = CarbonImmutable::now($location->timezone)->startOfDay();
+        $horizon = $today->addDays((int) $location->effectiveSettings()->max_advance_days);
+        $window = $this->seasons->bookableWindow($location, $today, $horizon);
+
+        return [
+            ($window['first'] ?? $today)->toDateString(),
+            ($window['last'] ?? $horizon)->toDateString(),
+        ];
     }
 
     public function slots(Request $request, string $tenantSlug, string $locationSlug)
@@ -412,13 +436,12 @@ class PublicBookingController extends Controller
                 'color' => $z->color, 'opacity' => $z->opacity, 'points' => $z->points,
             ])->values());
 
-        $blockedRooms = $location->blackoutPeriods()
-            ->whereNotNull('room_id')
-            ->whereNull('reduce_covers_to')
-            ->where('starts_at', '<', $windowEnd)
-            ->where('ends_at', '>', $windowStart)
-            ->pluck('room_id')
-            ->all();
+        // Geschlossene Räume und Räume, deren Gästegrenze diese Gruppe
+        // überschreiten würde – dieselbe Regel wie in der Tischsuche.
+        $blockedRooms = array_merge(
+            $this->tableAssignment->blockedRoomIds($location, $windowStart, $windowEnd),
+            $this->tableAssignment->roomsOverGuestLimit($location, $startUtc, $startUtc->addMinutes($duration), $partySize),
+        );
 
         $rooms = $location->rooms()
             ->where('is_active', true)
@@ -661,7 +684,9 @@ class PublicBookingController extends Controller
             // Zweige der Fehlermeldung unten waren toter Code, weil
             // bookingBlockReason sie gar nicht kannte. Ein Termin "in zwei
             // Minuten" ging trotz 60 Minuten Vorlauf durch.
-            ['online' => true],
+            // Ein Termin zaehlt als eine Person, so greift "Max. Gaeste" einer
+            // Sperrzeit auch im Salon.
+            ['online' => true, 'party_size' => 1],
         );
         // Manche Salons pflegen nur Arbeitszeiten je Mitarbeiter und gar keine
         // Öffnungszeiten des Standorts. Dort ist "ausserhalb der Öffnungszeiten"
@@ -677,6 +702,7 @@ class PublicBookingController extends Controller
                 'lead_time' => __('Für diesen Termin ist es leider etwas zu kurzfristig – bitte wählen Sie einen späteren Zeitpunkt.'),
                 'too_far_ahead' => __('Dieser Termin liegt noch zu weit in der Zukunft.'),
                 'blackout' => __('Zu diesem Zeitpunkt haben wir leider geschlossen. Bitte wählen Sie einen anderen Tag.'),
+                'covers_full' => __('Zu diesem Zeitpunkt sind leider alle Termine vergeben – bitte wählen Sie eine andere Uhrzeit.'),
                 default => __('Zu dieser Uhrzeit haben wir leider geschlossen. Bitte wählen Sie eine Zeit innerhalb der Öffnungszeiten.'),
             };
 
@@ -849,11 +875,15 @@ class PublicBookingController extends Controller
             ]);
         }
 
+        [$dateMin, $dateMax] = $this->calendarBounds($location);
+
         return view('public.reschedule', [
             'reservation' => $reservation,
             'location' => $location,
             'tenant' => $tenant,
             'settings' => $settings,
+            'dateMin' => $dateMin,
+            'dateMax' => $dateMax,
             'tooLate' => false,
             'isSalon' => $tenant?->isSalon() ?? false,
             'serviceIds' => $reservation->services->pluck('id')->all(),
