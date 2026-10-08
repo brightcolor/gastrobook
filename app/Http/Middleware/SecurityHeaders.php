@@ -92,6 +92,12 @@ class SecurityHeaders
      * blockt die eigene CSP das Captcha - und ohne geloestes Captcha laesst
      * sich kein oeffentliches Formular (Reservierung, Anmeldung) absenden.
      *
+     * 'unsafe-eval' braucht die Browserpruefung von Cap ("instrumentation"):
+     * Sie laeuft in einem srcdoc-iframe, das diese CSP erbt, und ruft eval
+     * und new Function auf. Ohne die Quelle bricht das Skript ab, das Widget
+     * wartet 20 Sekunden ("instr_timeout") und liefert kein Token. Der Zusatz
+     * kostet wenig, weil script-src ohnehin 'unsafe-inline' erlaubt.
+     *
      * Der Server kommt aus der Einstellung (cap.server_url), steht also nicht
      * fest im Code.
      */
@@ -123,7 +129,7 @@ class SecurityHeaders
             }
         };
 
-        $add('script-src', ["'wasm-unsafe-eval'", $origin], ["'self'"]);
+        $add('script-src', ["'unsafe-eval'", "'wasm-unsafe-eval'", $origin], ["'self'"]);
         $add('connect-src', [$origin], ["'self'"]);
         $add('worker-src', ["'self'", 'blob:']);
 

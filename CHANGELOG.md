@@ -2,16 +2,22 @@
 
 ## [1.134.2] – 2026-10-08
 
-### Captcha-Quellen in der CSP kommen aus dem Code
+### Sicherheitsprüfung wieder lösbar: CSP passt zum Cap-Captcha
 
-Die vollständige Content-Security-Policy (1.129.1) ließ nur eigene Quellen zu.
-Das Cap-Captcha lädt Widget und WebAssembly aber vom Cap-Server und rechnet
-seinen Proof-of-Work in einem Worker. Bisher hielt eine von Hand gesetzte
-Einstellung (`SWAYY_CSP_BASE`) das Captcha auf swayy.de am Laufen.
+Seit der vollständigen Content-Security-Policy (1.129.1, 07.10.2026) konnte
+niemand mehr online buchen: Das Captcha lud zwar, seine Browserprüfung brach aber
+ab. Cap prüft den Browser mit einem Skript in einem srcdoc-iframe, das unsere
+CSP erbt und `eval`/`new Function` aufruft – das blockierte die Richtlinie. Das
+Widget wartete 20 Sekunden („instr_timeout") und lieferte kein Token; Gäste sahen
+„Fehler. Erneut versuchen".
 
 - **Ist das Cap-Captcha aktiv, ergänzt die Anwendung die CSP selbst** um den
-  Cap-Server (`script-src`, `connect-src`), `'wasm-unsafe-eval'` und
-  `worker-src 'self' blob:`. Der Server kommt aus `CAP_SERVER_URL`.
+  Cap-Server (`script-src`, `connect-src`), `'unsafe-eval'`,
+  `'wasm-unsafe-eval'` und `worker-src 'self' blob:`. Der Server kommt aus
+  `CAP_SERVER_URL`.
+- `'unsafe-eval'` kostet wenig zusätzlichen Schutz, weil `script-src` ohnehin
+  `'unsafe-inline'` erlaubt; dafür bleibt Caps Erkennung automatisierter Browser
+  aktiv.
 - Ist das Captcha aus, bleibt die Richtlinie eng.
 - Die Hilfseinstellung `SWAYY_CSP_BASE` in der `.env` ist damit überflüssig.
 
