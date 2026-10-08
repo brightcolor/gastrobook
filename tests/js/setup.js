@@ -2,14 +2,6 @@
 // window.SwayyAdmin liefert, die Hinweis-Fläche und was jsdom fehlt.
 import { afterEach, beforeEach, vi } from 'vitest';
 
-// jsdom kennt CSS.escape nicht.
-if (!globalThis.CSS?.escape) {
-    globalThis.CSS = {
-        ...(globalThis.CSS ?? {}),
-        escape: (value) => String(value).replace(/[^a-zA-Z0-9_-]/g, (char) => `\${char}`),
-    };
-}
-
 beforeEach(() => {
     window.SwayyAdmin = {
         ui: { toastMs: 3200, reloadDelayMs: 0 },
