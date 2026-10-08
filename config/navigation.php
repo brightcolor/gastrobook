@@ -80,7 +80,7 @@ return [
             ['key' => 'general', 'label' => 'Allgemein', 'route' => 'admin.settings.general.show', 'scope' => 'tenant', 'can' => ['tables.manage', 'tenant.settings.manage'],
                 'keywords' => ['Betriebsname', 'Betriebstyp', 'Restaurant', 'Salon', 'Markenfarbe', 'Impressum', 'Datenschutz', 'AGB']],
             ['key' => 'locations', 'label' => 'Standorte', 'route' => 'admin.locations.index', 'scope' => 'tenant', 'can' => ['locations.manage'],
-                'keywords' => ['Standort', 'Adresse', 'Zeitzone', 'Telefon', 'Logo']],
+                'keywords' => ['Standort', 'Neuer Standort' => 'standort-neu', 'Adresse', 'Zeitzone', 'Telefon', 'Logo', 'Begrüßung']],
             ['key' => 'team', 'label' => 'Team & Rollen', 'route' => 'admin.users.index', 'scope' => 'tenant', 'can' => ['users.invite'],
                 'keywords' => ['Benutzer', 'Einladen', 'Rollen', 'Zugang', 'Servicekraft']],
             ['key' => 'billing', 'label' => 'Abo & Rechnungen', 'route' => 'admin.billing.show', 'scope' => 'tenant', 'can' => ['billing.manage'], 'active' => ['admin.billing.*'],

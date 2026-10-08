@@ -112,4 +112,149 @@ class LocationManagementTest extends TestCase
 
         $this->assertNotSame('Hijack', $b['location']->fresh()->name);
     }
+
+    public function test_json_store_answers_with_message_and_reload(): void
+    {
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 4]]);
+        $setup['tenant']->update(['plan_id' => Plan::factory()->create(['limits' => ['max_locations' => 5]])->id]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->postJson('/admin/locations', [
+            'name' => 'Filiale Nord',
+            'timezone' => 'Europe/Vienna',
+            'public_intro' => 'Willkommen im Norden.',
+        ])->assertOk()->assertExactJson([
+            'message' => 'Standort „Filiale Nord“ angelegt. Als Nächstes Öffnungszeiten und Tische einrichten.',
+            'reload' => true,
+        ]);
+
+        $loc = Location::withoutGlobalScopes()->where('tenant_id', $setup['tenant']->id)->where('name', 'Filiale Nord')->firstOrFail();
+        $this->assertSame('Europe/Vienna', $loc->timezone);
+        $this->assertSame('Willkommen im Norden.', $loc->public_intro);
+    }
+
+    public function test_json_store_names_the_plan_limit_and_the_next_step(): void
+    {
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 4]]);
+        $setup['tenant']->update(['plan_id' => Plan::factory()->create(['limits' => ['max_locations' => 1]])->id]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->postJson('/admin/locations', ['name' => 'Zweite', 'timezone' => 'Europe/Berlin'])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.name.0', 'Dein Tarif umfasst einen Standort, und der ist schon angelegt. Für einen weiteren Standort den Tarif unter „Abo & Rechnungen“ wechseln.');
+    }
+
+    public function test_json_validation_explains_what_to_enter(): void
+    {
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 4]]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->putJson("/admin/locations/{$setup['location']->id}", ['name' => '', 'timezone' => 'Mond/Basis'])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.name.0', 'Bitte einen Namen für den Standort eintragen.')
+            ->assertJsonPath('errors.timezone.0', 'Bitte eine Zeitzone aus der Liste wählen.');
+    }
+
+    public function test_json_validation_names_the_field_and_the_length_limit(): void
+    {
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 4]]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->putJson("/admin/locations/{$setup['location']->id}", [
+            'name' => 'Am Markt',
+            'timezone' => 'Europe/Berlin',
+            'public_intro' => str_repeat('a', 1001),
+            'email' => 'kein-at-zeichen',
+        ])->assertStatus(422)
+            ->assertJsonPath('errors.public_intro.0', 'Begrüßung ist zu lang. Bitte auf höchstens 1000 Zeichen kürzen.')
+            ->assertJsonPath('errors.email.0', 'Die E-Mail-Adresse ist unvollständig. Bitte in der Form name@beispiel.de eintragen.');
+    }
+
+    public function test_json_update_saves_profile_and_keeps_the_slug(): void
+    {
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 4]]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $slug = $setup['location']->slug;
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->putJson("/admin/locations/{$setup['location']->id}", [
+            'name' => 'Am Markt',
+            'timezone' => 'Europe/Berlin',
+            'address_line1' => 'Marktplatz 1',
+            'postal_code' => '12345',
+            'city' => 'Musterstadt',
+            'public_intro' => 'Direkt am Markt.',
+        ])->assertOk()->assertJson(['message' => 'Standort „Am Markt“ gespeichert.', 'reload' => true]);
+
+        $fresh = $setup['location']->fresh();
+        $this->assertSame('Am Markt', $fresh->name);
+        $this->assertSame('Direkt am Markt.', $fresh->public_intro);
+        $this->assertSame('Musterstadt', $fresh->city);
+        $this->assertSame($slug, $fresh->slug);
+    }
+
+    public function test_json_toggle_explains_why_the_last_active_location_stays_active(): void
+    {
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 4]]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->postJson("/admin/locations/{$setup['location']->id}/toggle-active")
+            ->assertStatus(422)
+            ->assertJsonPath('errors.active.0', fn (string $message) => str_contains($message, 'einzige aktive Standort')
+                && str_contains($message, 'Lege zuerst einen weiteren Standort an'));
+        $this->assertTrue($setup['location']->fresh()->is_active);
+    }
+
+    public function test_index_uses_drawers_status_icons_and_no_inline_handlers(): void
+    {
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 4]]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $html = $this->actingAs($owner)->get('/admin/locations')->assertOk()->getContent();
+
+        $this->assertStringContainsString('data-drawer-open="standort-'.$setup['location']->id.'"', $html);
+        $this->assertStringContainsString('id="standort-'.$setup['location']->id.'" data-drawer hidden', $html);
+        $this->assertStringContainsString('<span class="sr-only">Aktiv</span>', $html);
+        $this->assertStringContainsString('name="public_intro"', $html);
+        $this->assertStringContainsString('Logo hochladen', $html);
+
+        foreach (['index', 'partials/fields', 'partials/logo'] as $view) {
+            $source = (string) file_get_contents(resource_path("views/admin/locations/{$view}.blade.php"));
+            $this->assertDoesNotMatchRegularExpression('/\son(click|change|submit|input)\s*=/i', $source, $view);
+        }
+    }
+
+    public function test_new_location_form_suggests_the_default_timezone_from_the_settings(): void
+    {
+        config(['swayy.locations.default_timezone' => 'Europe/Vienna']);
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 4]]);
+        $setup['tenant']->update(['plan_id' => Plan::factory()->create(['limits' => ['max_locations' => 5]])->id]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $html = $this->actingAs($owner)->get('/admin/locations')->assertOk()->getContent();
+        $drawer = (string) substr($html, (int) strpos($html, 'id="standort-neu"'));
+        $drawer = (string) substr($drawer, 0, (int) strpos($drawer, 'id="standort-'.$setup['location']->id.'"'));
+
+        $this->assertStringContainsString('<option value="Europe/Vienna" selected>', $drawer);
+        $this->assertStringNotContainsString('<option value="Europe/Berlin" selected>', $drawer);
+    }
+
+    public function test_operations_manager_edits_locations_without_logo_controls(): void
+    {
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 4]]);
+        $manager = $this->createMember($setup['tenant'], 'operations_manager');
+        $this->clearTenantContext();
+
+        $this->actingAs($manager)->get('/admin/locations')
+            ->assertOk()
+            ->assertSee('name="public_intro"', false)
+            ->assertDontSee('Logo hochladen');
+    }
 }

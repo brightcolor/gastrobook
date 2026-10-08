@@ -772,16 +772,16 @@ class SettingsController extends Controller
         abort_if($location === null, 404);
 
         // No SVG: an SVG served from our own origin can carry executable
-        // JavaScript (stored XSS). Raster formats only.
+        // JavaScript (stored XSS). Raster formats only (config/swayy.php, uploads.*).
         $request->validate([
-            'logo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
+            'logo' => ['required', 'image', 'mimes:'.implode(',', (array) config('swayy.uploads.logo_types')), 'max:'.(int) config('swayy.uploads.logo_max_kb')],
         ]);
 
         if ($location->brand_logo_path) {
             Storage::disk('public')->delete($location->brand_logo_path);
         }
 
-        $path = $request->file('logo')->store('logos/'.$location->id, 'public');
+        $path = $request->file('logo')->store(config('swayy.uploads.logo_directory').'/'.$location->id, 'public');
         $location->update(['brand_logo_path' => $path]);
         $this->audit->log('location.logo.updated', $location);
 

@@ -1,106 +1,108 @@
 @extends('layouts.admin')
 @section('title', 'Standorte')
-@section('content')
 
-<h1 class="mb-1 text-2xl font-bold">Standorte</h1>
-<p class="mb-5 text-sm text-stone-500">
-    {{ $used }} von {{ $limit === null ? '∞' : $limit }} Standorten genutzt
-    @if($limit !== null && $used >= $limit)
-        · <span class="font-semibold text-amber-600">Limit erreicht</span>
+@section('content')
+@php($description = $tenant->isSalon()
+    ? 'Adresse, Kontakt und Begrüßung jedes Standorts. Zeiten, Leistungen und Mitarbeiter richtest du je Standort unter „Platz & Zeiten“ ein.'
+    : 'Adresse, Kontakt und Begrüßung jedes Standorts. Zeiten, Räume und Tische richtest du je Standort unter „Platz & Zeiten“ ein.')
+<x-page-header title="Standorte" :crumb="['Einstellungen', 'Betrieb']" scope="tenant" :description="$description">
+    @if($canAdd)
+        <x-slot:actions>
+            <button type="button" data-drawer-open="standort-neu" class="btn btn-primary">Standort hinzufügen</button>
+        </x-slot:actions>
+    @endif
+</x-page-header>
+
+<p class="mb-4 text-sm text-stone-600">
+    @if($limit === null)
+        {{ trans_choice(':count Standort|:count Standorte', $used, ['count' => $used]) }}
+    @else
+        {{ $used }} von {{ $limit }} Standorten deines Tarifs genutzt
     @endif
 </p>
 
-<div class="grid gap-6 lg:grid-cols-3">
-    <div class="space-y-4 lg:col-span-2">
-        @forelse($locations as $loc)
-            <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
-                <details>
-                    <summary class="flex cursor-pointer items-center justify-between gap-3">
-                        <span class="font-bold">
-                            {{ $loc->name }}
-                            @if(! $loc->is_active)
-                                <span class="ml-2 rounded bg-stone-200 px-2 py-0.5 text-xs font-semibold text-stone-600">Inaktiv</span>
-                            @endif
-                        </span>
-                        <span class="text-xs text-stone-400">{{ $loc->rooms_count }} Räume · {{ $loc->tables_count }} Tische</span>
-                    </summary>
-
-                    <form method="POST" action="{{ route('admin.locations.update', $loc) }}" class="mt-4 space-y-3 text-sm">
-                        @csrf @method('PUT')
-                        <div class="grid gap-3 sm:grid-cols-2">
-                            <label class="block">Name *
-                                <input name="name" required value="{{ $loc->name }}" class="mt-1 w-full rounded-lg border-stone-200">
-                            </label>
-                            <label class="block">Zeitzone *<span class="tip" tabindex="0" data-tip="Bestimmt, welche Uhrzeit für diesen Standort gilt – wichtig für Öffnungszeiten, Erinnerungen und alle Uhrzeiten in den Buchungen. Nur ändern, wenn der Standort wirklich in einer anderen Zeitzone liegt.">?</span>
-                                <select name="timezone" class="mt-1 w-full rounded-lg border-stone-200">
-                                    @foreach($timezones as $tz)
-                                        <option value="{{ $tz }}" @selected($loc->timezone === $tz)>{{ $tz }}</option>
-                                    @endforeach
-                                </select>
-                            </label>
-                            <label class="block">Telefon
-                                <input name="phone" value="{{ $loc->phone }}" class="mt-1 w-full rounded-lg border-stone-200">
-                            </label>
-                            <label class="block">E-Mail
-                                <input type="email" name="email" value="{{ $loc->email }}" class="mt-1 w-full rounded-lg border-stone-200">
-                            </label>
-                            <label class="block sm:col-span-2">Straße & Nr.<span class="tip" tabindex="0" data-tip="Erscheint auf der öffentlichen Buchungsseite und in den Bestätigungs-E-Mails, damit Gäste euch finden.">?</span>
-                                <input name="address_line1" value="{{ $loc->address_line1 }}" class="mt-1 w-full rounded-lg border-stone-200">
-                            </label>
-                            <label class="block">PLZ
-                                <input name="postal_code" value="{{ $loc->postal_code }}" class="mt-1 w-full rounded-lg border-stone-200">
-                            </label>
-                            <label class="block">Stadt
-                                <input name="city" value="{{ $loc->city }}" class="mt-1 w-full rounded-lg border-stone-200">
-                            </label>
-                        </div>
-                        <div class="flex items-center justify-between pt-1">
-                            <button class="rounded-xl bg-stone-900 px-4 py-2 font-bold text-white">Speichern</button>
-                        </div>
-                    </form>
-
-                    <form method="POST" action="{{ route('admin.locations.toggle-active', $loc) }}" class="mt-2"
-                          onsubmit="return confirm('{{ $loc->is_active ? 'Standort deaktivieren? Er verschwindet aus der Online-Buchung.' : 'Standort wieder aktivieren?' }}')">
-                        @csrf
-                        <button class="text-xs {{ $loc->is_active ? 'text-amber-600 hover:text-amber-700' : 'text-teal-600 hover:text-teal-700' }}">
-                            {{ $loc->is_active ? 'Deaktivieren' : 'Aktivieren' }}
-                        </button>
-                    </form>
-                    @error('active')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
-                </details>
-            </div>
-        @empty
-            <p class="text-sm text-stone-500">Noch keine Standorte.</p>
-        @endforelse
-    </div>
-
-    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
-        <h2 class="font-bold">Standort hinzufügen</h2>
-        @if($canAdd)
-            <form method="POST" action="{{ route('admin.locations.store') }}" class="mt-3 space-y-3 text-sm">
-                @csrf
-                <input name="name" required placeholder="Name *" value="{{ old('name') }}" class="w-full rounded-lg border-stone-200">
-                <select name="timezone" class="w-full rounded-lg border-stone-200">
-                    @foreach($timezones as $tz)
-                        <option value="{{ $tz }}" @selected(old('timezone', 'Europe/Berlin') === $tz)>{{ $tz }}</option>
-                    @endforeach
-                </select>
-                <input name="phone" placeholder="Telefon" value="{{ old('phone') }}" class="w-full rounded-lg border-stone-200">
-                <input type="email" name="email" placeholder="E-Mail" value="{{ old('email') }}" class="w-full rounded-lg border-stone-200">
-                <input name="address_line1" placeholder="Straße & Nr." value="{{ old('address_line1') }}" class="w-full rounded-lg border-stone-200">
-                <div class="flex gap-2">
-                    <input name="postal_code" placeholder="PLZ" value="{{ old('postal_code') }}" class="w-1/3 rounded-lg border-stone-200">
-                    <input name="city" placeholder="Stadt" value="{{ old('city') }}" class="w-2/3 rounded-lg border-stone-200">
-                </div>
-                @error('name')<p class="text-xs text-red-600">{{ $message }}</p>@enderror
-                <button class="w-full rounded-xl bg-stone-900 py-2.5 font-bold text-white">Standort anlegen</button>
-            </form>
-            <p class="mt-3 text-xs text-stone-500">Öffnungszeiten, Räume und Tische legst du danach über den Standort-Umschalter oben links + Einstellungen an.</p>
+@unless($canAdd)
+    <p class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        {{ trans_choice('Dein Tarif umfasst einen Standort, und der ist schon angelegt.|Dein Tarif umfasst :count Standorte, und alle sind schon angelegt.', (int) $limit, ['count' => $limit]) }}
+        @if($canSeeBilling)
+            <a href="{{ route('admin.billing.show') }}" class="font-semibold underline underline-offset-2">Tarif unter „Abo & Rechnungen“ wechseln</a>
         @else
-            <p class="mt-3 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                Dein Tarif erlaubt {{ $limit }} Standort{{ $limit === 1 ? '' : 'e' }}. Für weitere Standorte ist ein Upgrade nötig.
-            </p>
+            Für einen weiteren Standort bitte eine Person mit Zugang zu „Abo & Rechnungen“ fragen.
         @endif
-    </div>
-</div>
+    </p>
+@endunless
+
+@if($locations->isEmpty())
+    <x-empty-state title="Noch kein Standort">
+        Ein Standort ist der Ort, an dem Gäste buchen: mit Adresse, Zeiten und Plätzen.
+        @if($canAdd)
+            <x-slot:action>
+                <button type="button" data-drawer-open="standort-neu" class="btn btn-primary">Standort hinzufügen</button>
+            </x-slot:action>
+        @endif
+    </x-empty-state>
+@else
+    <ul class="divide-y divide-stone-200 rounded-xl border border-stone-200 bg-white">
+        @foreach($locations as $loc)
+            @php($address = implode(', ', array_filter([$loc->address_line1, trim($loc->postal_code.' '.$loc->city)])))
+            <li class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+                <x-status-icon :state="$loc->is_active ? 'ok' : 'off'" :label="$loc->is_active ? 'Aktiv' : 'Inaktiv'" />
+                <div class="min-w-0 flex-1">
+                    <button type="button" data-drawer-open="standort-{{ $loc->id }}"
+                            class="text-left font-semibold underline-offset-2 hover:underline">{{ $loc->name }}</button>
+                    <p class="text-[0.8125rem] text-stone-600 [overflow-wrap:anywhere]">
+                        {{ $address !== '' ? $address : 'Adresse fehlt noch' }}
+                        @unless($tenant->isSalon())
+                            · {{ trans_choice(':count Raum|:count Räume', $loc->rooms_count, ['count' => $loc->rooms_count]) }}
+                            · {{ trans_choice(':count Tisch|:count Tische', $loc->tables_count, ['count' => $loc->tables_count]) }}
+                        @endunless
+                    </p>
+                </div>
+                <div class="flex items-center gap-1">
+                    @if($loc->is_active)
+                        <x-inline-confirm id="deaktivieren-{{ $loc->id }}" :action="route('admin.locations.toggle-active', $loc)"
+                                          label="Deaktivieren" confirm="Deaktivieren" :subject="$loc->name"
+                                          :question="'„'.$loc->name.'“ deaktivieren? Gäste können dort dann nicht mehr online buchen; bestehende Buchungen bleiben.'" />
+                    @else
+                        <form method="POST" action="{{ route('admin.locations.toggle-active', $loc) }}" data-ajax>
+                            @csrf
+                            <button type="submit" class="btn btn-quiet">Aktivieren<span class="sr-only"> „{{ $loc->name }}“</span></button>
+                        </form>
+                    @endif
+                </div>
+            </li>
+        @endforeach
+    </ul>
+@endif
+
+@push('drawers')
+    @if($canAdd)
+        <x-drawer id="standort-neu" title="Neuer Standort" description="Name und Zeitzone genügen für den Anfang; den Rest ergänzt du jederzeit.">
+            <form id="form-standort-neu" method="POST" action="{{ route('admin.locations.store') }}" data-ajax class="space-y-5">
+                @csrf
+                @include('admin.locations.partials.fields', ['loc' => null, 'prefix' => 'neu'])
+            </form>
+            <x-slot:footer>
+                <button type="button" data-drawer-close class="btn btn-secondary">Abbrechen</button>
+                <button type="submit" form="form-standort-neu" class="btn btn-primary">Standort anlegen</button>
+            </x-slot:footer>
+        </x-drawer>
+    @endif
+    @foreach($locations as $loc)
+        <x-drawer id="standort-{{ $loc->id }}" :title="$loc->name" description="Gilt für Buchungsseite, Bestätigungen und Erinnerungen dieses Standorts.">
+            <form id="form-standort-{{ $loc->id }}" method="POST" action="{{ route('admin.locations.update', $loc) }}" data-ajax class="space-y-5">
+                @csrf
+                @method('PUT')
+                @include('admin.locations.partials.fields', ['loc' => $loc, 'prefix' => (string) $loc->id])
+            </form>
+            @if($canEditLogo)
+                @include('admin.locations.partials.logo', ['loc' => $loc])
+            @endif
+            <x-slot:footer>
+                <button type="button" data-drawer-close class="btn btn-secondary">Abbrechen</button>
+                <button type="submit" form="form-standort-{{ $loc->id }}" class="btn btn-primary">Speichern</button>
+            </x-slot:footer>
+        </x-drawer>
+    @endforeach
+@endpush
 @endsection

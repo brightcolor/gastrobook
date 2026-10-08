@@ -272,6 +272,38 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Standorte
+    |--------------------------------------------------------------------------
+    |
+    | default_timezone: Zeitzone, die das Formular „Neuer Standort“ vorschlägt
+    | und die gilt, solange kein Standort gewählt ist (etwa im Protokoll).
+    |
+    */
+    'locations' => [
+        'default_timezone' => EnvSetting::timezone('SWAYY_DEFAULT_TIMEZONE', default: 'Europe/Berlin'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Hochgeladene Dateien
+    |--------------------------------------------------------------------------
+    |
+    | logo_max_kb: größte Datei für ein Standort-Logo in KB (64–10240).
+    | logo_types: erlaubte Dateiendungen für Logos; SVG ist nie erlaubt, weil
+    | es Skripte tragen kann. Eine leere Liste („-“) gilt als Vorgabe, sonst
+    | ließe sich kein Logo hochladen. logo_directory: Ordner auf dem Speicher
+    | „public“, darunter je Standort ein Unterordner.
+    |
+    */
+    'uploads' => [
+        'logo_max_kb' => EnvSetting::integer('SWAYY_LOGO_MAX_KB', default: 3072, min: 64, max: 10240),
+        'logo_types' => EnvSetting::choiceList('SWAYY_LOGO_TYPES', default: ['jpg', 'jpeg', 'png', 'webp'], allowed: ['jpg', 'jpeg', 'png', 'webp', 'gif'])
+            ?: ['jpg', 'jpeg', 'png', 'webp'],
+        'logo_directory' => EnvSetting::pattern('SWAYY_LOGO_DIRECTORY', default: 'logos', regex: '/^[a-z0-9][a-z0-9_-]*$/', hint: 'ist kein Ordnername aus Kleinbuchstaben, Ziffern, - und _'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Oberfläche der Verwaltung
     |--------------------------------------------------------------------------
     |

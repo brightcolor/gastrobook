@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\FloorPlanController;
 use App\Http\Controllers\Admin\FloorZoneController;
 use App\Http\Controllers\Admin\GuestController;
 use App\Http\Controllers\Admin\LocationController;
+use App\Http\Controllers\Admin\LocationLogoController;
 use App\Http\Controllers\Admin\MarketingCampaignController;
 use App\Http\Controllers\Admin\NotificationTemplateController;
 use App\Http\Controllers\Admin\OnboardingController;
@@ -463,6 +464,11 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
         Route::post('/locations', [LocationController::class, 'store'])->name('locations.store');
         Route::put('/locations/{location}', [LocationController::class, 'update'])->name('locations.update');
         Route::post('/locations/{location}/toggle-active', [LocationController::class, 'toggleActive'])->name('locations.toggle-active');
+        // Logo je Standort: Teil des Auftritts, deshalb zusätzlich das Recht für die Betriebseinstellungen.
+        Route::post('/locations/{location}/logo', [LocationLogoController::class, 'store'])
+            ->middleware('permission:tenant.settings.manage')->name('locations.logo.store');
+        Route::delete('/locations/{location}/logo', [LocationLogoController::class, 'destroy'])
+            ->middleware('permission:tenant.settings.manage')->name('locations.logo.destroy');
     });
 
     // Users & roles

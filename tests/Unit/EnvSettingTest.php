@@ -161,6 +161,22 @@ class EnvSettingTest extends TestCase
         $this->assertStringContainsString(self::VARIABLE.'=„teal“ ist keine Farbe in der Schreibweise #rrggbb. Es gilt die Vorgabe #0f766e.', $this->warnings);
     }
 
+    public function test_a_known_timezone_is_used(): void
+    {
+        $this->set('Europe/Vienna');
+
+        $this->assertSame('Europe/Vienna', $this->capture(fn () => EnvSetting::timezone(self::VARIABLE, default: 'Europe/Berlin')));
+        $this->assertSame('', $this->warnings);
+    }
+
+    public function test_an_unknown_timezone_falls_back_to_the_default_with_a_warning(): void
+    {
+        $this->set('Mond/Basis');
+
+        $this->assertSame('Europe/Berlin', $this->capture(fn () => EnvSetting::timezone(self::VARIABLE, default: 'Europe/Berlin')));
+        $this->assertStringContainsString(self::VARIABLE.'=„Mond/Basis“ ist keine bekannte Zeitzone. Es gilt die Vorgabe „Europe/Berlin“.', $this->warnings);
+    }
+
     private function set(string $value): void
     {
         $_SERVER[self::VARIABLE] = $value;

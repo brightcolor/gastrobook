@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use DateTimeZone;
 use Illuminate\Support\Env;
 
 /**
@@ -237,6 +238,25 @@ final class EnvSetting
     public static function time(string $variable, string $default): string
     {
         return self::pattern($variable, $default, '/^([01]\d|2[0-3]):[0-5]\d$/', 'ist keine Uhrzeit in der Form HH:MM');
+    }
+
+    /**
+     * Zeitzone aus der Liste von PHP, etwa Europe/Berlin.
+     */
+    public static function timezone(string $variable, string $default): string
+    {
+        $raw = self::raw($variable);
+        if ($raw === null) {
+            return $default;
+        }
+
+        if (! in_array($raw, DateTimeZone::listIdentifiers(), true)) {
+            self::warn("{$variable}=„{$raw}“ ist keine bekannte Zeitzone. Es gilt die Vorgabe „{$default}“. Bitte eine Zeitzone wie Europe/Berlin in der .env eintragen.");
+
+            return $default;
+        }
+
+        return $raw;
     }
 
     private static function raw(string $variable): ?string
