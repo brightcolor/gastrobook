@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Provisioning\AccountState;
 use App\Support\TenantContext;
 use Closure;
 use Illuminate\Http\Request;
@@ -25,6 +26,21 @@ class EnsureTrialActive
 
         if (! $tenant) {
             return $next($request);
+        }
+
+        // Ein Betrieb mit Vertrag im Kundenpanel: Zustand und Probe regelt das
+        // Panel. Wartend und aktiv arbeiten, gesperrt und gekuendigt sehen eine
+        // Seite mit Grund und Weg in den Kundenbereich.
+        if ($tenant->hasContract()) {
+            if (AccountState::isOpen($tenant)) {
+                return $next($request);
+            }
+
+            return response()->view('provisioning.locked', [
+                'tenant' => $tenant,
+                'label' => AccountState::label($tenant),
+                'panelUrl' => (string) config('provisioning.panel_base_url'),
+            ], 403);
         }
 
         // Ein bezahlter Tarif (ohne Testfrist) unterliegt nie der Trial-Sperre.

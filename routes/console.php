@@ -4,6 +4,7 @@ use App\Jobs\ExpireStaleWaitlistOffers;
 use App\Jobs\ExpireUnconfirmedReservations;
 use App\Jobs\ExpireUnpaidReservations;
 use App\Jobs\ProcessScheduledRefunds;
+use App\Jobs\PruneProvisioningRecords;
 use App\Jobs\PruneUnansweredFeedback;
 use App\Jobs\RunRetentionPolicies;
 use App\Jobs\SendFeedbackRequests;
@@ -21,6 +22,7 @@ Schedule::job(new ExpireStaleWaitlistOffers)->everyTenMinutes();
 Schedule::job(new RunRetentionPolicies)->dailyAt('03:30');
 Schedule::job(new PruneUnansweredFeedback)->dailyAt('03:45');
 Schedule::job(new SendTrialExpiryWarnings)->dailyAt('08:00');
+Schedule::job(new PruneProvisioningRecords)->dailyAt((string) config('provisioning.cleanup_time', '04:40'));
 // Guest campaigns: mid-morning, so a birthday greeting does not arrive at 03:00.
 Schedule::job(new SendMarketingCampaigns)->dailyAt('09:00');
 

@@ -83,6 +83,7 @@ Fertige Docker-Images baut die CI automatisch: `ghcr.io/brightcolor/gastrobook:l
 8. [Öffentliche Buchungsseite](#öffentliche-buchungsseite)
 9. [API](#api)
 10. [Webhooks](#webhooks)
+    - [Kundenpanel von bright color](#kundenpanel-von-bright-color)
 11. [Queue & Scheduler](#queue--scheduler)
 12. [CLI-Befehle (Artisan)](#cli-befehle-artisan)
 13. [E-Mails testen](#e-mails-testen)
@@ -493,6 +494,47 @@ Zur `invoice_id`: PayPal erzwingt deren Eindeutigkeit und weist eine zweite Zahl
 Sicherheit: Webhook-Signaturprüfung (HMAC, Replay-Schutz ±5 min) gegen das Secret des jeweiligen Tenants, idempotente Verarbeitung, Audit-Log (`payment.checkout_started`, `payment.succeeded`), ausgehender Webhook `payment.succeeded` an Tenant-Endpoints.
 
 ---
+
+## Kundenpanel von bright color
+
+Neue Betriebe bestellen, testen und kündigen swayy im Kundenpanel von bright
+color (panel.kundenberei.ch), wie vipinvit.es. Das Panel führt Kunde, Vertrag,
+Tarif und Rechnungen; swayy führt den Betrieb. Dazwischen liegt die
+**Bereitstellungs-Schnittstelle** unter `/provisioning/v1`: signierte
+JSON-Aufrufe ohne Sitzung und ohne CSRF (`routes/provisioning.php`,
+`app/Provisioning/`). Vertrag und Prüfwerte stehen im Skill `kundenpanel-saas`,
+die Umsetzung in `docs/superpowers/specs/2026-10-08-kundenpanel-anbindung-design.md`.
+
+**Einschalten:** `PROVISIONING_KEYS` in der `.env` setzen (ein oder zwei
+Schlüssel, je mindestens 32 Zeichen) und denselben Schlüssel im Panel unter
+SaaS-Dienste eintragen. `PANEL_BASE_URL` öffnet den Rückweg „Tarif und
+Rechnungen“, `PANEL_ORDER_URL` leitet `/register` auf die Bestellseite des
+Panels. Alle Einstellungen mit Vorgaben und Grenzen stehen in `.env.example`
+und `config/provisioning.php`.
+
+**Was sich für einen Betrieb mit Vertrag ändert:**
+
+- Zustand aus dem Panel: *wartet auf Freigabe* (Verwaltung offen, Buchungsseiten
+  zu), *aktiv*, *gesperrt* und *gekündigt* (Verwaltung zeigt eine Seite mit
+  Grund und Weg in den Kundenbereich, Buchungsseiten und API zu).
+- Die Grenzen „Standorte“ (`max_locations`) und „Tische“ (`max_tables`) kommen
+  aus dem Tarif im Panel; Funktionen und übrige Grenzen vom Plan gleichen
+  Namens (`trial`, `starter`, `professional`, `multi_location`, `enterprise`).
+- Eine eigene Probefrist gibt es nicht mehr; das Panel beendet Probe und
+  Freiplatz.
+- „Zum Dienst“ im Kundenbereich meldet den Inhaber mit einem einmaligen Link
+  unter `/anmelden/<token>` an (`LOGIN_LINK_SECONDS`, Vorgabe 120 Sekunden).
+  Ein eigenes Passwort legt er über „Passwort vergessen“ fest.
+- `/admin/tarif` führt den Inhaber mit einem signierten Link ins Panel.
+
+**Bestehende Betriebe** kommen unter Vertrag, indem im Panel eine Bestellung
+mit der Mailadresse des Inhabers angelegt und dort „Vorhandene Organisation
+übernehmen“ gewählt wird (`adopt`). Betriebe ohne Vertrag laufen bis dahin wie
+bisher mit Probefrist und Abrechnungsanfrage.
+
+**Prüfstand:** Vor dem Live-Anschluss läuft im Repo des Panels
+`SAAS_PRUEFSTAND_KEY=… php tests/saas/pruefstand.php --url https://<testinstanz> --service swayy`
+gegen eine Testinstanz.
 
 ## Abo-Abrechnung per SEPA-Lastschrift (GoCardless)
 

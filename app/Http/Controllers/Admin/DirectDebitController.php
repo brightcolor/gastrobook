@@ -32,6 +32,11 @@ class DirectDebitController extends Controller
         $tenant = $this->context->tenant();
         abort_if($tenant === null, 404);
 
+        // Mit Vertrag fuehrt das Kundenpanel Tarif und Rechnungen.
+        if ($tenant->hasContract()) {
+            return redirect()->route('admin.panel.back');
+        }
+
         return view('admin.billing.index', [
             'tenant' => $tenant,
             'plan' => $tenant->plan,

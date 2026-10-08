@@ -17,6 +17,9 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $trial_ends_at
  * @property Carbon|null $trial_warning_sent_at
  * @property Carbon|null $onboarding_completed_at
+ * @property Carbon|null $approved_at
+ * @property Carbon|null $tariff_ends_at
+ * @property array<string, int|null>|null $contract_limits
  * @property-read Plan|null $plan
  */
 class Tenant extends Model
@@ -42,7 +45,23 @@ class Tenant extends Model
             'settings' => 'array',
             'feature_overrides' => 'array',
             'mail_relay_enabled' => 'boolean',
+            'approved_at' => 'datetime',
+            'tariff_ends_at' => 'datetime',
+            'free_place' => 'boolean',
+            'contract_limits' => 'array',
         ];
+    }
+
+    /**
+     * Die Grenzen, die das Kundenpanel fuer einen Betrieb mit Vertrag setzt
+     * (Einheiten der Bereitstellungs-Schnittstelle, /provisioning/v1/info).
+     */
+    public const CONTRACT_UNITS = ['max_locations' => 'Standorte', 'max_tables' => 'Tische'];
+
+    /** Der Betrieb haengt an einem Vertrag des Kundenpanels; Zustand, Tarif und Grenzen kommen von dort. */
+    public function hasContract(): bool
+    {
+        return $this->contract_ref !== null;
     }
 
     public function plan(): BelongsTo
@@ -106,6 +125,12 @@ class Tenant extends Model
         return in_array($this->status, ['trial_expired', 'suspended', 'cancelled'], true);
     }
 
+    /** Wartet auf die Freigabe im Kundenpanel: Verwaltung offen, oeffentliche Buchung zu. */
+    public function isPendingApproval(): bool
+    {
+        return $this->status === 'pending_approval';
+    }
+
     /** @return HasMany<WebhookEndpoint, $this> */
     public function webhookEndpoints(): HasMany
     {
@@ -139,6 +164,14 @@ class Tenant extends Model
 
     public function limit(string $key): ?int
     {
+        // Mit Vertrag gelten fuer die Einheiten des Panels dessen Grenzen;
+        // null heisst dort beliebig viele. Alles andere bleibt beim Plan.
+        if ($this->hasContract() && array_key_exists($key, self::CONTRACT_UNITS)) {
+            $value = ($this->contract_limits ?? [])[$key] ?? null;
+
+            return $value === null ? null : (int) $value;
+        }
+
         $value = $this->plan?->limits[$key] ?? null;
 
         return $value === null ? null : (int) $value;

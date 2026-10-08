@@ -53,6 +53,39 @@ class EnvSettingTest extends TestCase
         $this->assertSame('', $this->warnings);
     }
 
+    public function test_secret_keys_keep_long_ones_and_never_name_a_value(): void
+    {
+        $lang = str_repeat('a', 32);
+        $zweiter = str_repeat('b', 40);
+        $this->set("kurz-geheim, {$lang},{$zweiter}, ".str_repeat('c', 33));
+
+        $this->assertSame([$lang, $zweiter], $this->capture(fn () => EnvSetting::secretList(self::VARIABLE, minLength: 32, maxCount: 2)));
+        $this->assertStringContainsString('Schlüssel 1 hat 11 Zeichen', $this->warnings);
+        $this->assertStringContainsString('Es gelten die ersten 2', $this->warnings);
+        $this->assertStringNotContainsString('kurz-geheim', $this->warnings);
+        $this->assertStringNotContainsString($lang, $this->warnings);
+    }
+
+    public function test_pattern_time_and_https_url(): void
+    {
+        $this->set('mein-dienst');
+        $this->assertSame('mein-dienst', $this->capture(fn () => EnvSetting::pattern(self::VARIABLE, 'swayy', '/^[a-z0-9-]{1,40}$/', 'passt nicht')));
+        $this->set('Mein Dienst');
+        $this->assertSame('swayy', $this->capture(fn () => EnvSetting::pattern(self::VARIABLE, 'swayy', '/^[a-z0-9-]{1,40}$/', 'passt nicht')));
+        $this->assertStringContainsString('passt nicht. Es gilt die Vorgabe „swayy“', $this->warnings);
+
+        $this->set('05:15');
+        $this->assertSame('05:15', $this->capture(fn () => EnvSetting::time(self::VARIABLE, '04:40')));
+        $this->set('25:00');
+        $this->assertSame('04:40', $this->capture(fn () => EnvSetting::time(self::VARIABLE, '04:40')));
+
+        $this->set('https://panel.example.de/');
+        $this->assertSame('https://panel.example.de', $this->capture(fn () => EnvSetting::httpsUrl(self::VARIABLE)));
+        $this->set('http://panel.example.de');
+        $this->assertSame('', $this->capture(fn () => EnvSetting::httpsUrl(self::VARIABLE)));
+        $this->assertStringContainsString('keine vollständige Adresse mit https://', $this->warnings);
+    }
+
     public function test_a_value_outside_the_limits_is_clamped_with_a_warning(): void
     {
         $this->set('600');

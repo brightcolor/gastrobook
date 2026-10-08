@@ -14,11 +14,22 @@ class RegistrationController extends Controller
 
     public function show()
     {
+        // Neue Betriebe bestellen im Kundenpanel, sobald seine Bestellseite eingetragen ist.
+        $bestellung = (string) config('provisioning.panel_order_url');
+        if ($bestellung !== '') {
+            return redirect()->away($bestellung);
+        }
+
         return view('auth.register');
     }
 
     public function store(Request $request)
     {
+        $bestellung = (string) config('provisioning.panel_order_url');
+        if ($bestellung !== '') {
+            return redirect()->away($bestellung);
+        }
+
         if ($request->filled('website')) {
             abort(422); // honeypot
         }

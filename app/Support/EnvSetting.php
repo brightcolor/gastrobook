@@ -158,6 +158,87 @@ final class EnvSetting
         return $networks;
     }
 
+    /**
+     * Komma-Liste geheimer Schluessel, jeder mindestens $minLength Zeichen,
+     * hoechstens $maxCount Stueck. Ein zu kurzer Schluessel entfaellt mit
+     * Warnung; die Warnung nennt nur seine Laenge, nie den Wert.
+     *
+     * @return list<string>
+     */
+    public static function secretList(string $variable, int $minLength, int $maxCount): array
+    {
+        $raw = self::raw($variable);
+        if ($raw === null) {
+            return [];
+        }
+
+        $keys = [];
+        foreach (self::items($raw) as $position => $item) {
+            if (strlen($item) < $minLength) {
+                self::warn("{$variable}: Schlüssel ".($position + 1).' hat '.strlen($item)." Zeichen und bleibt unberücksichtigt. Bitte einen Schlüssel mit mindestens {$minLength} Zeichen eintragen, etwa aus `openssl rand -hex 32`.");
+
+                continue;
+            }
+            $keys[] = $item;
+        }
+
+        if (count($keys) > $maxCount) {
+            self::warn("{$variable} nennt ".count($keys)." Schlüssel. Es gelten die ersten {$maxCount}. Bitte die übrigen aus der .env entfernen.");
+            $keys = array_slice($keys, 0, $maxCount);
+        }
+
+        return $keys;
+    }
+
+    /**
+     * Text, der zum Muster passt; sonst die Vorgabe. $hint beschreibt die
+     * erlaubte Form fuer die Warnung.
+     */
+    public static function pattern(string $variable, string $default, string $regex, string $hint): string
+    {
+        $raw = self::raw($variable);
+        if ($raw === null) {
+            return $default;
+        }
+
+        if (preg_match($regex, $raw) !== 1) {
+            self::warn("{$variable}=„{$raw}“ {$hint}. Es gilt die Vorgabe „{$default}“. Bitte den Wert in der .env anpassen.");
+
+            return $default;
+        }
+
+        return $raw;
+    }
+
+    /**
+     * Adresse mit https://, ohne Schraegstrich am Ende; leer, wenn nicht
+     * gesetzt oder ungueltig.
+     */
+    public static function httpsUrl(string $variable): string
+    {
+        $raw = self::raw($variable);
+        if ($raw === null) {
+            return '';
+        }
+
+        $host = parse_url($raw, PHP_URL_HOST);
+        if (! str_starts_with($raw, 'https://') || ! is_string($host) || $host === '' || preg_match('/\s/', $raw) === 1) {
+            self::warn("{$variable}=„{$raw}“ ist keine vollständige Adresse mit https://. Die Einstellung bleibt leer. Bitte eine Adresse wie https://panel.example.de eintragen.");
+
+            return '';
+        }
+
+        return rtrim($raw, '/');
+    }
+
+    /**
+     * Uhrzeit HH:MM, 00:00 bis 23:59.
+     */
+    public static function time(string $variable, string $default): string
+    {
+        return self::pattern($variable, $default, '/^([01]\d|2[0-3]):[0-5]\d$/', 'ist keine Uhrzeit in der Form HH:MM');
+    }
+
     private static function raw(string $variable): ?string
     {
         $value = Env::get($variable);

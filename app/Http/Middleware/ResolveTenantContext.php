@@ -55,9 +55,11 @@ class ResolveTenantContext
 
         // trial_expired and pending_billing are handled by EnsureTrialActive;
         // only hard-block statuses (suspended, cancelled) are rejected here.
-        $hardBlocked = in_array($tenant->status, ['suspended', 'cancelled'], true);
+        // Ein Betrieb mit Vertrag im Kundenpanel zeigt seine Sperre selbst, mit
+        // Grund und Weg in den Kundenbereich (EnsureTrialActive).
+        $hardBlocked = in_array($tenant->status, ['suspended', 'cancelled'], true) && ! $tenant->hasContract();
         if ($hardBlocked && ! $user->isSaasAdmin()) {
-            abort(403, 'Dieser Mandant ist gesperrt.');
+            abort(403, 'Dieser Betrieb ist gesperrt. Schreib uns an info@swayy.de, dann klären wir den Grund.');
         }
 
         $this->context->setTenant($tenant);

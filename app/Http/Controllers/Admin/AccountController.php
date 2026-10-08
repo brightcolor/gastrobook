@@ -6,18 +6,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Exceptions\AccountImportException;
 use App\Http\Controllers\Controller;
-use App\Models\Event;
-use App\Models\Location;
-use App\Models\ReservationAttachment;
-use App\Models\Room;
 use App\Models\Tenant;
 use App\Services\AccountExportService;
 use App\Services\AccountImportService;
 use App\Services\AuditLogger;
+use App\Services\TenantDeletionService;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -26,6 +22,7 @@ class AccountController extends Controller
     public function __construct(
         private readonly TenantContext $context,
         private readonly AuditLogger $audit,
+        private readonly TenantDeletionService $deletion,
     ) {}
 
     public function show(Request $request)
@@ -197,43 +194,13 @@ class AccountController extends Controller
             'deleted_by' => $user->email,
         ]);
 
-        // Dateien zuerst: Die ON-DELETE-CASCADE raeumt nur die Datenbank. Ohne
-        // diesen Schritt liegen die Anhaenge mit Gastnamen und Unterschriften
-        // weiter auf der Platte – ohne jede Zeile, ueber die man sie noch finden
-        // koennte. Das waere weder geloescht noch auffindbar.
-        $this->deleteTenantFiles($tenant);
-
-        // Hard delete: forceDelete bypasses SoftDeletes and triggers the
-        // ON DELETE CASCADE foreign keys, so everything tied to the tenant
-        // (locations, reservations, guests, staff, settings, audit logs, …)
-        // is permanently removed and the slug is freed again.
-        $tenant->forceDelete();
+        // Erst die Dateien, dann der Betrieb samt allem, was an ihm haengt.
+        $this->deletion->delete($tenant);
 
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
         return redirect('/')->with('success', __('Der Betrieb wurde vollständig gelöscht.'));
-    }
-
-    /**
-     * Alle hochgeladenen Dateien eines Betriebs von der Platte nehmen:
-     * Reservierungs-Anhaenge (privat), Eventbilder, Raumhintergruende und Logos.
-     */
-    private function deleteTenantFiles(Tenant $tenant): void
-    {
-        ReservationAttachment::withoutGlobalScopes()
-            ->where('tenant_id', $tenant->id)
-            ->each(fn (ReservationAttachment $a) => Storage::disk($a->disk)->delete($a->path));
-        Storage::disk('local')->deleteDirectory('reservation-attachments/'.$tenant->id);
-
-        $locationIds = Location::withoutGlobalScopes()->where('tenant_id', $tenant->id)->pluck('id');
-
-        Event::withoutGlobalScopes()->where('tenant_id', $tenant->id)->whereNotNull('image_path')
-            ->each(fn (Event $e) => Storage::disk('public')->delete($e->image_path));
-        Room::withoutGlobalScopes()->whereIn('location_id', $locationIds)->whereNotNull('background_path')
-            ->each(fn (Room $r) => Storage::disk('public')->delete($r->background_path));
-        Location::withoutGlobalScopes()->where('tenant_id', $tenant->id)->whereNotNull('brand_logo_path')
-            ->each(fn (Location $l) => Storage::disk('public')->delete($l->brand_logo_path));
     }
 }

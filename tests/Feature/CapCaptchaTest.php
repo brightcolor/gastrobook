@@ -245,6 +245,11 @@ class CapCaptchaTest extends TestCase
         'POST webhooks/gocardless',
         'POST webhooks/stripe',
         'POST webhooks/postal',
+        // Kundenpanel von bright color: jeder Aufruf mit HMAC signiert (App\Provisioning\RequestCheck).
+        'POST provisioning/v1/accounts',
+        'POST provisioning/v1/accounts/{contract}/{action}',
+        'PUT provisioning/v1/accounts/{contract}/tariff',
+        'DELETE provisioning/v1/accounts/{contract}',
 
         // Laravel's own temporary-upload route, only registered while the
         // local disk serves signed URLs.

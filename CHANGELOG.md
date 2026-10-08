@@ -1,5 +1,30 @@
 # Changelog
 
+## [Unreleased]
+
+### Anschluss an das Kundenpanel von bright color
+
+swayy wird nach vipinvit.es der zweite Dienst im Kundenpanel
+(panel.kundenberei.ch). Das Panel übernimmt Registrierung, Probe, Tarif, Sperre
+und Kündigung neuer Betriebe.
+
+- Bereitstellungs-Schnittstelle `/provisioning/v1` (Version 1): `info`,
+  Betrieb anlegen und übernehmen, Stand, Freigabe, Sperre, Kündigung samt
+  Rücknahme, Tarif mit Prüfung und Erzwingen, Anmeldelink, Löschen. Signiert mit
+  HMAC, Drossel nach Fehlversuchen, Antworten je Aufrufkennung wiederholbar.
+- Betriebe mit Vertrag: Zustand und die Grenzen „Standorte“ und „Tische“ aus dem
+  Panel, keine eigene Probefrist, Sperrseite mit Weg in den Kundenbereich.
+- „Zum Dienst“ meldet den Inhaber über einen einmaligen Link an; „Tarif und
+  Rechnungen“ (`/admin/tarif`) führt signiert zurück ins Panel.
+- `/register` leitet auf die Bestellseite des Panels, sobald `PANEL_ORDER_URL`
+  gesetzt ist.
+- Neue Einstellungen `PROVISIONING_*`, `LOGIN_LINK_SECONDS`, `PANEL_BASE_URL`,
+  `PANEL_ORDER_URL` mit Vorgaben und Grenzen; tägliches Aufräumen um
+  `PROVISIONING_CLEANUP_TIME`.
+- „Betrieb löschen“ und das Löschen aus dem Panel nutzen denselben Dienst und
+  nehmen jetzt auch das Logo des Betriebs von der Platte.
+- Meldung „Dieser Mandant ist gesperrt.“ nennt den nächsten Schritt.
+
 ## [1.133.1] – 2026-10-07
 
 ### Saison-Hinweis: Buchen geht schon jetzt

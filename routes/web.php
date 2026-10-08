@@ -36,6 +36,7 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\RegistrationController;
 use App\Http\Controllers\GoCardlessWebhookController;
 use App\Http\Controllers\PostalInboundController;
+use App\Http\Controllers\Provisioning\PanelLinkController;
 use App\Http\Controllers\Public\FeedbackController;
 use App\Http\Controllers\Public\GuestPortalController;
 use App\Http\Controllers\Public\MarketingController;
@@ -171,6 +172,11 @@ Route::middleware('guest')->group(function () {
     Route::post('/passwort-reset', [PasswordResetController::class, 'reset'])->name('password.update');
 });
 
+// Einmaliger Anmeldelink aus dem Kundenpanel („Zum Dienst“). Meldet den
+// Inhaber an, auch wenn im Browser gerade jemand anderes angemeldet ist.
+Route::get('/anmelden/{token}', [PanelLinkController::class, 'login'])
+    ->middleware('throttle:20,1')->name('provisioning.login');
+
 // Abmelde-Seite per URL erreichbar (auch wenn man durch eine alte Session auf
 // /login zur Startseite umgeleitet wird) – zeigt einen Abmelden-Button.
 Route::get('/abmelden', [AuthController::class, 'logoutConfirm'])->name('logout.confirm');
@@ -200,6 +206,9 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
     Route::post('/billing-requests/{billingRequest}/activate', [BillingRequestController::class, 'activate'])->name('billing-requests.activate');
     Route::get('/', DashboardController::class)->name('dashboard');
     Route::get('/dashboard/stats', [DashboardController::class, 'stats'])->name('dashboard.stats');
+
+    // „Tarif und Rechnungen“: signierter Rueckweg ins Kundenpanel (nur Betriebe mit Vertrag).
+    Route::get('/tarif', [PanelLinkController::class, 'back'])->name('panel.back');
 
     // Live operations board (staff)
     Route::middleware('permission:reservations.view')->group(function () {

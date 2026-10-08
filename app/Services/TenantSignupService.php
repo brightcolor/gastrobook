@@ -27,41 +27,60 @@ class TenantSignupService
     {
         $plan = Plan::where('key', 'trial')->where('is_active', true)->firstOrFail();
 
-        [$tenant, $user] = DB::transaction(function () use ($data, $plan) {
-            $tenant = Tenant::create([
-                'name' => $data['restaurant_name'],
-                'slug' => $this->uniqueSlug($data['restaurant_name']),
-                'plan_id' => $plan->id,
-                'status' => 'active',
-                'trial_ends_at' => $plan->trial_days > 0 ? now()->addDays($plan->trial_days) : null,
-            ]);
-
-            $user = new User([
-                'name' => $data['name'],
-                'email' => strtolower($data['email']),
-                'password' => Hash::make($data['password']),
-            ]);
-            $user->forceFill(['current_tenant_id' => $tenant->id])->save();
-
-            TenantUser::create([
-                'tenant_id' => $tenant->id,
-                'user_id' => $user->id,
-                'role' => 'tenant_owner',
-                'all_locations' => true,
-            ]);
-
-            $location = Location::create([
-                'tenant_id' => $tenant->id,
-                'name' => $data['restaurant_name'],
-                'slug' => Str::slug($data['restaurant_name']),
-                'timezone' => $data['timezone'] ?? 'Europe/Berlin',
-            ]);
-            $location->settings()->create(['tenant_id' => $tenant->id]);
-
-            return [$tenant, $user];
-        });
+        [$tenant, $user] = DB::transaction(fn () => $this->create(
+            $data['restaurant_name'],
+            $data['name'],
+            $data['email'],
+            $data['password'],
+            $plan,
+            ['status' => 'active', 'trial_ends_at' => $plan->trial_days > 0 ? now()->addDays($plan->trial_days) : null],
+            $data['timezone'] ?? null,
+        ));
 
         $this->audit->log('tenant.signed_up', $tenant, null, ['name' => $tenant->name], null, $user, $tenant->id);
+
+        return [$tenant, $user];
+    }
+
+    /**
+     * Betrieb, Inhaber und erster Standort, ohne eigene Transaktion: Der
+     * Aufrufer schreibt fest (Registrierung, Bereitstellung durch das Panel).
+     * Ohne Passwort bekommt der Inhaber ein zufaelliges und setzt sein eigenes
+     * spaeter ueber den Link der Willkommensmail.
+     *
+     * @param  array<string, mixed>  $tenantAttributes  Zustand, Probe und Vertragsfelder
+     * @return array{0: Tenant, 1: User}
+     */
+    public function create(string $restaurantName, string $name, string $email, ?string $password, ?Plan $plan, array $tenantAttributes, ?string $timezone = null): array
+    {
+        $tenant = new Tenant([
+            'name' => $restaurantName,
+            'slug' => $this->uniqueSlug($restaurantName),
+            'plan_id' => $plan?->id,
+        ]);
+        $tenant->forceFill($tenantAttributes)->save();
+
+        $user = new User([
+            'name' => $name,
+            'email' => strtolower($email),
+            'password' => Hash::make($password ?? Str::random(48)),
+        ]);
+        $user->forceFill(['current_tenant_id' => $tenant->id])->save();
+
+        TenantUser::create([
+            'tenant_id' => $tenant->id,
+            'user_id' => $user->id,
+            'role' => 'tenant_owner',
+            'all_locations' => true,
+        ]);
+
+        $location = Location::create([
+            'tenant_id' => $tenant->id,
+            'name' => $restaurantName,
+            'slug' => Str::slug($restaurantName),
+            'timezone' => $timezone ?? 'Europe/Berlin',
+        ]);
+        $location->settings()->create(['tenant_id' => $tenant->id]);
 
         return [$tenant, $user];
     }
