@@ -391,7 +391,9 @@ final class ProvisioningService
             throw $fehler;
         }
         try {
-            return CarbonImmutable::parse($value);
+            // In die Zeitzone der App: Laravel speichert die Uhrzeit ohne Umrechnung,
+            // aus 23:59:59+01:00 wuerde sonst 23:59:59 in UTC, eine Stunde zu spaet.
+            return CarbonImmutable::parse($value)->setTimezone((string) config('app.timezone'));
         } catch (\Throwable) {
             throw $fehler;
         }

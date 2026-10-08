@@ -234,6 +234,16 @@ final class ProvisioningApiTest extends TestCase
         Mail::assertSent(ProvisionedWelcomeMail::class, fn (ProvisionedWelcomeMail $m) => $m->waitsForApproval);
     }
 
+    public function test_ende_der_probe_behaelt_seinen_zeitpunkt(): void
+    {
+        $konto = $this->account();
+        $konto['tariff']['ends_at'] = '2026-11-07T23:59:59+01:00';
+        $this->api('POST', '/accounts', $konto)->assertCreated();
+
+        $this->assertSame('2026-11-07T22:59:59+00:00', $this->tenant()->tariff_ends_at->utc()->toIso8601String());
+        $this->api('GET', '/accounts/fbtest-1')->assertJsonPath('tariff.ends_at', \Carbon\CarbonImmutable::parse('2026-11-07T22:59:59Z')->setTimezone(config('app.timezone'))->toIso8601String());
+    }
+
     public function test_vertrag_doppelt_gibt_contract_exists(): void
     {
         $this->api('POST', '/accounts', $this->account())->assertCreated();
