@@ -103,4 +103,27 @@ describe('Seitenleiste', () => {
         expect(window.location.hash).toBe('');
         expect(document.activeElement).toBe(document.querySelector('[data-page-header] h1'));
     });
+
+    it('bleibt offen, wenn der Bestätigungsdialog darüber Escape verbraucht', () => {
+        mount(layout);
+        initDrawers();
+        document.getElementById('opener').click();
+        document.getElementById('f-neu-name').value = 'Noch nicht gespeichert';
+
+        // Der Dialog der Seite lauscht schon vor drawer.js und ruft preventDefault auf;
+        // die Capture-Phase bildet diese Reihenfolge nach.
+        const consume = (e) => { if (e.key === 'Escape') e.preventDefault(); };
+        document.addEventListener('keydown', consume, true);
+        try {
+            document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+
+            expect(document.getElementById('standort-neu').hidden).toBe(false);
+            expect(document.getElementById('f-neu-name').value).toBe('Noch nicht gespeichert');
+        } finally {
+            document.removeEventListener('keydown', consume, true);
+        }
+
+        document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+        expect(document.getElementById('standort-neu').hidden).toBe(true);
+    });
 });

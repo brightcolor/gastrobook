@@ -170,5 +170,10 @@ class NavigationLayoutTest extends TestCase
         $this->assertStringContainsString('data-examples="Tisch|Logo"', $html);
         $this->assertStringContainsString('data-page-header', $html);
         $this->assertStringContainsString("e.target.hasAttribute('data-ajax')", $html);
+        // Escape im Bestätigungsdialog verbraucht die Taste (preventDefault), damit eine darunter offene Seitenleiste bleibt.
+        $this->assertMatchesRegularExpression(
+            "/e\.key === 'Escape' && !modal\.classList\.contains\('hidden'\)\)\s*\{\s*e\.preventDefault\(\);\s*closeModal\(\);/",
+            $html,
+        );
     }
 }

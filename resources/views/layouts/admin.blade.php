@@ -203,7 +203,10 @@
     okBtn.addEventListener('click', () => { const fn = pending; closeModal(); if (fn) fn(); });
     cancelBtn.addEventListener('click', closeModal);
     modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal(); });
+    // preventDefault: Der Dialog hat Escape verbraucht, eine darunter offene Seitenleiste (drawer.js) bleibt offen.
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && !modal.classList.contains('hidden')) { e.preventDefault(); closeModal(); }
+    });
 
     document.addEventListener('submit', e => {
         // Formulare mit data-ajax übernimmt forms.js (Rückfrage dort: x-inline-confirm).

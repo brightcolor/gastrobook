@@ -47,6 +47,33 @@ class AdminComponentsTest extends TestCase
         $this->assertStringContainsString('data-inline-confirm-cancel', $html);
     }
 
+    public function test_inline_confirm_ties_the_question_to_its_buttons(): void
+    {
+        $html = Blade::render(<<<'BLADE'
+            <x-inline-confirm id="remove-7" action="/admin/users/7" method="DELETE" label="Entfernen"
+                question="„Kim“ aus dem Betrieb entfernen?" confirm="Entfernen" />
+            BLADE);
+
+        $this->assertStringContainsString('<p id="remove-7-question"', $html);
+        $this->assertMatchesRegularExpression('/role="group"\s+aria-labelledby="remove-7-question"/', $html);
+        $this->assertMatchesRegularExpression('/<button type="submit"[^>]*aria-describedby="remove-7-question"/', $html);
+    }
+
+    public function test_inline_confirm_names_the_subject_for_screen_readers_when_given(): void
+    {
+        $with = Blade::render(<<<'BLADE'
+            <x-inline-confirm id="remove-7" action="/admin/users/7" method="DELETE" label="Entfernen" subject="Kim"
+                question="„Kim“ aus dem Betrieb entfernen?" confirm="Entfernen" />
+            BLADE);
+        $without = Blade::render(<<<'BLADE'
+            <x-inline-confirm id="remove-7" action="/admin/users/7" method="DELETE" label="Entfernen"
+                question="„Kim“ aus dem Betrieb entfernen?" confirm="Entfernen" />
+            BLADE);
+
+        $this->assertMatchesRegularExpression('/data-inline-confirm-open[^>]*>Entfernen<span class="sr-only"> „Kim“<\/span><\/button>/', $with);
+        $this->assertStringNotContainsString('sr-only', $without);
+    }
+
     public function test_inline_confirm_can_start_open_and_post_natively(): void
     {
         $html = Blade::render(<<<'BLADE'
