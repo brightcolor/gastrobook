@@ -235,4 +235,20 @@ class DirectDebitTest extends TestCase
         $this->assertSame('cancelled', BillingProfile::where('tenant_id', $setup['tenant']->id)->first()->gocardless_status);
         Mail::assertSent(TemplatedMail::class);
     }
+
+    public function test_billing_page_uses_the_settings_layout_without_inline_handlers(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->get('/admin/billing')
+            ->assertOk()
+            ->assertSee('Abo & Rechnungen')
+            ->assertSee('id="tarif"', false)
+            ->assertSee('id="lastschrift"', false);
+
+        $source = (string) file_get_contents(resource_path('views/admin/billing/index.blade.php'));
+        $this->assertDoesNotMatchRegularExpression('/\son(click|change|submit|input)\s*=/i', $source);
+    }
 }
