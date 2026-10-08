@@ -127,3 +127,16 @@ Gesamtreview Nachprüfung (ac01d4c2dd478ee1f): alle Critical/Important/Minor-Kor
 Ruling: für Teil 2 vorgemerkt: Eintrag 'Daten' sehen tenant_admin und Support (tenant.settings.manage), Export/Import/Löschen zeigt die Kontoseite nur tenant_owner — die neue Seite 'Daten' und ihr Menüeintrag nutzen dieselbe Prüfung; nach 'Verwerfen' startet ein zurückgestelltes Neuladen nicht; Beispielbegriffe der Suche aussagekräftiger wählen — kostet bei Irrtum: Nacharbeit in Teil 2
 Ruling: Freigabeliste für das Zusammenführen nach main (Plan Teil 3): launch.json-Eintrag gastrobook-new-ui entfernen; Changelog-Hinweis Widget-Vorgabefarbe #0d9488 → #0f766e — kostet bei Irrtum: nichts
 Teil 1: complete (d13e9b9..842e109; 972 Tests grün, Pint, PHPStan 0, Build)
+
+## Nachtrag 08.10.2026: Audit mit impeccable 4.5.0
+
+Audit (Skill impeccable, Befehl audit) über Layout, Navigation, Einstellungs-Menü und „Allgemein“: 15/20. Behoben in 25bf8b5 und dem folgenden Commit:
+- Kontrast: Fußzeile 2,37 → ca. 7 : 1, Beta-Kennzeichen 2,87 → ca. 7 : 1, Gruppenüberschriften im Menü 4,39 → ca. 7 : 1 (text-stone-600, text-amber-800)
+- Farben aus Tokens: aria-invalid über var(--color-red-700), Betriebstyp-Karten über var(--brand)
+- Fehlerbox ohne dicken Rand links (Detektor „side-tab“)
+- Schriftgrößen der neuen Bausteine in rem; bei 200 % Grundschrift kein seitliches Scrollen mehr (Betriebstyp-Karten brechen um)
+- Speicherleiste am Smartphone mit 44-px-Knöpfen
+- Schmale Leiste: Bezeichnung als Hinweis bei Zeiger und Tastaturfokus, Escape blendet aus, title an Navigationslinks entfernt
+- Leiste klappt ohne Breitenanimation (Detektor „layout-transition“)
+Ruling: Agenten des Skills nicht gestartet — CLAUDE.md verlangt vorherige Freigabe durch Mathias — kostet bei Irrtum: nichts
+Offen bleibt: Speicherleiste über Bedienelementen im Seitenkopf (Teil 2, Standort-Seiten); Zitatblock .legal mit dickem Rand links (öffentliche Rechtstexte, Bestand)
