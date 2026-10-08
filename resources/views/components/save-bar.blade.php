@@ -11,9 +11,9 @@
         </p>
         <div class="flex w-full gap-2 sm:w-auto">
             <button type="button" data-save-bar-discard
-                    class="min-h-9 flex-1 rounded-md border border-stone-600 px-3 text-sm font-semibold hover:bg-stone-800 focus-visible:outline-white sm:flex-none">Verwerfen</button>
+                    class="min-h-11 flex-1 rounded-md border border-stone-600 px-3 text-sm font-semibold hover:bg-stone-800 focus-visible:outline-white sm:min-h-9 sm:flex-none">Verwerfen</button>
             <button type="button" data-save-bar-save
-                    class="min-h-9 flex-1 rounded-md bg-white px-3 text-sm font-semibold text-stone-900 hover:bg-stone-100 focus-visible:outline-white sm:flex-none">Speichern</button>
+                    class="min-h-11 flex-1 rounded-md bg-white px-3 text-sm font-semibold text-stone-900 hover:bg-stone-100 focus-visible:outline-white sm:min-h-9 sm:flex-none">Speichern</button>
         </div>
     </div>
 </div>

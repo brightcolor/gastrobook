@@ -14,7 +14,7 @@
     @foreach($groups as $group)
         <div data-settings-group class="mt-4 first:mt-2">
             @if($group->label)
-                <p class="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-stone-400">{{ $group->label }}</p>
+                <p class="px-2 pb-1 text-[0.6875rem] font-semibold uppercase tracking-wider text-stone-400">{{ $group->label }}</p>
             @endif
             @foreach($group->items as $item)
                 <a href="{{ $item->url }}" data-settings-item data-nav-key="{{ $item->key }}"

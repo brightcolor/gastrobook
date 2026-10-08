@@ -43,9 +43,9 @@
         </div>
     @endif
     @if($help)
-        <p id="{{ $id }}-help" class="text-[13px] text-stone-500">{{ $help }}</p>
+        <p id="{{ $id }}-help" class="text-[0.8125rem] text-stone-500">{{ $help }}</p>
     @endif
     @if($error)
-        <p id="{{ $id }}-error" class="text-[13px] text-red-700">{{ $error }}</p>
+        <p id="{{ $id }}-error" class="text-[0.8125rem] text-red-700">{{ $error }}</p>
     @endif
 </div>

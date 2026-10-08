@@ -69,7 +69,7 @@ function showFieldError(form, field, text) {
     if (!note) {
         note = document.createElement('p');
         note.id = errorId;
-        note.className = 'text-[13px] text-red-700';
+        note.className = 'text-[0.8125rem] text-red-700';
         const block = form.querySelector(`label[for="${CSS.escape(field.id)}"]`)?.parentElement ?? field.parentElement;
         block.append(note);
     }

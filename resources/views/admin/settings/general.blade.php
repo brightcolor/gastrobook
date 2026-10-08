@@ -35,9 +35,9 @@
             @foreach(TenantType::cases() as $type)
                 <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-stone-300 p-4 has-[:checked]:border-(--brand) has-[:checked]:ring-1 has-[:checked]:ring-(--brand) has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-(--brand)">
                     <input type="radio" name="type" value="{{ $type->value }}" @checked($tenant->type === $type) class="mt-1">
-                    <span>
+                    <span class="min-w-0 [overflow-wrap:anywhere]">
                         <span class="block font-semibold">{{ $type->label() }}</span>
-                        <span class="block text-[13px] text-stone-500">{{ $type->summary() }}</span>
+                        <span class="block text-[0.8125rem] text-stone-500">{{ $type->summary() }}</span>
                     </span>
                 </label>
             @endforeach

@@ -39,12 +39,6 @@ export function initRail() {
     };
 
     apply(readCollapsed());
-    // Der gespeicherte Zustand gilt sofort; animiert wird erst danach. Das
-    // erzwungene Layout trennt beides, sonst liefe die Breite beim Laden ein.
-    void rail.offsetWidth;
-    window.requestAnimationFrame(() => {
-        rail.dataset.navReady = '';
-    });
 
     toggle.addEventListener('click', () => setCollapsed(rail.dataset.collapsed !== 'true'));
     // Die Schaltflächen der eingeklappten Leiste (Standort) klappen sie aus.
@@ -54,6 +48,77 @@ export function initRail() {
             toggle.focus();
         });
     });
+
+    initRailTips(rail);
+}
+
+// Bezeichnungen der schmalen Leiste: Sie erscheinen neben dem Symbol bei
+// Zeiger und Tastaturfokus, Escape blendet sie aus. Den Namen für
+// Screenreader trägt der Eintrag selbst (verborgene Bezeichnung, aria-label
+// oder sr-only-Text), deshalb ist der Hinweis aria-hidden.
+function initRailTips(rail) {
+    const tip = document.createElement('div');
+    tip.className = 'nav-tip';
+    tip.setAttribute('aria-hidden', 'true');
+    tip.hidden = true;
+    const bubble = document.createElement('span');
+    tip.append(bubble);
+    document.body.append(tip);
+
+    let current = null;
+
+    // Leer, solange die Bezeichnung sichtbar in der Leiste steht.
+    const labelOf = (el) => {
+        const label = el.querySelector('.nav-label');
+        if (label) return label.getBoundingClientRect().width > 1 ? '' : label.textContent.trim();
+        return (el.getAttribute('aria-label') || el.querySelector('.sr-only')?.textContent || '').trim();
+    };
+
+    const hide = () => {
+        // Ein eigener title erscheint wieder, sobald der Hinweis weg ist.
+        if (current && current.dataset.tipTitle !== undefined) {
+            current.title = current.dataset.tipTitle;
+            delete current.dataset.tipTitle;
+        }
+        current = null;
+        tip.hidden = true;
+    };
+
+    const show = (el) => {
+        const text = labelOf(el);
+        if (!text) return;
+        hide();
+        current = el;
+        if (el.title) {
+            el.dataset.tipTitle = el.title;
+            el.removeAttribute('title');
+        }
+        bubble.textContent = text;
+        const box = el.getBoundingClientRect();
+        tip.style.left = `${box.right}px`;
+        tip.style.top = `${box.top + box.height / 2}px`;
+        tip.hidden = false;
+    };
+
+    rail.querySelectorAll('a, button').forEach((el) => {
+        el.addEventListener('mouseenter', () => show(el));
+        el.addEventListener('mouseleave', (e) => {
+            if (!tip.contains(e.relatedTarget)) hide();
+        });
+        el.addEventListener('focus', () => {
+            if (el.matches(':focus-visible')) show(el);
+        });
+        el.addEventListener('blur', hide);
+        el.addEventListener('click', hide);
+    });
+    tip.addEventListener('mouseleave', (e) => {
+        if (!current || !current.contains(e.relatedTarget)) hide();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && current) hide();
+    });
+    rail.addEventListener('scroll', hide, true);
+    window.addEventListener('resize', hide);
 }
 
 export function initMoreSheet() {

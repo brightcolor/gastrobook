@@ -124,12 +124,12 @@
          style="grid-template-columns: repeat({{ count($mobileBar) + 1 }}, minmax(0, 1fr))">
         @foreach($mobileBar as $item)
             <a href="{{ $item->url }}" data-nav-key="{{ $item->key }}" @if($item->active) aria-current="page" @endif
-               class="flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-[11px] {{ $item->active ? 'font-semibold text-white shadow-[inset_0_2px_0_0_#fff]' : 'hover:text-white' }}">
+               class="flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-[0.6875rem] {{ $item->active ? 'font-semibold text-white shadow-[inset_0_2px_0_0_#fff]' : 'hover:text-white' }}">
                 <x-nav-icon :name="$item->icon" class="h-5 w-5" /><span class="truncate">{{ $item->label }}</span>
             </a>
         @endforeach
         <button type="button" data-more-open aria-controls="swayyMore" aria-expanded="false"
-                class="flex min-h-14 flex-col items-center justify-center gap-1 text-[11px] hover:text-white">
+                class="flex min-h-14 flex-col items-center justify-center gap-1 text-[0.6875rem] hover:text-white">
             <x-nav-icon name="more" class="h-5 w-5" />Mehr
         </button>
     </nav>

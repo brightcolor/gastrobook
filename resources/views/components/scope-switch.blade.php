@@ -6,9 +6,9 @@
     $location = $ctx->location();
 @endphp
 @if($scope === 'tenant')
-    <span class="text-[13px] text-stone-600">Gilt für alle Standorte</span>
+    <span class="text-[0.8125rem] text-stone-600">Gilt für alle Standorte</span>
 @elseif($tenant && $tenant->locations->count() > 1)
-    <form method="POST" action="{{ route('admin.switch-location') }}" class="flex items-center gap-2 text-[13px] text-stone-600">
+    <form method="POST" action="{{ route('admin.switch-location') }}" class="flex items-center gap-2 text-[0.8125rem] text-stone-600">
         @csrf
         <label for="scopeLocation">Gilt für Standort</label>
         <select id="scopeLocation" name="location_id" data-autosubmit class="h-9 py-0 text-sm font-semibold text-stone-900">
@@ -18,5 +18,5 @@
         </select>
     </form>
 @elseif($location)
-    <span class="text-[13px] text-stone-600">Gilt für Standort <strong class="font-semibold text-stone-900">{{ $location->name }}</strong></span>
+    <span class="text-[0.8125rem] text-stone-600">Gilt für Standort <strong class="font-semibold text-stone-900">{{ $location->name }}</strong></span>
 @endif

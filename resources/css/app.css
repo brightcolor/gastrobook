@@ -294,9 +294,25 @@
 .nav-rail {
     width: 15rem;
 }
-/* Erst nach dem ersten Anwenden des gespeicherten Zustands animieren (nav.js). */
-.nav-rail[data-nav-ready] {
-    transition: width 0.15s ease;
+/* Bezeichnung neben der schmalen Leiste bei Zeiger und Tastaturfokus (nav.js).
+   Der linke Innenabstand überbrückt die Lücke zur Leiste, damit der Zeiger
+   vom Eintrag auf den Hinweis wechseln kann (WCAG 1.4.13). */
+.nav-tip {
+    position: fixed;
+    z-index: 60;
+    padding-left: 0.5rem;
+    transform: translateY(-50%);
+}
+.nav-tip > span {
+    display: block;
+    border-radius: 0.375rem;
+    background: var(--color-stone-800);
+    color: var(--color-white);
+    padding: 0.375rem 0.625rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px color-mix(in oklab, var(--color-stone-900) 25%, transparent);
 }
 .nav-rail-only {
     display: none;
@@ -331,11 +347,6 @@
 }
 .nav-rail[data-nav-mode='settings'] .nav-collapse {
     display: none;
-}
-@media (prefers-reduced-motion: reduce) {
-    .nav-rail[data-nav-ready] {
-        transition: none;
-    }
 }
 
 /* Felder, die der Server als fehlerhaft meldet (resources/js/admin/forms.js). */
