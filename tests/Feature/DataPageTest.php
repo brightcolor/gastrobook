@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Tests\Concerns\CreatesTenants;
@@ -43,6 +44,33 @@ class DataPageTest extends TestCase
             ->assertOk()
             ->assertDontSee('action="'.route('admin.account.tenant.destroy').'"', false)
             ->assertSee('Löschen kann den Betrieb nur, wer als einziger Inhaber übrig ist.');
+    }
+
+    public function test_platform_support_gets_the_same_explanation(): void
+    {
+        $setup = $this->createTenantSetup();
+        $support = User::factory()->create(['saas_role' => 'support_admin', 'current_tenant_id' => $setup['tenant']->id]);
+        $this->clearTenantContext();
+
+        $this->actingAs($support)->get(route('admin.settings.data.show'))
+            ->assertForbidden()
+            ->assertSee('„Daten“ steht nur Inhabern des Betriebs offen.');
+    }
+
+    public function test_owners_find_the_way_to_the_data_page_on_my_account(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->get(route('admin.account.show'))
+            ->assertOk()
+            ->assertSee('href="'.route('admin.settings.data.show').'"', false);
+        $this->actingAs($admin)->get(route('admin.account.show'))
+            ->assertOk()
+            ->assertDontSee('href="'.route('admin.settings.data.show').'"', false)
+            ->assertSee('Konto löschen …');
     }
 
     public function test_admins_get_an_explanation_instead_of_the_page(): void

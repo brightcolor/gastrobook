@@ -123,7 +123,7 @@ class AccountController extends Controller
             // Formular. Ins Log gehoert sie sehr wohl.
             report($e);
 
-            return back()->withErrors(['file' => 'Der Import ist fehlgeschlagen. Die Datei wurde nicht übernommen; im Serverprotokoll stehen die Einzelheiten.']);
+            return back()->withErrors(['file' => __('Der Import ist fehlgeschlagen, die Datei wurde nicht übernommen. Bitte den Support von Swayy fragen und Datum und Uhrzeit des Versuchs nennen; dort stehen die Einzelheiten im Serverprotokoll.')]);
         }
 
         $this->audit->log('account.imported', $tenant, null, $imported, null, $user, $tenant->id);
@@ -141,7 +141,8 @@ class AccountController extends Controller
         $request->validate([
             'confirm' => ['required', 'in:LÖSCHEN'],
         ], [
-            'confirm.in' => 'Bitte tippe genau „LÖSCHEN" ein, um dein Konto zu löschen.',
+            'confirm.required' => __('Bitte tippe zur Bestätigung „LÖSCHEN“ ein.'),
+            'confirm.in' => __('Bitte tippe genau „LÖSCHEN“ ein, in Großbuchstaben, um dein Konto zu löschen.'),
         ]);
 
         $user = $request->user();

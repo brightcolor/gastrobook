@@ -13,6 +13,12 @@
         <dt class="font-semibold text-stone-600">Konto seit</dt>
         <dd>{{ $user->created_at->format('d.m.Y') }}</dd>
     </dl>
+    @if($isOwner && $tenant !== null)
+        <p class="text-sm text-stone-600">
+            Datenexport, Import und „Betrieb löschen“ für „{{ $tenant->name }}“ findest du unter
+            <a href="{{ route('admin.settings.data.show') }}" class="font-semibold underline underline-offset-2">Einstellungen › Daten</a>.
+        </p>
+    @endif
 </x-settings.section>
 
 <x-settings.section id="konto-loeschen" title="Konto löschen">
