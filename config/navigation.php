@@ -82,7 +82,7 @@ return [
             ['key' => 'locations', 'label' => 'Standorte', 'route' => 'admin.locations.index', 'scope' => 'tenant', 'can' => ['locations.manage'],
                 'keywords' => ['Standort', 'Neuer Standort' => 'standort-neu', 'Adresse', 'Zeitzone', 'Telefon', 'Logo', 'Begrüßung']],
             ['key' => 'team', 'label' => 'Team & Rollen', 'route' => 'admin.users.index', 'scope' => 'tenant', 'can' => ['users.invite'],
-                'keywords' => ['Benutzer', 'Einladen', 'Rollen', 'Zugang', 'Servicekraft']],
+                'keywords' => ['Benutzer', 'Person einladen' => 'einladen', 'Einladungslink' => 'einladungen', 'Rollen' => 'rollen', 'Zugang', 'Servicekraft']],
             ['key' => 'billing', 'label' => 'Abo & Rechnungen', 'route' => 'admin.billing.show', 'scope' => 'tenant', 'can' => ['billing.manage'], 'active' => ['admin.billing.*'],
                 'keywords' => ['Tarif', 'Abo', 'Lastschrift', 'Rechnung']],
             ['key' => 'audit', 'label' => 'Protokoll', 'route' => 'admin.audit.index', 'scope' => 'tenant', 'can' => ['audit.view'],

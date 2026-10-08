@@ -1,107 +1,156 @@
 @extends('layouts.admin')
-@section('title', 'Benutzer')
+@section('title', 'Team & Rollen')
+
 @section('content')
-<h1 class="mb-5 text-2xl font-bold">Benutzer & Rollen<span class="tip" tabindex="0" data-tip="Wer darf sich anmelden und was darf er tun. Jede Person bekommt eine eigene Anmeldung – bitte keine gemeinsamen Zugänge, sonst steht im Änderungsprotokoll später nicht, wer etwas gemacht hat.">?</span></h1>
+<x-page-header title="Team & Rollen" :crumb="['Einstellungen', 'Betrieb']" scope="tenant"
+               description="Wer sich anmelden darf und was die Person tun kann. Jede Person bekommt einen eigenen Zugang; so steht im Protokoll, wer etwas geändert hat.">
+    <x-slot:actions>
+        <button type="button" data-drawer-open="einladen" class="btn btn-primary">Person einladen</button>
+    </x-slot:actions>
+</x-page-header>
 
-<div class="grid gap-6 lg:grid-cols-3">
-    <div class="min-w-0 lg:col-span-2">
-        <div class="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-stone-100">
-            <table class="w-full min-w-[42rem] text-sm">
-                <thead class="border-b border-stone-100 text-left text-xs font-semibold uppercase tracking-wide text-stone-500">
-                    <tr><th class="px-4 py-3">Name</th><th class="px-4 py-3">E-Mail</th><th class="px-4 py-3">Rolle</th><th class="px-4 py-3">Standorte</th><th class="px-4 py-3"></th></tr>
-                </thead>
-                <tbody class="divide-y divide-stone-50 [&>tr:hover]:bg-stone-50/70">
-                    @foreach($memberships as $m)
-                        <tr>
-                            <td class="px-4 py-3 font-semibold">{{ $m->user->name }}</td>
-                            <td class="px-4 py-3 text-stone-500">{{ $m->user->email }}</td>
-                            <td class="px-4 py-3">
-                                @if(auth()->user()->canInTenant('users.roles.manage', $tenant))
-                                    <form method="POST" action="{{ route('admin.users.role', $m) }}">
-                                        @csrf @method('PUT')
-                                        <select name="role" onchange="this.form.submit()" class="rounded-lg border-stone-200 text-sm">
-                                            @foreach($roles as $role)<option value="{{ $role }}" @selected($m->role === $role)>{{ $role }}</option>@endforeach
-                                        </select>
-                                    </form>
-                                @else
-                                    {{ $m->role }}
-                                @endif
-                            </td>
-                            <td class="px-4 py-3 text-stone-500">
-                                @if(auth()->user()->canInTenant('users.roles.manage', $tenant) && $m->user_id !== auth()->id())
-                                    <details>
-                                        <summary class="cursor-pointer select-none">{{ $m->all_locations ? 'Alle' : 'Eingeschränkt' }}</summary>
-                                        <form method="POST" action="{{ route('admin.users.locations', $m) }}" class="mt-2 space-y-1.5 text-xs">
-                                            @csrf @method('PUT')
-                                            <label class="flex items-center gap-2">
-                                                <input type="checkbox" name="all_locations" value="1" @checked($m->all_locations)>
-                                                Alle Standorte
-                                            </label>
-                                            @foreach($locations as $l)
-                                                <label class="flex items-center gap-2">
-                                                    {{-- Aus der vorgeladenen Beziehung, nicht per Abfrage je Kästchen. --}}
-                                                    <input type="checkbox" name="location_ids[]" value="{{ $l->id }}"
-                                                           @checked($m->user?->allowedLocations->contains('id', $l->id))>
-                                                    {{ $l->name }}
-                                                </label>
-                                            @endforeach
-                                            <button class="mt-1 rounded-lg border border-stone-200 px-2.5 py-1 font-semibold hover:border-teal-600">Speichern</button>
-                                        </form>
-                                    </details>
-                                @else
-                                    {{ $m->all_locations ? 'Alle' : 'Eingeschränkt' }}
-                                @endif
-                            </td>
-                            <td class="px-4 py-3 text-right">
-                                @if(auth()->user()->canInTenant('users.roles.manage', $tenant) && $m->user_id !== auth()->id())
-                                    <div class="flex justify-end gap-4">
-                                        <form method="POST" action="{{ route('admin.users.remove', $m) }}"
-                                              onsubmit="return confirm('Benutzer aus diesem Betrieb entfernen?')">
-                                            @csrf @method('DELETE')
-                                            <button class="text-xs text-stone-400 hover:text-stone-700">Entfernen</button>
-                                        </form>
-                                        <form method="POST" action="{{ route('admin.users.delete', $m) }}"
-                                              onsubmit="return confirm('Benutzerkonto vollständig löschen? Das ist unwiderruflich.')">
-                                            @csrf @method('DELETE')
-                                            <button class="text-xs font-semibold text-red-500 hover:text-red-700">Löschen</button>
-                                        </form>
-                                    </div>
-                                @endif
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
+<section aria-labelledby="team-title" class="space-y-3">
+    <h2 id="team-title" class="text-base font-semibold">Team</h2>
+    <ul class="divide-y divide-stone-200 rounded-xl border border-stone-200 bg-white">
+        @foreach($memberships as $m)
+            @php
+                $isSelf = $m->user_id === auth()->id();
+                $canEdit = $canManageRoles && ! $isSelf;
+                $access = $m->all_locations
+                    ? 'Alle Standorte'
+                    : ($m->user?->allowedLocations->pluck('name')->implode(', ') ?: 'Kein Standort freigegeben');
+            @endphp
+            <li class="grid gap-3 px-4 py-3 md:grid-cols-[minmax(0,1fr)_13rem_auto] md:items-center">
+                <div class="min-w-0">
+                    <p class="font-semibold [overflow-wrap:anywhere]">
+                        {{ $m->user?->name }}
+                        @if($isSelf)
+                            <span class="text-[0.8125rem] font-normal text-stone-600">(du)</span>
+                        @endif
+                    </p>
+                    <p class="text-[0.8125rem] text-stone-600 [overflow-wrap:anywhere]">{{ $m->user?->email }}</p>
+                    @if($hasSeveralLocations)
+                        <p class="text-[0.8125rem] text-stone-600 [overflow-wrap:anywhere]">{{ $access }}</p>
+                    @endif
+                </div>
+                <div>
+                    @if($canEdit && array_key_exists($m->role, $roleOptions))
+                        <form method="POST" action="{{ route('admin.users.role', $m) }}" data-ajax data-reset-on-error class="space-y-2">
+                            @csrf
+                            @method('PUT')
+                            <label for="role-{{ $m->id }}" class="sr-only">Rolle von {{ $m->user?->name }}</label>
+                            <select id="role-{{ $m->id }}" name="role" data-autosubmit class="w-full">
+                                @foreach($roleOptions as $role => $label)
+                                    <option value="{{ $role }}" @selected($m->role === $role)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </form>
+                    @else
+                        <p class="text-sm">{{ __('roles.'.$m->role.'.label') }}</p>
+                    @endif
+                </div>
+                <div class="flex flex-wrap items-start gap-1 md:justify-end">
+                    @if($canEdit && $hasSeveralLocations)
+                        <button type="button" data-drawer-open="zugang-{{ $m->id }}" class="btn btn-quiet">Standorte</button>
+                    @endif
+                    @if($canEdit)
+                        <x-inline-confirm id="entfernen-{{ $m->id }}" :action="route('admin.users.remove', $m)" method="DELETE"
+                                          label="Entfernen" confirm="Entfernen" :subject="$m->user?->name"
+                                          :question="'„'.$m->user?->name.'“ aus dem Betrieb entfernen? Die Person kann sich hier dann nicht mehr anmelden; ihr Konto bleibt bestehen.'" />
+                        <x-inline-confirm id="loeschen-{{ $m->id }}" :action="route('admin.users.delete', $m)" method="DELETE"
+                                          label="Konto löschen" confirm="Konto löschen" :subject="$m->user?->name"
+                                          :question="'Konto von „'.$m->user?->name.'“ löschen? Gehört die Person zu keinem weiteren Betrieb, ist ihr Zugang danach endgültig weg.'" />
+                    @endif
+                </div>
+            </li>
+        @endforeach
+    </ul>
+</section>
 
-        @if($invitations->isNotEmpty())
-            <h2 class="mt-6 mb-2 font-bold">Offene Einladungen</h2>
-            <div class="rounded-2xl bg-white p-4 text-sm shadow-sm">
-                @foreach($invitations as $inv)
-                    <div class="flex items-center justify-between border-b border-stone-50 py-2 last:border-0">
-                        <span>{{ $inv->email }} ({{ $inv->role }})</span>
-                        <code class="rounded bg-stone-100 px-2 py-0.5 text-xs">{{ route('invitation.accept', $inv->token) }}</code>
+<section id="einladungen" aria-labelledby="einladungen-title" class="mt-8 scroll-mt-6 space-y-3">
+    <h2 id="einladungen-title" class="text-base font-semibold">Offene Einladungen</h2>
+    @if($invitations->isEmpty())
+        <x-empty-state title="Keine offenen Einladungen">
+            Wen du einlädst, erscheint hier mit dem Link zum Weitergeben, bis die Person ihn öffnet.
+            <x-slot:action>
+                <button type="button" data-drawer-open="einladen" class="btn btn-secondary">Person einladen</button>
+            </x-slot:action>
+        </x-empty-state>
+    @else
+        <ul class="divide-y divide-stone-200 rounded-xl border border-stone-200 bg-white">
+            @foreach($invitations as $inv)
+                <li class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+                    <div class="min-w-0 flex-1">
+                        <p class="font-semibold [overflow-wrap:anywhere]">{{ $inv->email }}</p>
+                        <p class="text-[0.8125rem] text-stone-600">{{ __('roles.'.$inv->role.'.label') }} · gültig bis {{ $inv->expires_at->copy()->setTimezone($tz)->format('d.m.Y') }}</p>
                     </div>
-                @endforeach
-            </div>
-        @endif
-    </div>
+                    <button type="button" class="btn btn-secondary"
+                            data-copy="{{ route('invitation.accept', $inv->token) }}"
+                            data-copy-message="Link für {{ $inv->email }} kopiert.">Link kopieren</button>
+                </li>
+            @endforeach
+        </ul>
+    @endif
+</section>
 
-    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
-        <h2 class="font-bold">Benutzer einladen</h2>
-        <form method="POST" action="{{ route('admin.users.invite') }}" class="mt-3 space-y-3 text-sm">
+<section id="rollen" aria-labelledby="rollen-title" class="mt-8 scroll-mt-6 space-y-3">
+    <h2 id="rollen-title" class="text-base font-semibold">Was die Rollen dürfen</h2>
+    <dl class="grid gap-x-6 gap-y-3 rounded-xl border border-stone-200 bg-white px-5 py-4 text-sm sm:grid-cols-[12rem_minmax(0,1fr)]">
+        @foreach($allRoles as $role)
+            <dt class="font-semibold">{{ __('roles.'.$role.'.label') }}</dt>
+            <dd class="text-stone-600">{{ __('roles.'.$role.'.summary') }}</dd>
+        @endforeach
+    </dl>
+</section>
+
+@push('drawers')
+    <x-drawer id="einladen" title="Person einladen"
+              description="Hat die Person schon ein Konto bei Swayy, gehört sie sofort zum Team. Sonst entsteht ein Link, den du ihr schickst.">
+        <form id="form-einladen" method="POST" action="{{ route('admin.users.invite') }}" data-ajax class="space-y-5">
             @csrf
-            <input type="email" name="email" required placeholder="E-Mail *" class="w-full rounded-lg border-stone-200">
-            <select name="role" required class="w-full rounded-lg border-stone-200">
-                @foreach($roles as $role)<option value="{{ $role }}">{{ $role }}</option>@endforeach
-            </select>
-            <label class="flex items-center gap-2"><input type="checkbox" name="all_locations" value="1" checked id="allLoc"> Zugriff auf alle Standorte<span class="tip" tabindex="0" data-tip="Ohne Haken kannst du die Person auf einzelne Standorte beschränken – sie sieht dann auch nur deren Reservierungen und Gäste. Sinnvoll für Personal, das nur in einem Haus arbeitet.">?</span></label>
-            <select name="location_ids[]" multiple class="w-full rounded-lg border-stone-200">
-                @foreach($locations as $loc)<option value="{{ $loc->id }}">{{ $loc->name }}</option>@endforeach
-            </select>
-            <button class="w-full rounded-xl bg-stone-900 py-2.5 font-bold text-white">Einladen</button>
+            <x-field name="email" label="E-Mail-Adresse" type="email" id="invite-email" required maxlength="200" />
+            <fieldset class="space-y-2">
+                <legend class="mb-1 text-sm font-semibold text-stone-800">Rolle<span class="text-red-700" aria-hidden="true"> *</span></legend>
+                @foreach($roleOptions as $role => $label)
+                    <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-stone-300 p-3 has-[:checked]:border-(--brand) has-[:checked]:ring-1 has-[:checked]:ring-(--brand)">
+                        <input type="radio" name="role" value="{{ $role }}" required class="mt-1">
+                        <span class="min-w-0">
+                            <span class="block font-semibold">{{ $label }}</span>
+                            <span class="block text-[0.8125rem] text-stone-600">{{ __('roles.'.$role.'.summary') }}</span>
+                        </span>
+                    </label>
+                @endforeach
+            </fieldset>
+            @if($hasSeveralLocations)
+                @include('admin.users.partials.locations', ['allLocations' => true, 'selected' => []])
+            @else
+                <input type="hidden" name="all_locations" value="1">
+            @endif
         </form>
-        <p class="mt-3 text-xs text-stone-500">Bestehende Benutzer werden direkt hinzugefügt, neue erhalten einen Einladungslink.</p>
-    </div>
-</div>
+        <x-slot:footer>
+            <button type="button" data-drawer-close class="btn btn-secondary">Abbrechen</button>
+            <button type="submit" form="form-einladen" class="btn btn-primary">Einladen</button>
+        </x-slot:footer>
+    </x-drawer>
+
+    @if($canManageRoles && $hasSeveralLocations)
+        @foreach($memberships as $m)
+            @continue($m->user_id === auth()->id())
+            <x-drawer id="zugang-{{ $m->id }}" :title="'Standorte für '.$m->user?->name">
+                <form id="form-zugang-{{ $m->id }}" method="POST" action="{{ route('admin.users.locations', $m) }}" data-ajax class="space-y-5">
+                    @csrf
+                    @method('PUT')
+                    @include('admin.users.partials.locations', [
+                        'allLocations' => (bool) $m->all_locations,
+                        'selected' => $m->user?->allowedLocations->pluck('id')->all() ?? [],
+                    ])
+                </form>
+                <x-slot:footer>
+                    <button type="button" data-drawer-close class="btn btn-secondary">Abbrechen</button>
+                    <button type="submit" form="form-zugang-{{ $m->id }}" class="btn btn-primary">Speichern</button>
+                </x-slot:footer>
+            </x-drawer>
+        @endforeach
+    @endif
+@endpush
 @endsection
