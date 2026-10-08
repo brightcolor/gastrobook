@@ -61,7 +61,9 @@ class UserManagementController extends Controller
                 'Dein Tarif umfasst einen Zugang, und der ist vergeben.|Dein Tarif umfasst :count Zugänge, und alle sind vergeben.',
                 $limit,
                 ['count' => $limit],
-            ).' '.__('Für weitere Personen den Tarif unter „Abo & Rechnungen“ wechseln oder einen Zugang entfernen.'));
+            ).' '.($request->user()->canInTenant('billing.manage', $tenant)
+                ? __('Für weitere Personen den Tarif unter „Abo & Rechnungen“ wechseln oder einen Zugang entfernen.')
+                : __('Für weitere Personen bitte eine Person mit Zugang zu „Abo & Rechnungen“ fragen.')));
         }
 
         $validated = $request->validate([
@@ -89,7 +91,7 @@ class UserManagementController extends Controller
             // reicht users.invite, um sich selbst in einen bisher gesperrten
             // Standort einzutragen - jede andere Aenderung an einer
             // Mitgliedschaft liegt hinter users.roles.manage.
-            abort_if($user->id === $request->user()->id, 403);
+            abort_if($user->id === $request->user()->id, 403, __('Deine eigene Rolle und deine Standorte ändert eine andere Person mit Rechten für das Team. Bitte sie darum.'));
 
             $membership = TenantUser::firstOrCreate(
                 ['tenant_id' => $tenant->id, 'user_id' => $user->id],
@@ -216,7 +218,7 @@ class UserManagementController extends Controller
         $tenant = $this->context->tenant();
         abort_if($membership->tenant_id !== $tenant->id, 404);
         // Auch hier nicht die eigene Freigabe.
-        abort_if($membership->user_id === $request->user()->id, 403);
+        abort_if($membership->user_id === $request->user()->id, 403, __('Deine eigene Rolle und deine Standorte ändert eine andere Person mit Rechten für das Team. Bitte sie darum.'));
 
         $validated = $request->validate([
             'all_locations' => ['nullable', 'boolean'],

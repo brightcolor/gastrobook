@@ -72,7 +72,9 @@ class LocationController extends Controller
                 'Dein Tarif umfasst einen Standort, und der ist schon angelegt.|Dein Tarif umfasst :count Standorte, und alle sind schon angelegt.',
                 $limit,
                 ['count' => $limit],
-            ).' '.__('Für einen weiteren Standort den Tarif unter „Abo & Rechnungen“ wechseln.'));
+            ).' '.($request->user()->canInTenant('billing.manage', $tenant)
+                ? __('Für einen weiteren Standort den Tarif unter „Abo & Rechnungen“ wechseln.')
+                : __('Für einen weiteren Standort bitte eine Person mit Zugang zu „Abo & Rechnungen“ fragen.')));
         }
 
         $validated = $request->validate($this->rules(), $this->messages(), $this->attributes());

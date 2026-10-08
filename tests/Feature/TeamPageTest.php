@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Models\Invitation;
 use App\Models\Location;
+use App\Models\Plan;
 use App\Models\TenantUser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\CreatesTenants;
@@ -183,6 +184,37 @@ class TeamPageTest extends TestCase
         $this->actingAs($owner)->deleteJson(route('admin.users.remove', $membership))
             ->assertOk()
             ->assertExactJson(['message' => "{$staff->name} ist aus dem Team entfernt.", 'reload' => true]);
+    }
+
+    public function test_inviting_yourself_explains_who_can_change_your_access(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->postJson('/admin/users/invite', [
+            'email' => $owner->email,
+            'role' => 'staff',
+            'all_locations' => '1',
+        ])->assertForbidden()
+            ->assertJsonPath('message', 'Deine eigene Rolle und deine Standorte ändert eine andere Person mit Rechten für das Team. Bitte sie darum.');
+    }
+
+    public function test_the_user_limit_names_a_next_step_the_role_can_take(): void
+    {
+        $setup = $this->createTenantSetup();
+        $setup['tenant']->update(['plan_id' => Plan::factory()->create(['limits' => ['max_users' => 1]])->id]);
+        $this->createMember($setup['tenant'], 'tenant_owner');
+        $manager = $this->createMember($setup['tenant'], 'operations_manager');
+        $this->clearTenantContext();
+
+        // Die Betriebsleitung lädt ein, öffnet „Abo & Rechnungen“ aber nicht und entfernt niemanden.
+        $this->actingAs($manager)->postJson('/admin/users/invite', [
+            'email' => 'service@example.test',
+            'role' => 'staff',
+            'all_locations' => '1',
+        ])->assertStatus(422)
+            ->assertJsonPath('errors.email.0', fn (string $message) => str_ends_with($message, 'Für weitere Personen bitte eine Person mit Zugang zu „Abo & Rechnungen“ fragen.'));
     }
 
     public function test_operations_manager_sees_roles_as_text(): void

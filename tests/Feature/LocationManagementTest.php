@@ -257,4 +257,17 @@ class LocationManagementTest extends TestCase
             ->assertSee('name="public_intro"', false)
             ->assertDontSee('Logo hochladen');
     }
+
+    public function test_the_plan_limit_names_a_next_step_the_role_can_take(): void
+    {
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 4]]);
+        $setup['tenant']->update(['plan_id' => Plan::factory()->create(['limits' => ['max_locations' => 1]])->id]);
+        $manager = $this->createMember($setup['tenant'], 'operations_manager');
+        $this->clearTenantContext();
+
+        // Die Betriebsleitung legt Standorte an, öffnet „Abo & Rechnungen“ aber nicht.
+        $this->actingAs($manager)->postJson('/admin/locations', ['name' => 'Zweite', 'timezone' => 'Europe/Berlin'])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.name.0', 'Dein Tarif umfasst einen Standort, und der ist schon angelegt. Für einen weiteren Standort bitte eine Person mit Zugang zu „Abo & Rechnungen“ fragen.');
+    }
 }
