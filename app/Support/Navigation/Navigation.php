@@ -12,11 +12,19 @@ use Illuminate\Support\Str;
 /**
  * Baut die Navigation der Verwaltung aus config/navigation.php.
  *
- * Filtert nach Rechten und Betriebstyp und wendet die Regel an, dass eine
- * Gruppenüberschrift erst ab zwei sichtbaren Einträgen erscheint.
+ * Filtert nach Rechten, Rollen und Betriebstyp und wendet die Regel an, dass
+ * eine Gruppenüberschrift erst ab heading_min_items sichtbaren Einträgen
+ * erscheint. Jedes Recht wird je Instanz einmal geprüft, der Zugriff auf den
+ * Standort einmal je Standort.
  */
 final class Navigation
 {
+    /** @var array<string, bool> Recht im Betrieb, Schlüssel Benutzer|Betrieb|Recht */
+    private array $allowed = [];
+
+    /** @var array<string, bool> Zugriff auf den Standort, Schlüssel Benutzer|Betrieb|Standort */
+    private array $locationAccess = [];
+
     /**
      * @param  array<string, mixed>  $config
      */
@@ -64,11 +72,17 @@ final class Navigation
         return array_slice($items, 0, max(0, (int) $this->config['mobile_bar_max']));
     }
 
+    /**
+     * Adresse der ersten erlaubten Einstellungsseite; die übrigen Einträge
+     * werden dafür nicht geprüft.
+     */
     public function firstSettingsUrl(User $user, Tenant $tenant, ?Location $location): ?string
     {
-        foreach ($this->settings($user, $tenant, $location, null) as $group) {
-            foreach ($group->items as $item) {
-                return $item->url;
+        foreach ((array) ($this->config['settings'] ?? []) as $group) {
+            foreach ((array) ($group['items'] ?? []) as $item) {
+                if ($this->visible($item, $user, $tenant, $location)) {
+                    return $this->item($item, $tenant, null)->url;
+                }
             }
         }
 
@@ -138,8 +152,13 @@ final class Navigation
             return false;
         }
 
+        $roles = array_map('strval', (array) ($item['roles'] ?? []));
+        if ($roles !== [] && ! in_array($user->roleIn($tenant), $roles, true)) {
+            return false;
+        }
+
         foreach ((array) ($item['can'] ?? []) as $permission) {
-            if (! $user->canInTenant((string) $permission, $tenant, $location)) {
+            if (! $this->allows($user, (string) $permission, $tenant, $location)) {
                 return false;
             }
         }
@@ -150,12 +169,33 @@ final class Navigation
         }
 
         foreach ($any as $permission) {
-            if ($user->canInTenant((string) $permission, $tenant, $location)) {
+            if ($this->allows($user, (string) $permission, $tenant, $location)) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * Gleiches Ergebnis wie User::canInTenant($permission, $tenant, $location),
+     * mit Zwischenspeicher: Das Recht wird je Benutzer und Betrieb einmal
+     * geprüft, der Standortzugriff (eine Abfrage bei Mitgliedern mit
+     * freigegebenen Standorten) einmal je Standort. Plattform-Zugänge haben
+     * Zugriff auf jeden Standort.
+     */
+    private function allows(User $user, string $permission, Tenant $tenant, ?Location $location): bool
+    {
+        $key = $user->id.'|'.$tenant->id.'|'.$permission;
+        $this->allowed[$key] ??= $user->canInTenant($permission, $tenant);
+
+        if (! $this->allowed[$key] || $location === null || $user->isSaasAdmin()) {
+            return $this->allowed[$key];
+        }
+
+        $locationKey = $user->id.'|'.$tenant->id.'|'.$location->id;
+
+        return $this->locationAccess[$locationKey] ??= $user->canAccessLocation($tenant, $location);
     }
 
     /**
@@ -173,8 +213,24 @@ final class Navigation
             icon: (string) ($item['icon'] ?? ''),
             active: $currentRoute !== null && Str::is($this->activePatterns($item), $currentRoute),
             scope: isset($item['scope']) ? (string) $item['scope'] : null,
-            keywords: array_values(array_map('strval', (array) ($item['keywords'] ?? []))),
+            keywords: $this->keywords((array) ($item['keywords'] ?? [])),
         );
+    }
+
+    /**
+     * Suchbegriffe als Liste; Begriff ⇒ Ziel wird zu „Begriff#ziel“.
+     *
+     * @param  array<int|string, mixed>  $keywords
+     * @return list<string>
+     */
+    private function keywords(array $keywords): array
+    {
+        $result = [];
+        foreach ($keywords as $word => $target) {
+            $result[] = is_string($word) ? $word.'#'.$target : (string) $target;
+        }
+
+        return $result;
     }
 
     /**

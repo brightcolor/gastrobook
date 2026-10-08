@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Enums\TenantType;
+use App\Models\User;
 use App\Support\Navigation\NavGroup;
 use App\Support\Navigation\Navigation;
 use App\Support\Navigation\NavItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Tests\Concerns\CreatesTenants;
 use Tests\TestCase;
@@ -216,5 +218,90 @@ class NavigationTest extends TestCase
 
         $duplicates = array_keys(array_filter(array_count_values($keys), fn (int $count) => $count > 1));
         $this->assertSame([], $duplicates, 'Navigation keys must be unique: '.implode(', ', $duplicates));
+    }
+
+    public function test_keywords_can_point_to_a_section(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $nav = new Navigation(['settings' => [
+            ['label' => 'Betrieb', 'items' => [
+                ['key' => 'a', 'label' => 'A', 'route' => 'admin.locations.index', 'keywords' => ['Adresse', 'Logo' => 'logo', 'Neuer Standort' => 'standort-neu']],
+            ]],
+        ]]);
+
+        $item = $nav->settings($owner, $setup['tenant'], $setup['location'], null)[0]->items[0];
+
+        $this->assertSame(['Adresse', 'Logo#logo', 'Neuer Standort#standort-neu'], $item->keywords);
+    }
+
+    public function test_roles_limit_an_entry_to_members_with_that_role(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
+        $support = User::factory()->create(['saas_role' => 'support_admin']);
+        $nav = new Navigation(['settings' => [
+            ['label' => 'Betrieb', 'items' => [
+                ['key' => 'a', 'label' => 'A', 'route' => 'admin.locations.index'],
+                ['key' => 'b', 'label' => 'B', 'route' => 'admin.users.index', 'roles' => ['tenant_owner']],
+            ]],
+        ]]);
+
+        $this->assertSame([['Betrieb', ['a', 'b']]], $this->shape($nav->settings($owner, $setup['tenant'], $setup['location'], null)));
+        $this->assertSame([['Betrieb', ['a']]], $this->shape($nav->settings($admin, $setup['tenant'], $setup['location'], null)));
+        $this->assertSame([['Betrieb', ['a']]], $this->shape($nav->settings($support, $setup['tenant'], $setup['location'], null)));
+    }
+
+    public function test_the_data_entry_is_reserved_for_owners(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
+        $nav = Navigation::fromConfig();
+
+        $keys = fn (User $user) => array_merge(...array_map(
+            fn (NavGroup $group) => array_map(fn (NavItem $item) => $item->key, $group->items),
+            $nav->settings($user, $setup['tenant'], $setup['location'], null),
+        ));
+
+        $this->assertContains('data', $keys($owner));
+        $this->assertNotContains('data', $keys($admin));
+    }
+
+    public function test_location_access_is_checked_once_per_navigation(): void
+    {
+        $setup = $this->createTenantSetup();
+        $manager = $this->createMember($setup['tenant'], 'location_manager', false);
+        DB::table('location_user')->insert([
+            'location_id' => $setup['location']->id,
+            'user_id' => $manager->id,
+            'tenant_id' => $setup['tenant']->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $nav = Navigation::fromConfig();
+
+        DB::enableQueryLog();
+        $main = $nav->main($manager, $setup['tenant'], $setup['location'], null);
+        $nav->settings($manager, $setup['tenant'], $setup['location'], null);
+        $nav->mobileBar($manager, $setup['tenant'], $setup['location'], null);
+        $url = $nav->firstSettingsUrl($manager, $setup['tenant'], $setup['location']);
+        $queries = array_filter(DB::getQueryLog(), fn (array $query) => str_contains($query['query'], 'location_user'));
+        DB::disableQueryLog();
+
+        $this->assertCount(1, $queries);
+        $this->assertSame(['board', 'floorplan', 'walkins', 'waitlist'], array_map(fn (NavItem $item) => $item->key, $main[1]->items));
+        $this->assertSame(route('admin.settings.index').'#zeiten', $url);
+    }
+
+    public function test_a_member_without_access_to_the_location_sees_only_unrestricted_entries(): void
+    {
+        $setup = $this->createTenantSetup();
+        $manager = $this->createMember($setup['tenant'], 'location_manager', false);
+
+        $groups = Navigation::fromConfig()->main($manager, $setup['tenant'], $setup['location'], null);
+
+        $this->assertSame([[null, ['dashboard']]], $this->shape($groups));
     }
 }

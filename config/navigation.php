@@ -29,12 +29,15 @@ use App\Support\EnvSetting;
 |   icon        Name aus resources/views/components/nav-icon.blade.php
 |   can         Rechte, die alle vorliegen müssen
 |   can_any     Rechte, von denen mindestens eines vorliegen muss
+|   roles       Rollen (config/permissions.php), denen der Eintrag vorbehalten
+|               ist; Plattform-Zugänge ohne Mitgliedschaft sehen ihn nicht
 |   only        'restaurant' oder 'salon'; ohne Angabe für beide
 |   active      Routenmuster, bei denen der Eintrag als aktuell gilt
 |               (Vorgabe: die eigene Route; [] = nie)
 |   mobile_bar  true = steht in der unteren Leiste auf dem Smartphone
 |   scope       nur Einstellungen: 'tenant' (alle Standorte) oder 'location'
-|   keywords    nur Einstellungen: Begriffe für die Suche
+|   keywords    nur Einstellungen: Begriffe für die Suche; 'Begriff' => 'ziel'
+|               führt direkt zur Stelle #ziel auf der Seite
 |
 */
 
@@ -84,7 +87,7 @@ return [
                 'keywords' => ['Tarif', 'Abo', 'Lastschrift', 'Rechnung']],
             ['key' => 'audit', 'label' => 'Protokoll', 'route' => 'admin.audit.index', 'scope' => 'tenant', 'can' => ['audit.view'],
                 'keywords' => ['Auditlog', 'Änderungen', 'Wer hat', 'Verlauf']],
-            ['key' => 'data', 'label' => 'Daten', 'route' => 'admin.account.show', 'fragment' => 'daten', 'active' => [], 'scope' => 'tenant', 'can' => ['tenant.settings.manage'],
+            ['key' => 'data', 'label' => 'Daten', 'route' => 'admin.account.show', 'fragment' => 'daten', 'active' => [], 'scope' => 'tenant', 'roles' => ['tenant_owner'],
                 'keywords' => ['Export', 'Import', 'Sicherung', 'Betrieb löschen']],
         ]],
         ['label' => 'Platz & Zeiten', 'items' => [
