@@ -1,16 +1,35 @@
 // Seitenleiste zum Anlegen und Bearbeiten (x-drawer): von rechts, auf dem
 // Smartphone bildschirmfüllend. Ein Element mit data-drawer-open="{id}"
 // öffnet sie, ebenso die Adresse mit #{id} (Suche in den Einstellungen).
-// Escape, [data-drawer-close] und erfolgreiches Speichern (swayy:saved)
+// Escape, [data-drawer-close] und erfolgreiches Speichern des Hauptformulars
 // schließen sie; die Formulare darin kehren zum gespeicherten Stand zurück,
 // der Fokus zum öffnenden Element. Solange sie offen ist, ist alles andere
 // gesperrt (inert), ausgenommen Ebenen mit data-overlay-layer (Hinweis,
 // Bestätigungsdialog).
+//
+// Hauptformular ist das Formular, auf das ein Knopf mit form="…" in der
+// Seitenleiste zeigt (Fußzeile). Weitere Formulare darin (etwa das Logo)
+// speichern für sich, die Seitenleiste bleibt dann offen. Geänderte
+// Formulare in der offenen Seitenleiste tragen data-dirty; ein angefordertes
+// Neuladen (forms.js) wartet, bis sie gespeichert oder verworfen sind.
 
 import { focusables } from './dom.js';
+import { snapshot } from './forms.js';
 
 let installed = false;
 let current = null;
+const baselines = new WeakMap();
+
+function closesOnSave(drawer, form) {
+    const primary = [...drawer.querySelectorAll('button[type="submit"][form]')].map((button) => button.getAttribute('form'));
+    return primary.length === 0 || primary.includes(form.id);
+}
+
+function trackChange(e) {
+    const form = e.target?.form;
+    if (!current || !(form instanceof HTMLFormElement) || !current.drawer.contains(form)) return;
+    form.toggleAttribute('data-dirty', snapshot(form) !== baselines.get(form));
+}
 
 function open(drawer, opener = null) {
     if (current?.drawer === drawer) return;
@@ -22,6 +41,7 @@ function open(drawer, opener = null) {
     covered.forEach((el) => el.setAttribute('inert', ''));
     drawer.hidden = false;
     document.body.style.overflow = 'hidden';
+    drawer.querySelectorAll('form').forEach((form) => baselines.set(form, snapshot(form)));
     current = { drawer, opener, covered };
 
     const dialog = drawer.querySelector('[role="dialog"]') ?? drawer;
@@ -37,12 +57,17 @@ function close() {
     current = null;
 
     drawer.hidden = true;
-    drawer.querySelectorAll('form').forEach((form) => form.reset());
+    drawer.querySelectorAll('form').forEach((form) => {
+        form.reset();
+        form.removeAttribute('data-dirty');
+    });
     covered.forEach((el) => el.removeAttribute('inert'));
     document.body.style.overflow = '';
     if (window.location.hash === `#${drawer.id}`) {
         history.replaceState(null, '', window.location.pathname + window.location.search);
     }
+    // Ein Neuladen, das auf diese Seitenleiste gewartet hat, darf jetzt laufen.
+    drawer.dispatchEvent(new CustomEvent('swayy:discarded', { bubbles: true }));
 
     if (opener?.isConnected) {
         opener.focus();
@@ -56,7 +81,13 @@ function close() {
 }
 
 function openFromHash() {
-    const id = decodeURIComponent(window.location.hash.slice(1));
+    let id = '';
+    try {
+        id = decodeURIComponent(window.location.hash.slice(1));
+    } catch {
+        // Kaputte Kodierung in der Adresse (etwa „#%“): keine Seitenleiste.
+        return;
+    }
     const drawer = id ? document.getElementById(id) : null;
     if (drawer?.hasAttribute('data-drawer')) open(drawer);
 }
@@ -86,8 +117,18 @@ export function initDrawers() {
         if (e.key === 'Escape' && current && !e.defaultPrevented) close();
     });
 
+    document.addEventListener('input', trackChange);
+    document.addEventListener('change', trackChange);
+
     document.addEventListener('swayy:saved', (e) => {
-        if (current && e.target instanceof Node && current.drawer.contains(e.target)) close();
+        const form = e.target;
+        if (!current || !(form instanceof HTMLFormElement) || !current.drawer.contains(form)) return;
+        if (closesOnSave(current.drawer, form)) {
+            close();
+            return;
+        }
+        baselines.set(form, snapshot(form));
+        form.removeAttribute('data-dirty');
     });
 
     window.addEventListener('hashchange', openFromHash);

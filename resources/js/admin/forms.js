@@ -202,7 +202,9 @@ function reloadWhenIdle() {
 
 async function send(form) {
     clearProblems(form);
-    const submitter = form.querySelector('[type="submit"]');
+    // Knöpfe in der Fußzeile einer Seitenleiste stehen außerhalb des Formulars (form="…").
+    const submitter = form.querySelector('[type="submit"]')
+        ?? (form.id ? document.querySelector(`[type="submit"][form="${CSS.escape(form.id)}"]`) : null);
     submitter?.setAttribute('aria-busy', 'true');
     const values = readValues(form);
     const sent = snapshot(form);
