@@ -14,6 +14,7 @@ use App\Services\TenantDeletionService;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Number;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -85,16 +86,21 @@ class AccountController extends Controller
             403
         );
 
+        $maxKb = (int) config('swayy.uploads.import_max_kb');
         $request->validate([
-            // 20 MB, weil PHP und beide nginx genau so viel durchlassen
-            // (docker/php.ini). Die frueheren 50 MB waren eine Zusage, die
-            // keine Schicht darunter eingehalten haette: Alles ueber 2 MB
-            // verschwand vorher, ohne dass diese Meldung je erschien.
-            'file' => ['required', 'file', 'mimetypes:application/json,text/plain', 'max:20480'],
+            // Die Grenze steht in config/swayy.php (uploads.import_max_kb) und
+            // liegt höchstens bei 20 MB, weil PHP und beide nginx genau so viel
+            // durchlassen (docker/php.ini).
+            'file' => ['required', 'file', 'mimetypes:application/json,text/plain', 'max:'.$maxKb],
             'confirm' => ['required', 'accepted'],
         ], [
-            'confirm.accepted' => 'Bitte bestätige, dass die Daten zum aktuellen Betrieb hinzugefügt werden.',
-            'file.max' => 'Die Datei ist zu groß (max. 20 MB).',
+            'file.required' => __('Bitte die Export-Datei auswählen.'),
+            'file.mimetypes' => __('Die Datei ist keine Export-Datei von Swayy. Bitte die JSON-Datei aus „Daten herunterladen“ wählen.'),
+            'file.max' => __('Die Datei ist größer als :size, mehr nimmt der Import nicht an. Bitte den Support von Swayy fragen.', [
+                'size' => Number::fileSize($maxKb * 1024),
+            ]),
+            'confirm.required' => __('Bitte bestätige, dass die Daten zum aktuellen Betrieb hinzugefügt werden.'),
+            'confirm.accepted' => __('Bitte bestätige, dass die Daten zum aktuellen Betrieb hinzugefügt werden.'),
         ]);
 
         $decoded = json_decode((string) file_get_contents($request->file('file')->getRealPath()), true);
@@ -186,7 +192,7 @@ class AccountController extends Controller
         );
 
         if ($request->input('confirm') !== $tenant->name) {
-            return back()->withErrors(['confirm_tenant' => 'Der Name stimmt nicht überein.']);
+            return back()->withErrors(['confirm_tenant' => __('Der eingetippte Name weicht von „:name“ ab. Bitte genau so eintippen, mit Groß- und Kleinschreibung.', ['name' => $tenant->name])]);
         }
 
         $this->audit->log('tenant.deleted', $tenant, [

@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ReservationAttachmentController;
 use App\Http\Controllers\Admin\ReservationBookController;
 use App\Http\Controllers\Admin\ServiceController;
+use App\Http\Controllers\Admin\Settings\DataController;
 use App\Http\Controllers\Admin\Settings\GeneralController;
 use App\Http\Controllers\Admin\Settings\SettingsMenuController;
 use App\Http\Controllers\Admin\SettingsController;
@@ -367,6 +368,9 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
 
     // Einstieg in die Einstellungen (Smartphone); prüft selbst, ob eine Seite erlaubt ist.
     Route::get('/settings/menu', SettingsMenuController::class)->name('settings.menu');
+
+    // Daten (Export, Import, Betrieb löschen): nur Inhaber; prüft der Controller selbst.
+    Route::get('/settings/data', [DataController::class, 'show'])->name('settings.data.show');
 
     // Settings (rooms, tables, hours, booking rules)
     Route::middleware('permission:tables.manage')->group(function () {

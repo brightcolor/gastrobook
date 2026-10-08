@@ -316,6 +316,8 @@ return [
     | es Skripte tragen kann. Eine leere Liste („-“) gilt als Vorgabe, sonst
     | ließe sich kein Logo hochladen. logo_directory: Ordner auf dem Speicher
     | „public“, darunter je Standort ein Unterordner.
+    | import_max_kb: größte Datei für „Daten einspielen“ in KB (1024–20480);
+    | mehr lassen PHP und nginx nicht durch (docker/php.ini).
     |
     */
     'uploads' => [
@@ -323,6 +325,7 @@ return [
         'logo_types' => EnvSetting::choiceList('SWAYY_LOGO_TYPES', default: ['jpg', 'jpeg', 'png', 'webp'], allowed: ['jpg', 'jpeg', 'png', 'webp', 'gif'])
             ?: ['jpg', 'jpeg', 'png', 'webp'],
         'logo_directory' => EnvSetting::pattern('SWAYY_LOGO_DIRECTORY', default: 'logos', regex: '/^[a-z0-9][a-z0-9_-]*$/', hint: 'ist kein Ordnername aus Kleinbuchstaben, Ziffern, - und _'),
+        'import_max_kb' => EnvSetting::integer('SWAYY_IMPORT_MAX_KB', default: 20480, min: 1024, max: 20480),
     ],
 
     /*

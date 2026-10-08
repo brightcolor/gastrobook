@@ -87,8 +87,8 @@ return [
                 'keywords' => ['Tarif', 'Abo', 'Lastschrift', 'Rechnung']],
             ['key' => 'audit', 'label' => 'Protokoll', 'route' => 'admin.audit.index', 'scope' => 'tenant', 'can' => ['audit.view'],
                 'keywords' => ['Auditlog', 'Änderungen', 'Wer hat', 'Verlauf']],
-            ['key' => 'data', 'label' => 'Daten', 'route' => 'admin.account.show', 'fragment' => 'daten', 'active' => [], 'scope' => 'tenant', 'roles' => ['tenant_owner'],
-                'keywords' => ['Export', 'Import', 'Sicherung', 'Betrieb löschen']],
+            ['key' => 'data', 'label' => 'Daten', 'route' => 'admin.settings.data.show', 'scope' => 'tenant', 'roles' => ['tenant_owner'],
+                'keywords' => ['Export' => 'export', 'Sicherung' => 'export', 'Import' => 'import', 'Umzug' => 'import', 'Betrieb löschen' => 'betrieb-loeschen']],
         ]],
         ['label' => 'Platz & Zeiten', 'items' => [
             ['key' => 'opening-hours', 'label' => 'Öffnungszeiten', 'route' => 'admin.settings.index', 'fragment' => 'zeiten', 'active' => [], 'scope' => 'location', 'can' => ['tables.manage'],
