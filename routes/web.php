@@ -469,6 +469,9 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
         Route::put('/locations/{location}', [LocationController::class, 'update'])->name('locations.update');
         Route::post('/locations/{location}/toggle-active', [LocationController::class, 'toggleActive'])->name('locations.toggle-active');
         // Logo je Standort: Teil des Auftritts, deshalb zusätzlich das Recht für die Betriebseinstellungen.
+        // Die Vorschau läuft über die Verwaltung, damit sie auch bei inaktiven Standorten erscheint.
+        Route::get('/locations/{location}/logo', [LocationLogoController::class, 'show'])
+            ->middleware('permission:tenant.settings.manage')->name('locations.logo.show');
         Route::post('/locations/{location}/logo', [LocationLogoController::class, 'store'])
             ->middleware('permission:tenant.settings.manage')->name('locations.logo.store');
         Route::delete('/locations/{location}/logo', [LocationLogoController::class, 'destroy'])

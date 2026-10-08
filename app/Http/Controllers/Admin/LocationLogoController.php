@@ -27,6 +27,24 @@ class LocationLogoController extends Controller
         private readonly AuditLogger $audit,
     ) {}
 
+    /**
+     * Vorschau in der Seitenleiste des Standorts. Die öffentliche Route
+     * (brand.location.logo) liefert nur für aktive Standorte mit
+     * Online-Buchung; hier gilt jeder Standort des Betriebs.
+     */
+    public function show(Location $location): mixed
+    {
+        abort_if($location->tenant_id !== $this->context->tenantId(), 404);
+        $path = $location->brand_logo_path;
+        abort_if($path === null || $path === '' || ! Storage::disk('public')->exists($path), 404);
+
+        return Storage::disk('public')->response($path, null, [
+            'X-Content-Type-Options' => 'nosniff',
+            'Content-Security-Policy' => "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+            'Cache-Control' => 'private, no-cache',
+        ]);
+    }
+
     public function store(Request $request, Location $location): mixed
     {
         // Die Route-Bindung filtert schon nach Betrieb; das hier fängt einen fehlenden Kontext ab.

@@ -98,6 +98,26 @@ class LocationLogoTest extends TestCase
         $this->actingAs($owner)->get('/admin/locations')->assertOk()->assertSee('bis 1,5 MB.');
     }
 
+    public function test_the_preview_works_for_inactive_locations_and_stays_in_the_tenant(): void
+    {
+        Storage::fake('public');
+        $setup = $this->createTenantSetup();
+        $other = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        Storage::disk('public')->put('logos/'.$setup['location']->id.'/logo.png', 'png');
+        $setup['location']->update(['brand_logo_path' => 'logos/'.$setup['location']->id.'/logo.png', 'is_active' => false]);
+        Storage::disk('public')->put('logos/'.$other['location']->id.'/fremd.png', 'png');
+        $other['location']->update(['brand_logo_path' => 'logos/'.$other['location']->id.'/fremd.png']);
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->get(route('admin.locations.logo.show', $setup['location']))
+            ->assertOk()
+            ->assertHeader('X-Content-Type-Options', 'nosniff');
+        $this->actingAs($owner)->get(route('admin.locations.logo.show', $other['location']))->assertNotFound();
+        $this->actingAs($owner)->get('/admin/locations')
+            ->assertSee(route('admin.locations.logo.show', $setup['location']), false);
+    }
+
     public function test_another_tenants_logo_cannot_be_removed(): void
     {
         Storage::fake('public');
