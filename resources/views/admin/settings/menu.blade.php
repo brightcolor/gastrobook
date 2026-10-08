@@ -8,6 +8,7 @@
     <x-nav-icon name="search" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
     <label for="settingsSearchPage" class="sr-only">Einstellungen durchsuchen</label>
     <input id="settingsSearchPage" type="search" data-settings-search aria-controls="settingsSearchPage-list"
+           data-examples="{{ implode('|', (array) config('navigation.search_examples')) }}"
            autocomplete="off" placeholder="Einstellungen durchsuchen" class="w-full pl-9">
 </div>
 

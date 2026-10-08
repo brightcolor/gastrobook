@@ -2,12 +2,22 @@
 // Ort und Stelle. Texte für Antworten ohne JSON (Proxy-Fehlerseite,
 // Weiterleitung, abgebrochene Verbindung) kommen aus
 // App\Support\AdminJsonErrors::forClient() über window.SwayyAdmin.problemTexts.
+//
+// Ein Handler am Dokument (Capture-Phase) übernimmt alle Formulare mit
+// data-ajax, auch solche, die später erscheinen (Seitenleisten, Rückfragen in
+// der Zeile). Der Bestätigungsdialog des Layouts und der Doppelklickschutz in
+// app.js sehen das Ereignis danach als erledigt (defaultPrevented).
+//
+// data-reset-on-error: Das Formular kehrt bei einem Fehler zum gespeicherten
+// Stand zurück, etwa eine Rollenauswahl, die sofort speichert.
 
+import { page } from './dom.js';
 import { showToast } from './toast.js';
 
 let problemCount = 0;
 let inFlight = 0;
 let reloadRequested = false;
+let installed = false;
 const pending = new WeakMap();
 const sentSnapshots = new WeakMap();
 
@@ -140,6 +150,12 @@ function showProblems(form, json, messages) {
     (first ?? box).focus();
 }
 
+function fail(form, json, messages) {
+    showToast(messages.join(' · '), { error: true });
+    if (form.hasAttribute('data-reset-on-error')) form.reset();
+    showProblems(form, json, messages);
+}
+
 // Werte beim Absenden. Nach dem Speichern werden sie zur Vorgabe, auf die
 // „Verwerfen“ (form.reset) zurückkehrt.
 function readValues(form) {
@@ -173,13 +189,13 @@ function commitDefaults(values) {
 // Neu geladen wird erst, wenn keine Anfrage mehr läuft und kein Formular
 // ungespeicherte Änderungen trägt (data-dirty, savebar.js), und nur einmal je
 // Anforderung. Bleibt etwas offen, lädt die nächste erfolgreiche Speicherung
-// neu. Die Wartezeit kommt aus config/swayy.php (ui.reload_delay_ms), damit
-// „Gespeichert“ lesbar bleibt.
+// oder „Verwerfen“ neu. Die Wartezeit kommt aus config/swayy.php
+// (ui.reload_delay_ms), damit „Gespeichert“ lesbar bleibt.
 function reloadWhenIdle() {
     setTimeout(() => {
         if (inFlight === 0 && reloadRequested && !document.querySelector('form[data-dirty]')) {
             reloadRequested = false;
-            window.location.reload();
+            page.reload();
         }
     }, window.SwayyAdmin?.ui?.reloadDelayMs);
 }
@@ -207,31 +223,25 @@ async function send(form) {
         const json = await readJson(res);
 
         if (!res.ok) {
-            const messages = problemsOf(res, json);
-            showToast(messages.join(' · '), { error: true });
-            showProblems(form, json, messages);
+            fail(form, json, problemsOf(res, json));
             return false;
         }
 
         // Gespeichert meldet nur, wer es bestätigt. Eine Antwort ohne JSON
         // (etwa nach einer Weiterleitung) lässt offen, ob die Änderung ankam.
         if (!json || typeof json.message !== 'string') {
-            const message = texts().unclear || '';
-            showToast(message, { error: true });
-            showProblems(form, null, [message]);
+            fail(form, null, [texts().unclear || '']);
             return false;
         }
 
         commitDefaults(values);
         sentSnapshots.set(form, sent);
-        form.dispatchEvent(new CustomEvent('swayy:saved', { detail: json }));
+        form.dispatchEvent(new CustomEvent('swayy:saved', { detail: json, bubbles: true }));
         showToast(json.message);
         if (json.reload) reloadRequested = true;
         return true;
     } catch {
-        const message = texts().network || '';
-        showToast(message, { error: true });
-        showProblems(form, null, [message]);
+        fail(form, null, [texts().network || '']);
         return false;
     } finally {
         submitter?.removeAttribute('aria-busy');
@@ -250,13 +260,26 @@ export function submitForm(form) {
 }
 
 export function initAjaxForms() {
-    document.querySelectorAll('form[data-ajax]').forEach((form) => {
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            submitForm(form);
-        });
-        // Zurückgesetzt („Verwerfen“) gilt der gespeicherte Stand; Fehlerhinweise
-        // zu den verworfenen Eingaben verschwinden mit ihnen.
-        form.addEventListener('reset', () => clearProblems(form));
+    if (installed) return;
+    installed = true;
+
+    document.addEventListener('submit', (e) => {
+        const form = e.target;
+        if (!(form instanceof HTMLFormElement) || !form.hasAttribute('data-ajax')) return;
+        e.preventDefault();
+        submitForm(form);
+    }, true);
+
+    // Zurückgesetzt („Verwerfen“, Schließen einer Seitenleiste) gilt der
+    // gespeicherte Stand; Fehlerhinweise zu den verworfenen Eingaben
+    // verschwinden mit ihnen.
+    document.addEventListener('reset', (e) => {
+        const form = e.target;
+        if (form instanceof HTMLFormElement && form.hasAttribute('data-ajax')) clearProblems(form);
+    }, true);
+
+    // Nach „Verwerfen“ kann ein zurückgestelltes Neuladen nachgeholt werden.
+    document.addEventListener('swayy:discarded', () => {
+        if (reloadRequested) reloadWhenIdle();
     });
 }

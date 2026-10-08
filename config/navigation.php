@@ -19,6 +19,8 @@ use App\Support\EnvSetting;
 |   settings_routes  Routenmuster, die immer zum Einstellungsbereich gehören
 |   heading_min_items  sichtbare Einträge, ab denen eine Gruppe ihre Überschrift
 |                    zeigt (1–10); Umgebungsvariable SWAYY_NAV_HEADING_MIN_ITEMS
+|   search_examples  zwei Begriffe, die der Hinweis „passt keine Einstellung“
+|                    als Beispiel nennt
 |
 | Felder je Eintrag:
 |   key         eindeutiger Schlüssel (Tests, data-nav-key)
@@ -42,6 +44,8 @@ return [
     'settings_routes' => ['admin.settings.*'],
 
     'heading_min_items' => EnvSetting::integer('SWAYY_NAV_HEADING_MIN_ITEMS', default: 2, min: 1, max: 10),
+
+    'search_examples' => ['Öffnungszeiten', 'Anzahlung'],
 
     'main' => [
         ['label' => null, 'items' => [

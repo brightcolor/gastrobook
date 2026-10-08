@@ -27,7 +27,7 @@ class NavigationLayoutTest extends TestCase
             ->assertSee('aria-label="Schnellzugriff"', false)
             ->assertSee('data-more-open', false)
             ->assertSee('<body data-admin', false)
-            ->assertSee('id="swayyToast" role="status" aria-live="polite"', false)
+            ->assertSee('id="swayyToast" data-overlay-layer role="status" aria-live="polite"', false)
             ->assertSee('<header data-sheet-inert', false)
             ->assertDontSee('data-nav-key="webhooks"', false);
         $content = (string) $response->getContent();
@@ -154,5 +154,21 @@ class NavigationLayoutTest extends TestCase
         foreach ($files as $file) {
             $this->assertDoesNotMatchRegularExpression('/\son(click|change|submit|input|keydown)\s*=/i', (string) file_get_contents($file), $file);
         }
+    }
+
+    public function test_layout_marks_overlay_layers_and_hands_over_search_examples(): void
+    {
+        config(['navigation.search_examples' => ['Tisch', 'Logo']]);
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $html = $this->actingAs($owner)->get('/admin/settings/general')->assertOk()->getContent();
+
+        $this->assertStringContainsString('id="swayyToast" data-overlay-layer', $html);
+        $this->assertStringContainsString('id="confirmModal" data-overlay-layer', $html);
+        $this->assertStringContainsString('data-examples="Tisch|Logo"', $html);
+        $this->assertStringContainsString('data-page-header', $html);
+        $this->assertStringContainsString("e.target.hasAttribute('data-ajax')", $html);
     }
 }

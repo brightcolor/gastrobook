@@ -1,6 +1,8 @@
 // Navigation der Verwaltung: Symbolleiste am Tablet, „Mehr“ auf dem
 // Smartphone, Standortwahl ohne Inline-Handler, Suche im Einstellungsbereich.
 
+import { keyboardFocused } from './dom.js';
+
 const RAIL_KEY = 'swayy.nav.collapsed';
 
 // Ohne gespeicherten Wert startet die Symbolleiste eingeklappt: Am Tablet
@@ -106,7 +108,7 @@ function initRailTips(rail) {
             if (!tip.contains(e.relatedTarget)) hide();
         });
         el.addEventListener('focus', () => {
-            if (el.matches(':focus-visible')) show(el);
+            if (keyboardFocused(el)) show(el);
         });
         el.addEventListener('blur', hide);
         el.addEventListener('click', hide);
@@ -164,11 +166,26 @@ export function initAutosubmit() {
     });
 }
 
+// Suche im Einstellungsbereich. Suchbegriffe (data-keywords, getrennt durch |)
+// tragen optional ein Ziel auf der Seite: „Export#export“. Ein Treffer mit Ziel
+// führt direkt zur passenden Karte; ohne Suche gilt wieder die Adresse aus der
+// Navigation. Die Beispiele im Hinweis ohne Treffer stehen am Suchfeld
+// (data-examples, config/navigation.php: search_examples).
 export function initSettingsSearch() {
     document.querySelectorAll('[data-settings-search]').forEach((input) => {
         const list = document.getElementById(input.getAttribute('aria-controls'));
         if (!list) return;
         const noResult = list.querySelector('[data-settings-noresult]');
+        const entries = (link) => (link.dataset.keywords || '')
+            .split('|')
+            .filter(Boolean)
+            .map((entry) => {
+                const [word, anchor = ''] = entry.split('#');
+                return { word, anchor };
+            });
+        list.querySelectorAll('[data-settings-item]').forEach((link) => {
+            link.dataset.baseHref = link.getAttribute('href');
+        });
 
         input.addEventListener('input', () => {
             const query = input.value.trim().toLocaleLowerCase('de');
@@ -178,18 +195,19 @@ export function initSettingsSearch() {
                 let visible = 0;
                 group.querySelectorAll('[data-settings-item]').forEach((link) => {
                     const label = (link.dataset.label || '').toLocaleLowerCase('de');
-                    const words = (link.dataset.keywords || '').split('|').filter(Boolean);
-                    let hit = '';
+                    let hit = null;
                     let match = query === '' || label.includes(query);
                     if (!match) {
-                        hit = words.find((word) => word.toLocaleLowerCase('de').includes(query)) || '';
-                        match = hit !== '';
+                        hit = entries(link).find(({ word }) => word.toLocaleLowerCase('de').includes(query)) ?? null;
+                        match = hit !== null;
                     }
                     link.hidden = !match;
+                    const base = link.dataset.baseHref;
+                    link.setAttribute('href', hit?.anchor ? `${base.split('#')[0]}#${hit.anchor}` : base);
                     const hint = link.querySelector('[data-settings-hit]');
                     if (hint) {
-                        hint.textContent = hit;
-                        hint.hidden = hit === '';
+                        hint.textContent = hit?.word ?? '';
+                        hint.hidden = hit === null;
                     }
                     if (match) visible += 1;
                 });
@@ -198,12 +216,9 @@ export function initSettingsSearch() {
             });
 
             // Die Live-Region bleibt im Dokument, nur ihr Text wechselt; so sagt
-            // der Screenreader den Hinweis an. Die Beispiele kommen aus den
-            // Suchbegriffen der Einträge (config/navigation.php).
+            // der Screenreader den Hinweis an.
             if (noResult) {
-                const examples = [...list.querySelectorAll('[data-settings-item]')]
-                    .flatMap((link) => (link.dataset.keywords || '').split('|').filter(Boolean))
-                    .slice(0, 2);
+                const examples = (input.dataset.examples || '').split('|').filter(Boolean).slice(0, 2);
                 const hint = examples.length === 2 ? ` Versuch einen anderen Begriff, etwa „${examples[0]}“ oder „${examples[1]}“.` : '';
                 noResult.textContent = any ? '' : `Zu „${input.value.trim()}“ passt keine Einstellung.${hint}`;
             }

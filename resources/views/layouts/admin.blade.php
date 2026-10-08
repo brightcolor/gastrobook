@@ -101,7 +101,7 @@
             @if($errors->any())
                 <div data-flash="sticky" role="alert" class="mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
                     <div>
-                        <p class="mb-1 font-semibold">Bitte prüfen Sie Ihre Eingaben:</p>
+                        <p class="mb-1 font-semibold">Bitte prüfe diese Angaben:</p>
                         <ul class="list-disc space-y-0.5 pl-5">
                             @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
                         </ul>
@@ -162,11 +162,11 @@
 @stack('drawers')
 
 {{-- Hinweise („Gespeichert“, Fehler); resources/js/admin/toast.js --}}
-<div id="swayyToast" role="status" aria-live="polite" data-state="ok"
+<div id="swayyToast" data-overlay-layer role="status" aria-live="polite" data-state="ok"
      class="pointer-events-none fixed bottom-20 left-1/2 z-[60] flex max-w-[90vw] -translate-x-1/2 items-center rounded-lg px-4 py-2.5 text-sm font-semibold text-white opacity-0 shadow-xl transition-opacity data-[state=error]:bg-red-700 data-[state=ok]:bg-stone-900 md:bottom-6"></div>
 
 {{-- Global confirm dialog for forms/links with data-confirm (touch-friendly) --}}
-<div id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+<div id="confirmModal" data-overlay-layer role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
     <div class="w-[380px] max-w-[96vw] rounded-2xl bg-white p-6 text-center shadow-2xl">
         <h3 id="confirmModalTitle" class="mb-1 text-lg font-bold">Bestätigen</h3>
         <p id="confirmModalMsg" class="mb-5 text-sm text-stone-500"></p>
@@ -206,6 +206,8 @@
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal(); });
 
     document.addEventListener('submit', e => {
+        // Formulare mit data-ajax übernimmt forms.js (Rückfrage dort: x-inline-confirm).
+        if (e.defaultPrevented || e.target.hasAttribute('data-ajax')) return;
         const el = e.target.querySelector('[data-confirm]') || (e.submitter && e.submitter.matches('[data-confirm]') ? e.submitter : null);
         const trigger = e.target.matches('[data-confirm]') ? e.target : el;
         if (!trigger) return;

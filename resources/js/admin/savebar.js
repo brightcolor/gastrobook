@@ -5,6 +5,7 @@
 // Formulare mit data-savebar enthalten keine Dateifelder; Uploads speichern
 // sofort über eigene Formulare.
 
+import { keyboardFocused } from './dom.js';
 import { savedSnapshot, snapshot, submitForm } from './forms.js';
 import { showToast } from './toast.js';
 
@@ -25,10 +26,19 @@ export function initSaveBar() {
     let wasDirty = false;
     let saving = false;
 
+    // Ab 768 px (md) liegt die Leiste über dem Seitenkopf. Solange sie steht,
+    // sind dessen Bedienelemente (Standortwahl, Hauptaktion) gesperrt, damit
+    // der Tastaturfokus nie unter der Leiste verschwindet (WCAG 2.4.11).
+    const header = document.querySelector('[data-page-header]');
+    const wide = window.matchMedia('(min-width: 768px)');
+    const syncHeader = () => header?.toggleAttribute('inert', !bar.hidden && wide.matches);
+    wide.addEventListener('change', syncHeader);
+
     const render = () => {
         const dirty = dirtyForms();
         bar.hidden = dirty.length === 0;
         forms.forEach((form) => form.toggleAttribute('data-dirty', dirty.includes(form)));
+        syncHeader();
 
         // Angesagt wird nur der Wechsel, damit der Screenreader nicht bei jedem Tastendruck spricht.
         if (status && (dirty.length > 0) !== wasDirty) {
@@ -43,7 +53,7 @@ export function initSaveBar() {
     const moveFocusOut = (form) => {
         const active = document.activeElement;
         if (form && dirtyForms().length === 0 && bar.contains(active)) {
-            firstField(form)?.focus({ preventScroll: !active.matches(':focus-visible') });
+            firstField(form)?.focus({ preventScroll: !keyboardFocused(active) });
         }
     };
 
@@ -64,12 +74,12 @@ export function initSaveBar() {
     bar.querySelector('[data-save-bar-discard]')?.addEventListener('click', () => {
         if (saving) return;
         const dirty = dirtyForms();
-        dirty.forEach((form) => {
-            form.reset();
-            form.dispatchEvent(new CustomEvent('swayy:discarded'));
-        });
+        dirty.forEach((form) => form.reset());
         moveFocusOut(dirty[0]);
         render();
+        // Erst nach render: Die Formulare tragen kein data-dirty mehr, ein
+        // zurückgestelltes Neuladen (forms.js) darf jetzt laufen.
+        dirty.forEach((form) => form.dispatchEvent(new CustomEvent('swayy:discarded', { bubbles: true })));
         showToast('Änderungen verworfen');
     });
 
