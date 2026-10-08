@@ -8,15 +8,15 @@
 <x-active-filters :reset="route('admin.audit.index')" :filters="[
     'Bereich' => $area !== '' ? $areas[$area] : null,
     'Eintrag' => $entityLabel,
-    'Suche' => request('action'),
-    'Von' => request('from'),
-    'Bis' => request('until'),
+    'Suche' => $filters['action'],
+    'Von' => $filters['from'],
+    'Bis' => $filters['until'],
 ]" />
 
 <form method="GET" class="mb-5 flex flex-wrap items-end gap-3 rounded-xl border border-stone-200 bg-white p-4 text-sm">
     @if($entityLabel)
-        <input type="hidden" name="entity" value="{{ request('entity') }}">
-        <input type="hidden" name="entity_id" value="{{ request('entity_id') }}">
+        <input type="hidden" name="entity" value="{{ $filters['entity'] }}">
+        <input type="hidden" name="entity_id" value="{{ $filters['entity_id'] }}">
     @endif
     <div class="space-y-1.5">
         <label for="audit-area" class="block font-semibold text-stone-800">Bereich</label>
@@ -29,11 +29,11 @@
     </div>
     <div class="space-y-1.5">
         <label for="audit-from" class="block font-semibold text-stone-800">Von</label>
-        <input id="audit-from" type="date" name="from" value="{{ request('from') }}">
+        <input id="audit-from" type="date" name="from" value="{{ $filters['from'] }}">
     </div>
     <div class="space-y-1.5">
         <label for="audit-until" class="block font-semibold text-stone-800">Bis</label>
-        <input id="audit-until" type="date" name="until" value="{{ request('until') }}">
+        <input id="audit-until" type="date" name="until" value="{{ $filters['until'] }}">
     </div>
     <button type="submit" class="btn btn-primary">Filtern</button>
 </form>

@@ -27,6 +27,37 @@ class AuditLogFilterTest extends TestCase
         ]);
     }
 
+    public function test_lists_in_the_address_are_ignored(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->log($setup['tenant']->id, 'guest.updated');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->get('/admin/audit?area[]=guest&entity[]=reservation&entity_id[]=1&action[]=x&from[]=2026-01-01&until[]=x&user_id[]=1')
+            ->assertOk()
+            ->assertSee(AuditLog::labelFor('guest.updated'));
+
+        $this->actingAs($owner)->get('/admin/audit?from=gestern&entity=reservation&entity_id=abc')
+            ->assertOk()
+            ->assertSee(AuditLog::labelFor('guest.updated'))
+            ->assertDontSee('Reservierung Nr.');
+    }
+
+    public function test_filters_never_reach_another_tenant(): void
+    {
+        $setup = $this->createTenantSetup();
+        $other = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->log($other['tenant']->id, 'reservation.cancelled', Reservation::class, 42);
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->get('/admin/audit?entity=reservation&entity_id=42&area=reservation')
+            ->assertOk()
+            ->assertDontSee(AuditLog::labelFor('reservation.cancelled'))
+            ->assertSee('Keine passenden Einträge');
+    }
+
     public function test_the_entity_filter_shows_only_one_reservation(): void
     {
         $setup = $this->createTenantSetup();
