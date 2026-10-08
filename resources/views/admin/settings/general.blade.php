@@ -33,7 +33,7 @@
         <fieldset class="grid gap-3 sm:grid-cols-2">
             <legend class="sr-only">Betriebstyp</legend>
             @foreach(TenantType::cases() as $type)
-                <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-stone-300 p-4 has-[:checked]:border-teal-700 has-[:checked]:ring-1 has-[:checked]:ring-teal-700 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-teal-700">
+                <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-stone-300 p-4 has-[:checked]:border-(--brand) has-[:checked]:ring-1 has-[:checked]:ring-(--brand) has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-(--brand)">
                     <input type="radio" name="type" value="{{ $type->value }}" @checked($tenant->type === $type) class="mt-1">
                     <span>
                         <span class="block font-semibold">{{ $type->label() }}</span>

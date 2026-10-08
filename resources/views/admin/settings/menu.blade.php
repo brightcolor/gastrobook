@@ -15,7 +15,7 @@
     @foreach($groups as $group)
         <section data-settings-group>
             @if($group->label)
-                <h2 class="mb-2 text-xs font-semibold uppercase tracking-wider text-stone-500">{{ $group->label }}</h2>
+                <h2 class="mb-2 text-xs font-semibold uppercase tracking-wider text-stone-600">{{ $group->label }}</h2>
             @endif
             <div class="divide-y divide-stone-100 overflow-hidden rounded-xl border border-stone-200 bg-white">
                 @foreach($group->items as $item)

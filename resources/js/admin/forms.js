@@ -101,7 +101,7 @@ function showProblems(form, json, messages) {
     box.dataset.formProblems = '';
     box.setAttribute('role', 'alert');
     box.tabIndex = -1;
-    box.className = 'rounded-lg border border-red-200 border-l-4 border-l-red-700 bg-red-50 px-3 py-2 text-sm text-red-800';
+    box.className = 'rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800';
 
     const entries = [];
     let first = null;

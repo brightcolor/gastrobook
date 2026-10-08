@@ -340,8 +340,8 @@
 
 /* Felder, die der Server als fehlerhaft meldet (resources/js/admin/forms.js). */
 [aria-invalid='true'] {
-    border-color: #b91c1c;
-    box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.15);
+    border-color: var(--color-red-700);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-red-700) 15%, transparent);
 }
 
 /* Sichtbare Speicherleiste: Fokus, letzter Inhalt und Hinweis bleiben frei (WCAG 2.4.11).
