@@ -42,6 +42,12 @@ class AuditLogFilterTest extends TestCase
             ->assertOk()
             ->assertSee(AuditLog::labelFor('guest.updated'))
             ->assertDontSee('Reservierung Nr.');
+
+        // Unmögliche Kalendertage gelten als leer (PostgreSQL würde sie mit einem Fehler ablehnen).
+        $this->actingAs($owner)->get('/admin/audit?from=2026-02-30&until=2026-13-01')
+            ->assertOk()
+            ->assertSee(AuditLog::labelFor('guest.updated'))
+            ->assertDontSee('Filter aktiv');
     }
 
     public function test_filters_never_reach_another_tenant(): void

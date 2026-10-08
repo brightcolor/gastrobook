@@ -19,6 +19,8 @@ class FileSizeTest extends TestCase
     public function test_limits_between_units_keep_one_decimal_in_german(): void
     {
         $this->assertSame('1,5 MB', FileSize::fromKilobytes(1536));
-        $this->assertSame('1,9 MB', FileSize::fromKilobytes(1900));
+        // 1900 KB sind 1,855 MB: abgerundet, damit „größer als 1,8 MB“ immer stimmt.
+        $this->assertSame('1,8 MB', FileSize::fromKilobytes(1900));
+        $this->assertSame('1.023 KB', FileSize::fromKilobytes(1023));
     }
 }

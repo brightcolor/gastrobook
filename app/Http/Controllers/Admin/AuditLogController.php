@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Support\TenantContext;
+use DateTimeImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -29,7 +30,13 @@ class AuditLogController extends Controller
 
             return is_string($value) ? trim($value) : '';
         };
-        $date = fn (string $key): string => preg_match('/^\d{4}-\d{2}-\d{2}$/', $text($key)) === 1 ? $text($key) : '';
+        // Nur echte Kalendertage: PostgreSQL lehnt etwa 2026-02-30 mit einem Fehler ab.
+        $date = function (string $key) use ($text): string {
+            $value = $text($key);
+            $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+
+            return $parsed !== false && $parsed->format('Y-m-d') === $value ? $value : '';
+        };
 
         $area = array_key_exists($text('area'), AuditLog::SUBJECTS) ? $text('area') : '';
         $entity = $text('entity');
