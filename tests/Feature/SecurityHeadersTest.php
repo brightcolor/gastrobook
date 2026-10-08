@@ -105,6 +105,11 @@ class SecurityHeadersTest extends TestCase
      * Ist das Cap-Captcha aktiv, muss die CSP seinen Server, WebAssembly und
      * einen Worker zulassen - sonst laedt das Widget nicht und kein
      * oeffentliches Formular laesst sich absenden.
+     *
+     * Dazu 'unsafe-eval': Cap prueft den Browser mit einem Skript in einem
+     * srcdoc-iframe, das unsere CSP erbt und eval/new Function aufruft. Ohne
+     * die Quelle bricht es ab, das Widget wartet 20 Sekunden und liefert kein
+     * Token. Genau so war vom 07. bis 08.10.2026 keine Online-Buchung moeglich.
      */
     public function test_the_csp_allows_the_captcha_when_enabled(): void
     {
@@ -117,7 +122,7 @@ class SecurityHeadersTest extends TestCase
 
         $csp = $this->get('/login')->assertOk()->headers->get('Content-Security-Policy');
 
-        $this->assertStringContainsString("script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cap.test", $csp);
+        $this->assertStringContainsString("script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cap.test", $csp);
         $this->assertStringContainsString('connect-src', $csp);
         $this->assertStringContainsString('https://cap.test', explode('connect-src', $csp)[1]);
         $this->assertStringContainsString("worker-src 'self' blob:", $csp);
@@ -130,6 +135,7 @@ class SecurityHeadersTest extends TestCase
         $csp = $this->get('/login')->assertOk()->headers->get('Content-Security-Policy');
 
         $this->assertStringNotContainsString('wasm-unsafe-eval', $csp);
+        $this->assertStringNotContainsString("'unsafe-eval'", $csp);
         $this->assertStringNotContainsString('worker-src', $csp);
     }
 
