@@ -30,7 +30,8 @@ class FeedbackRequestPruneTest extends TestCase
                 'tenant_id' => $t, 'location_id' => $l, 'party_size' => 2,
                 'reservation_date' => $start->toDateString(), 'start_at' => $start->utc(), 'end_at' => $start->addHours(2)->utc(),
                 'timezone' => $setup['location']->timezone, 'status' => ReservationStatus::Completed, 'source' => 'online',
-                'guest_name_snapshot' => 'Gast', 'code' => 'R-'.uniqid(), 'manage_token' => str_repeat('x', 48),
+                // code und manage_token setzt das Modell beim Anlegen.
+                'guest_name_snapshot' => 'Gast',
             ])->id;
         };
 

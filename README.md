@@ -755,7 +755,24 @@ vendor/bin/pint                                    # Code-Style
 vendor/bin/phpstan analyse --memory-limit=1G       # Statische Analyse (0 Fehler)
 ```
 
-CI: GitHub Actions (`.github/workflows/ci.yml`) mit Pint, Larastan, Tests und Frontend-Build.
+`php artisan test` nutzt SQLite im Speicher. Dieselbe Suite gegen PostgreSQL,
+die Datenbank von swayy.de, läuft mit `phpunit.pgsql.xml`. Sie braucht eine
+eigene, leere Testdatenbank, denn `RefreshDatabase` leert sie bei jedem Lauf.
+Vorgabe ist `gastrobook_test` auf `127.0.0.1:5432` mit Benutzer und Passwort
+`gastrobook`; `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME` und
+`DB_PASSWORD` aus der Umgebung überschreiben das.
+
+```bash
+docker run -d --rm --name gastrobook-pgtest -p 127.0.0.1:5432:5432 \
+  -e POSTGRES_DB=gastrobook_test -e POSTGRES_USER=gastrobook -e POSTGRES_PASSWORD=gastrobook \
+  postgres:17-alpine
+php artisan test --configuration=phpunit.pgsql.xml
+```
+
+CI: GitHub Actions (`.github/workflows/ci.yml`) mit Pint, Larastan, Tests unter
+SQLite (PHP 8.3 bis 8.5) und PostgreSQL 17 (PHP 8.4, Job `tests-pgsql`) und dem
+Frontend-Build. Das Docker-Image entsteht erst, wenn beide Testjobs und der
+Frontend-Build grün sind.
 
 **Fremdcode im Build:** Jede Action im Workflow steht auf einem festen Commit, die Version steht als Kommentar dahinter; Dependabot hebt beides gemeinsam an. Der `GITHUB_TOKEN` hat im Workflow Leserechte auf den Code, der Docker-Job zusätzlich das Schreibrecht für die Registry. Neue Paketversionen kommen mit einer Wartezeit von sieben Tagen: Dependabot über `cooldown` in `.github/dependabot.yml` (Sicherheitsupdates kommen sofort), npm ab Version 11.10 über `min-release-age` in `.npmrc`. `npm ci` installiert immer genau die Versionen aus `package-lock.json`. Ein dringendes Update auf eine jüngere Version geht mit `npm install <paket>@<version> --min-release-age=0`. `tests/Unit/SupplyChainSettingsTest.php` prüft diese Regeln.
 

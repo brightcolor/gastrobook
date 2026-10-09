@@ -48,6 +48,57 @@ jobs:
       - name: Run tests
         run: php artisan test
 
+  # Dieselbe Suite gegen PostgreSQL 17 mit PHP 8.4, wie auf swayy.de. Der Job
+  # oben testet mit SQLite; Spaltenlängen und abgebrochene Transaktionen
+  # fallen dort nicht auf. Die Zugangsdaten gelten nur für diesen Wegwerf-Dienst.
+  tests-pgsql:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: gastrobook_test
+          POSTGRES_USER: gastrobook
+          POSTGRES_PASSWORD: gastrobook
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U gastrobook -d gastrobook_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: gastrobook_test
+      DB_USERNAME: gastrobook
+      DB_PASSWORD: gastrobook
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.4'
+          extensions: intl, zip, gd, pdo_pgsql, pgsql
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      # phpunit.pgsql.xml erzwingt DB_CONNECTION=pgsql; die übrigen DB_*-Werte
+      # kommen aus der Umgebung dieses Jobs.
+      - name: Run tests (PostgreSQL)
+        run: php artisan test --configuration=phpunit.pgsql.xml
+
   frontend:
     runs-on: ubuntu-latest
     steps:
@@ -61,7 +112,7 @@ jobs:
 
   docker:
     runs-on: ubuntu-latest
-    needs: [tests, frontend]
+    needs: [tests, tests-pgsql, frontend]
     permissions:
       contents: read
       packages: write
