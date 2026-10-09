@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.134.4] – 2026-10-10
+
+### Tests laufen auch gegen PostgreSQL
+
+Die CI prüft die ganze Testsuite zusätzlich gegen PostgreSQL 17 mit PHP 8.4,
+so wie swayy.de läuft (Job `tests-pgsql`, Konfiguration `phpunit.pgsql.xml`).
+Das Docker-Image entsteht erst, wenn auch dieser Job grün ist. Die Anleitung
+für den lokalen Lauf steht im README unter „Tests & Codequalität“.
+
+### GoCardless-Webhook: Doppelprüfung mit `insertOrIgnore`
+
+Der Webhook merkt sich jede Ereignis-ID, damit eine wiederholte Zustellung nur
+einmal wirkt. Er trägt die ID jetzt mit `insertOrIgnore` ein und erkennt eine
+schon bekannte ID daran, dass keine Zeile entsteht. Bisher löste eine bekannte
+ID einen Datenbankfehler aus, den der Code abfing. Unter PostgreSQL macht so ein
+Fehler eine umgebende Transaktion unbrauchbar. Im Betrieb läuft der Webhook
+ohne Transaktion und arbeitete deshalb korrekt; jetzt bleibt er es auch, wenn
+er einmal innerhalb einer Transaktion läuft.
+
+### Testdaten passend zur Spaltenlänge
+
+Ein Test legte Reservierungen mit 15 Zeichen langen Codes an, die Spalte fasst
+12. SQLite prüft die Länge nicht, PostgreSQL schon. Der Test überlässt den Code
+jetzt dem Modell, das ihn wie im Betrieb erzeugt.
+
 ## [1.134.3] – 2026-10-09
 
 ### Datumsfilter der Buchungsliste und des Exports geprüft
