@@ -97,6 +97,8 @@ Lokal (127.0.0.1:8010), Demo-Daten mit zwei Standorten; zusätzliches lokales Mi
 - `SettingsController::uploadLogo` mit Laravel-Standardmeldungen (entfällt mit der Sammelseite)
 - Node-Version festlegen (`engines` oder `.nvmrc`; jsdom 30 braucht ^22.22.2 oder ^24.15.0)
 - Eintrag `gastrobook-new-ui` aus `.claude/launch.json` entfernen; Changelog-Hinweis Farbe `#0d9488` → `#0f766e`
+- Zweig enthält die Merge-Commits 42f6c29 (main 1.134.2) und 1f05d2e (main 1.134.3, 09.10.2026); GitHub erlaubt für gastrobook nur Rebase-Merges. Vor dem PR den Weg festlegen (lokal auf `main` rebasen oder zusammenfassen) und Verweise auf Commits in den Protokollen nachziehen
+- Versionsnummer beim Ausrollen: 1.135.0 (neue Funktionen), sofern `main` bis dahin nicht weiter ist
 
 ## Außerhalb von new-ui
 
