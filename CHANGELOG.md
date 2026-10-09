@@ -1,5 +1,42 @@
 # Changelog
 
+## [1.134.3] – 2026-10-09
+
+### Datumsfilter der Buchungsliste und des Exports geprüft
+
+Ein unleserliches Datum in der Adresse der Buchungsliste oder des CSV-Exports
+(`from`, `to`, `until`, `date`) brach bisher mit einem Serverfehler ab, weil die
+Datenbank den Wert nicht als Datum lesen konnte. Solche Werte kommen von
+manipulierten Adressen oder Sicherheitsscannern. Jetzt prüft die Anwendung die
+Datumsgrenzen vorab und antwortet mit einer verständlichen Meldung, die das
+erwartete Format nennt (JJJJ-MM-TT). Gültige Filter arbeiten unverändert.
+
+Der Befund stammt aus einem lokalen Penetrationstest; eine SQL-Injection war es
+nicht (die Werte gehen gebunden in die Abfrage), wohl aber ein unsauberer
+Fehlerweg.
+
+### Abhängigkeiten und Sicherheitsupdates
+
+- Laravel 13.35.0, Sanctum 4.3.3; Pint 1.32.1, Pao 1.1.5, Collision 8.9.5 für die
+  Entwicklung. Symfony bleibt auf 7.4, Guzzle auf 7.15. `composer audit` meldet
+  nichts.
+- Vite 8.3.2, laravel-vite-plugin 3.2.0, Tailwind CSS 4.3.3, die Schriften Inter
+  und Fraunces 5.3.0.
+- Sicherheitsfixes vom 09.10.2026 im Build-Werkzeug: `concurrently` 9.2.5 und
+  `shell-quote` 1.12.0 (kritisch), `source-map-js` 1.2.2 (hoch). `npm audit`
+  meldet nichts.
+- GitHub Actions: `actions/checkout` 7.0.1, `actions/setup-node` 7.0.0,
+  `docker/setup-buildx-action` 4.4.1, `docker/login-action` 4.6.0,
+  `docker/metadata-action` 6.2.0, jeweils auf den Commit der Fassung festgelegt.
+
+### Sicherheitstest-Kit unter `security/`
+
+Das Werkzeug des lokalen Penetrationstests liegt als wiederholbares Kit im
+Repository: Compose-Override, Seed mit zwei Testbetrieben, Prüfskript für
+Anmeldezwang, Mandantentrennung, Rollen und CSRF sowie ZAP und Nuclei. Die
+Anleitung steht in `security/README.md`. Eine neue `.dockerignore` hält den
+Ordner aus dem Anwendungs-Image heraus; Pint lässt ihn aus.
+
 ## [1.134.2] – 2026-10-08
 
 ### Sicherheitsprüfung wieder lösbar: CSP passt zum Cap-Captcha
