@@ -1,5 +1,45 @@
 # Changelog
 
+## [1.134.6] – 2026-10-10
+
+### Sicherheitsfix: Rollenvergabe beim Einladen begrenzt
+
+Wer Mitglieder einladen, aber keine Rollen verwalten darf, vergibt jetzt nur
+Rollen, deren Rechte die eigene Rolle vollständig enthält. Bisher schloss die
+Prüfung allein die Inhaberrolle aus. Die Betriebsleitung (`users.invite` ohne
+`users.roles.manage`) konnte deshalb eine zweite eigene Mailadresse als
+Verwaltung (`tenant_admin`, alle Rechte) einladen und sich so selbst
+hochstufen, ebenso als Marketing mit dem Gäste-Export. Das galt für jede Rolle
+mit `users.invite` ohne `users.roles.manage` und für beide Wege: Einladung an
+eine neue Adresse und sofortige Mitgliedschaft für ein bestehendes Konto.
+
+- Die Regel steht in `App\Support\RoleAssignment`. `App\Rules\AssignableRole`
+  prüft sie beim Einladen und beim Ändern einer Rolle; die Rollenauswahl im
+  Formular kommt aus derselben Regel.
+- Inhaber und SaaS-Admins vergeben weiter jede Rolle, wer Rollen verwalten
+  darf, jede außer Inhaber.
+- Die Grenze folgt allein den Rollenrechten in `config/permissions.php`. Eine
+  neue Rolle oder ein geändertes Recht wirkt ohne weitere Eintragung.
+- Eine abgelehnte Rolle bekommt eine Meldung mit Grund und nächstem Schritt
+  („Diese Rolle kannst du nicht vergeben, weil sie Rechte enthält, die deine
+  eigene Rolle nicht hat …“). Unbekannte Rollen und die Inhaberrolle haben
+  eigene Meldungen.
+- Folge für bestehende Betriebe: Marketing lädt jetzt jemand mit
+  Rollenverwaltung ein; der Betriebsleitung fehlt dafür `guests.export`.
+- Tests: `tests/Feature/RoleAssignmentTest.php`, auch mit geänderten
+  Rollenrechten. Handbuch (Anmelden & Rollen) und README beschreiben die Regel.
+
+**Beim Zusammenführen mit `new-ui`:** Der dortige `UserManagementController`
+baut `roleOptions` ebenfalls aus `assignableRoles()`. Nach dem Merge muss gelten:
+
+- `assignableRoles()` gibt `RoleAssignment::assignable($user, $tenant)` zurück.
+- `invite()` und `updateRole()` prüfen die Rolle mit
+  `['required', new AssignableRole($request->user(), $tenant)]`. Die Regel
+  `in:` entfällt und mit ihr der Eintrag `'role.in'` in den Meldungsarrays
+  beider Methoden, weil `AssignableRole` die Meldung selbst liefert.
+- `RoleAssignmentTest` läuft auch auf `new-ui` grün; der Formulartest prüft
+  nur `value="…"` und passt damit zu den Radio-Buttons der neuen Oberfläche.
+
 ## [1.134.5] – 2026-10-10
 
 ### PostgreSQL-Testjob startet PHPUnit direkt
