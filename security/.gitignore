@@ -1,0 +1,5 @@
+# Laufergebnisse und Geheimnisse bleiben lokal.
+out/
+zap/pw.env
+docker/stack.env
+*-ids.json

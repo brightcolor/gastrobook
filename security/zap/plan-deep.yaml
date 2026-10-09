@@ -1,0 +1,88 @@
+---
+# Angemeldeter, tiefer ZAP-Lauf gegen die lokale Testinstanz.
+#
+# Stärke "high" + Schwelle "low" + Beta/Alpha-Regeln (Image gastrobook-zap:deep).
+# Crawler-Fallen (Slot-/Verfügbarkeitsabfragen, Kalender) sind ausgeschlossen
+# und der Crawl ist gedeckelt, damit ZAPs Session-DB unter ihrem internen
+# Limit bleibt und der Report sauber exportiert.
+#
+# Ziel ist host.docker.internal:8088 – der lokale Stack, aus dem Container
+# gesehen. Kennwort aus der --env-file (GB_PW), steht nie im Plan.
+env:
+  contexts:
+    - name: "gb"
+      urls: ["http://host.docker.internal:8088"]
+      includePaths: ["http://host.docker.internal:8088.*"]
+      excludePaths:
+        - "http://host.docker.internal:8088/logout.*"
+        - "http://host.docker.internal:8088/abmelden.*"
+        - "http://host.docker.internal:8088/konto/.*/logout.*"
+        - "http://host.docker.internal:8088/book/.*/slots.*"
+        - "http://host.docker.internal:8088/book/.*/floorplan.*"
+        - "http://host.docker.internal:8088/admin/board/data.*"
+      authentication:
+        method: "browser"
+        parameters:
+          loginPageUrl: "http://host.docker.internal:8088/login"
+          browserId: "firefox-headless"
+          loginPageWait: 4
+        verification:
+          method: "poll"
+          loggedInRegex: "Abmelden"
+          loggedOutRegex: "name=\"password\""
+          pollUrl: "http://host.docker.internal:8088/admin"
+          pollFrequency: 60
+          pollUnits: "requests"
+      sessionManagement:
+        method: "autodetect"
+      users:
+        - name: "scan"
+          credentials:
+            username: "zap-eigen@gastrobook.test"
+            password: "${GB_PW}"
+  parameters:
+    failOnError: false
+    failOnWarning: false
+    progressToStdout: true
+
+jobs:
+  - type: passiveScan-config
+    parameters:
+      scanOnlyInScope: true
+  - type: spider
+    parameters:
+      context: "gb"
+      user: "scan"
+      maxDuration: 4
+      maxChildren: 12
+      maxDepth: 8
+  - type: spiderAjax
+    parameters:
+      context: "gb"
+      user: "scan"
+      maxDuration: 5
+      browserId: "firefox-headless"
+      maxCrawlDepth: 6
+      logoutAvoidance: true
+  - type: activeScan
+    parameters:
+      context: "gb"
+      user: "scan"
+      maxScanDurationInMins: 30
+      maxRuleDurationInMins: 4
+    policyDefinition:
+      defaultStrength: "high"
+      defaultThreshold: "low"
+  - type: passiveScan-wait
+  - type: report
+    parameters:
+      template: "traditional-xml"
+      reportDir: "/zap/wrk"
+      reportFile: "zap-deep.xml"
+      reportTitle: "ZAP tief – gastrobook (lokal)"
+  - type: report
+    parameters:
+      template: "traditional-html"
+      reportDir: "/zap/wrk"
+      reportFile: "zap-deep.html"
+      reportTitle: "ZAP tief – gastrobook (lokal)"
