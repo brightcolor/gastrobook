@@ -9,7 +9,6 @@ use App\Models\BillingProfile;
 use App\Models\Tenant;
 use App\Services\AuditLogger;
 use App\Services\Payments\GoCardlessService;
-use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -73,14 +72,12 @@ class GoCardlessWebhookController extends Controller
             return true;
         }
 
-        try {
-            DB::table('gocardless_webhook_events')->insert(['event_id' => $eventId, 'created_at' => now()]);
-
-            return true;
-        } catch (QueryException) {
-            // Unique constraint violation = already processed.
-            return false;
-        }
+        // insertOrIgnore lässt die Zeile bei schon bekannter event_id einfach
+        // weg und meldet 0. Ein gefangener Fehler aus einem normalen INSERT
+        // bricht unter PostgreSQL eine umgebende Transaktion ab; jeder weitere
+        // Befehl darin scheitert dann mit „current transaction is aborted“.
+        return DB::table('gocardless_webhook_events')
+            ->insertOrIgnore(['event_id' => $eventId, 'created_at' => now()]) === 1;
     }
 
     /**
