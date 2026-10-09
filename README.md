@@ -246,6 +246,8 @@ Die Rolle→Rechte-Matrix liegt in [`config/permissions.php`](config/permissions
 
 Besondere Rechte: Gastnotizen lesen/schreiben (`guest_notes.view`) und darin die sensiblen (`guest_notes.sensitive.view`), Einwilligungshistorie (`consents.view`), Dubletten zusammenführen (`guests.merge`), manuelle Überbuchung (`overbook.manual`, wird auditiert), Anonymisierung (`guests.anonymize`).
 
+Rollenvergabe (`App\Support\RoleAssignment`): Inhaber und SaaS-Admins vergeben jede Rolle, wer `users.roles.manage` hat, jede außer `tenant_owner`. Wer nur `users.invite` hat, vergibt nur Rollen, deren Rechte eine Teilmenge der eigenen sind; eine Rolle mit `*` vergibt so nur, wer selbst `*` hat. Die Grenze folgt allein der Matrix in `config/permissions.php`.
+
 ---
 
 ## Lokales Setup
