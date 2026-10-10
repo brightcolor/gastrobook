@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Enums\TenantType;
 use App\Models\AuditLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Concerns\CreatesTenants;
 use Tests\TestCase;
 
@@ -110,6 +111,72 @@ class BookingRulesPageTest extends TestCase
         $this->assertTrue(AuditLog::where('action', 'location.booking_rules_updated')->exists());
     }
 
+    public function test_every_switch_can_be_turned_off(): void
+    {
+        $setup = $this->createTenantSetup();
+        $setup['location']->settings()->update([
+            'require_email_confirmation' => true,
+            'waitlist_enabled' => true,
+            'walkins_enabled' => true,
+        ]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->putJson('/admin/settings/rules', $this->rules([
+            'require_email_confirmation' => '0',
+            'waitlist_enabled' => '0',
+            'walkins_enabled' => '0',
+        ]))->assertOk();
+
+        $settings = $setup['location']->settings()->first();
+        $this->assertFalse($settings->require_email_confirmation);
+        $this->assertFalse($settings->waitlist_enabled);
+        $this->assertFalse($settings->walkins_enabled);
+    }
+
+    /**
+     * LocationSettings::freigabeVonHand() gilt bei request_only oder fehlendem auto_confirm.
+     * Die Seite zeigt daraus eine Wahl und schreibt sie als auto_confirm zurück; request_only
+     * wird dabei immer zurückgesetzt.
+     *
+     * @return array<string, array{bool, bool, string}>
+     */
+    public static function storedConfirmationFlags(): array
+    {
+        return [
+            'sofort' => [false, true, 'auto'],
+            'von Hand' => [false, false, 'manual'],
+            'nur Anfrage' => [true, true, 'manual'],
+            'Anfrage und von Hand' => [true, false, 'manual'],
+        ];
+    }
+
+    #[DataProvider('storedConfirmationFlags')]
+    public function test_the_confirmation_choice_follows_the_stored_flags_and_writes_them_back(bool $requestOnly, bool $autoConfirm, string $preselected): void
+    {
+        $setup = $this->createTenantSetup();
+        $setup['location']->settings()->update(['request_only' => $requestOnly, 'auto_confirm' => $autoConfirm]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $other = $preselected === 'auto' ? 'manual' : 'auto';
+        $html = (string) $this->actingAs($owner)->get('/admin/settings/rules')->assertOk()->getContent();
+        $this->assertMatchesRegularExpression('/name="booking_confirmation_mode" value="'.$preselected.'" checked/', $html);
+        $this->assertDoesNotMatchRegularExpression('/name="booking_confirmation_mode" value="'.$other.'" checked/', $html);
+
+        $this->actingAs($owner)->putJson('/admin/settings/rules', $this->rules(['booking_confirmation_mode' => 'auto']))->assertOk();
+        $settings = $setup['location']->settings()->first();
+        $this->assertTrue($settings->auto_confirm);
+        $this->assertFalse($settings->request_only);
+        $this->assertFalse($settings->freigabeVonHand());
+
+        $this->actingAs($owner)->putJson('/admin/settings/rules', $this->rules(['booking_confirmation_mode' => 'manual']))->assertOk();
+        $settings = $setup['location']->settings()->first();
+        $this->assertFalse($settings->auto_confirm);
+        $this->assertFalse($settings->request_only);
+        $this->assertTrue($settings->freigabeVonHand());
+    }
+
     public function test_an_empty_group_address_is_stored_as_none(): void
     {
         $setup = $this->createTenantSetup();
@@ -207,8 +274,10 @@ class BookingRulesPageTest extends TestCase
         foreach (['id="gruppen"', 'name="min_party_online"', 'name="large_group_email"', 'name="walkins_enabled"', 'Walk-ins', 'Tisch', 'Reservierungsbuch'] as $restaurantOnly) {
             $this->assertStringNotContainsString($restaurantOnly, $form);
         }
-        $this->assertStringContainsString('bei den Terminen', $form);
-        $this->assertStringContainsString('sobald ein Termin frei wird', $form);
+        $this->assertStringContainsString('als Anfrage unter Termine', $form);
+        $this->assertStringContainsString('Ist alles belegt, setzt dein Team Gäste auf die Warteliste.', $form);
+        // Ein Angebot braucht einen Tisch; die Hilfe verspricht es Salons nicht.
+        $this->assertStringNotContainsString('Angebot', $form);
 
         $this->actingAs($owner)->putJson('/admin/settings/rules', [
             'min_lead_minutes' => 30,

@@ -55,7 +55,7 @@
 
     <x-settings.section id="bestaetigung" title="Bestätigung">
         <x-slot:description>
-            <p>Beim Freigeben von Hand landet jede Online-Buchung als Anfrage {{ $salon ? 'bei den Terminen' : 'im Reservierungsbuch' }}. Der Gast bekommt zuerst eine Eingangsbestätigung und die Zusage, sobald du freigibst.</p>
+            <p>Beim Freigeben von Hand landet jede Online-Buchung als Anfrage {{ $salon ? 'unter Termine' : 'im Reservierungsbuch' }}. Der Gast bekommt zuerst eine Eingangsbestätigung und die Zusage, sobald du freigibst.</p>
         </x-slot:description>
         <fieldset class="grid gap-3 sm:grid-cols-2">
             <legend class="mb-2 text-sm font-semibold text-stone-800">Online-Buchungen</legend>
@@ -79,7 +79,7 @@
     <x-settings.section id="warteliste" :title="$salon ? 'Warteliste' : 'Warteliste und Walk-ins'">
         <x-checkbox name="waitlist_enabled" label="Warteliste anbieten" :checked="(bool) $settings->waitlist_enabled"
                     :help="$salon
-                        ? 'Ist alles belegt, setzt dein Team Gäste auf die Warteliste. Sie bekommen ein Angebot, sobald ein Termin frei wird.'
+                        ? 'Ist alles belegt, setzt dein Team Gäste auf die Warteliste.'
                         : 'Ist alles belegt, tragen sich Gäste ein und bekommen ein Angebot, sobald ein Platz frei wird.'" />
         @unless($salon)
             <x-checkbox name="walkins_enabled" label="Walk-ins erfassen" :checked="(bool) $settings->walkins_enabled"
