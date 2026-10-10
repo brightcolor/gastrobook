@@ -50,7 +50,7 @@ class SettingsFormErrorsTest extends TestCase
                 'brand_primary_color', 'Die Farbe muss im Format #rrggbb angegeben sein, etwa #0f766e. Bitte über das Farbfeld auswählen.'],
             'Formularfelder' => ['PUT', '/admin/settings/field-rules',
                 ['fields' => ['email' => 'immer', 'phone' => 'optional', 'occasion' => 'optional', 'note' => 'optional', 'allergies' => 'optional']],
-                'fields.email', 'Der gewählte Wert für E-Mail ist ungültig.'],
+                'fields.email', 'Bitte für E-Mail „Ausgeblendet“, „Freiwillig“ oder „Pflichtfeld“ wählen.'],
             'Buchungsregeln' => ['PUT', '/admin/settings/booking-rules',
                 self::bookingRules(['default_duration_minutes' => 10]),
                 'default_duration_minutes', 'Standarddauer muss mindestens 30 sein.'],

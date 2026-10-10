@@ -26,7 +26,7 @@
             @if($salon)
                 <p>Name und E-Mail-Adresse fragt das Formular für Termine immer ab, das Telefon als freiwillige Angabe. Für die Anmerkung wählst du, ob sie erscheint.</p>
             @else
-                <p>Den Namen fragt das Formular immer ab. Für jedes weitere Feld wählst du, ob es erscheint und ob Gäste es ausfüllen müssen.</p>
+                <p>Den Namen fragt das Formular immer ab. Für jedes weitere Feld wählst du, ob es erscheint. E-Mail und Telefon kannst du zusätzlich zum Pflichtfeld machen.</p>
             @endif
         </x-slot:description>
         <div>
@@ -49,7 +49,7 @@
                         <select id="{{ $id }}" name="fields[{{ $field }}]"
                                 @if($hasError) aria-invalid="true" aria-describedby="{{ $id }}-help {{ $id }}-error" @else aria-describedby="{{ $id }}-help" @endif
                                 class="w-full">
-                            @foreach($choices as $value => $choiceLabel)
+                            @foreach($choices[$field] as $value => $choiceLabel)
                                 <option value="{{ $value }}" @selected($rules[$field] === $value)>{{ $choiceLabel }}</option>
                             @endforeach
                         </select>

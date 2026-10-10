@@ -10,15 +10,18 @@ use App\Models\LocationSettings;
 use App\Services\AuditLogger;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\View\View;
 
 /**
  * Einstellungen › Buchungen › Buchungsformular: welche Felder Gäste beim
  * Buchen sehen und welche davon Pflicht sind. Den Namen fragt das Formular
- * immer ab. Salons stellen die Anmerkung ein: Die Buchung eines Termins
- * verlangt die E-Mail-Adresse immer, fragt das Telefon freiwillig ab und kennt
- * weder Anlass noch Allergien (PublicBookingController::storeSalon). Gilt für
- * den gewählten Standort.
+ * immer ab. Ein Pflichtfeld erzwingt die Buchungsseite nur bei E-Mail und
+ * Telefon; Anlass, Allergien und Anmerkung erscheinen oder bleiben
+ * ausgeblendet (PublicBookingController::store). Salons stellen die Anmerkung
+ * ein: Die Buchung eines Termins verlangt die E-Mail-Adresse immer, fragt das
+ * Telefon freiwillig ab und kennt weder Anlass noch Allergien
+ * (PublicBookingController::storeSalon). Gilt für den gewählten Standort.
  */
 class BookingFormController extends Controller
 {
@@ -34,12 +37,18 @@ class BookingFormController extends Controller
     public const CHOICES = ['hidden' => 'Ausgeblendet', 'optional' => 'Freiwillig', 'required' => 'Pflichtfeld'];
 
     /**
-     * Auswahl für Termine: Die Buchung erzwingt kein Pflichtfeld, die Anmerkung
-     * erscheint oder bleibt ausgeblendet.
+     * Auswahl je Feld: Was die Buchungsseite umsetzt, steht zur Wahl. Ein
+     * Pflichtfeld erzwingt sie nur bei E-Mail und Telefon.
      *
-     * @var array<string, string> Wert => Bezeichnung
+     * @var array<string, list<string>> Feld => Werte aus CHOICES
      */
-    public const SALON_CHOICES = ['hidden' => 'Ausgeblendet', 'optional' => 'Freiwillig'];
+    public const FIELD_CHOICES = [
+        'email' => ['hidden', 'optional', 'required'],
+        'phone' => ['hidden', 'optional', 'required'],
+        'occasion' => ['hidden', 'optional'],
+        'allergies' => ['hidden', 'optional'],
+        'note' => ['hidden', 'optional'],
+    ];
 
     /** Wert, den ein Feld zeigt, wenn der gespeicherte Wert nicht zur Auswahl gehört (wie LocationSettings::fieldRule bei unbekannten Feldern). */
     private const FALLBACK_CHOICE = 'optional';
@@ -56,13 +65,13 @@ class BookingFormController extends Controller
         $salon = $this->context->tenant()->isSalon();
         $settings = $location->effectiveSettings();
         $fields = $salon ? self::SALON_FIELDS : self::FIELDS;
-        $choices = $salon ? self::SALON_CHOICES : self::CHOICES;
+        $choices = $this->choicesOf($fields);
 
         return view('admin.settings.booking-form', [
             'salon' => $salon,
             'fields' => $fields,
             'choices' => $choices,
-            'rules' => $this->shownRules($settings, $fields, $choices),
+            'rules' => $this->shownRules($settings, $choices),
         ]);
     }
 
@@ -72,10 +81,18 @@ class BookingFormController extends Controller
         abort_if($location === null, 404);
         $fields = $this->context->tenant()->isSalon() ? self::SALON_FIELDS : self::FIELDS;
 
+        // Ein Formular aus einem älteren Stand der Seite (etwa vor einem Wechsel
+        // des Betriebstyps) sendet andere Felder: eine Meldung für das ganze Formular.
+        if (array_diff($fields, array_keys((array) $request->input('fields', []))) !== []) {
+            return $this->failed($request, 'fields', __('Das Formular ist unvollständig: Es fehlen Felder, etwa weil sich der Betriebstyp seit dem Laden der Seite geändert hat. Bitte die Seite neu laden und erneut speichern.'));
+        }
+
+        // Gespeichert wird jeder Wert aus CHOICES, damit die alte Sammelseite weiter speichert.
         $validated = $request->validate(
             collect($fields)
                 ->mapWithKeys(fn (string $field) => ["fields.{$field}" => ['required', 'in:'.implode(',', array_keys(self::CHOICES))]])
-                ->all()
+                ->all(),
+            $this->messages($fields),
         );
 
         $settings = $location->settings()->firstOrCreate(['tenant_id' => $location->tenant_id]);
@@ -89,21 +106,57 @@ class BookingFormController extends Controller
     }
 
     /**
-     * Die Auswahl je Feld: der zuletzt gesendete Wert nach einer Ablehnung,
-     * sonst der gespeicherte. Gehört der Wert nicht zur Auswahl der Seite,
-     * zeigt das Feld den Wert, den die Buchungsseite tatsächlich anwendet.
+     * Die Auswahl je Feld mit Bezeichnungen: Wert => Bezeichnung.
      *
      * @param  list<string>  $fields
-     * @param  array<string, string>  $choices
+     * @return array<string, array<string, string>>
+     */
+    private function choicesOf(array $fields): array
+    {
+        $choices = [];
+        foreach ($fields as $field) {
+            $choices[$field] = array_intersect_key(self::CHOICES, array_flip(self::FIELD_CHOICES[$field]));
+        }
+
+        return $choices;
+    }
+
+    /**
+     * Meldungen der Prüfung: Sie nennen die Werte, die das Feld anbietet, und
+     * den nächsten Schritt.
+     *
+     * @param  list<string>  $fields
      * @return array<string, string>
      */
-    private function shownRules(LocationSettings $settings, array $fields, array $choices): array
+    private function messages(array $fields): array
+    {
+        $messages = [];
+        foreach ($this->choicesOf($fields) as $field => $offered) {
+            $text = __('Bitte für :attribute :choices wählen.', [
+                'choices' => Arr::join(array_map(fn (string $label) => "„{$label}“", $offered), ', ', ' oder '),
+            ]);
+            $messages["fields.{$field}.required"] = $text;
+            $messages["fields.{$field}.in"] = $text;
+        }
+
+        return $messages;
+    }
+
+    /**
+     * Die Auswahl je Feld: der zuletzt gesendete Wert nach einer Ablehnung,
+     * sonst der gespeicherte. Gehört der Wert nicht zur Auswahl des Feldes,
+     * zeigt es den Wert, den die Buchungsseite tatsächlich anwendet.
+     *
+     * @param  array<string, array<string, string>>  $choices  Feld => (Wert => Bezeichnung)
+     * @return array<string, string>
+     */
+    private function shownRules(LocationSettings $settings, array $choices): array
     {
         $shown = [];
-        foreach ($fields as $field) {
+        foreach ($choices as $field => $offered) {
             $sent = old("fields.{$field}");
-            $value = is_string($sent) && array_key_exists($sent, self::CHOICES) ? $sent : $settings->fieldRule($field);
-            $shown[$field] = array_key_exists($value, $choices) ? $value : self::FALLBACK_CHOICE;
+            $value = is_string($sent) && array_key_exists($sent, $offered) ? $sent : $settings->fieldRule($field);
+            $shown[$field] = array_key_exists($value, $offered) ? $value : self::FALLBACK_CHOICE;
         }
 
         return $shown;
