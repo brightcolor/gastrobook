@@ -45,6 +45,31 @@ function partsOf(form) {
     return parts;
 }
 
+// Name eines Feldes für den Hinweis: Text der Beschriftung (ohne Pflichtstern),
+// sonst aria-label.
+function fieldName(field) {
+    const label = field.labels?.[0];
+    if (label) {
+        const copy = label.cloneNode(true);
+        copy.querySelectorAll('[aria-hidden="true"]').forEach((el) => el.remove());
+        const text = copy.textContent.replace(/\s+/g, ' ').trim();
+        if (text) return text;
+    }
+    return field.getAttribute('aria-label')?.trim() ?? '';
+}
+
+// Die Sprechblase des Browsers erscheint nur an einem sichtbaren Feld. Liegt
+// das erste ungültige Feld verborgen (etwa weil eine andere Auswahl es
+// ausblendet), nennt ein Hinweis das Feld und den Weg heraus.
+function explainHiddenInvalid(form) {
+    const field = [...form.elements].find((el) => el.willValidate && !el.validity.valid);
+    if (!field || field.getClientRects().length > 0) return;
+    const name = fieldName(field);
+    const subject = name ? `„${name}“` : 'Ein verborgenes Feld';
+    showToast(`${subject} enthält einen ungültigen Wert und ist durch eine andere Auswahl ausgeblendet. `
+        + 'Bitte die Auswahl ändern, bis das Feld erscheint, und den Wert korrigieren, oder auf „Verwerfen“ klicken.', { error: true });
+}
+
 function changedKeys(base, now) {
     const keys = new Set([...base.keys(), ...now.keys()]);
     return new Set([...keys].filter((key) => base.get(key) !== now.get(key)));
@@ -153,7 +178,10 @@ export function initSaveBar() {
         bar.setAttribute('aria-busy', 'true');
         try {
             for (const form of dirtyForms()) {
-                if (!form.reportValidity()) break;
+                if (!form.reportValidity()) {
+                    explainHiddenInvalid(form);
+                    break;
+                }
                 if (!(await submitForm(form))) break;
             }
         } finally {

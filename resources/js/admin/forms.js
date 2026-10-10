@@ -73,7 +73,9 @@ function describedBy(el, add = null, remove = () => false) {
     }
 }
 
-function clearProblems(form) {
+// Entfernt die Fehlerhinweise früherer Antworten (Zusammenfassung, Text am
+// Feld, aria-invalid). Auch drawer.js ruft sie beim Öffnen auf.
+export function clearProblems(form) {
     form.querySelector('[data-form-problems]')?.remove();
     form.querySelectorAll('[data-ajax-error]').forEach((el) => el.remove());
     form.querySelectorAll('[data-ajax-invalid]').forEach((el) => {

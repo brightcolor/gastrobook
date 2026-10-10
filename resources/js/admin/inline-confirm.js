@@ -4,6 +4,9 @@
 // das Formular der Frage, mit data-ajax per fetch (forms.js); eine Ablehnung
 // des Servers erscheint dann in der Zeile. Steht eine Frage beim Laden schon
 // offen (nach einer Ablehnung mit Weiterleitung), bekommt sie den Fokus.
+// Lädt die Seite nach dem Bestätigen neu (data-reload-after-save oder reload in
+// der Antwort), bleibt die Frage mit dem Hinweis stehen. Bestätigen ist bis
+// zum Neuladen gesperrt (ein zweiter Klick träfe die schon entfernte Zeile).
 
 let installed = false;
 
@@ -30,6 +33,14 @@ export function closeInlineConfirm(root, { focus = true } = {}) {
     if (focus) opener.focus();
 }
 
+function lock(panel) {
+    panel.setAttribute('aria-busy', 'true');
+    const external = panel.id ? document.querySelectorAll(`[type="submit"][form="${CSS.escape(panel.id)}"]`) : [];
+    [...panel.querySelectorAll('[type="submit"]'), ...external].forEach((button) => {
+        button.disabled = true;
+    });
+}
+
 function focusOpenPanel() {
     const panel = [...document.querySelectorAll('[data-inline-confirm-panel]')]
         .find((el) => !el.closest('[hidden]'));
@@ -50,6 +61,14 @@ export function initInlineConfirms() {
         }
         const cancel = e.target.closest('[data-inline-confirm-cancel]');
         if (cancel) closeInlineConfirm(cancel.closest('[data-inline-confirm]'));
+    });
+
+    // Nach dem Speichern, das ein Neuladen anfordert: Bestätigen sperren, die
+    // Frage bleibt für den Hinweis und den Zusammenhang sichtbar.
+    document.addEventListener('swayy:saved', (e) => {
+        const panel = e.target;
+        if (!(panel instanceof HTMLFormElement) || !panel.hasAttribute('data-inline-confirm-panel')) return;
+        if (panel.hasAttribute('data-reload-after-save') || e.detail?.reload) lock(panel);
     });
 
     // Capture-Phase: Escape schließt zuerst die Frage; eine umgebende

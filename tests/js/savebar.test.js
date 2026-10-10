@@ -138,4 +138,61 @@ describe('Speicherleiste', () => {
         await vi.waitFor(() => expect(counter()).toBe(' · 1 Einstellung geändert'));
         expect(document.querySelector('[data-save-bar]').hidden).toBe(false);
     });
+
+    describe('bei einem ungültigen Wert', () => {
+        const hiddenField = `
+            ${bar}
+            <form id="k" method="POST" action="/admin/settings/capacity" data-ajax data-savebar>
+                <input id="f-buffer" name="buffer_minutes" value="0">
+                <select id="f-mode" name="mode"><option value="table" selected>Nach Tischen</option><option value="person">Nach Personen</option></select>
+                <div id="covers" data-show-if="mode:person" hidden>
+                    <label for="f-covers">Höchstens gleichzeitig <span aria-hidden="true">*</span></label>
+                    <input id="f-covers" name="max_covers" type="number" max="100" value="150">
+                </div>
+            </form>`;
+
+        // jsdom kennt kein Layout: Verborgene Bereiche liefern keine Rechtecke.
+        const layout = () => vi.spyOn(HTMLElement.prototype, 'getClientRects')
+            .mockImplementation(function rects() { return this.closest('[hidden]') ? [] : [{}]; });
+
+        it('erklärt, wenn das ungültige Feld verborgen ist, und sendet nichts', () => {
+            layout();
+            const send = vi.fn();
+            vi.stubGlobal('fetch', send);
+            mount(hiddenField);
+            initSaveBar();
+            type('f-buffer', '15');
+
+            document.querySelector('[data-save-bar-save]').click();
+
+            const toast = document.getElementById('swayyToast');
+            expect(toast.textContent).toBe('„Höchstens gleichzeitig“ enthält einen ungültigen Wert und ist durch eine andere Auswahl ausgeblendet. '
+                + 'Bitte die Auswahl ändern, bis das Feld erscheint, und den Wert korrigieren, oder auf „Verwerfen“ klicken.');
+            expect(toast.dataset.state).toBe('error');
+            expect(send).not.toHaveBeenCalled();
+        });
+
+        it('nennt ein Feld ohne Beschriftung nach seinem aria-label', () => {
+            layout();
+            mount(hiddenField.replace('<label for="f-covers">Höchstens gleichzeitig <span aria-hidden="true">*</span></label>', '')
+                .replace('id="f-covers"', 'id="f-covers" aria-label="Höchstzahl"'));
+            initSaveBar();
+            type('f-buffer', '15');
+
+            document.querySelector('[data-save-bar-save]').click();
+
+            expect(document.getElementById('swayyToast').textContent).toContain('„Höchstzahl“ enthält');
+        });
+
+        it('überlässt ein sichtbares ungültiges Feld der Sprechblase des Browsers', () => {
+            layout();
+            mount(hiddenField.replace('id="covers" data-show-if="mode:person" hidden', 'id="covers"'));
+            initSaveBar();
+            type('f-buffer', '15');
+
+            document.querySelector('[data-save-bar-save]').click();
+
+            expect(document.getElementById('swayyToast').textContent).toBe('');
+        });
+    });
 });

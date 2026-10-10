@@ -4,7 +4,9 @@
 // Solange sie offen ist, steht #{id} in der Adresse; ein Neuladen öffnet sie
 // so wieder. Escape, [data-drawer-close] und erfolgreiches Speichern des
 // Hauptformulars schließen sie; Formulare und Rückfragen darin kehren zum
-// gespeicherten Stand zurück, der Fokus zum öffnenden Element. Ein Klick auf
+// gespeicherten Stand zurück, der Fokus zum öffnenden Element. Beim Öffnen
+// verschwinden Fehlerhinweise früherer Anfragen; beim Laden der Seite bleiben
+// die vom Server mitgelieferten stehen. Ein Klick auf
 // den abgedunkelten Hintergrund (data-drawer-backdrop) schließt nur, solange
 // nichts ungespeichert ist. Solange sie offen ist, ist alles andere gesperrt
 // (inert), ausgenommen Ebenen mit data-overlay-layer (Hinweis,
@@ -22,7 +24,7 @@
 // umgebenden Abschnitts (section).
 
 import { focusables } from './dom.js';
-import { snapshot } from './forms.js';
+import { clearProblems, snapshot } from './forms.js';
 import { closeInlineConfirm } from './inline-confirm.js';
 import { showToast } from './toast.js';
 
@@ -75,13 +77,17 @@ function cover(drawer) {
     return covered;
 }
 
-function open(drawer, opener = null) {
+// keepProblems: Beim Laden der Seite bringt der Server Fehler nach einer
+// Weiterleitung schon mit; sie bleiben stehen. In jedem späteren Fall sind
+// Fehlerhinweise von Anfragen, die nach dem Schließen scheiterten, veraltet.
+function open(drawer, opener = null, { keepProblems = false } = {}) {
     if (current?.drawer === drawer) return;
     if (current) close();
 
     const covered = cover(drawer);
     drawer.hidden = false;
     document.body.style.overflow = 'hidden';
+    if (!keepProblems) drawer.querySelectorAll('form').forEach(clearProblems);
     drawer.querySelectorAll('form').forEach((form) => baselines.set(form, snapshot(form)));
     current = { drawer, opener, covered };
     if (window.location.hash !== `#${drawer.id}`) {
@@ -125,7 +131,7 @@ function close() {
     }
 }
 
-function openFromHash() {
+function openFromHash({ keepProblems = false } = {}) {
     let id = '';
     try {
         id = decodeURIComponent(window.location.hash.slice(1));
@@ -134,11 +140,11 @@ function openFromHash() {
         return;
     }
     const drawer = id ? document.getElementById(id) : null;
-    if (drawer?.hasAttribute('data-drawer')) open(drawer);
+    if (drawer?.hasAttribute('data-drawer')) open(drawer, null, { keepProblems });
 }
 
 export function initDrawers() {
-    openFromHash();
+    openFromHash({ keepProblems: true });
     if (installed) return;
     installed = true;
 
@@ -192,5 +198,5 @@ export function initDrawers() {
         form.removeAttribute('data-dirty');
     });
 
-    window.addEventListener('hashchange', openFromHash);
+    window.addEventListener('hashchange', () => openFromHash());
 }

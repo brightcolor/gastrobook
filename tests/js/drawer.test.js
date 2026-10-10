@@ -81,6 +81,44 @@ describe('Seitenleiste', () => {
         expect(document.getElementById('f-neu-name-error')).toBeNull();
     });
 
+    it('zeigt beim Öffnen keine Fehler einer Anfrage, die erst nach dem Schließen scheiterte', async () => {
+        let resolve;
+        vi.stubGlobal('fetch', vi.fn(() => new Promise((r) => { resolve = r; })));
+        mount(layout);
+        initDrawers();
+        document.getElementById('opener').click();
+        document.getElementById('f-neu-name').value = 'Filiale';
+        const sending = submitForm(document.getElementById('form-neu'));
+        await vi.waitFor(() => expect(resolve).toBeTypeOf('function'));
+
+        escape();
+        resolve(jsonResponse({
+            message: 'Der Name ist vergeben.',
+            errors: { name: ['Dieser Name ist schon vergeben.'] },
+        }, 422));
+        await sending;
+        expect(document.querySelector('#form-neu [data-form-problems]')).not.toBeNull();
+
+        document.getElementById('opener').click();
+
+        expect(document.querySelector('#form-neu [data-form-problems]')).toBeNull();
+        expect(document.getElementById('f-neu-name-error')).toBeNull();
+        expect(document.getElementById('f-neu-name').hasAttribute('aria-invalid')).toBe(false);
+        expect(document.getElementById('f-neu-name').value).toBe('');
+        escape();
+    });
+
+    it('behält beim Öffnen über die Adresse die Fehler, die der Server mitgeliefert hat', () => {
+        history.replaceState(null, '', '/admin/locations#standort-neu');
+        mount(layout.replace('<form id="form-neu" method="POST" action="/admin/locations" data-ajax>',
+            '<form id="form-neu" method="POST" action="/admin/locations" data-ajax><div data-form-problems role="alert">Bitte einen Namen eintragen.</div>'));
+
+        initDrawers();
+
+        expect(document.getElementById('standort-neu').hidden).toBe(false);
+        expect(document.querySelector('#form-neu [data-form-problems]')?.textContent).toBe('Bitte einen Namen eintragen.');
+    });
+
     it('schließt nach erfolgreichem Speichern', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ message: 'Standort angelegt.' })));
         mount(layout);
