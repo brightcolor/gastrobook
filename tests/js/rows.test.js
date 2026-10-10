@@ -223,6 +223,28 @@ describe('Zeilen', () => {
         expect(values()).toEqual(['1', '2']);
     });
 
+    it('übernimmt die gesendeten Zeilen auch, wenn das Formular mitten in der Anfrage zurückgesetzt wird', async () => {
+        mount(withSaveBar());
+        initRows();
+        initSaveBar();
+        const form = document.getElementById('cap');
+        type('rule-0-min', '3');
+        let resolve;
+        vi.stubGlobal('fetch', vi.fn(() => new Promise((r) => { resolve = r; })));
+
+        form.requestSubmit();
+        await vi.waitFor(() => expect(resolve).toBeTypeOf('function'));
+        form.reset();
+        resolve(jsonResponse({ message: 'Gespeichert.' }));
+        await vi.waitFor(() => expect(document.getElementById('swayyToast').textContent).toBe('Gespeichert.'));
+        expect(bar().hidden).toBe(false);
+
+        document.querySelector('[data-save-bar-discard]').click();
+
+        expect(values()).toEqual(['3', '2']);
+        expect(bar().hidden).toBe(true);
+    });
+
     it('nimmt ohne vorherige Sendemeldung die aktuellen Zeilen als gespeicherten Stand', () => {
         mount(withSaveBar());
         initRows();

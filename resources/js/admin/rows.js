@@ -83,10 +83,11 @@ export function initRows() {
         if (!(form instanceof HTMLFormElement)) return;
         form.querySelectorAll('[data-rows]').forEach((root) => {
             const list = listOf(root);
-            // Setzt sich das Formular mitten in der Anfrage zurück (Formular mit
-            // data-reset-after-save), ersetzen die wiederhergestellten Zeilen die
-            // Zeilen vom Senden.
-            sent.delete(list);
+            // Formulare mit data-reset-after-save setzen sich mitten in der Anfrage
+            // zurück: Dort ersetzen die wiederhergestellten Zeilen die Zeilen vom
+            // Senden. Bei anderen Formularen bleiben die gesendeten Zeilen der
+            // Stand, den die Speicherleiste als gespeichert führt.
+            if (form.hasAttribute('data-reset-after-save')) sent.delete(list);
             if (saved.has(list)) list.innerHTML = saved.get(list);
             sync(root);
         });
@@ -105,7 +106,7 @@ export function initRows() {
     // Nach dem Speichern hat forms.js die gesendeten Werte als Vorgabe dieser
     // Zeilen gesetzt, auch bei Zeilen, die inzwischen entfernt wurden. Der neue
     // gespeicherte Stand besteht aus genau diesen Zeilen; was seit dem Senden
-    // dazukam, bleiben ungespeichert. Ohne vorherige Sendemeldung zählen die
+    // dazukam, bleibt ungespeichert. Ohne vorherige Sendemeldung zählen die
     // aktuellen Zeilen.
     document.addEventListener('swayy:saved', (e) => {
         const form = e.target;
