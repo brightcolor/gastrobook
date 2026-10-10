@@ -21,7 +21,7 @@
         @if($tableLimit === null)
             {{ $tableCount($tables->count()) }} an diesem Standort
         @else
-            {{ trans_choice('{1} :used von :count Tisch deines Tarifs genutzt (alle Standorte)|[0,*] :used von :count Tischen deines Tarifs genutzt (alle Standorte)', $tableLimit, ['used' => $tablesUsed, 'count' => $tableLimit]) }}
+            {{ trans_choice('{0} Dein Tarif umfasst keine Tische (alle Standorte)|{1} :used von :count Tisch deines Tarifs genutzt (alle Standorte)|[2,*] :used von :count Tischen deines Tarifs genutzt (alle Standorte)', $tableLimit, ['used' => $tablesUsed, 'count' => $tableLimit]) }}
         @endif
         · Ein Raum lässt sich löschen, sobald keine Tische mehr darin stehen.
     </p>

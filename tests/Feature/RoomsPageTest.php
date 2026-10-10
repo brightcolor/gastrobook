@@ -258,6 +258,12 @@ class RoomsPageTest extends TestCase
             ->assertJsonPath('errors.min_capacity.0', 'Bitte die kleinste Personenzahl als ganze Zahl eintragen.');
         $update(['max_capacity' => ''])
             ->assertJsonPath('errors.max_capacity.0', 'Bitte die größte Personenzahl als ganze Zahl eintragen.');
+        // Fehlt die kleinste Zahl, meldet nur ihr Feld einen Fehler; ein Vergleich mit einem leeren Wert entfällt.
+        foreach (['', 'viele', 3.5] as $unusable) {
+            $update(['min_capacity' => $unusable])
+                ->assertJsonPath('errors.min_capacity.0', 'Bitte die kleinste Personenzahl als ganze Zahl eintragen.')
+                ->assertJsonMissingPath('errors.max_capacity');
+        }
         $update(['min_capacity' => 4, 'max_capacity' => 2])
             ->assertJsonPath('errors.max_capacity.0', 'Die größte Personenzahl ist kleiner als die kleinste. Bitte mindestens 4 eintragen.');
         $update(['joinable' => 'vielleicht'])
@@ -636,6 +642,11 @@ class RoomsPageTest extends TestCase
         $setup['tenant']->plan->update(['limits' => array_merge((array) $setup['tenant']->plan->limits, ['max_tables' => 1])]);
         $this->actingAs($owner)->get('/admin/settings/rooms')->assertOk()
             ->assertSee('1 von 1 Tisch deines Tarifs genutzt (alle Standorte)');
+
+        $setup['tenant']->plan->update(['limits' => array_merge((array) $setup['tenant']->plan->limits, ['max_tables' => 0])]);
+        $this->actingAs($owner)->get('/admin/settings/rooms')->assertOk()
+            ->assertSee('Dein Tarif umfasst keine Tische (alle Standorte)')
+            ->assertDontSee('von 0 Tischen');
     }
 
     public function test_tables_are_listed_in_natural_order(): void

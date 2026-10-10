@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use Illuminate\Support\Fluent;
+use Illuminate\Validation\ConditionalRules;
+use Illuminate\Validation\Rule;
+
 /**
  * Prüfregeln, Meldungen und Feldnamen für Räume, Tische, Tischkombinationen
  * und Raummaße. „Räume & Tische“, der Tischplan, der Einrichtungsassistent
@@ -22,7 +26,7 @@ final class TableRules
     /**
      * Name und Personenzahl eines Tisches.
      *
-     * @return array<string, list<string>>
+     * @return array<string, list<string|ConditionalRules>>
      */
     public static function table(): array
     {
@@ -31,8 +35,21 @@ final class TableRules
         return [
             'name' => ['required', 'string', 'max:'.(int) config('swayy.tables.name_max')],
             'min_capacity' => ['required', 'integer', 'min:1', 'max:'.$capacity],
-            'max_capacity' => ['required', 'integer', 'min:1', 'max:'.$capacity, 'gte:min_capacity'],
+            'max_capacity' => ['required', 'integer', 'min:1', 'max:'.$capacity, self::notBelowSmallest()],
         ];
+    }
+
+    /**
+     * Die größte Zahl ist mindestens so groß wie die kleinste. Der Vergleich gilt
+     * nur bei einer gültigen kleinsten Zahl; sonst meldet das Feld der kleinsten
+     * Zahl den Fehler allein.
+     */
+    private static function notBelowSmallest(): ConditionalRules
+    {
+        return Rule::when(
+            fn (Fluent $input) => filter_var($input->get('min_capacity'), FILTER_VALIDATE_INT) !== false,
+            ['gte:min_capacity'],
+        );
     }
 
     /**
@@ -62,7 +79,7 @@ final class TableRules
      * Name und Personenzahl einer Tischkombination; $capacityMax ist die
      * größte Zahl, die die Spalte fasst.
      *
-     * @return array<string, list<string>>
+     * @return array<string, list<string|ConditionalRules>>
      */
     public static function combination(int $capacityMax): array
     {
@@ -71,7 +88,7 @@ final class TableRules
             'table_ids' => ['required', 'array', 'min:2'],
             'table_ids.*' => ['integer'],
             'min_capacity' => ['required', 'integer', 'min:1', 'max:'.$capacityMax],
-            'max_capacity' => ['required', 'integer', 'min:1', 'max:'.$capacityMax, 'gte:min_capacity'],
+            'max_capacity' => ['required', 'integer', 'min:1', 'max:'.$capacityMax, self::notBelowSmallest()],
         ];
     }
 
