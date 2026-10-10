@@ -27,7 +27,7 @@
         <p class="text-sm text-stone-600">Lastschrift ist gerade nicht verfügbar. Bitte später erneut versuchen oder den Support fragen.</p>
     @elseif($profile && $profile->hasActiveDirectDebit())
         <p class="flex flex-wrap items-center gap-2 text-sm">
-            <x-status-icon state="ok" label="Aktiv" />
+            <x-status-icon state="ok" label="Aktiv" :announce="false" />
             <span class="font-semibold">Aktiv</span>
             <span class="text-stone-600">· Abbuchung monatlich per SEPA-Lastschrift</span>
         </p>

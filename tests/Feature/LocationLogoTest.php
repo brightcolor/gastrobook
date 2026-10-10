@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Mockery;
 use Tests\Concerns\CreatesTenants;
 use Tests\TestCase;
 
@@ -193,6 +194,48 @@ class LocationLogoTest extends TestCase
         $this->actingAs($manager)->postJson(route('admin.locations.logo.store', $setup['location']), [
             'logo' => UploadedFile::fake()->image('logo.png', 120, 60),
         ])->assertForbidden();
+    }
+
+    public function test_a_new_logo_replaces_the_old_file_after_it_is_stored(): void
+    {
+        Storage::fake('public');
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+        $url = route('admin.locations.logo.store', $setup['location']);
+
+        $this->actingAs($owner)->postJson($url, ['logo' => UploadedFile::fake()->image('alt.png', 120, 60)])->assertOk();
+        $old = (string) $setup['location']->fresh()->brand_logo_path;
+        $this->actingAs($owner)->postJson($url, ['logo' => UploadedFile::fake()->image('neu.png', 120, 60)])->assertOk();
+        $new = (string) $setup['location']->fresh()->brand_logo_path;
+
+        $this->assertNotSame($old, $new);
+        Storage::disk('public')->assertExists($new);
+        Storage::disk('public')->assertMissing($old);
+    }
+
+    public function test_the_old_logo_stays_when_the_new_one_cannot_be_stored(): void
+    {
+        Storage::fake('public');
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $old = 'logos/'.$setup['location']->id.'/alt.png';
+        Storage::disk('public')->put($old, 'x');
+        $setup['location']->update(['brand_logo_path' => $old]);
+        $this->clearTenantContext();
+
+        // Der Speicher nimmt die Datei nicht an: putFileAs liefert false statt eines Pfads.
+        $failing = Mockery::mock(Storage::disk('public'))->makePartial();
+        $failing->shouldReceive('putFileAs')->andReturn(false);
+        Storage::set('public', $failing);
+
+        $this->actingAs($owner)->postJson(route('admin.locations.logo.store', $setup['location']), [
+            'logo' => UploadedFile::fake()->image('neu.png', 120, 60),
+        ])->assertStatus(422)
+            ->assertJsonPath('errors.logo.0', 'Das Logo konnte nicht gespeichert werden. Das bisherige Logo bleibt erhalten. Bitte es später erneut versuchen oder den Support fragen.');
+
+        $this->assertSame($old, $setup['location']->fresh()->brand_logo_path);
+        Storage::disk('public')->assertExists($old);
     }
 
     public function test_removing_the_logo_deletes_the_file(): void

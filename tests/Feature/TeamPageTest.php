@@ -126,6 +126,69 @@ class TeamPageTest extends TestCase
         $this->assertSame('staff', TenantUser::where('user_id', $staff->id)->value('role'));
     }
 
+    public function test_an_overlong_email_is_rejected_with_the_limit(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $email = 'person@'.str_repeat('abcdefghij.', 18).'test';
+
+        $this->actingAs($owner)->postJson('/admin/users/invite', ['email' => $email, 'role' => 'host', 'all_locations' => '1'])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.email.0', 'Die E-Mail-Adresse ist zu lang. Bitte höchstens 200 Zeichen verwenden.');
+
+        $this->assertSame(0, Invitation::withoutGlobalScopes()->count());
+    }
+
+    public function test_an_email_at_the_limit_is_accepted(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $email = 'person@'.str_repeat('abcdefghij.', 17).'testen';
+        $this->assertSame(200, strlen($email));
+
+        $this->actingAs($owner)->postJson('/admin/users/invite', ['email' => $email, 'role' => 'host', 'all_locations' => '1'])
+            ->assertOk();
+
+        $this->assertSame(1, Invitation::withoutGlobalScopes()->where('email', $email)->count());
+    }
+
+    public function test_the_operations_manager_learns_who_changes_access(): void
+    {
+        $setup = $this->createTenantSetup();
+        $manager = $this->createMember($setup['tenant'], 'operations_manager');
+        $staff = $this->createMember($setup['tenant'], 'staff');
+        $this->clearTenantContext();
+
+        $this->actingAs($manager)->postJson('/admin/users/invite', ['email' => $staff->email, 'role' => 'host', 'all_locations' => '1'])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.email.0', 'Diese Person gehört schon zum Team. Rolle und Standorte ändert eine Person mit der Rolle „Inhaber“ oder „Administration“.');
+
+        $this->assertSame('staff', TenantUser::where('user_id', $staff->id)->value('role'));
+    }
+
+    public function test_the_named_roles_follow_the_permissions(): void
+    {
+        config(['permissions.roles.location_manager' => ['users.roles.manage', 'reservations.view']]);
+        $setup = $this->createTenantSetup();
+        $manager = $this->createMember($setup['tenant'], 'operations_manager');
+        $staff = $this->createMember($setup['tenant'], 'staff');
+        $this->clearTenantContext();
+
+        $this->actingAs($manager)->postJson('/admin/users/invite', ['email' => $staff->email, 'role' => 'host', 'all_locations' => '1'])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.email.0', 'Diese Person gehört schon zum Team. Rolle und Standorte ändert eine Person mit der Rolle „Inhaber“, „Administration“ oder „Standortleitung“.');
+    }
+
+    public function test_role_summaries_name_what_stays_with_the_owner(): void
+    {
+        $this->assertStringContainsString('bleiben beim Inhaber', __('roles.tenant_admin.summary'));
+        $this->assertStringContainsString('Rollen vergibt die Administration', __('roles.operations_manager.summary'));
+    }
+
     public function test_role_change_answers_without_reload(): void
     {
         $setup = $this->createTenantSetup();

@@ -66,12 +66,17 @@ class LocationLogoController extends Controller
             'logo.max' => __('Das Logo ist größer als :size. Bitte eine kleinere Datei wählen.', ['size' => FileSize::fromKilobytes($maxKb)]),
         ]);
 
-        if ($location->brand_logo_path) {
-            Storage::disk('public')->delete($location->brand_logo_path);
+        $previous = $location->brand_logo_path;
+        $path = $request->file('logo')->store(config('swayy.uploads.logo_directory').'/'.$location->id, 'public');
+        if ($path === false) {
+            return $this->failed($request, 'logo', __('Das Logo konnte nicht gespeichert werden. Das bisherige Logo bleibt erhalten. Bitte es später erneut versuchen oder den Support fragen.'));
         }
 
-        $path = $request->file('logo')->store(config('swayy.uploads.logo_directory').'/'.$location->id, 'public');
         $location->update(['brand_logo_path' => $path]);
+        // Die alte Datei geht erst, wenn die neue gespeichert ist; scheitert das Speichern, bleibt das alte Logo.
+        if ($previous && $previous !== $path) {
+            Storage::disk('public')->delete($previous);
+        }
         $this->audit->log('location.logo.updated', $location);
 
         return $this->saved($request, __('Logo für „:name“ gespeichert.', ['name' => $location->name]), reload: true);

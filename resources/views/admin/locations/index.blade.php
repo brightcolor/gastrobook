@@ -16,6 +16,8 @@
 <p class="mb-4 text-sm text-stone-600">
     @if($limit === null)
         {{ trans_choice(':count Standort|:count Standorte', $used, ['count' => $used]) }}
+    @elseif($used > $limit)
+        {{ trans_choice(':count Standort angelegt|:count Standorte angelegt', $used, ['count' => $used]) }}, {{ trans_choice('{0} dein Tarif umfasst keinen.|{1} dein Tarif umfasst einen.|[2,*] dein Tarif umfasst :count.', (int) $limit, ['count' => $limit]) }}
     @else
         {{ $used }} von {{ $limit }} Standorten deines Tarifs genutzt
     @endif

@@ -306,10 +306,12 @@ return [
     |
     | default_timezone: Zeitzone, die das Formular „Neuer Standort“ vorschlägt
     | und die gilt, solange kein Standort gewählt ist (etwa im Protokoll).
+    | intro_max: längste Begrüßung auf der Buchungsseite in Zeichen (100–5000).
     |
     */
     'locations' => [
         'default_timezone' => EnvSetting::timezone('SWAYY_DEFAULT_TIMEZONE', default: 'Europe/Berlin'),
+        'intro_max' => EnvSetting::integer('SWAYY_LOCATION_INTRO_MAX', default: 1000, min: 100, max: 5000),
     ],
 
     /*

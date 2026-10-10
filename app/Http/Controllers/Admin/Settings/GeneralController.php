@@ -63,7 +63,9 @@ class GeneralController extends Controller
             'address_line1' => ['nullable', 'string', 'max:200'],
             'postal_code' => ['nullable', 'string', 'max:20'],
             'city' => ['nullable', 'string', 'max:100'],
-            'public_intro' => ['nullable', 'string', 'max:1000'],
+            'public_intro' => ['nullable', 'string', 'max:'.(int) config('swayy.locations.intro_max')],
+        ], [
+            'public_intro.max' => __('Die Begrüßung ist zu lang. Bitte auf höchstens :max Zeichen kürzen.'),
         ]);
 
         $tenantValues = [

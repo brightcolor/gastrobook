@@ -270,4 +270,118 @@ class LocationManagementTest extends TestCase
             ->assertStatus(422)
             ->assertJsonPath('errors.name.0', 'Dein Tarif umfasst einen Standort, und der ist schon angelegt. Für einen weiteren Standort bitte eine Person mit Zugang zu „Abo & Rechnungen“ fragen.');
     }
+
+    public function test_the_intro_limit_comes_from_the_settings(): void
+    {
+        config(['swayy.locations.intro_max' => 120]);
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 4]]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->get('/admin/locations')
+            ->assertOk()
+            ->assertSee('bis 120 Zeichen')
+            ->assertSee('maxlength="120"', false);
+
+        $this->actingAs($owner)->putJson("/admin/locations/{$setup['location']->id}", [
+            'name' => 'Mitte', 'timezone' => 'Europe/Berlin', 'public_intro' => str_repeat('a', 121),
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors('public_intro')
+            ->assertJsonPath('errors.public_intro.0', 'Begrüßung ist zu lang. Bitte auf höchstens 120 Zeichen kürzen.');
+
+        $this->actingAs($owner)->putJson("/admin/locations/{$setup['location']->id}", [
+            'name' => 'Mitte', 'timezone' => 'Europe/Berlin', 'public_intro' => str_repeat('a', 120),
+        ])->assertOk();
+    }
+
+    public function test_a_rejected_form_keeps_the_input_and_marks_the_fields(): void
+    {
+        config(['swayy.locations.intro_max' => 100]);
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 4]]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $id = $setup['location']->id;
+        $this->clearTenantContext();
+
+        $html = (string) $this->actingAs($owner)->from('/admin/locations')
+            ->followingRedirects()
+            ->put("/admin/locations/{$id}", ['name' => 'Mitte', 'timezone' => 'Europe/Vienna', 'public_intro' => str_repeat('a', 101)])
+            ->getContent();
+
+        $this->assertMatchesRegularExpression('/<option value="Europe\/Vienna" selected>/', $html);
+        $this->assertMatchesRegularExpression('/id="loc-'.$id.'-public_intro"[^>]*aria-describedby="loc-'.$id.'-public_intro-help loc-'.$id.'-public_intro-error"[^>]*aria-invalid="true"/s', $html);
+        $this->assertStringContainsString('id="loc-'.$id.'-public_intro-error"', $html);
+        $this->assertStringContainsString('Begrüßung ist zu lang. Bitte auf höchstens 100 Zeichen kürzen.', $html);
+    }
+
+    public function test_an_intro_at_the_highest_allowed_limit_is_saved_in_full(): void
+    {
+        config(['swayy.locations.intro_max' => 5000]);
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 4]]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $intro = str_repeat('ä', 5000);
+        $this->clearTenantContext();
+
+        $this->assertSame(5000, mb_strlen($intro));
+        $this->actingAs($owner)->putJson("/admin/locations/{$setup['location']->id}", [
+            'name' => 'Mitte', 'timezone' => 'Europe/Berlin', 'public_intro' => $intro,
+        ])->assertOk();
+
+        $this->assertSame($intro, $setup['location']->fresh()->public_intro);
+    }
+
+    public function test_the_intro_limit_defaults_to_one_thousand_characters(): void
+    {
+        $this->assertSame(1000, config('swayy.locations.intro_max'));
+    }
+
+    public function test_the_timezone_is_marked_as_required(): void
+    {
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 4]]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $html = (string) $this->actingAs($owner)->get('/admin/locations')->getContent();
+
+        $this->assertMatchesRegularExpression('/Zeitzone<span class="text-red-700" aria-hidden="true"> \*<\/span>/', $html);
+    }
+
+    public function test_more_locations_than_the_plan_allows_reads_plainly(): void
+    {
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 4]]);
+        $setup['tenant']->update(['plan_id' => Plan::factory()->create(['limits' => ['max_locations' => 1]])->id]);
+        Location::factory()->create(['tenant_id' => $setup['tenant']->id]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->get('/admin/locations')
+            ->assertOk()
+            ->assertSee('2 Standorte angelegt, dein Tarif umfasst einen.')
+            ->assertDontSee('2 von 1 Standorten');
+    }
+
+    public function test_the_location_count_reads_plainly_for_every_plan_size(): void
+    {
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 4]]);
+        $setup['tenant']->update(['plan_id' => Plan::factory()->create(['limits' => ['max_locations' => 3]])->id]);
+        Location::factory()->count(2)->create(['tenant_id' => $setup['tenant']->id]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->get('/admin/locations')
+            ->assertOk()
+            ->assertSee('3 von 3 Standorten deines Tarifs genutzt');
+
+        Location::factory()->create(['tenant_id' => $setup['tenant']->id]);
+
+        $this->actingAs($owner)->get('/admin/locations')
+            ->assertOk()
+            ->assertSee('4 Standorte angelegt, dein Tarif umfasst 3.')
+            ->assertDontSee('4 von 3 Standorten');
+
+        $setup['tenant']->update(['plan_id' => Plan::factory()->create(['limits' => ['max_locations' => 0]])->id]);
+
+        $this->actingAs($owner)->get('/admin/locations')
+            ->assertOk()
+            ->assertSee('4 Standorte angelegt, dein Tarif umfasst keinen.');
+    }
 }

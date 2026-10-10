@@ -10,11 +10,11 @@ return [
     ],
     'tenant_admin' => [
         'label' => 'Administration',
-        'summary' => 'Alle Einstellungen, Team, Abo und Zahlungen.',
+        'summary' => 'Alle Einstellungen, Team mit Rollen, Abo und Zahlungen. Datenexport, Import und „Betrieb löschen“ bleiben beim Inhaber.',
     ],
     'operations_manager' => [
         'label' => 'Betriebsleitung',
-        'summary' => 'Service, Buchungen, Gäste, Zeiten, Räume, Events, Vorlagen, Marketing und Standorte; lädt Personen ein.',
+        'summary' => 'Service, Buchungen, Gäste, Zeiten, Räume, Events, Vorlagen, Marketing und Standorte; lädt Personen ein, Rollen vergibt die Administration.',
     ],
     'location_manager' => [
         'label' => 'Standortleitung',

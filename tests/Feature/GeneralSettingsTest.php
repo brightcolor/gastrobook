@@ -43,6 +43,22 @@ class GeneralSettingsTest extends TestCase
         $this->assertSame($originalSlug, $loc->slug);
     }
 
+    public function test_the_intro_limit_of_the_combined_page_comes_from_the_settings(): void
+    {
+        config(['swayy.locations.intro_max' => 150]);
+        $setup = $this->createTenantSetup();
+        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
+        $this->clearTenantContext();
+        $data = ['business_name' => 'Beispiel Gastro', 'location_name' => 'Mitte', 'timezone' => 'Europe/Berlin'];
+
+        $this->actingAs($admin)->putJson('/admin/settings/general', $data + ['public_intro' => str_repeat('a', 151)])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.public_intro.0', 'Die Begrüßung ist zu lang. Bitte auf höchstens 150 Zeichen kürzen.');
+
+        $this->actingAs($admin)->putJson('/admin/settings/general', $data + ['public_intro' => str_repeat('a', 150)])
+            ->assertOk();
+    }
+
     public function test_business_name_is_required(): void
     {
         $setup = $this->createTenantSetup();

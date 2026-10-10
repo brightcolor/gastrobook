@@ -69,7 +69,7 @@ class UserManagementController extends Controller
         }
 
         $validated = $request->validate([
-            'email' => ['required', 'email:rfc'],
+            'email' => ['required', 'email:rfc', 'max:200'],
             'role' => ['required', new AssignableRole($request->user(), $tenant)],
             'all_locations' => ['nullable', 'boolean'],
             'location_ids' => ['nullable', 'array'],
@@ -77,6 +77,7 @@ class UserManagementController extends Controller
         ], [
             'email.required' => __('Bitte die E-Mail-Adresse der Person eintragen.'),
             'email.email' => __('Die E-Mail-Adresse ist unvollständig. Bitte in der Form name@beispiel.de eintragen.'),
+            'email.max' => __('Die E-Mail-Adresse ist zu lang. Bitte höchstens :max Zeichen verwenden.'),
             'role.required' => __('Bitte eine Rolle wählen.'),
         ]);
 
@@ -118,7 +119,10 @@ class UserManagementController extends Controller
             }
 
             if (! $membership->wasRecentlyCreated) {
-                return $this->failed($request, 'email', __('Diese Person gehört schon zum Team. Rolle und Standorte änderst du direkt in der Liste.'));
+                // Rollen und Standorte ändern nur Personen mit users.roles.manage; die anderen erfahren, wer das kann.
+                return $this->failed($request, 'email', $request->user()->canInTenant('users.roles.manage', $tenant)
+                    ? __('Diese Person gehört schon zum Team. Rolle und Standorte änderst du direkt in der Liste.')
+                    : __('Diese Person gehört schon zum Team. Rolle und Standorte ändert eine Person mit der Rolle :roles.', ['roles' => $this->roleManagerLabels()]));
             }
 
             $this->audit->log('user.added', $user, null, ['role' => $validated['role']]);
@@ -156,6 +160,24 @@ class UserManagementController extends Controller
         $user = $request->user();
 
         return $user !== null ? RoleAssignment::assignable($user, $tenant) : [];
+    }
+
+    /**
+     * Die Rollen, die Rollen und Standorte ändern dürfen (users.roles.manage),
+     * als Satzteil: „Inhaber“ oder „Administration“. Sie ergeben sich aus
+     * config/permissions.php und folgen jeder Änderung dort.
+     */
+    private function roleManagerLabels(): string
+    {
+        $labels = collect((array) config('permissions.roles'))
+            ->filter(fn (mixed $permissions) => in_array('*', (array) $permissions, true) || in_array('users.roles.manage', (array) $permissions, true))
+            ->keys()
+            ->map(fn (string $role) => '„'.__("roles.{$role}.label").'“')
+            ->values()
+            ->all();
+        $last = array_pop($labels);
+
+        return $labels === [] ? (string) $last : implode(', ', $labels).' oder '.$last;
     }
 
     /**

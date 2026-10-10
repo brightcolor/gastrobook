@@ -52,6 +52,7 @@ class LocationController extends Controller
             'canSeeBilling' => $request->user()->canInTenant('billing.manage', $tenant),
             'timezones' => DateTimeZone::listIdentifiers(),
             'defaultTimezone' => config('swayy.locations.default_timezone'),
+            'introMax' => (int) config('swayy.locations.intro_max'),
             'logoAccept' => implode(',', array_map(fn (string $type) => '.'.$type, $types)),
             'logoHelp' => __('Als :types, bis :size.', [
                 'types' => LocationLogoController::typeList($types),
@@ -157,7 +158,7 @@ class LocationController extends Controller
             'address_line1' => ['nullable', 'string', 'max:200'],
             'postal_code' => ['nullable', 'string', 'max:20'],
             'city' => ['nullable', 'string', 'max:100'],
-            'public_intro' => ['nullable', 'string', 'max:1000'],
+            'public_intro' => ['nullable', 'string', 'max:'.(int) config('swayy.locations.intro_max')],
         ];
     }
 
