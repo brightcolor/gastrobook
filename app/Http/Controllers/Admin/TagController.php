@@ -71,7 +71,7 @@ class TagController extends Controller
     public function update(Request $request, Tag $tag): mixed
     {
         abort_if($tag->tenant_id !== $this->context->tenantId(), 404);
-        abort_if($tag->is_system, 403, __('Dieser Tag ist fest eingerichtet und lässt sich nicht ändern.'));
+        abort_if($tag->is_system, 403, __('Dieser Tag ist fest eingerichtet und lässt sich nicht ändern. Bitte lege dafür einen eigenen Tag an.'));
 
         $validated = $request->validate($this->rules(), $this->messages());
 
@@ -106,7 +106,7 @@ class TagController extends Controller
     public function destroy(Tag $tag): JsonResponse
     {
         abort_if($tag->tenant_id !== $this->context->tenantId(), 404);
-        abort_if($tag->is_system, 403, __('Dieser Tag ist fest eingerichtet und lässt sich nicht löschen.'));
+        abort_if($tag->is_system, 403, __('Dieser Tag ist fest eingerichtet und lässt sich nicht löschen. Du kannst ihn bei einzelnen Buchungen entfernen.'));
 
         // Ein zweiter Löschauftrag für denselben Tag (Doppelklick, zweites
         // Fenster) trifft keine Zeile mehr und schreibt keinen Eintrag ins Protokoll.

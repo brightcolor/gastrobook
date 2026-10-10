@@ -76,15 +76,66 @@ class TagSettingsPageTest extends TestCase
         $this->assertMatchesRegularExpression('/data-nav-key="tags"[^>]*aria-current="page"/', (string) $response->getContent());
     }
 
-    public function test_an_empty_list_offers_one_action(): void
+    public function test_an_empty_list_explains_its_purpose_and_offers_to_add_a_tag(): void
     {
         $setup = $this->createTenantSetup();
         $owner = $this->createMember($setup['tenant'], 'tenant_owner');
         $this->clearTenantContext();
 
-        $this->actingAs($owner)->get('/admin/settings/tags')
+        $html = (string) $this->actingAs($owner)->get('/admin/settings/tags')
             ->assertOk()
-            ->assertSee('Noch keine Tags');
+            ->assertSee('Noch keine Tags')
+            ->assertSee('Mit Tags erkennt dein Team besondere Reservierungen auf einen Blick.')
+            ->assertDontSee('<ul class="divide-y', false)
+            ->getContent();
+
+        // Der Leerzustand trägt die Aktion; der Knopf im Seitenkopf steht davor.
+        $this->assertMatchesRegularExpression('/Noch keine Tags<\/p>.*?data-drawer-open="tag-neu"[^>]*>Tag hinzufügen<\/button>/s', $html);
+        $this->assertStringContainsString('id="tag-neu" data-drawer hidden', $html);
+    }
+
+    public function test_an_unused_tag_says_so_and_asks_a_short_delete_question(): void
+    {
+        $setup = $this->createTenantSetup();
+        Tag::create(['tenant_id' => $setup['tenant']->id, 'name' => 'VIP', 'color' => '#aa3300', 'scope' => 'reservation']);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $response = $this->actingAs($owner)->get('/admin/settings/tags')
+            ->assertOk()
+            ->assertSee('Nicht verwendet')
+            ->assertSee('Tag „VIP“ löschen?')
+            ->assertDontSee('An 0 Reservierungen')
+            ->assertDontSee('Er verschwindet von');
+        $this->assertMatchesRegularExpression('/<p id="tag-loeschen-\d+-question"[^>]*>Tag „VIP“ löschen\?<\/p>/', (string) $response->getContent());
+    }
+
+    public function test_an_unused_salon_tag_reads_the_same_without_appointments(): void
+    {
+        $setup = $this->createTenantSetup();
+        $setup['tenant']->update(['type' => TenantType::Salon]);
+        Tag::create(['tenant_id' => $setup['tenant']->id, 'name' => 'VIP', 'color' => '#aa3300', 'scope' => 'reservation']);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $main = $this->mainContent((string) $this->actingAs($owner)->get('/admin/settings/tags')->assertOk()->getContent());
+
+        $this->assertStringContainsString('Nicht verwendet', $main);
+        $this->assertStringContainsString('Tag „VIP“ löschen?', $main);
+        $this->assertStringNotContainsString('An 0 Terminen', $main);
+        $this->assertStringNotContainsString('Er verschwindet von', $main);
+    }
+
+    public function test_a_system_tag_without_use_is_marked_as_unused_and_fixed(): void
+    {
+        $setup = $this->createTenantSetup();
+        Tag::create(['tenant_id' => $setup['tenant']->id, 'name' => 'Allergie', 'color' => '#aa3300', 'scope' => 'both', 'is_system' => true]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $main = $this->mainContent((string) $this->actingAs($owner)->get('/admin/settings/tags')->assertOk()->getContent());
+
+        $this->assertMatchesRegularExpression('/Nicht verwendet\s+· fest eingerichtet/', $main);
     }
 
     public function test_the_page_needs_settings_rights_and_the_tag_picker_stays_open_for_the_team(): void
@@ -165,7 +216,7 @@ class TagSettingsPageTest extends TestCase
 
         $this->actingAs($owner)->putJson("/admin/tags/{$system->id}", ['name' => 'X', 'color' => '#222222'])
             ->assertForbidden()
-            ->assertJsonPath('message', 'Dieser Tag ist fest eingerichtet und lässt sich nicht ändern.');
+            ->assertJsonPath('message', 'Dieser Tag ist fest eingerichtet und lässt sich nicht ändern. Bitte lege dafür einen eigenen Tag an.');
     }
 
     public function test_a_system_tag_has_no_delete_question_and_refuses_deleting_with_a_reason(): void
@@ -181,7 +232,7 @@ class TagSettingsPageTest extends TestCase
 
         $this->actingAs($owner)->deleteJson("/admin/tags/{$system->id}")
             ->assertForbidden()
-            ->assertJsonPath('message', 'Dieser Tag ist fest eingerichtet und lässt sich nicht löschen.');
+            ->assertJsonPath('message', 'Dieser Tag ist fest eingerichtet und lässt sich nicht löschen. Du kannst ihn bei einzelnen Buchungen entfernen.');
         $this->assertNotNull(Tag::withoutGlobalScopes()->find($system->id));
     }
 

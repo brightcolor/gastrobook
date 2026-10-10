@@ -6,13 +6,25 @@
     $description = $salon
         ? 'Farbige Markierungen für Termine, etwa VIP, Geburtstag oder Allergie. Sie erscheinen in den Details eines Termins.'
         : 'Farbige Markierungen für Reservierungen, etwa VIP, Geburtstag oder Allergie. Sie erscheinen in den Reservierungsdetails und im Tischplan.';
-    $uses = fn (int $count): string => $salon
-        ? trans_choice('An :count Termin|An :count Terminen', $count, ['count' => $count])
-        : trans_choice('An :count Reservierung|An :count Reservierungen', $count, ['count' => $count]);
-    $question = fn ($tag): string => match (true) {
-        $tag->reservations_count === 0 => __('Tag „:name“ löschen?', ['name' => $tag->name]),
-        $salon => trans_choice('Tag „:name“ löschen? Er verschwindet von :count Termin.|Tag „:name“ löschen? Er verschwindet von :count Terminen.', $tag->reservations_count, ['name' => $tag->name, 'count' => $tag->reservations_count]),
-        default => trans_choice('Tag „:name“ löschen? Er verschwindet von :count Reservierung.|Tag „:name“ löschen? Er verschwindet von :count Reservierungen.', $tag->reservations_count, ['name' => $tag->name, 'count' => $tag->reservations_count]),
+    // Die Zahl kommt je nach Treiber als Text; die Fallunterscheidung arbeitet mit der ganzen Zahl.
+    $uses = function ($count) use ($salon): string {
+        $count = (int) $count;
+
+        return match (true) {
+            $count === 0 => __('Nicht verwendet'),
+            $salon => trans_choice('An :count Termin|An :count Terminen', $count, ['count' => $count]),
+            default => trans_choice('An :count Reservierung|An :count Reservierungen', $count, ['count' => $count]),
+        };
+    };
+    $question = function ($tag) use ($salon): string {
+        $count = (int) $tag->reservations_count;
+        $replace = ['name' => $tag->name, 'count' => $count];
+
+        return match (true) {
+            $count === 0 => __('Tag „:name“ löschen?', $replace),
+            $salon => trans_choice('Tag „:name“ löschen? Er verschwindet von :count Termin.|Tag „:name“ löschen? Er verschwindet von :count Terminen.', $count, $replace),
+            default => trans_choice('Tag „:name“ löschen? Er verschwindet von :count Reservierung.|Tag „:name“ löschen? Er verschwindet von :count Reservierungen.', $count, $replace),
+        };
     };
 @endphp
 <x-page-header title="Tags" :crumb="['Einstellungen', 'Buchungen']" scope="tenant" :description="$description">
