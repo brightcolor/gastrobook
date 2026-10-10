@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Enums\ReservationStatus;
+use App\Mail\Layout\GuestText;
+use App\Mail\Layout\MailFrameFactory;
 use App\Models\Location;
 use App\Models\NotificationLog;
 use App\Models\Reservation;
@@ -530,7 +532,7 @@ class ReservationLifecycleService
             $du = $location->effectiveSettings()->du();
 
             $vars = [
-                'name' => $reservation->guest_name_snapshot,
+                'name' => GuestText::inline($reservation->guest_name_snapshot),
                 'date' => $reservation->localStart()->format('d.m.Y'),
                 'time' => $reservation->localStart()->format('H:i'),
                 'tables' => $newNames ?: '—',
@@ -538,16 +540,17 @@ class ReservationLifecycleService
                 'code' => $reservation->code,
             ];
 
-            Mail::to($reservation->guest_email_snapshot)->queue($this->mailSender->toGuest(
+            Mail::to($reservation->guest_email_snapshot, $reservation->guest_name_snapshot)->queue($this->mailSender->toGuest(
                 $du
                     ? __('Tischänderung zu deiner Reservierung :code – :loc', $vars)
                     : __('Tischänderung zu Ihrer Reservierung :code – :loc', $vars),
                 $du
-                    ? __("Hallo :name,\n\nzu deiner Reservierung am :date um :time Uhr haben wir dir statt deines Wunschtisches Tisch :tables zugewiesen, damit alles optimal passt. An deiner Reservierung ändert sich sonst nichts.\n\nBei Fragen melde dich gerne.\n\n:loc", $vars)
-                    : __("Hallo :name,\n\nzu Ihrer Reservierung am :date um :time Uhr haben wir Ihnen statt Ihres Wunschtisches Tisch :tables zugewiesen, damit alles optimal passt. An Ihrer Reservierung ändert sich sonst nichts.\n\nBei Fragen melden Sie sich gerne.\n\n:loc", $vars),
+                    ? __("Hallo :name,\n\nwir haben dir einen anderen Tisch zugewiesen, damit alles gut passt. Sonst bleibt deine Reservierung, wie sie ist.\n\nDatum: :date\nUhrzeit: :time Uhr\nTisch: :tables\nReservierungsnummer: :code\n\nBei Fragen melde dich gern.\n:loc", $vars)
+                    : __("Hallo :name,\n\nwir haben Ihnen einen anderen Tisch zugewiesen, damit alles gut passt. Sonst bleibt Ihre Reservierung, wie sie ist.\n\nDatum: :date\nUhrzeit: :time Uhr\nTisch: :tables\nReservierungsnummer: :code\n\nBei Fragen melden Sie sich gern.\n:loc", $vars),
                 $tenant,
                 $location,
                 $reservation,
+                'reservation_table_changed',
             ));
 
             $reservation->update(['table_chosen_by_guest' => false]);
@@ -832,40 +835,59 @@ class ReservationLifecycleService
             ? __('reservations.source.'.$reservation->source, [], 'de')
             : $reservation->source;
 
-        $lines = [
-            'Neue Reservierung: '.$reservation->code,
-            '',
-            'Datum:    '.$localStart->format('d.m.Y'),
-            'Uhrzeit:  '.$localStart->format('H:i').' Uhr',
+        $du = MailFrameFactory::ownerDu();
+        $requested = $reservation->status === ReservationStatus::Requested;
+
+        $intro = 'Eine neue Reservierung ist eingegangen. '.match (true) {
+            $requested && $du => 'Sie wartet auf deine Bestätigung.',
+            $requested => 'Sie wartet auf Ihre Bestätigung.',
+            $du => 'Sie steht schon in deinem Reservierungsbuch.',
+            default => 'Sie steht schon in Ihrem Reservierungsbuch.',
+        };
+
+        $reservierung = [
+            'Datum: '.$localStart->format('d.m.Y'),
+            'Uhrzeit: '.$localStart->format('H:i').' Uhr',
             'Personen: '.$reservation->party_size,
-            'Status:   '.__('reservations.status.'.$reservation->status->value, [], 'de'),
-            'Tisch:    '.($tables !== '' ? $tables : 'automatisch/offen'),
-            '',
-            'Gast:     '.$reservation->guest_name_snapshot,
-            'E-Mail:   '.($reservation->guest_email_snapshot ?: '—'),
-            'Telefon:  '.($reservation->guest_phone_snapshot ?: '—'),
-            'Quelle:   '.$sourceLabel,
+            'Tisch: '.($tables !== '' ? $tables : 'automatisch/offen'),
+            'Status: '.__('reservations.status.'.$reservation->status->value, [], 'de'),
+            'Reservierungsnummer: '.$reservation->code,
+        ];
+        // Gast-Eingaben auf eine Zeile ohne Adressen: Sie werden nie Knopf oder Tabelle.
+        $gast = [
+            'Gast: '.(GuestText::inline($reservation->guest_name_snapshot) ?: '—'),
+            'E-Mail: '.($reservation->guest_email_snapshot ?: '—'),
+            'Telefon: '.(GuestText::inline($reservation->guest_phone_snapshot) ?: '—'),
+            'Quelle: '.$sourceLabel,
         ];
         if ($reservation->occasion) {
-            $lines[] = 'Anlass:   '.$reservation->occasion;
+            $gast[] = 'Anlass: '.GuestText::inline($reservation->occasion);
         }
         if ($reservation->allergy_note) {
-            $lines[] = 'Allergien: '.$reservation->allergy_note;
+            $gast[] = 'Allergien: '.GuestText::inline($reservation->allergy_note);
         }
         if ($reservation->guest_note) {
-            $lines[] = 'Gastnotiz: '.$reservation->guest_note;
+            $gast[] = 'Gastnotiz: '.GuestText::inline($reservation->guest_note);
         }
+
+        $body = implode("\n\n", [
+            $intro,
+            implode("\n", $reservierung),
+            implode("\n", $gast),
+            'Reservierung öffnen: '.route('admin.reservations.show', $reservation),
+        ]);
 
         $tenant = $reservation->tenant()->first();
         $subject = 'Neue Reservierung – '.$localStart->format('d.m.').' '.$localStart->format('H:i').' · '
             .$reservation->guest_name_snapshot.' ('.$reservation->party_size.' P.)';
 
-        Mail::to($to)->queue($this->mailSender->toOperator(
+        Mail::to($to, $location->name)->queue($this->mailSender->toOperator(
             $subject,
-            implode("\n", $lines),
+            $body,
             $tenant,
             $location,
             $reservation->guest_email_snapshot,
+            'operator_new_reservation',
         ));
 
         NotificationLog::withoutGlobalScopes()->create([
@@ -921,8 +943,8 @@ class ReservationLifecycleService
         $tenant = $reservation->tenant()->first();
         $location = $reservation->location()->withoutGlobalScope('tenant')->first();
 
-        Mail::to($reservation->guest_email_snapshot)->queue(
-            $this->mailSender->toGuest($rendered['subject'], $rendered['body'], $tenant, $location, $reservation)
+        Mail::to($reservation->guest_email_snapshot, $reservation->guest_name_snapshot)->queue(
+            $this->mailSender->toGuest($rendered['subject'], $rendered['body'], $tenant, $location, $reservation, $templateKey)
         );
 
         NotificationLog::withoutGlobalScopes()->create([

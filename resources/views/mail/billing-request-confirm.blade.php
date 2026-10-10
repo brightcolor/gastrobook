@@ -1,23 +1,27 @@
-Bitte bestätigen Sie Ihre Anfrage
-==================================
+@if ($du)
+Hallo {!! $billingRequest->contact_name !!},
 
-Hallo {{ $billingRequest->contact_name }},
+danke für deine Anfrage. Bestätige bitte noch deine E-Mail-Adresse, dann geht sie an uns, und dein Konto wird wieder freigeschaltet.
 
-vielen Dank für Ihre Anfrage! Um sicherzustellen, dass diese E-Mail-
-Adresse korrekt ist, klicken Sie bitte auf den folgenden Link:
+Gewünschter Tarif: {!! $billingRequest->plan_key !!}
+Betrieb: {!! $billingRequest->tenant->name !!}
 
-{{ $confirmUrl }}
+Anfrage bestätigen: {!! $confirmUrl !!}
 
-Erst nach dieser Bestätigung wird Ihre Anfrage an uns weitergeleitet
-und Ihr Konto wieder freigeschaltet.
+---
 
-Der Link ist 72 Stunden gültig.
+Der Link gilt {!! $hours !!} Stunden. Hast du keine Anfrage gestellt, kannst du diese Mail löschen.
+@else
+Hallo {!! $billingRequest->contact_name !!},
 
-Falls Sie diese Anfrage nicht gestellt haben, können Sie diese
-E-Mail einfach ignorieren.
+vielen Dank für Ihre Anfrage. Bitte bestätigen Sie noch Ihre E-Mail-Adresse, dann geht sie an uns, und Ihr Konto wird wieder freigeschaltet.
 
-Gewünschter Tarif: {{ $billingRequest->plan_key }}
-Betrieb: {{ $billingRequest->tenant->name }}
+Gewünschter Tarif: {!! $billingRequest->plan_key !!}
+Betrieb: {!! $billingRequest->tenant->name !!}
 
-Viele Grüße,
-Ihr Swayy-Team
+Anfrage bestätigen: {!! $confirmUrl !!}
+
+---
+
+Der Link gilt {!! $hours !!} Stunden. Haben Sie keine Anfrage gestellt, können Sie diese Mail löschen.
+@endif

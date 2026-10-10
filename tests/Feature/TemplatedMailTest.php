@@ -32,11 +32,11 @@ class TemplatedMailTest extends TestCase
     {
         $mail = new TemplatedMail('Betreff', "Hallo <b>Gast</b>\nLink: https://example.test/manage/abc", 'Restaurant Sonne');
 
-        // HTML part present, link clickable, user input escaped (no raw <b>).
-        $mail->assertSeeInHtml('Restaurant Sonne', false);
+        // Ohne eigenen Rahmen: Swayy-Meldung. Der Link zeigt auf einen fremden Host,
+        // bleibt also anklickbarer Link im Text; Eingaben bleiben maskiert.
+        $mail->assertSeeInHtml('alt="Swayy"', false);
         $mail->assertSeeInHtml('<a href="https://example.test/manage/abc"', false);
         $mail->assertSeeInHtml('&lt;b&gt;Gast&lt;/b&gt;', false);
-        // Text part still present.
         $mail->assertSeeInText('Link: https://example.test/manage/abc');
     }
 }

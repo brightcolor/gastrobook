@@ -24,12 +24,35 @@ class MarketingUnsubscribeController extends Controller
     {
         abort_unless($request->hasValidSignature(), 403);
 
+        [$name, $alreadyGone] = $this->unsubscribe($guest);
+
+        return view('public.unsubscribed', ['name' => $name, 'alreadyGone' => $alreadyGone]);
+    }
+
+    /**
+     * Abmeldung per Klick aus dem Mailprogramm (RFC 8058): POST auf denselben
+     * signierten Link, ohne Bestätigungsseite.
+     */
+    public function oneClick(Request $request, int $guest)
+    {
+        abort_unless($request->hasValidSignature(), 403);
+
+        $this->unsubscribe($guest);
+
+        return response('Abgemeldet.', 200)->header('Content-Type', 'text/plain; charset=utf-8');
+    }
+
+    /**
+     * @return array{0: ?string, 1: bool} Vorname für die Seite, Profil nicht mehr vorhanden
+     */
+    private function unsubscribe(int $guest): array
+    {
         $profile = Guest::withoutGlobalScope('tenant')->find($guest);
 
         // A profile that is gone (deleted, anonymised) means there is nothing
         // left to unsubscribe – say so calmly instead of showing an error.
         if ($profile === null || $profile->anonymized) {
-            return view('public.unsubscribed', ['name' => null, 'alreadyGone' => true]);
+            return [null, true];
         }
 
         if ($profile->marketing_consent) {
@@ -47,9 +70,6 @@ class MarketingUnsubscribeController extends Controller
             $this->audit->log('guest.marketing_unsubscribed', $profile, null, null, null, null, $profile->tenant_id);
         }
 
-        return view('public.unsubscribed', [
-            'name' => $profile->first_name ?: $profile->last_name,
-            'alreadyGone' => false,
-        ]);
+        return [$profile->first_name ?: $profile->last_name, false];
     }
 }

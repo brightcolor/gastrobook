@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
+use App\Mail\Concerns\RendersInFrame;
+use App\Mail\Layout\MailFrameFactory;
 use App\Models\BillingRequest;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -15,7 +17,7 @@ use Illuminate\Queue\SerializesModels;
 /** Sent to the platform owner once the customer confirmed their e-mail. */
 class BillingRequestOwnerMail extends Mailable
 {
-    use Queueable, SerializesModels;
+    use Queueable, RendersInFrame, SerializesModels;
 
     public string $activateUrl;
 
@@ -27,13 +29,16 @@ class BillingRequestOwnerMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Neue Billing-Anfrage: '.$this->billingRequest->tenant->name,
+            subject: 'Neue Tarifanfrage: '.$this->billingRequest->tenant->name,
             replyTo: [new Address($this->billingRequest->contact_email, $this->billingRequest->contact_name)],
         );
     }
 
     public function content(): Content
     {
-        return new Content(text: 'mail.billing-request-owner');
+        return $this->framedContent(
+            view('mail.billing-request-owner', ['billingRequest' => $this->billingRequest, 'activateUrl' => $this->activateUrl])->render(),
+            app(MailFrameFactory::class)->forSwayy('swayy_billing_owner', ['tenant' => (string) $this->billingRequest->tenant->name]),
+        );
     }
 }

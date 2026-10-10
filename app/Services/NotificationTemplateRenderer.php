@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Mail\Layout\GuestText;
 use App\Models\NotificationTemplate;
 use App\Models\Reservation;
 
@@ -22,7 +23,7 @@ class NotificationTemplateRenderer
         $placeholders = $this->placeholders($reservation, $extra);
 
         $subject = $template['subject'];
-        $body = $template['body'];
+        $body = self::dropEmptyLines($template['body'], $placeholders);
 
         foreach ($placeholders as $name => $value) {
             $subject = str_replace('{'.$name.'}', (string) $value, $subject);
@@ -30,6 +31,28 @@ class NotificationTemplateRenderer
         }
 
         return ['subject' => $subject, 'body' => $body];
+    }
+
+    /**
+     * Zeilen „Bezeichnung: {platzhalter}“, deren Platzhalter leer bleibt,
+     * entfallen ganz – etwa „Jetzt bezahlen: {payment_link}“ ohne offene
+     * Zahlung. Gilt auch für Vorlagen, die ein Betrieb selbst geschrieben hat.
+     *
+     * @param  array<string, mixed>  $placeholders
+     */
+    public static function dropEmptyLines(string $body, array $placeholders): string
+    {
+        $lines = preg_split('/\R/u', $body) ?: [];
+
+        $kept = array_filter($lines, static function (string $line) use ($placeholders): bool {
+            if (preg_match('/^\s*[^{}:\n]+:\s*\{(\w+)\}\s*$/u', $line, $m) !== 1) {
+                return true;
+            }
+
+            return trim((string) ($placeholders[$m[1]] ?? '')) !== '';
+        });
+
+        return implode("\n", $kept);
     }
 
     /**
@@ -59,7 +82,7 @@ class NotificationTemplateRenderer
         $tenant = $location?->tenant;
 
         return array_merge([
-            'guest_name' => $reservation->guest_name_snapshot,
+            'guest_name' => GuestText::inline($reservation->guest_name_snapshot),
             'reservation_date' => $reservation->localStart()->format('d.m.Y'),
             'reservation_time' => $reservation->localStart()->format('H:i'),
             'party_size' => $reservation->party_size,
@@ -135,43 +158,43 @@ class NotificationTemplateRenderer
             return [
                 'reservation_confirmed' => [
                     'subject' => 'Reservierungsbestätigung – {location_name} am {reservation_date}',
-                    'body' => "Hallo {guest_name},\n\ndeine Reservierung ist bestätigt:\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nPersonen: {party_size}\nReservierungsnummer: {reservation_code}\n\nÄndern oder stornieren: {cancel_link}\n\nWir freuen uns auf deinen Besuch!\n{location_name}",
+                    'body' => "Hallo {guest_name},\n\nwir haben deinen Tisch reserviert und freuen uns auf deinen Besuch.\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nPersonen: {party_size}\nReservierungsnummer: {reservation_code}\n\nReservierung ändern oder stornieren: {cancel_link}\n\nBis bald!\n{location_name}",
                 ],
                 'reservation_requested' => [
                     'subject' => 'Deine Anfrage ist angekommen – {location_name}',
-                    'body' => "Hallo {guest_name},\n\nschön, dass du zu uns möchtest! Deine Anfrage ist bei uns angekommen:\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nPersonen: {party_size}\nReservierungsnummer: {reservation_code}\n\nWir schauen uns jede Anfrage persönlich an und schreiben dir, sobald alles feststeht. Mit dieser Zusage ist dein Platz dann fest für dich reserviert.\n\nAnsehen oder zurückziehen: {cancel_link}\n\nHerzliche Grüße\n{location_name}",
+                    'body' => "Hallo {guest_name},\n\nschön, dass du zu uns möchtest. Wir schauen uns jede Anfrage persönlich an und schreiben dir, sobald alles feststeht. Mit unserer Zusage ist dein Platz fest für dich reserviert.\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nPersonen: {party_size}\nReservierungsnummer: {reservation_code}\n\nAnfrage ansehen oder zurückziehen: {cancel_link}\n\nHerzliche Grüße\n{location_name}",
                 ],
                 'reservation_cancelled' => [
                     'subject' => 'Reservierung storniert – {location_name}',
-                    'body' => "Hallo {guest_name},\n\ndeine Reservierung am {reservation_date} um {reservation_time} Uhr wurde storniert.\n\nReservierungsnummer: {reservation_code}\n\n{location_name}",
+                    'body' => "Hallo {guest_name},\n\ndiese Reservierung gilt nicht mehr:\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nReservierungsnummer: {reservation_code}\n\nWir freuen uns, wenn du ein andermal vorbeikommst.\n{location_name}",
                 ],
                 'reservation_rejected' => [
                     'subject' => 'Reservierungsanfrage – {location_name}',
-                    'body' => "Hallo {guest_name},\n\nleider können wir deine Anfrage für den {reservation_date} um {reservation_time} Uhr nicht bestätigen.\n\n{custom_message}\n\n{location_name}",
+                    'body' => "Hallo {guest_name},\n\nfür den {reservation_date} um {reservation_time} Uhr können wir dir leider keinen Tisch zusagen.\n\n{custom_message}\n\nWir freuen uns, wenn du es zu einem anderen Termin versuchst.\n{location_name}",
                 ],
                 'reservation_reminder' => [
                     'subject' => 'Erinnerung: deine Reservierung morgen – {location_name}',
-                    'body' => "Hallo {guest_name},\n\nwir erinnern dich an deine Reservierung:\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nPersonen: {party_size}\n\nÄndern oder stornieren: {cancel_link}\n\nBis bald!\n{location_name}",
+                    'body' => "Hallo {guest_name},\n\nbald ist es so weit, wir freuen uns auf dich.\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nPersonen: {party_size}\n\nReservierung ändern oder stornieren: {cancel_link}\n\nBis bald!\n{location_name}",
                 ],
                 'feedback_request' => [
                     'subject' => 'Wie war dein Besuch bei {location_name}?',
-                    'body' => "Hallo {guest_name},\n\nvielen Dank für deinen Besuch! Wir würden uns über dein Feedback freuen:\n\n{feedback_link}\n\n{location_name}",
+                    'body' => "Hallo {guest_name},\n\ndanke für deinen Besuch. Erzähl uns, was dir gefallen hat und was wir besser machen können.\n\nFeedback geben: {feedback_link}\n\n{location_name}",
                 ],
                 'waitlist_offer' => [
                     'subject' => 'Ein Tisch ist frei geworden – {location_name}',
-                    'body' => "Hallo {guest_name},\n\nfür deinen Wartelisteneintrag ist ein Tisch frei geworden. Bitte bestätige zeitnah:\n\n{waitlist_link}\n\n{location_name}",
+                    'body' => "Hallo {guest_name},\n\nfür deinen Wartelisteneintrag haben wir jetzt Platz. Bestätige bitte zeitnah, dann halten wir den Tisch für dich.\n\nTisch bestätigen: {waitlist_link}\n\n{location_name}",
                 ],
                 'payment_pending' => [
                     'subject' => 'Bitte Anzahlung leisten – {location_name} am {reservation_date}',
-                    'body' => "Hallo {guest_name},\n\nwir haben deinen Tisch vorgemerkt:\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nPersonen: {party_size}\nReservierungsnummer: {reservation_code}\n\nDamit die Reservierung verbindlich wird, brauchen wir noch eine Anzahlung von {payment_amount}. Der Betrag wird bei deinem Besuch vollständig mit der Rechnung verrechnet; bei Nichterscheinen erfolgt keine Rückerstattung.\n\nJetzt bezahlen: {payment_link}\n\nBitte bis {payment_deadline} Uhr – danach können wir den Tisch weitergeben.\n\n{location_name}",
+                    'body' => "Hallo {guest_name},\n\nwir haben deinen Tisch vorgemerkt. Verbindlich wird die Reservierung mit einer Anzahlung von {payment_amount}. Wir verrechnen sie bei deinem Besuch vollständig mit der Rechnung; bei Nichterscheinen behalten wir sie ein.\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nPersonen: {party_size}\nReservierungsnummer: {reservation_code}\nZahlen bis: {payment_deadline} Uhr\n\nJetzt bezahlen: {payment_link}\n\nNach der Frist geben wir den Tisch wieder frei.\n{location_name}",
                 ],
                 'payment_reminder' => [
                     'subject' => 'Erinnerung: Anzahlung offen – {location_name}',
-                    'body' => "Hallo {guest_name},\n\ndeine Anzahlung von {payment_amount} für den {reservation_date} um {reservation_time} Uhr steht noch aus.\n\nJetzt bezahlen: {payment_link}\n\nWir halten den Tisch noch bis {payment_deadline} Uhr für dich frei.\n\n{location_name}",
+                    'body' => "Hallo {guest_name},\n\nwir halten deinen Tisch noch bis {payment_deadline} Uhr für dich frei.\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nAnzahlung: {payment_amount}\n\nJetzt bezahlen: {payment_link}\n\n{location_name}",
                 ],
                 'payment_expired' => [
                     'subject' => 'Reservierung verfallen – {location_name}',
-                    'body' => "Hallo {guest_name},\n\nda die Anzahlung nicht innerhalb der Frist eingegangen ist, haben wir deine Reservierung für den {reservation_date} um {reservation_time} Uhr wieder freigegeben.\n\nDu kannst jederzeit neu buchen – wir freuen uns auf dich.\n\n{location_name}",
+                    'body' => "Hallo {guest_name},\n\ndie Anzahlung für den {reservation_date} um {reservation_time} Uhr ist nicht rechtzeitig eingegangen, deshalb haben wir den Tisch wieder freigegeben.\n\nBuch gern jederzeit neu, wir freuen uns auf dich.\n{location_name}",
                 ],
             ];
         }
@@ -179,43 +202,43 @@ class NotificationTemplateRenderer
         return [
             'reservation_confirmed' => [
                 'subject' => 'Reservierungsbestätigung – {location_name} am {reservation_date}',
-                'body' => "Hallo {guest_name},\n\nIhre Reservierung ist bestätigt:\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nPersonen: {party_size}\nReservierungsnummer: {reservation_code}\n\nÄndern oder stornieren: {cancel_link}\n\nWir freuen uns auf Ihren Besuch!\n{location_name}",
+                'body' => "Hallo {guest_name},\n\nwir haben Ihren Tisch reserviert und freuen uns auf Ihren Besuch.\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nPersonen: {party_size}\nReservierungsnummer: {reservation_code}\n\nReservierung ändern oder stornieren: {cancel_link}\n\nBis bald!\n{location_name}",
             ],
             'reservation_requested' => [
                 'subject' => 'Ihre Anfrage ist angekommen – {location_name}',
-                'body' => "Hallo {guest_name},\n\nschön, dass Sie zu uns möchten! Ihre Anfrage ist bei uns angekommen:\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nPersonen: {party_size}\nReservierungsnummer: {reservation_code}\n\nWir schauen uns jede Anfrage persönlich an und schreiben Ihnen, sobald alles feststeht. Mit dieser Zusage ist Ihr Platz dann fest für Sie reserviert.\n\nAnsehen oder zurückziehen: {cancel_link}\n\nHerzliche Grüße\n{location_name}",
+                'body' => "Hallo {guest_name},\n\nschön, dass Sie zu uns möchten. Wir schauen uns jede Anfrage persönlich an und schreiben Ihnen, sobald alles feststeht. Mit unserer Zusage ist Ihr Platz fest für Sie reserviert.\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nPersonen: {party_size}\nReservierungsnummer: {reservation_code}\n\nAnfrage ansehen oder zurückziehen: {cancel_link}\n\nHerzliche Grüße\n{location_name}",
             ],
             'reservation_cancelled' => [
                 'subject' => 'Reservierung storniert – {location_name}',
-                'body' => "Hallo {guest_name},\n\nIhre Reservierung am {reservation_date} um {reservation_time} Uhr wurde storniert.\n\nReservierungsnummer: {reservation_code}\n\n{location_name}",
+                'body' => "Hallo {guest_name},\n\ndiese Reservierung gilt nicht mehr:\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nReservierungsnummer: {reservation_code}\n\nWir freuen uns, wenn Sie ein andermal vorbeikommen.\n{location_name}",
             ],
             'reservation_rejected' => [
                 'subject' => 'Reservierungsanfrage – {location_name}',
-                'body' => "Hallo {guest_name},\n\nleider können wir Ihre Anfrage für den {reservation_date} um {reservation_time} Uhr nicht bestätigen.\n\n{custom_message}\n\n{location_name}",
+                'body' => "Hallo {guest_name},\n\nfür den {reservation_date} um {reservation_time} Uhr können wir Ihnen leider keinen Tisch zusagen.\n\n{custom_message}\n\nWir freuen uns, wenn Sie es zu einem anderen Termin versuchen.\n{location_name}",
             ],
             'reservation_reminder' => [
                 'subject' => 'Erinnerung: Ihre Reservierung morgen – {location_name}',
-                'body' => "Hallo {guest_name},\n\nwir erinnern Sie an Ihre Reservierung:\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nPersonen: {party_size}\n\nÄndern oder stornieren: {cancel_link}\n\nBis bald!\n{location_name}",
+                'body' => "Hallo {guest_name},\n\nbald ist es so weit, wir freuen uns auf Sie.\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nPersonen: {party_size}\n\nReservierung ändern oder stornieren: {cancel_link}\n\nBis bald!\n{location_name}",
             ],
             'feedback_request' => [
                 'subject' => 'Wie war Ihr Besuch bei {location_name}?',
-                'body' => "Hallo {guest_name},\n\nvielen Dank für Ihren Besuch! Wir würden uns über Ihr Feedback freuen:\n\n{feedback_link}\n\n{location_name}",
+                'body' => "Hallo {guest_name},\n\nvielen Dank für Ihren Besuch. Erzählen Sie uns, was Ihnen gefallen hat und was wir besser machen können.\n\nFeedback geben: {feedback_link}\n\n{location_name}",
             ],
             'waitlist_offer' => [
                 'subject' => 'Ein Tisch ist frei geworden – {location_name}',
-                'body' => "Hallo {guest_name},\n\nfür Ihren Wartelisteneintrag ist ein Tisch frei geworden. Bitte bestätigen Sie zeitnah:\n\n{waitlist_link}\n\n{location_name}",
+                'body' => "Hallo {guest_name},\n\nfür Ihren Wartelisteneintrag haben wir jetzt Platz. Bitte bestätigen Sie zeitnah, dann halten wir den Tisch für Sie.\n\nTisch bestätigen: {waitlist_link}\n\n{location_name}",
             ],
             'payment_pending' => [
                 'subject' => 'Bitte Anzahlung leisten – {location_name} am {reservation_date}',
-                'body' => "Hallo {guest_name},\n\nwir haben Ihren Tisch vorgemerkt:\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nPersonen: {party_size}\nReservierungsnummer: {reservation_code}\n\nDamit die Reservierung verbindlich wird, brauchen wir noch eine Anzahlung von {payment_amount}. Der Betrag wird bei Ihrem Besuch vollständig mit der Rechnung verrechnet; bei Nichterscheinen erfolgt keine Rückerstattung.\n\nJetzt bezahlen: {payment_link}\n\nBitte bis {payment_deadline} Uhr – danach können wir den Tisch weitergeben.\n\n{location_name}",
+                'body' => "Hallo {guest_name},\n\nwir haben Ihren Tisch vorgemerkt. Verbindlich wird die Reservierung mit einer Anzahlung von {payment_amount}. Wir verrechnen sie bei Ihrem Besuch vollständig mit der Rechnung; bei Nichterscheinen behalten wir sie ein.\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nPersonen: {party_size}\nReservierungsnummer: {reservation_code}\nZahlen bis: {payment_deadline} Uhr\n\nJetzt bezahlen: {payment_link}\n\nNach der Frist geben wir den Tisch wieder frei.\n{location_name}",
             ],
             'payment_reminder' => [
                 'subject' => 'Erinnerung: Anzahlung offen – {location_name}',
-                'body' => "Hallo {guest_name},\n\nIhre Anzahlung von {payment_amount} für den {reservation_date} um {reservation_time} Uhr steht noch aus.\n\nJetzt bezahlen: {payment_link}\n\nWir halten den Tisch noch bis {payment_deadline} Uhr für Sie frei.\n\n{location_name}",
+                'body' => "Hallo {guest_name},\n\nwir halten Ihren Tisch noch bis {payment_deadline} Uhr für Sie frei.\n\nDatum: {reservation_date}\nUhrzeit: {reservation_time} Uhr\nAnzahlung: {payment_amount}\n\nJetzt bezahlen: {payment_link}\n\n{location_name}",
             ],
             'payment_expired' => [
                 'subject' => 'Reservierung verfallen – {location_name}',
-                'body' => "Hallo {guest_name},\n\nda die Anzahlung nicht innerhalb der Frist eingegangen ist, haben wir Ihre Reservierung für den {reservation_date} um {reservation_time} Uhr wieder freigegeben.\n\nSie können jederzeit neu buchen – wir freuen uns auf Sie.\n\n{location_name}",
+                'body' => "Hallo {guest_name},\n\ndie Anzahlung für den {reservation_date} um {reservation_time} Uhr ist nicht rechtzeitig eingegangen, deshalb haben wir den Tisch wieder freigegeben.\n\nBuchen Sie gern jederzeit neu, wir freuen uns auf Sie.\n{location_name}",
             ],
         ];
     }

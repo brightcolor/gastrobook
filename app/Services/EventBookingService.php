@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Mail\Layout\GuestText;
 use App\Models\Event;
 use App\Models\EventBooking;
 use App\Models\User;
@@ -165,35 +166,40 @@ class EventBookingService
 
         $du = $location?->effectiveSettings()->du() ?? false;
 
-        $paymentBlock = '';
+        $details = [
+            'Datum: '.$startLocal->format('d.m.Y'),
+            'Uhrzeit: '.$startLocal->format('H:i').' Uhr',
+            'Tickets: '.$booking->ticket_count,
+            'Buchungsnummer: '.$booking->code,
+        ];
         if ($booking->amount_minor) {
-            $payLink = route('pay.event', ['code' => $booking->code, 'token' => $booking->manage_token]);
-            $paymentBlock = "\nBetrag: ".number_format($booking->amount_minor / 100, 2, ',', '.').' '.$event->currency
-                ."\nJetzt online bezahlen: ".$payLink
-                ."\n\nHinweis: Die Vorauszahlung wird bei ".($du ? 'deinem' : 'Ihrem').' Besuch vollständig mit der Rechnung verrechnet.'
-                ."\nBei Nichterscheinen (No-Show) erfolgt keine Rückerstattung.\n";
+            $details[] = 'Betrag: '.number_format($booking->amount_minor / 100, 2, ',', '.').' '.$event->currency;
         }
 
-        $vars = [
-            'greeting' => 'Hallo '.$booking->guest_name.',',
-            'event' => $event->title,
-            'date' => $startLocal->format('d.m.Y'),
-            'time' => $startLocal->format('H:i'),
-            'tickets' => $booking->ticket_count,
-            'code' => $booking->code,
-            'payment' => $paymentBlock,
-            'link' => $manageLink,
-            'location' => $location?->name ?? '',
+        $parts = [
+            'Hallo '.GuestText::inline($booking->guest_name).',',
+            $du
+                ? 'für „'.$event->title.'“ ist alles gebucht. Wir freuen uns auf dich.'
+                : 'für „'.$event->title.'“ ist alles gebucht. Wir freuen uns auf Sie.',
+            implode("\n", $details),
         ];
-        $body = $du
-            ? __(":greeting\n\ndeine Buchung für \":event\" ist bestätigt:\n\nDatum: :date\nUhrzeit: :time Uhr\nTickets: :tickets\nBuchungsnummer: :code\n:payment\nStornieren: :link\n\nWir freuen uns auf dich!\n:location", $vars)
-            : __(":greeting\n\nIhre Buchung für \":event\" ist bestätigt:\n\nDatum: :date\nUhrzeit: :time Uhr\nTickets: :tickets\nBuchungsnummer: :code\n:payment\nStornieren: :link\n\nWir freuen uns auf Sie!\n:location", $vars);
+        if ($booking->amount_minor) {
+            $parts[] = 'Jetzt bezahlen: '.route('pay.event', ['code' => $booking->code, 'token' => $booking->manage_token]);
+            $parts[] = $du
+                ? 'Die Vorauszahlung verrechnen wir bei deinem Besuch vollständig mit der Rechnung. Bei Nichterscheinen behalten wir sie ein.'
+                : 'Die Vorauszahlung verrechnen wir bei Ihrem Besuch vollständig mit der Rechnung. Bei Nichterscheinen behalten wir sie ein.';
+        }
+        $parts[] = 'Buchung ansehen oder stornieren: '.$manageLink;
+        $parts[] = (string) ($location?->name ?? '');
 
-        Mail::to($booking->guest_email)->queue(app(GuestMailSender::class)->toGuest(
+        $body = implode("\n\n", array_filter($parts, static fn (string $part) => $part !== ''));
+
+        Mail::to($booking->guest_email, $booking->guest_name)->queue(app(GuestMailSender::class)->toGuest(
             __('Buchungsbestätigung: :event', ['event' => $event->title]),
             $body,
             $location?->tenant()->withoutGlobalScopes()->first(),
             $location,
+            type: 'event_booking_confirmed',
         ));
     }
 }

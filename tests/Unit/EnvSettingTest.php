@@ -177,6 +177,28 @@ class EnvSettingTest extends TestCase
         $this->assertStringContainsString(self::VARIABLE.'=„Mond/Basis“ ist keine bekannte Zeitzone. Es gilt die Vorgabe „Europe/Berlin“.', $this->warnings);
     }
 
+    public function test_decimal_reads_point_and_comma_and_keeps_its_limits(): void
+    {
+        $this->assertSame(4.5, $this->capture(fn () => EnvSetting::decimal(self::VARIABLE, default: 4.5, min: 3.0, max: 7.0)));
+        $this->assertSame('', $this->warnings);
+
+        $this->set('6.2');
+        $this->assertSame(6.2, $this->capture(fn () => EnvSetting::decimal(self::VARIABLE, default: 4.5, min: 3.0, max: 7.0)));
+        $this->assertSame('', $this->warnings);
+
+        $this->set('3,5');
+        $this->assertSame(3.5, $this->capture(fn () => EnvSetting::decimal(self::VARIABLE, default: 4.5, min: 3.0, max: 7.0)));
+        $this->assertSame('', $this->warnings);
+
+        $this->set('9');
+        $this->assertSame(7.0, $this->capture(fn () => EnvSetting::decimal(self::VARIABLE, default: 4.5, min: 3.0, max: 7.0)));
+        $this->assertStringContainsString(self::VARIABLE, $this->warnings);
+
+        $this->set('viel');
+        $this->assertSame(4.5, $this->capture(fn () => EnvSetting::decimal(self::VARIABLE, default: 4.5, min: 3.0, max: 7.0)));
+        $this->assertStringContainsString('keine Zahl', $this->warnings);
+    }
+
     private function set(string $value): void
     {
         $_SERVER[self::VARIABLE] = $value;

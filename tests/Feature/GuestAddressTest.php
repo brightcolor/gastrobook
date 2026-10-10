@@ -36,8 +36,8 @@ class GuestAddressTest extends TestCase
 
         $out = app(NotificationTemplateRenderer::class)->render('reservation_confirmed', $r);
 
-        $this->assertStringContainsString('Ihre Reservierung ist bestätigt', $out['body']);
-        $this->assertStringNotContainsString('deine Reservierung', $out['body']);
+        $this->assertStringContainsString('wir haben Ihren Tisch reserviert', $out['body']);
+        $this->assertStringNotContainsString('deinen Tisch', $out['body']);
     }
 
     public function test_informal_du_when_configured(): void
@@ -48,9 +48,9 @@ class GuestAddressTest extends TestCase
 
         $out = app(NotificationTemplateRenderer::class)->render('reservation_confirmed', $r);
 
-        $this->assertStringContainsString('deine Reservierung ist bestätigt', $out['body']);
+        $this->assertStringContainsString('wir haben deinen Tisch reserviert', $out['body']);
         $this->assertStringContainsString('auf deinen Besuch', $out['body']);
-        $this->assertStringNotContainsString('Ihre Reservierung', $out['body']);
+        $this->assertStringNotContainsString('Ihren Tisch', $out['body']);
     }
 
     public function test_custom_template_overrides_address(): void
@@ -74,8 +74,8 @@ class GuestAddressTest extends TestCase
         $du = NotificationTemplateRenderer::defaults('du');
         $sie = NotificationTemplateRenderer::defaults();
 
-        $this->assertStringContainsString('deine Reservierung', $du['reservation_confirmed']['body']);
-        $this->assertStringContainsString('Ihre Reservierung', $sie['reservation_confirmed']['body']);
+        $this->assertStringContainsString('deinen Tisch', $du['reservation_confirmed']['body']);
+        $this->assertStringContainsString('Ihren Tisch', $sie['reservation_confirmed']['body']);
     }
 
     public function test_booking_page_is_formal_by_default(): void

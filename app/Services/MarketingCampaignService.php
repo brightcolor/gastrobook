@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ReservationStatus;
+use App\Mail\Layout\GuestText;
 use App\Models\Guest;
 use App\Models\Location;
 use App\Models\MarketingCampaign;
@@ -170,8 +171,8 @@ class MarketingCampaignService
             : route('booking.show', [$tenant->slug, $location->slug]);
 
         $replace = [
-            '{guest_name}' => trim(($guest->first_name ?? '').' '.$guest->last_name),
-            '{first_name}' => $guest->first_name ?: $guest->last_name,
+            '{guest_name}' => GuestText::inline(($guest->first_name ?? '').' '.$guest->last_name),
+            '{first_name}' => GuestText::inline($guest->first_name ?: $guest->last_name),
             '{location_name}' => $location->name,
             '{business_name}' => $tenant->name,
             '{booking_link}' => $bookingUrl,
@@ -201,11 +202,13 @@ class MarketingCampaignService
         $rendered = $this->render($campaign, $location, $guest);
         $tenant = $location->tenant;
 
-        Mail::to($guest->email)->queue(app(GuestMailSender::class)->toGuest(
+        Mail::to($guest->email, trim(($guest->first_name ?? '').' '.$guest->last_name) ?: null)->queue(app(GuestMailSender::class)->toGuest(
             $rendered['subject'],
             $rendered['body'],
             $tenant,
             $location,
+            type: 'marketing',
+            unsubscribeUrl: $this->unsubscribeUrl($guest),
         ));
 
         NotificationLog::withoutGlobalScopes()->create([

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
+use App\Mail\Concerns\RendersInFrame;
+use App\Mail\Layout\MailFrame;
+use App\Mail\Layout\MailFrameFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Address;
@@ -13,7 +16,7 @@ use Illuminate\Queue\SerializesModels;
 
 class GuestLinkMail extends Mailable
 {
-    use Queueable, SerializesModels;
+    use Queueable, RendersInFrame, SerializesModels;
 
     public function __construct(
         public string $subjectLine,
@@ -22,6 +25,8 @@ class GuestLinkMail extends Mailable
         public string $buttonLabel,
         public ?string $fromName = null,
         public ?string $replyToAddress = null,
+        public ?MailFrame $frame = null,
+        public string $note = '',
     ) {}
 
     public function envelope(): Envelope
@@ -40,6 +45,9 @@ class GuestLinkMail extends Mailable
 
     public function content(): Content
     {
-        return new Content(text: 'mail.guest-link');
+        $text = $this->intro."\n\n".$this->buttonLabel.': '.$this->url
+            .($this->note !== '' ? "\n\n---\n\n".$this->note : '');
+
+        return $this->framedContent($text, $this->frame ?? app(MailFrameFactory::class)->forGuest('guest_login', null, null));
     }
 }

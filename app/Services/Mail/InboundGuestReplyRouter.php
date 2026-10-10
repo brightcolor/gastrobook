@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Mail;
 
 use App\Mail\ForwardedGuestReplyMail;
+use App\Mail\Layout\MailFrameFactory;
 use App\Models\GuestMailReply;
 use App\Models\Location;
 use App\Models\Reservation;
@@ -130,7 +131,7 @@ final class InboundGuestReplyRouter
             ? "Antwort zur Buchung {$reservation->code} vom ".$reservation->localStart()->format('d.m.Y').":\n\n"
             : "Antwort ohne eindeutige Zuordnung (bitte selbst zuordnen):\n\n";
 
-        Mail::to($to)->queue(new ForwardedGuestReplyMail(
+        Mail::to($to, $location?->name ?? $tenant->name)->queue(new ForwardedGuestReplyMail(
             forwardSubject: trim("{$prefix} {$gastName}: ".(string) $message->subject),
             forwardBody: $kopf.$message->textBody,
             fromName: $tenant->mail_from_name ?: $tenant->name,
@@ -139,6 +140,10 @@ final class InboundGuestReplyRouter
                 fn (array $a) => ['name' => $a['name'], 'mime' => $a['mime'], 'data' => $a['data']],
                 $message->attachments,
             ),
+            frame: app(MailFrameFactory::class)->forSwayy('operator_guest_reply', [
+                'guest' => $gastName,
+                'location' => (string) ($location?->name ?? $tenant->name),
+            ], structured: false),
         ));
 
         $reply->update(['forwarded_to' => $to, 'forwarded_at' => now()]);

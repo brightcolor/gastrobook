@@ -41,6 +41,25 @@ Am besten stehen lassen und nur den Text drumherum ändern. **Lösch niemals
 `{cancel_link}`** aus der Bestätigung – dann kann der Gast nicht mehr selbst
 absagen und ihr habt den Anruf.
 
+### So wird aus deinem Text eine gestaltete Mail
+
+Du schreibst einfachen Text. Swayy gestaltet ihn beim Versand:
+
+- Mehrere Zeilen in der Form „Bezeichnung: Wert“ direkt untereinander, etwa
+  „Datum: {reservation_date}“ und „Uhrzeit: {reservation_time} Uhr“, werden zu
+  einer Tabelle.
+- Eine Zeile „Beschriftung: {cancel_link}“ wird zu einem Knopf mit dieser
+  Beschriftung. Der erste Knopf ist hervorgehoben.
+- Eine Zeile aus drei Bindestrichen (`---`) setzt eine Trennlinie; Text darunter
+  erscheint klein, gut für Hinweise.
+- Bleibt ein Platzhalter leer, etwa der Zahlungslink ohne offene Zahlung,
+  entfällt seine Zeile ganz.
+
+Oben steht eine Überschrift, die Swayy je Mail setzt, unten der Fußbereich mit
+Adresse, Telefon, E-Mail, Impressum und Datenschutz deines Standorts. Pflege
+diese Angaben unter Einstellungen › Standorte und Einstellungen › Allgemein,
+dann erscheinen sie in jeder Mail. Logo und Markenfarbe übernimmt Swayy ebenfalls.
+
 ### Zwei Ebenen
 
 Vorlagen gelten für den ganzen Betrieb. Bei mehreren Standorten kann ein

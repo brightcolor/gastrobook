@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Mail\Layout\GuestText;
 use App\Models\Location;
 use App\Models\Reservation;
 use App\Models\User;
@@ -212,7 +213,7 @@ class WaitlistService
             $startLocal = $startUtc->setTimezone($location->timezone);
             $du = $location->effectiveSettings()->du();
             $vars = [
-                'name' => $entry->guest_name,
+                'name' => GuestText::inline($entry->guest_name),
                 'date' => $startLocal->format('d.m.Y'),
                 'time' => $startLocal->format('H:i'),
                 'party' => $entry->party_size,
@@ -224,13 +225,14 @@ class WaitlistService
             // laeuft: Die Queue liegt auf Redis, nicht in derselben Datenbank.
             // Ein Arbeiter koennte die Mail also verschicken, bevor - oder
             // ohne dass - das Angebot ueberhaupt existiert.
-            Mail::to($entry->guest_email)->queue(app(GuestMailSender::class)->toGuest(
+            Mail::to($entry->guest_email, $entry->guest_name)->queue(app(GuestMailSender::class)->toGuest(
                 __('Ein Tisch ist frei geworden – :location', ['location' => $location->name]),
                 $du
-                    ? __("Hallo :name,\n\nfür :date um :time Uhr ist ein Tisch für :party Personen frei geworden.\n\nBitte bestätige innerhalb von :minutes Minuten:\n:link\n\n:location", $vars)
-                    : __("Hallo :name,\n\nfür :date um :time Uhr ist ein Tisch für :party Personen frei geworden.\n\nBitte bestätigen Sie innerhalb von :minutes Minuten:\n:link\n\n:location", $vars),
+                    ? __("Hallo :name,\n\nfür :date um :time Uhr ist ein Tisch für :party Personen frei geworden. Bestätige bitte innerhalb von :minutes Minuten, dann halten wir ihn für dich.\n\nTisch bestätigen: :link\n\n:location", $vars)
+                    : __("Hallo :name,\n\nfür :date um :time Uhr ist ein Tisch für :party Personen frei geworden. Bitte bestätigen Sie innerhalb von :minutes Minuten, dann halten wir ihn für Sie.\n\nTisch bestätigen: :link\n\n:location", $vars),
                 $location->tenant()->withoutGlobalScopes()->first(),
                 $location,
+                type: 'waitlist_offer',
             )->afterCommit());
         }
 

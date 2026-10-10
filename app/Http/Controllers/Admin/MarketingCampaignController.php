@@ -146,11 +146,13 @@ class MarketingCampaignController extends Controller
 
         // Wie der echte Versand: Die Testmail zeigt Absendername und
         // Antwortadresse, die auch die Gäste sehen.
-        Mail::to($request->user()->email)->queue(app(GuestMailSender::class)->toGuest(
+        Mail::to($request->user()->email, $request->user()->name)->queue(app(GuestMailSender::class)->toGuest(
             '[Test] '.$rendered['subject'],
             $rendered['body'],
             $location->tenant,
             $location,
+            type: 'marketing',
+            unsubscribeUrl: $this->campaigns->unsubscribeUrl($sample),
         ));
 
         return back()->with('success', __('Testmail an :mail verschickt.', ['mail' => $request->user()->email]));

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Mail\Layout\MailFrameFactory;
 use App\Mail\TemplatedMail;
 use App\Models\Location;
 use App\Models\Reservation;
@@ -62,15 +63,17 @@ class GuestMailSender
     }
 
     /**
-     * Mail an einen Gast: Name des Betriebs, Antworten an den Betrieb.
+     * Mail an einen Gast: Name des Betriebs, Antworten an den Betrieb, Rahmen
+     * im Auftritt des Betriebs. $type wählt Überschrift und Grund (lang/de/mails.php).
      */
-    public function toGuest(string $subject, string $body, ?Tenant $tenant, ?Location $location, ?Reservation $reservation = null): TemplatedMail
+    public function toGuest(string $subject, string $body, ?Tenant $tenant, ?Location $location, ?Reservation $reservation = null, string $type = 'guest', ?string $unsubscribeUrl = null): TemplatedMail
     {
         return new TemplatedMail(
             $subject,
             $body,
             $this->fromName($tenant, $location),
             $this->relayReplyTo($tenant, $reservation) ?? $this->replyTo($tenant, $location),
+            app(MailFrameFactory::class)->forGuest($type, $tenant, $location, [], $unsubscribeUrl),
         );
     }
 
@@ -91,10 +94,13 @@ class GuestMailSender
     }
 
     /**
-     * Mail an den Betrieb. Mit $guestEmail gehen Antworten direkt an den
-     * Gast, sofern die Einstellung owner_reply_to_guest das erlaubt.
+     * Mail an den Betrieb im Swayy-Auftritt. Mit $guestEmail gehen Antworten
+     * direkt an den Gast, sofern owner_reply_to_guest das erlaubt. Anzeigename
+     * ist MAIL_FROM_NAME.
+     *
+     * @param  array<string, string>  $vars
      */
-    public function toOperator(string $subject, string $body, ?Tenant $tenant, ?Location $location, ?string $guestEmail = null): TemplatedMail
+    public function toOperator(string $subject, string $body, ?Tenant $tenant, ?Location $location, ?string $guestEmail = null, string $type = 'operator_new_reservation', array $vars = []): TemplatedMail
     {
         $antwort = $guestEmail !== null
             && config('swayy.guest_mail.owner_reply_to_guest', true)
@@ -102,6 +108,10 @@ class GuestMailSender
                 ? $guestEmail
                 : null;
 
-        return new TemplatedMail($subject, $body, $this->fromName($tenant, $location), $antwort);
+        return new TemplatedMail($subject, $body, null, $antwort, app(MailFrameFactory::class)->forSwayy($type, [
+            'location' => (string) ($location?->name ?? ''),
+            'tenant' => (string) ($tenant?->name ?? ''),
+            ...$vars,
+        ]));
     }
 }

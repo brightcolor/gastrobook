@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\Layout\MailFrameFactory;
 use App\Mail\TemplatedMail;
 use App\Models\BillingProfile;
 use App\Models\Tenant;
@@ -195,11 +196,17 @@ class DirectDebitController extends Controller
             $tenant,
             $request,
             __('Lastschrift aktiviert – :tenant', ['tenant' => $tenant->name]),
-            __("Hallo,\n\ndas SEPA-Lastschriftmandat für „:tenant\" wurde eingerichtet.\nTarif: :plan (:amount/Monat).\nDie erste Abbuchung erfolgt zum nächsten Abrechnungstermin.\n\nDu kannst die Lastschrift jederzeit in den Abrechnungs-Einstellungen kündigen.", [
-                'tenant' => $tenant->name,
-                'plan' => $plan->name,
-                'amount' => $this->money($plan->price_monthly_minor, $plan->currency ?? 'EUR'),
-            ]),
+            MailFrameFactory::ownerDu()
+                ? __("Hallo,\n\ndas SEPA-Lastschriftmandat für „:tenant“ ist eingerichtet. Die erste Abbuchung erfolgt zum nächsten Abrechnungstermin.\n\nTarif: :plan\nBetrag: :amount im Monat\n\nKündigen kannst du die Lastschrift jederzeit unter Einstellungen › Abo & Rechnungen.", [
+                    'tenant' => $tenant->name,
+                    'plan' => $plan->name,
+                    'amount' => $this->money($plan->price_monthly_minor, $plan->currency ?? 'EUR'),
+                ])
+                : __("Guten Tag,\n\ndas SEPA-Lastschriftmandat für „:tenant“ ist eingerichtet. Die erste Abbuchung erfolgt zum nächsten Abrechnungstermin.\n\nTarif: :plan\nBetrag: :amount im Monat\n\nKündigen können Sie die Lastschrift jederzeit unter Einstellungen › Abo & Rechnungen.", [
+                    'tenant' => $tenant->name,
+                    'plan' => $plan->name,
+                    'amount' => $this->money($plan->price_monthly_minor, $plan->currency ?? 'EUR'),
+                ]),
         );
 
         return redirect()->route('admin.billing.show')
@@ -258,9 +265,11 @@ class DirectDebitController extends Controller
             $tenant,
             $request,
             __('Lastschrift gekündigt – :tenant', ['tenant' => $tenant->name]),
-            __("Hallo,\n\ndas SEPA-Lastschriftmandat für „:tenant\" wurde gekündigt. Es erfolgen keine weiteren Abbuchungen.", [
-                'tenant' => $tenant->name,
-            ]),
+            __(MailFrameFactory::ownerDu()
+                ? "Hallo,\n\ndas SEPA-Lastschriftmandat für „:tenant“ ist gekündigt. Es erfolgen keine weiteren Abbuchungen."
+                : "Guten Tag,\n\ndas SEPA-Lastschriftmandat für „:tenant“ ist gekündigt. Es erfolgen keine weiteren Abbuchungen.", [
+                    'tenant' => $tenant->name,
+                ]),
         );
 
         return back()->with('success', __('Lastschrift gekündigt.'));
@@ -281,7 +290,7 @@ class DirectDebitController extends Controller
         foreach (array_unique(array_filter([$customer, $owner])) as $to) {
             // Synchronous (sendNow) so the SEPA setup/cancellation confirmation
             // is guaranteed to go out, independent of the queue worker.
-            Mail::to($to)->sendNow(new TemplatedMail($subject, $body));
+            Mail::to($to, $tenant->name)->sendNow(new TemplatedMail($subject, $body));
         }
     }
 

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
+use App\Mail\Concerns\RendersInFrame;
+use App\Mail\Layout\MailFrameFactory;
+use App\Support\Duration;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -12,7 +15,7 @@ use Illuminate\Queue\SerializesModels;
 
 class PasswordResetMail extends Mailable
 {
-    use Queueable, SerializesModels;
+    use Queueable, RendersInFrame, SerializesModels;
 
     public function __construct(
         public string $url,
@@ -25,6 +28,11 @@ class PasswordResetMail extends Mailable
 
     public function content(): Content
     {
-        return new Content(text: 'mail.password-reset');
+        $minutes = (int) config('auth.passwords.users.expire', 60);
+
+        return $this->framedContent(
+            view('mail.password-reset', ['url' => $this->url, 'du' => MailFrameFactory::ownerDu(), 'dauer' => Duration::minutes($minutes)])->render(),
+            app(MailFrameFactory::class)->forSwayy('swayy_password_reset'),
+        );
     }
 }

@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Neues Mail-Design
+
+- Alle Mails haben einen gemeinsamen, hochwertigen Rahmen: Überschrift je
+  Mailart, Angaben als Tabelle, Links als Knöpfe, Fußbereich mit
+  Adresse, Kontakt, Impressum und Datenschutz, Dunkelmodus, gut lesbar auf dem
+  Handy. Gast-Mails tragen Name, Logo und Markenfarbe des Betriebs; Mails an
+  Betriebe und von Swayy den Swayy-Auftritt.
+- Bestätigungs- und Anmeldelink für Gäste sowie alle Swayy-Mails kommen jetzt
+  mit HTML-Teil; nichts wird von außen geladen.
+- Kampagnen-Mails tragen `List-Unsubscribe` mit Abmeldung per Klick (RFC 8058).
+- Neue Einstellungen `SWAYY_MAIL_*` (Anrede der Swayy-Mails, Vorgabe du),
+  `SWAYY_GUEST_LOGIN_LINK_MINUTES`, `SWAYY_GUEST_VERIFY_LINK_MINUTES`,
+  `SWAYY_BILLING_CONFIRM_HOURS`.
+
 ### Anschluss an das Kundenpanel von bright color
 
 swayy wird nach vipinvit.es der zweite Dienst im Kundenpanel
