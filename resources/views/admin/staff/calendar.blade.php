@@ -41,6 +41,10 @@
                 <div class="mb-1.5 flex h-7 items-center gap-1.5 truncate text-sm font-bold">
                     <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style="background: {{ $column['color'] }}"></span>
                     <span class="truncate">{{ $column['name'] }}</span>
+                    @if($column['state'])
+                        {{-- Pausierte und entfernte Personen zeigen ihre Termine des Tages; das Wort steht sichtbar im Spaltenkopf. --}}
+                        <span class="shrink-0 rounded bg-stone-200 px-1.5 py-0.5 text-[11px] font-semibold text-stone-700">{{ $column['state'] === 'removed' ? 'entfernt' : 'pausiert' }}</span>
+                    @endif
                 </div>
                 <div class="relative rounded-xl bg-stone-100" style="height: {{ $height }}px;">
                     {{-- Working windows sit on top of the grey background --}}

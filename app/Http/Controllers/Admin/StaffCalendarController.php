@@ -37,13 +37,6 @@ class StaffCalendarController extends Controller
         $tz = $location->timezone;
         $date = $this->requestedDate($request, $tz);
 
-        $members = StaffMember::where('location_id', $location->id)
-            ->where('is_active', true)
-            ->with('workingHours')
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->get();
-
         $dayStartUtc = $date->startOfDay()->utc();
         $dayEndUtc = $date->endOfDay()->utc();
 
@@ -53,6 +46,20 @@ class StaffCalendarController extends Controller
             ->where('end_at', '>', $dayStartUtc)
             ->with(['guest:id,is_vip', 'services'])
             ->orderBy('start_at')
+            ->get();
+
+        // Spalten: alle aktiven Personen. Dazu jede Person mit einem Termin an diesem Tag, auch pausiert oder entfernt (Soft
+        // Delete): Sonst verschwänden genau die Termine, die eine Person am Löschen hindern, und die Termine früherer Tage
+        // gelöschter Personen. Wer an diesem Tag keinen Termin hat, bleibt verborgen.
+        $booked = $reservations->pluck('staff_member_id')->filter()->unique()->values()->all();
+        $members = StaffMember::withTrashed()
+            ->where('location_id', $location->id)
+            ->where(fn ($query) => $query
+                ->where(fn ($active) => $active->where('is_active', true)->whereNull('deleted_at'))
+                ->orWhereIn('id', $booked))
+            ->with('workingHours')
+            ->orderBy('sort_order')
+            ->orderBy('name')
             ->get();
 
         $absences = StaffAbsence::whereIn('staff_member_id', $members->pluck('id'))
@@ -65,9 +72,11 @@ class StaffCalendarController extends Controller
         $locationRanges = $location->openingHours()->where('weekday', $weekday)->get()
             ->map(fn ($h) => ['from' => $h->opens_at, 'until' => $h->closes_at]);
 
+        // Pausierte und entfernte Personen sind nicht buchbar: Ihre Spalte zeigt keine Arbeitszeit und bestimmt den sichtbaren
+        // Zeitraum nicht mit; ihre Termine tun es.
         $windows = [];
         foreach ($members as $member) {
-            $windows[$member->id] = $this->windowsFor($member, $locationRanges, $date, $weekday);
+            $windows[$member->id] = $this->stateOf($member) === null ? $this->windowsFor($member, $locationRanges, $date, $weekday) : [];
         }
 
         [$from, $to] = $this->bounds($windows, $reservations, $date);
@@ -75,6 +84,7 @@ class StaffCalendarController extends Controller
         $columns = $members->map(fn ($member) => [
             'id' => $member->id,
             'name' => $member->name,
+            'state' => $this->stateOf($member),
             'color' => $member->color ?: '#0f766e',
             'windows' => array_map(fn ($w) => [
                 'top' => $this->offset($w['opens'], $from),
@@ -123,6 +133,18 @@ class StaffCalendarController extends Controller
             'next' => $date->addDay()->toDateString(),
             'today' => CarbonImmutable::now($tz)->toDateString(),
         ]);
+    }
+
+    /**
+     * Zustand einer Spalte: null für aktive Personen, sonst „paused“ (Haken bei „Buchbar“ entfernt) oder „removed“ (gelöscht).
+     */
+    private function stateOf(StaffMember $member): ?string
+    {
+        if ($member->trashed()) {
+            return 'removed';
+        }
+
+        return $member->is_active ? null : 'paused';
     }
 
     private function requestedDate(Request $request, string $tz): CarbonImmutable
