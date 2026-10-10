@@ -2,6 +2,8 @@
 
 namespace App\Mail;
 
+use App\Mail\Concerns\RendersInFrame;
+use App\Mail\Layout\MailFrameFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Address;
@@ -11,7 +13,7 @@ use Illuminate\Queue\SerializesModels;
 
 class ContactRequestMail extends Mailable
 {
-    use Queueable, SerializesModels;
+    use Queueable, RendersInFrame, SerializesModels;
 
     public function __construct(
         public string $senderName,
@@ -29,6 +31,10 @@ class ContactRequestMail extends Mailable
 
     public function content(): Content
     {
-        return new Content(text: 'mail.contact-request');
+        // Text von Besuchern der Website: gerahmt, ohne Tabelle und Knöpfe.
+        return $this->framedContent(
+            view('mail.contact-request', ['senderName' => $this->senderName, 'senderEmail' => $this->senderEmail, 'messageText' => $this->messageText])->render(),
+            app(MailFrameFactory::class)->forSwayy('swayy_contact', structured: false),
+        );
     }
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
+use App\Mail\Concerns\RendersInFrame;
+use App\Mail\Layout\MailFrameFactory;
 use App\Models\Tenant;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -13,7 +15,7 @@ use Illuminate\Queue\SerializesModels;
 
 class TrialExpiryWarningMail extends Mailable
 {
-    use Queueable, SerializesModels;
+    use Queueable, RendersInFrame, SerializesModels;
 
     public function __construct(
         public readonly Tenant $tenant,
@@ -23,12 +25,20 @@ class TrialExpiryWarningMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Ihr Testzeitraum endet in 5 Tagen – Swayy',
+            subject: MailFrameFactory::ownerDu() ? 'Deine Testphase endet bald – Swayy' : 'Ihre Testphase endet bald – Swayy',
         );
     }
 
     public function content(): Content
     {
-        return new Content(text: 'mail.trial-expiry-warning');
+        return $this->framedContent(
+            view('mail.trial-expiry-warning', [
+                'tenant' => $this->tenant,
+                'recipientName' => $this->recipientName,
+                'du' => MailFrameFactory::ownerDu(),
+                'support' => config('services.support_email') ?: config('mail.from.address'),
+            ])->render(),
+            app(MailFrameFactory::class)->forSwayy('swayy_trial_expiry', ['tenant' => (string) $this->tenant->name]),
+        );
     }
 }

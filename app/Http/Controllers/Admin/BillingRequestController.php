@@ -92,7 +92,7 @@ class BillingRequestController extends Controller
     public function confirm(string $token): View|RedirectResponse
     {
         $billingRequest = BillingRequest::where('token', $token)
-            ->where('created_at', '>=', now()->subHours(72))
+            ->where('created_at', '>=', now()->subHours((int) config('swayy.billing_request.confirm_hours', 72)))
             ->firstOrFail();
 
         if ($billingRequest->confirmed_at) {
@@ -112,7 +112,8 @@ class BillingRequestController extends Controller
 
         // Nur einen GESPERRTEN Betrieb befristet freischalten. Ein bereits
         // freigeschalteter zahlender Kunde bekaeme sonst nachtraeglich eine
-        // Frist angehaengt - der Bestaetigungslink gilt 72 Stunden, der
+        // Frist angehaengt - der Bestaetigungslink gilt die eingestellte Frist
+        // (swayy.billing_request.confirm_hours), der
         // Plattformbetreiber schaltet oft frueher frei.
         if (in_array($tenant->status, ['trial_expired', 'pending_billing'], true)) {
             $tenant->update([

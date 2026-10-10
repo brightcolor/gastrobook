@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
+use App\Mail\Concerns\RendersInFrame;
+use App\Mail\Layout\MailFrameFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -19,7 +21,7 @@ use Illuminate\Queue\SerializesModels;
  */
 class ProvisionedWelcomeMail extends Mailable
 {
-    use Queueable, SerializesModels;
+    use Queueable, RendersInFrame, SerializesModels;
 
     public function __construct(
         public readonly string $recipientName,
@@ -37,6 +39,17 @@ class ProvisionedWelcomeMail extends Mailable
 
     public function content(): Content
     {
-        return new Content(text: 'mail.provisioning-welcome');
+        return $this->framedContent(
+            view('mail.provisioning-welcome', [
+                'recipientName' => $this->recipientName,
+                'tenantName' => $this->tenantName,
+                'waitsForApproval' => $this->waitsForApproval,
+                'passwordUrl' => $this->passwordUrl,
+                'loginUrl' => $this->loginUrl,
+                'panelUrl' => $this->panelUrl,
+                'du' => MailFrameFactory::ownerDu(),
+            ])->render(),
+            app(MailFrameFactory::class)->forSwayy('swayy_provisioned_welcome', ['tenant' => $this->tenantName]),
+        );
     }
 }

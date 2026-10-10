@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
+use App\Mail\Concerns\RendersInFrame;
+use App\Mail\Layout\MailFrameFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-/** „Du bist freigeschaltet“: Der Betrieb nimmt ab jetzt Online-Reservierungen an. */
+/** Der Betrieb ist freigeschaltet und nimmt ab jetzt Online-Reservierungen an. */
 class ProvisionedApprovedMail extends Mailable
 {
-    use Queueable, SerializesModels;
+    use Queueable, RendersInFrame, SerializesModels;
 
     public function __construct(
         public readonly string $recipientName,
@@ -28,6 +30,14 @@ class ProvisionedApprovedMail extends Mailable
 
     public function content(): Content
     {
-        return new Content(text: 'mail.provisioning-approved');
+        return $this->framedContent(
+            view('mail.provisioning-approved', [
+                'recipientName' => $this->recipientName,
+                'tenantName' => $this->tenantName,
+                'loginUrl' => $this->loginUrl,
+                'du' => MailFrameFactory::ownerDu(),
+            ])->render(),
+            app(MailFrameFactory::class)->forSwayy('swayy_provisioned_approved', ['tenant' => $this->tenantName]),
+        );
     }
 }

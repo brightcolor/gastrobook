@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Mail\Layout\MailFrameFactory;
 use App\Mail\TemplatedMail;
 use App\Models\BillingProfile;
 use App\Models\Tenant;
@@ -120,20 +121,25 @@ class GoCardlessWebhookController extends Controller
         $resource = (string) ($event['resource_type'] ?? '');
         $action = (string) ($event['action'] ?? '');
 
+        $du = MailFrameFactory::ownerDu();
+        $hallo = $du ? 'Hallo,' : 'Guten Tag,';
+
         [$subject, $body, $statusUpdate] = match (true) {
             $resource === 'payments' && $action === 'failed' => [
                 __('Lastschrift fehlgeschlagen – :tenant', ['tenant' => $tenant->name]),
-                __("Hallo,\n\neine SEPA-Lastschrift für „:tenant\" ist fehlgeschlagen. Bitte prüfe deine Kontodaten oder Deckung; GoCardless versucht es ggf. erneut.", ['tenant' => $tenant->name]),
+                $hallo."\n\n".($du
+                    ? __('eine SEPA-Lastschrift für „:tenant“ ist fehlgeschlagen. Prüf bitte deine Kontodaten und die Deckung; GoCardless versucht es gegebenenfalls erneut.', ['tenant' => $tenant->name])
+                    : __('eine SEPA-Lastschrift für „:tenant“ ist fehlgeschlagen. Bitte prüfen Sie Ihre Kontodaten und die Deckung; GoCardless versucht es gegebenenfalls erneut.', ['tenant' => $tenant->name])),
                 ['payment_status' => 'past_due'],
             ],
             $resource === 'payments' && $action === 'confirmed' => [
                 __('Zahlung eingegangen – :tenant', ['tenant' => $tenant->name]),
-                __("Hallo,\n\ndie SEPA-Lastschrift für „:tenant\" wurde erfolgreich eingezogen. Vielen Dank!", ['tenant' => $tenant->name]),
+                $hallo."\n\n".__('die SEPA-Lastschrift für „:tenant“ ist eingezogen. Vielen Dank.', ['tenant' => $tenant->name]),
                 ['payment_status' => 'active'],
             ],
             $resource === 'mandates' && in_array($action, ['cancelled', 'failed', 'expired'], true) => [
                 __('Lastschriftmandat beendet – :tenant', ['tenant' => $tenant->name]),
-                __("Hallo,\n\ndas SEPA-Lastschriftmandat für „:tenant\" ist nicht mehr aktiv (:action). Es erfolgen keine weiteren Abbuchungen, bis ein neues Mandat eingerichtet wird.", ['tenant' => $tenant->name, 'action' => $action]),
+                $hallo."\n\n".__('das SEPA-Lastschriftmandat für „:tenant“ ist beendet (:action). Weitere Abbuchungen gibt es erst mit einem neuen Mandat.', ['tenant' => $tenant->name, 'action' => $action]),
                 ['gocardless_status' => 'cancelled', 'gocardless_subscription_id' => null, 'payment_status' => 'cancelled'],
             ],
             default => [null, null, null],

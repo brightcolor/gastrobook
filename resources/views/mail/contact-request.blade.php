@@ -1,7 +1,7 @@
-Neue Kontaktanfrage über die Swayy-Website
+Neue Kontaktanfrage über die Swayy-Website.
 
-Name: {{ $senderName }}
-E-Mail: {{ $senderEmail }}
+Name: {!! $senderName !!}
+E-Mail: {!! $senderEmail !!}
 
 Nachricht:
-{{ $messageText }}
+{!! $messageText !!}
