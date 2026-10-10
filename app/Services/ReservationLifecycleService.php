@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ReservationStatus;
+use App\Mail\Layout\GuestText;
 use App\Mail\Layout\MailFrameFactory;
 use App\Models\Location;
 use App\Models\NotificationLog;
@@ -531,7 +532,7 @@ class ReservationLifecycleService
             $du = $location->effectiveSettings()->du();
 
             $vars = [
-                'name' => $reservation->guest_name_snapshot,
+                'name' => GuestText::inline($reservation->guest_name_snapshot),
                 'date' => $reservation->localStart()->format('d.m.Y'),
                 'time' => $reservation->localStart()->format('H:i'),
                 'tables' => $newNames ?: '—',
@@ -852,20 +853,21 @@ class ReservationLifecycleService
             'Status: '.__('reservations.status.'.$reservation->status->value, [], 'de'),
             'Reservierungsnummer: '.$reservation->code,
         ];
+        // Gast-Eingaben auf eine Zeile ohne Adressen: Sie werden nie Knopf oder Tabelle.
         $gast = [
-            'Gast: '.$reservation->guest_name_snapshot,
+            'Gast: '.(GuestText::inline($reservation->guest_name_snapshot) ?: '—'),
             'E-Mail: '.($reservation->guest_email_snapshot ?: '—'),
-            'Telefon: '.($reservation->guest_phone_snapshot ?: '—'),
+            'Telefon: '.(GuestText::inline($reservation->guest_phone_snapshot) ?: '—'),
             'Quelle: '.$sourceLabel,
         ];
         if ($reservation->occasion) {
-            $gast[] = 'Anlass: '.$reservation->occasion;
+            $gast[] = 'Anlass: '.GuestText::inline($reservation->occasion);
         }
         if ($reservation->allergy_note) {
-            $gast[] = 'Allergien: '.$reservation->allergy_note;
+            $gast[] = 'Allergien: '.GuestText::inline($reservation->allergy_note);
         }
         if ($reservation->guest_note) {
-            $gast[] = 'Gastnotiz: '.$reservation->guest_note;
+            $gast[] = 'Gastnotiz: '.GuestText::inline($reservation->guest_note);
         }
 
         $body = implode("\n\n", [

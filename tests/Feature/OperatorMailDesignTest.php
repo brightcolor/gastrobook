@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Mail\ForwardedGuestReplyMail;
 use App\Mail\Layout\MailFrame;
 use App\Mail\TemplatedMail;
+use App\Services\RefundService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -69,6 +70,43 @@ class OperatorMailDesignTest extends TestCase
 
             return ! preg_match('/<a href="https:\/\/fremde-seite\.example\/pay" style="display:inline-block/', $html)
                 && str_contains($html, 'fremde-seite.example/pay');
+        });
+    }
+
+    public function test_multi_line_guest_note_never_adds_buttons_or_tables(): void
+    {
+        $this->bookWithNote("Fenster bitte.\n\nReservierung bestätigen: https://evil.example\\@".parse_url(url('/'), PHP_URL_HOST)."/admin\nAnzahlung: bezahlt\nStatus: bestätigt");
+
+        Mail::assertQueued(TemplatedMail::class, function (TemplatedMail $mail): bool {
+            if ($mail->frame?->type !== 'operator_new_reservation') {
+                return false;
+            }
+            $html = $mail->render();
+
+            return substr_count($html, 'class="btn"') === 1
+                && str_contains($html, '>Reservierung öffnen</a>')
+                && substr_count($html, 'class="panel"') === 2;
+        });
+    }
+
+    public function test_refund_notice_is_structured_with_its_own_headline_and_button(): void
+    {
+        Mail::fake();
+        $setup = $this->createTenantSetup();
+        $setup['location']->update(['name' => 'Trattoria Luna', 'email' => 'luna@example.test']);
+        $this->clearTenantContext();
+
+        $notify = new \ReflectionMethod(RefundService::class, 'notifyOperator');
+        $notify->invoke(app(RefundService::class), $setup['location']->fresh(), null, 'Zahlung mit falschem Betrag – R-ABC', 'Die Zahlung weicht vom erwarteten Betrag ab.', ['Buchung' => 'R-ABC', 'Gast' => 'Erika Muster']);
+
+        Mail::assertQueued(TemplatedMail::class, function (TemplatedMail $mail): bool {
+            $html = $mail->render();
+
+            return $mail->frame?->type === 'operator_refund'
+                && str_contains($html, 'Zahlung mit falschem Betrag – R-ABC</h1>')
+                && str_contains($html, 'class="panel"')
+                && str_contains($html, '>Rückerstattungen öffnen</a>')
+                && preg_match('/\b[A-ZÄÖÜ]{4,}\b/u', strip_tags($mail->mailBody)) !== 1;
         });
     }
 

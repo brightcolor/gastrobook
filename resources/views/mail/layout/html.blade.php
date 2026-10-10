@@ -63,7 +63,8 @@
 <tr><td align="center" style="padding:0 12px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:{{ $width }}px;">
   <tr><td align="center" style="padding:40px 24px 22px;">
-    @if ($mailFrame->logoPath)
+    {{-- Erneut prüfen: Zwischen Erzeugen und Versand (Queue) kann das Logo ersetzt oder gelöscht sein. --}}
+    @if ($mailFrame->logoPath && is_readable($mailFrame->logoPath))
       <table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="background:{{ $mailTheme->palette('plate') }};border-radius:10px;padding:8px 12px;">
         <img src="{{ $message->embed($mailFrame->logoPath) }}" alt="{{ $mailFrame->wordmark }}" width="{{ $mailFrame->logoWidth }}" height="{{ $mailFrame->logoHeight }}" style="display:block;width:{{ $mailFrame->logoWidth }}px;height:{{ $mailFrame->logoHeight }}px;border:0;">
       </td></tr></table>

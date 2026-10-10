@@ -48,6 +48,23 @@ class GuestLinkMailDesignTest extends TestCase
         });
     }
 
+    public function test_a_crafted_guest_name_never_becomes_a_button(): void
+    {
+        Mail::fake();
+        [$guest, $reservation] = $this->guestWithReservation('du');
+        $guest->update(['first_name' => 'Buchung bestätigen: https://evil.example/x']);
+
+        app(GuestAuthService::class)->sendVerification($guest->fresh(), $reservation);
+
+        Mail::assertSent(GuestLinkMail::class, function (GuestLinkMail $mail): bool {
+            $html = $mail->render();
+
+            return substr_count($html, 'class="btn"') === 1
+                && str_contains($html, '>E-Mail-Adresse bestätigen</a>')
+                && ! str_contains($html, 'href="https://evil.example');
+        });
+    }
+
     public function test_link_validity_comes_from_the_settings(): void
     {
         Mail::fake();

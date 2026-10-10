@@ -137,6 +137,15 @@ class TextBlocksTest extends TestCase
         $this->assertStringContainsString('https://fremde-seite.example/pay', $blocks[1]->text);
     }
 
+    public function test_tricky_authorities_never_pass_the_host_check(): void
+    {
+        // Browser lesen „\“ als „/“: https://evil.example\@swayy.test führt zu evil.example.
+        foreach (['https://evil.example\@swayy.test/admin', 'https://user@swayy.test/admin', "https://swayy.test\t/x"] as $url) {
+            $this->assertNotContains(Block::BUTTON, $this->types($this->parse("Reservierung bestätigen: {$url}", hosts: ['swayy.test'])), $url);
+        }
+        $this->assertSame(['button'], $this->types($this->parse('Öffnen: https://swayy.test:8443/admin/r/1?x=1#a', hosts: ['swayy.test'])));
+    }
+
     public function test_windows_line_endings_trailing_spaces_and_blank_runs_are_normalized(): void
     {
         $this->assertSame("Hallo,\n\nText", TextBlocks::normalize("Hallo,  \r\n\r\n\r\n\r\nText\r\n\r\n"));

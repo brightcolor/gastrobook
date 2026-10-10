@@ -19,6 +19,14 @@ final class TextBlocks
     private const DIVIDER = '/^\s*([-—=])\1{2,}\s*$/u';
 
     /**
+     * Adresse, die ein Knopf werden darf: Schema, schlichter Host, Port,
+     * Rest ohne Leerraum und ohne „\“. Kein „@“ in der Authority: Browser
+     * lesen „\“ als „/“, „https://evil.example\@swayy.de“ führt sonst zu
+     * evil.example, während parse_url swayy.de meldet.
+     */
+    private const SAFE_URL = '~^https?://([a-z0-9](?:[a-z0-9.-]*[a-z0-9])?)(?::\d{1,5})?(?:[/?#][^\s\\\\]*)?$~i';
+
+    /**
      * @param  list<string>  $buttonHosts  leer: jeder Host darf einen Knopf ergeben
      */
     public function __construct(
@@ -176,12 +184,11 @@ final class TextBlocks
         if ($this->isUnsubscribe($url)) {
             return true;
         }
-        if ($this->buttonHosts === []) {
-            return true;
+        if (preg_match(self::SAFE_URL, $url, $m) !== 1) {
+            return false;
         }
-        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
 
-        return in_array($host, $this->buttonHosts, true);
+        return $this->buttonHosts === [] || in_array(strtolower($m[1]), $this->buttonHosts, true);
     }
 
     private function isUnsubscribe(string $url): bool

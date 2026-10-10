@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Mail\Layout\GuestText;
 use App\Models\Location;
 use App\Models\Reservation;
 use App\Models\User;
@@ -212,7 +213,7 @@ class WaitlistService
             $startLocal = $startUtc->setTimezone($location->timezone);
             $du = $location->effectiveSettings()->du();
             $vars = [
-                'name' => $entry->guest_name,
+                'name' => GuestText::inline($entry->guest_name),
                 'date' => $startLocal->format('d.m.Y'),
                 'time' => $startLocal->format('H:i'),
                 'party' => $entry->party_size,

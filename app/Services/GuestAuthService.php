@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Mail\GuestLinkMail;
+use App\Mail\Layout\GuestText;
 use App\Mail\Layout\MailFrameFactory;
 use App\Models\Guest;
 use App\Models\GuestAuthToken;
@@ -82,7 +83,7 @@ class GuestAuthService
 
         // Send synchronously (like the password-reset mail): a magic link is
         // useless if it sits in a stuck queue when Redis/worker is down.
-        $name = $guest->first_name ?: $guest->last_name;
+        $name = GuestText::inline($guest->first_name ?: $guest->last_name);
         Mail::to($guest->email, $name)->send(new GuestLinkMail(
             $du ? __('Dein Anmeldelink für :name', ['name' => $tenant->name])
                 : __('Ihr Anmeldelink für :name', ['name' => $tenant->name]),
@@ -117,7 +118,7 @@ class GuestAuthService
         $sender = app(GuestMailSender::class);
 
         // Synchronous: the guest is waiting on this link to finish booking.
-        $name = $guest->first_name ?: $guest->last_name;
+        $name = GuestText::inline($guest->first_name ?: $guest->last_name);
         Mail::to($guest->email, $name)->send(new GuestLinkMail(
             $du ? __('Bitte bestätige deine E-Mail-Adresse')
                 : __('Bitte bestätigen Sie Ihre E-Mail-Adresse'),

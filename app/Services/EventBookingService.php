@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Mail\Layout\GuestText;
 use App\Models\Event;
 use App\Models\EventBooking;
 use App\Models\User;
@@ -176,7 +177,7 @@ class EventBookingService
         }
 
         $parts = [
-            'Hallo '.$booking->guest_name.',',
+            'Hallo '.GuestText::inline($booking->guest_name).',',
             $du
                 ? 'für „'.$event->title.'“ ist alles gebucht. Wir freuen uns auf dich.'
                 : 'für „'.$event->title.'“ ist alles gebucht. Wir freuen uns auf Sie.',

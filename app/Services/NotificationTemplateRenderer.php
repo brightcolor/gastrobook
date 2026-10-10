@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Mail\Layout\GuestText;
 use App\Models\NotificationTemplate;
 use App\Models\Reservation;
 
@@ -81,7 +82,7 @@ class NotificationTemplateRenderer
         $tenant = $location?->tenant;
 
         return array_merge([
-            'guest_name' => $reservation->guest_name_snapshot,
+            'guest_name' => GuestText::inline($reservation->guest_name_snapshot),
             'reservation_date' => $reservation->localStart()->format('d.m.Y'),
             'reservation_time' => $reservation->localStart()->format('H:i'),
             'party_size' => $reservation->party_size,

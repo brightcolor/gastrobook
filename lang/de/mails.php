@@ -24,7 +24,7 @@ return [
         'guest_verify' => ['du' => 'Bitte bestätige deine E-Mail-Adresse', 'Sie' => 'Bitte bestätigen Sie Ihre E-Mail-Adresse'],
         'guest_login' => ['du' => 'Dein Anmeldelink', 'Sie' => 'Ihr Anmeldelink'],
         'operator_new_reservation' => ['du' => 'Neue Reservierung für :location', 'Sie' => 'Neue Reservierung für :location'],
-        'operator_refund' => ['du' => 'Erstattung zu einer Reservierung', 'Sie' => 'Erstattung zu einer Reservierung'],
+        'operator_refund' => ['du' => ':subject', 'Sie' => ':subject'],
         'operator_guest_reply' => ['du' => 'Antwort von :guest', 'Sie' => 'Antwort von :guest'],
         'swayy_password_reset' => ['du' => 'Neues Passwort festlegen', 'Sie' => 'Neues Passwort festlegen'],
         'swayy_trial_expiry' => ['du' => 'Deine Testphase endet bald', 'Sie' => 'Ihre Testphase endet bald'],

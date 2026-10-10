@@ -5,7 +5,7 @@
 ### Neues Mail-Design
 
 - Alle Mails haben einen gemeinsamen, hochwertigen Rahmen: Überschrift je
-  Mailart, Angaben als Tabelle, Knopf statt langer Links, Fußbereich mit
+  Mailart, Angaben als Tabelle, Links als Knöpfe, Fußbereich mit
   Adresse, Kontakt, Impressum und Datenschutz, Dunkelmodus, gut lesbar auf dem
   Handy. Gast-Mails tragen Name, Logo und Markenfarbe des Betriebs; Mails an
   Betriebe und von Swayy den Swayy-Auftritt.

@@ -131,6 +131,19 @@ class MailLayoutTest extends TestCase
         $this->assertStringContainsString('letter-spacing:-0.015em', $html);
     }
 
+    public function test_a_logo_deleted_while_the_mail_waits_falls_back_to_the_wordmark(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('logos/1/logo.png', UploadedFile::fake()->image('logo.png', 200, 100)->getContent());
+        $mail = $this->guestMail(location: ['brand_logo_path' => 'logos/1/logo.png']);
+
+        Storage::disk('public')->delete('logos/1/logo.png');
+        $html = $mail->render();
+
+        $this->assertStringNotContainsString('alt="Trattoria Luna"', $html);
+        $this->assertStringContainsString('letter-spacing:-0.015em', $html);
+    }
+
     public function test_dark_mode_and_mobile_rules_are_present(): void
     {
         $html = $this->guestMail()->render();

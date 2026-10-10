@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Mail\Layout\GuestText;
 use App\Models\EventBooking;
 use App\Models\Location;
 use App\Models\PaymentIntent;
@@ -172,12 +173,12 @@ class RefundService
         );
 
         if ($refund !== null && $gegenstandslos) {
-            $this->notifyOperator($location, $refund, 'Zahlung ohne gültige Reservierung – '.$reservation->code, [
-                'Zu der Reservierung '.$reservation->code.' ist eine Zahlung eingegangen,',
-                'obwohl die Buchung nicht mehr gültig ist ('.__('reservations.status.'.$reservation->status->value, [], 'de').').',
-                '',
-                ...$this->guestLines($reservation->guest_name_snapshot, $reservation->guest_email_snapshot),
-            ]);
+            $this->notifyOperator($location, $refund, 'Zahlung ohne gültige Reservierung – '.$reservation->code,
+                'Zu dieser Reservierung ist eine Zahlung eingegangen, obwohl sie nicht mehr gültig ist.', [
+                    'Reservierung' => $reservation->code,
+                    'Status' => (string) __('reservations.status.'.$reservation->status->value, [], 'de'),
+                    ...$this->guestLines($reservation->guest_name_snapshot, $reservation->guest_email_snapshot),
+                ]);
         }
 
         if ($refund === null) {
@@ -512,12 +513,12 @@ class RefundService
             // Genau wie bei der Reservierung: Ein Auditeintrag ist keine
             // Benachrichtigung. Hier liegt Geld eines Gastes fuer eine
             // Eventbuchung, die abgesagt ist.
-            $this->notifyOperator($location, $refund, 'Zahlung ohne gültige Buchung – '.$booking->code, [
-                'Zu der Eventbuchung '.$booking->code.' ('.$event->title.') ist eine Zahlung eingegangen,',
-                'obwohl die Buchung abgesagt ist.',
-                '',
-                ...$this->guestLines($booking->guest_name, $booking->guest_email),
-            ]);
+            $this->notifyOperator($location, $refund, 'Zahlung ohne gültige Buchung – '.$booking->code,
+                'Zu dieser Eventbuchung ist eine Zahlung eingegangen, obwohl die Buchung abgesagt ist.', [
+                    'Buchung' => $booking->code,
+                    'Event' => (string) $event->title,
+                    ...$this->guestLines($booking->guest_name, $booking->guest_email),
+                ]);
         }
 
         if ($refund === null) {
@@ -587,15 +588,13 @@ class RefundService
         // der Fall, in dem das Geld am schwersten zu finden ist. Vorher endete
         // er wortlos, mit dem Auditeintrag des Aufrufers als einzigem Hinweis.
         if (! $chargeRef) {
-            $this->notifyOperator($location, null, 'Zahlung mit falschem Betrag – '.$kennung, [
-                'Zu '.$kennung.' ist eine Zahlung über '.$this->formatMinor($charged, $intent->currency).' eingegangen,',
-                'erwartet waren '.$this->formatMinor((int) $intent->amount_minor, $intent->currency).'.',
-                '',
-                'Der Zahlungsanbieter hat dazu KEINE Belegnummer gemeldet – die',
-                'Rückerstattung muss dort von Hand ausgelöst werden.',
-                '',
-                ...$gast,
-            ]);
+            $this->notifyOperator($location, null, 'Zahlung mit falschem Betrag – '.$kennung,
+                'Die Zahlung weicht vom erwarteten Betrag ab. Der Zahlungsanbieter hat dazu keine Belegnummer gemeldet, deshalb muss die Rückerstattung dort von Hand ausgelöst werden.', [
+                    'Buchung' => $kennung,
+                    'Eingegangen' => $this->formatMinor($charged, $intent->currency),
+                    'Erwartet' => $this->formatMinor((int) $intent->amount_minor, $intent->currency),
+                    ...$gast,
+                ]);
 
             return null;
         }
@@ -653,13 +652,13 @@ class RefundService
         // Gast; ein Neuladen schickte dem Betrieb sonst bei jedem Druck auf F5
         // dieselbe Mail.
         if ($frisch) {
-            $this->notifyOperator($location, $refund, 'Zahlung mit falschem Betrag – '.$kennung, [
-                'Zu '.$kennung.' ist eine Zahlung über '.$this->formatMinor($charged, $intent->currency).' eingegangen,',
-                'erwartet waren '.$this->formatMinor((int) $intent->amount_minor, $intent->currency).'.',
-                'Die Buchung gilt deshalb weiter als unbezahlt.',
-                '',
-                ...$gast,
-            ]);
+            $this->notifyOperator($location, $refund, 'Zahlung mit falschem Betrag – '.$kennung,
+                'Die Zahlung weicht vom erwarteten Betrag ab. Die Buchung gilt deshalb weiter als unbezahlt.', [
+                    'Buchung' => $kennung,
+                    'Eingegangen' => $this->formatMinor($charged, $intent->currency),
+                    'Erwartet' => $this->formatMinor((int) $intent->amount_minor, $intent->currency),
+                    ...$gast,
+                ]);
         }
 
         if ($refund->status === 'approved' && $settings->refund_processing === 'immediate') {
@@ -688,15 +687,11 @@ class RefundService
             return;
         }
 
-        $this->notifyOperator($location, null, 'Zahlung verbucht, Buchung hängt – '.$reservation->code, [
-            'Zu der Reservierung '.$reservation->code.' ist die Zahlung eingegangen und verbucht,',
-            'die Bestätigung ist danach aber fehlgeschlagen.',
-            '',
-            'Die Buchung steht deshalb weiter auf "wartet auf Zahlung" und läuft',
-            'nicht mehr von allein ab. Bitte im Buchungsbuch von Hand bestätigen.',
-            '',
-            ...$this->guestLines($reservation->guest_name_snapshot, $reservation->guest_email_snapshot),
-        ]);
+        $this->notifyOperator($location, null, 'Zahlung verbucht, Buchung hängt – '.$reservation->code,
+            'Die Zahlung ist eingegangen und verbucht, die Bestätigung der Reservierung ist danach aber fehlgeschlagen. Sie steht deshalb weiter auf „wartet auf Zahlung“ und läuft nicht mehr von allein ab. Bitte im Reservierungsbuch von Hand bestätigen.', [
+                'Reservierung' => $reservation->code,
+                ...$this->guestLines($reservation->guest_name_snapshot, $reservation->guest_email_snapshot),
+            ], ['Reservierung öffnen', route('admin.reservations.show', $reservation)]);
     }
 
     /**
@@ -791,12 +786,17 @@ class RefundService
      * Nimmt die Eckdaten einzeln statt einer Reservierung: Derselbe Fall tritt
      * bei Eventbuchungen auf, und die sind kein Reservation-Objekt.
      *
-     * Ohne Erstattungszeile ist die Meldung reine Information: Dann gibt es
-     * nichts zu erstatten, was die Anwendung selbst ausloesen koennte.
+     * Ohne Erstattung ist die Meldung reine Information: Dann gibt es nichts
+     * zu erstatten, was die Anwendung selbst ausloesen koennte.
      *
-     * @param  array<int, string>  $zeilen
+     * Aufbau für den Mail-Rahmen: ein Satz zum Fall, die Angaben als Tabelle,
+     * ein Knopf (Vorgabe: Liste der Rückerstattungen). Die Überschrift ist der
+     * Betreff.
+     *
+     * @param  array<string, string>  $angaben
+     * @param  array{0: string, 1: string}|null  $knopf  Beschriftung und Adresse
      */
-    private function notifyOperator(Location $location, ?Refund $refund, string $betreff, array $zeilen): void
+    private function notifyOperator(Location $location, ?Refund $refund, string $betreff, string $text, array $angaben, ?array $knopf = null): void
     {
         $to = $location->effectiveSettings()->owner_notification_email ?: $location->email;
         if (! $to) {
@@ -805,20 +805,30 @@ class RefundService
 
         $tenant = Tenant::find($refund?->tenant_id ?? $location->tenant_id);
 
+        if ($refund !== null) {
+            $angaben['Erstattung'] = $refund->amountFormatted();
+        }
+        $zeilen = [];
+        foreach ($angaben as $bezeichnung => $wert) {
+            $zeilen[] = $bezeichnung.': '.$wert;
+        }
+
+        $teile = [$text, implode("\n", $zeilen)];
+        if ($refund !== null) {
+            $teile[] = $refund->status === 'approved'
+                ? 'Die Rückerstattung ist automatisch angestoßen.'
+                : 'Die Rückerstattung wartet in der Liste der Rückerstattungen auf Freigabe.';
+        }
+        [$beschriftung, $adresse] = $knopf ?? ['Rückerstattungen öffnen', route('admin.refunds.index')];
+        $teile[] = $beschriftung.': '.$adresse;
+
         Mail::to($to, $location->name)->queue(app(GuestMailSender::class)->toOperator(
             $betreff,
-            implode("\n", $refund === null ? $zeilen : [
-                ...$zeilen,
-                '',
-                'Betrag:  '.$refund->amountFormatted(),
-                '',
-                $refund->status === 'approved'
-                    ? 'Die Rückerstattung wurde automatisch angestossen.'
-                    : 'Die Rückerstattung liegt zur Freigabe in der Liste der Rückerstattungen.',
-            ]),
+            implode("\n\n", $teile),
             $tenant,
             $location,
             type: 'operator_refund',
+            vars: ['subject' => $betreff],
         ));
     }
 
@@ -839,15 +849,16 @@ class RefundService
     }
 
     /**
-     * Die Eckdaten des Gastes fuer die Betriebsmeldung.
+     * Die Eckdaten des Gastes fuer die Betriebsmeldung (Name als Gast-Eingabe
+     * auf eine Zeile ohne Adressen gebracht).
      *
-     * @return array<int, string>
+     * @return array<string, string>
      */
     private function guestLines(?string $name, ?string $email): array
     {
         return [
-            'Gast:    '.($name ?: '—'),
-            'E-Mail:  '.($email ?: '—'),
+            'Gast' => GuestText::inline($name) ?: '—',
+            'E-Mail' => $email ?: '—',
         ];
     }
 
