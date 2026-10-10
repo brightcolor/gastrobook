@@ -129,7 +129,7 @@
                     </div>
                     <div>
                         <label class="mb-1 block text-xs font-semibold text-stone-500">Name der Kombination</label>
-                        <input id="comboNameInput" type="text" maxlength="80" placeholder="z. B. T1 + T2"
+                        <input id="comboNameInput" type="text" maxlength="{{ config('swayy.tables.combination_name_max') }}" placeholder="z. B. T1 + T2"
                                class="w-full rounded-lg border-2 border-stone-200 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
                     </div>
                     <div>
@@ -168,7 +168,7 @@
             <input type="hidden" name="room_id">
             <label class="fp-field">
                 <span>Name / Nummer</span>
-                <input name="name" required maxlength="40" placeholder="z. B. 12" autocomplete="off">
+                <input name="name" required maxlength="{{ config('swayy.tables.name_max') }}" placeholder="z. B. 12" autocomplete="off">
             </label>
             <div class="fp-field">
                 <span>Form</span>
@@ -203,7 +203,7 @@
             <input type="hidden" name="id">
             <label class="fp-field">
                 <span>Name / Nummer</span>
-                <input name="name" required maxlength="40" autocomplete="off">
+                <input name="name" required maxlength="{{ config('swayy.tables.name_max') }}" autocomplete="off">
             </label>
             <div class="fp-grid2">
                 <label class="fp-field"><span>Plätze min.</span>

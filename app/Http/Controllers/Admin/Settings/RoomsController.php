@@ -129,7 +129,8 @@ class RoomsController extends Controller
         // Löschauftrag (Doppelklick, zweites Fenster) findet ihn nicht mehr und
         // schreibt nichts ins Protokoll.
         $tableCount = 0;
-        DB::transaction(function () use ($room, &$tableCount): void {
+        $deleted = null;
+        DB::transaction(function () use ($room, &$tableCount, &$deleted): void {
             $locked = Room::whereKey($room->id)->where('location_id', $room->location_id)->lockForUpdate()->first();
             if ($locked === null) {
                 return;
@@ -141,8 +142,14 @@ class RoomsController extends Controller
             }
 
             $locked->delete();
-            $this->audit->log('room.deleted', $locked, ['name' => $locked->name]);
+            $deleted = $locked;
         });
+
+        // Der Protokolleintrag folgt nach dem Festschreiben, weil sein Fremdschlüssel die Zeile des Betriebs sperrt, die
+        // createWithinLimit vor dem Anlegen eines Tisches im Raum sperrt, und beide Anfragen einander sonst blockieren könnten.
+        if ($deleted !== null) {
+            $this->audit->log('room.deleted', $deleted, ['name' => $deleted->name]);
+        }
 
         if ($tableCount > 0) {
             return $this->failed($request, 'room', trans_choice(

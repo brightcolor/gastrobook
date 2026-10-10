@@ -309,6 +309,11 @@ class RoomsPageTest extends TestCase
         $this->assertStringContainsString('maxlength="12"', $html);
         $this->assertStringContainsString('maxlength="15"', $html);
         $this->assertStringContainsString('maxlength="20"', $html);
+
+        // Die Felder im Tischplan (neuer Tisch, Tisch bearbeiten, Kombination) folgen denselben Einstellungen.
+        $plan = (string) $this->actingAs($owner)->get('/admin/floorplan')->assertOk()->getContent();
+        $this->assertSame(2, preg_match_all('/<input name="name" required maxlength="12"/', $plan));
+        $this->assertMatchesRegularExpression('/<input id="comboNameInput"[^>]*maxlength="20"/', $plan);
     }
 
     // ── Raummaße und Spaltengrößen ───────────────────────────────────────
@@ -615,6 +620,9 @@ class RoomsPageTest extends TestCase
         $this->assertStringContainsString('Kombination „Tafel“ löschen? Die Tische bleiben.', $html);
         $this->assertStringContainsString('Tisch „T1“ löschen? Er verschwindet aus dem Tischplan; vergangene Reservierungen behalten ihn.', $html);
         $this->assertStringContainsString('data-inline-confirm-group', $html);
+        // Der Hilfesatz zu „Online buchbar“ beschreibt beide Zustände des Hakens positiv.
+        $this->assertStringContainsString('Mit Haken buchen Gäste den Tisch online. Ist der Haken entfernt, vergibt dein Team den Tisch.', $html);
+        $this->assertStringNotContainsString('Ohne Haken', $html);
     }
 
     public function test_counts_read_naturally(): void

@@ -8,7 +8,7 @@
 <fieldset class="space-y-3">
     <legend class="mb-2 text-sm font-semibold text-stone-800">Eigenschaften</legend>
     <x-checkbox name="online_bookable" :id="$p.'-online'" label="Online buchbar" :checked="$table?->online_bookable ?? true"
-                help="Ohne Haken vergibt nur dein Team den Tisch." />
+                help="Mit Haken buchen Gäste den Tisch online. Ist der Haken entfernt, vergibt dein Team den Tisch." />
     <x-checkbox name="joinable" :id="$p.'-joinable'" label="Kombinierbar" :checked="$table?->joinable ?? true"
                 help="Lässt sich mit anderen Tischen zu einer Kombination zusammenstellen." />
     <x-checkbox name="accessible" :id="$p.'-accessible'" label="Barrierefrei" :checked="(bool) $table?->accessible" />
