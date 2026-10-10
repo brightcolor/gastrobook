@@ -1,224 +1,155 @@
 @extends('layouts.admin')
 @section('title', 'Mitarbeiter')
+
 @section('content')
-<div class="mb-5 flex items-center justify-between">
-    <h1 class="text-2xl font-bold">Mitarbeiter – {{ $location->name }}</h1>
-</div>
+@php
+    $tz = $location->timezone;
+    // Die Spalte fasst auch Werte, die das Farbfeld nicht kennt; nur #rrggbb gelangt in den Stil.
+    $dot = fn ($member): ?string => preg_match('/^#[0-9a-fA-F]{6}$/D', (string) $member->color) === 1 ? $member->color : null;
+    // Leistungen, Arbeitszeit, nächste Abwesenheit; eine pausierte Person nennt das dazu.
+    $details = function ($member) use ($tz): string {
+        $hours = $member->workingHours->count();
+        $next = $member->absences->first();
+        $absence = null;
+        if ($next !== null) {
+            $absence = $next->starts_at->lte(now())
+                ? __('gerade abwesend bis :date', ['date' => $next->ends_at->copy()->setTimezone($tz)->format('d.m.')])
+                : __('abwesend ab :date', ['date' => $next->starts_at->copy()->setTimezone($tz)->format('d.m.')]);
+        }
 
-{{-- Neuen Mitarbeiter anlegen --}}
-<div class="mb-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
-    <h2 class="mb-4 font-bold">Mitarbeiter:in anlegen</h2>
-    <form method="POST" action="{{ route('admin.staff.store') }}" class="space-y-3">
-        @csrf
-        <div class="grid gap-3 sm:grid-cols-3">
-            <div>
-                <label class="mb-1 block text-xs font-semibold text-stone-500">Name *</label>
-                <input type="text" name="name" required maxlength="120" value="{{ old('name') }}"
-                       class="w-full rounded-lg border-stone-200 text-sm" placeholder="z.B. Anna Müller">
-            </div>
-            <div>
-                <label class="mb-1 block text-xs font-semibold text-stone-500">Kurzbiografie (optional)<span class="tip" tabindex="0" data-tip="Ein bis zwei Sätze, die Gästen bei der Mitarbeiterwahl auf der Buchungsseite angezeigt werden – etwa Spezialgebiet oder Erfahrung.">?</span></label>
-                <input type="text" name="bio" maxlength="500" value="{{ old('bio') }}"
-                       class="w-full rounded-lg border-stone-200 text-sm" placeholder="z.B. Spezialistin für Colorationen">
-            </div>
-            <div>
-                <label class="mb-1 block text-xs font-semibold text-stone-500">Farbe (Kalender)<span class="tip" tabindex="0" data-tip="Nur für euch intern: In der Tagesübersicht sind die Termine dieser Person in dieser Farbe eingefärbt – so erkennt man auf einen Blick, wer wann dran ist.">?</span></label>
-                <input type="color" name="color" value="{{ old('color', '#0d9488') }}"
-                       class="h-9 w-12 rounded border-stone-200">
-            </div>
-        </div>
-        @if($services->isNotEmpty())
-            <div>
-                <label class="mb-1 block text-xs font-semibold text-stone-500">Angebotene Leistungen<span class="tip" tabindex="0" data-tip="Was diese Person macht. Gäste bekommen sie nur bei genau diesen Leistungen zur Auswahl angeboten.">?</span></label>
-                <div class="flex flex-wrap gap-3">
-                    @foreach($services as $svc)
-                        <label class="flex items-center gap-1 text-sm">
-                            <input type="checkbox" name="service_ids[]" value="{{ $svc->id }}"
-                                   @checked(in_array($svc->id, old('service_ids', [])))>
-                            {{ $svc->name }} ({{ $svc->durationFormatted() }})
-                        </label>
-                    @endforeach
-                </div>
-            </div>
-        @endif
-        <div class="flex items-center gap-4">
-            <label class="flex items-center gap-2 text-sm">
-                <input type="checkbox" name="is_active" value="1" @checked(old('is_active', true))>
-                Aktiv (buchbar)
-                <span class="tip" tabindex="0" data-tip="Ohne Haken ist die Person online nicht mehr buchbar – etwa bei längerer Abwesenheit oder nach dem Ausscheiden. Bereits gebuchte Termine bleiben bestehen.">?</span>
-            </label>
-            <button type="submit" class="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700">
-                Anlegen
-            </button>
-        </div>
-    </form>
-</div>
+        return collect([
+            $member->services->isNotEmpty() ? $member->services->pluck('name')->join(', ') : __('Noch keine Leistung'),
+            $hours > 0 ? __(':count Zeitfenster je Woche', ['count' => $hours]) : __('Arbeitszeit wie Öffnungszeiten'),
+            $absence,
+            $member->is_active ? null : __('Pausiert'),
+        ])->filter()->implode(' · ');
+    };
+    $span = fn ($absence): string => $absence->starts_at->copy()->setTimezone($tz)->format('d.m.Y H:i').' – '.$absence->ends_at->copy()->setTimezone($tz)->format('d.m.Y H:i');
+@endphp
+<x-page-header title="Mitarbeiter" :crumb="['Einstellungen', 'Platz & Zeiten']" scope="location"
+               description="Wer Termine annimmt: mit Leistungen, Arbeitszeiten und Abwesenheiten.">
+    <x-slot:actions>
+        <button type="button" data-drawer-open="person-neu" class="btn btn-primary">Person hinzufügen</button>
+    </x-slot:actions>
+</x-page-header>
 
-{{-- Mitarbeiterliste --}}
 @if($members->isEmpty())
-    <p class="rounded-2xl bg-white p-6 text-center text-sm text-stone-500 shadow-sm">Noch keine Mitarbeiter angelegt.</p>
+    <x-empty-state title="Noch niemand angelegt">
+        Gäste buchen Termine bei einer Person. Lege an, wer bei dir Termine annimmt.
+        <x-slot:action>
+            <button type="button" data-drawer-open="person-neu" class="btn btn-primary">Person hinzufügen</button>
+        </x-slot:action>
+    </x-empty-state>
 @else
-    <div class="space-y-3">
+    <ul class="divide-y divide-stone-200 rounded-xl border border-stone-200 bg-white">
         @foreach($members as $member)
-            <details class="rounded-2xl bg-white shadow-sm ring-1 ring-stone-100">
-                <summary class="flex cursor-pointer items-center gap-3 p-4 hover:bg-stone-50">
-                    @if($member->color)
-                        <span class="inline-block h-5 w-5 rounded-full" style="background:{{ $member->color }}"></span>
-                    @endif
-                    <span class="font-semibold">{{ $member->name }}</span>
-                    @if($member->bio)
-                        <span class="text-xs text-stone-400">{{ $member->bio }}</span>
-                    @endif
-                    @if($member->services->isNotEmpty())
-                        <span class="rounded-full bg-teal-50 px-2 py-0.5 text-xs text-teal-700">
-                            {{ $member->services->pluck('name')->join(', ') }}
-                        </span>
-                    @endif
-                    @if(!$member->is_active)
-                        <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">inaktiv</span>
-                    @endif
-                    <span class="ml-auto text-xs text-stone-400">bearbeiten ▾</span>
-                </summary>
-                <div class="border-t border-stone-100 p-5">
-                    <form method="POST" action="{{ route('admin.staff.update', $member) }}" class="space-y-3">
-                        @csrf @method('PUT')
-                        <div class="grid gap-3 sm:grid-cols-3">
-                            <div>
-                                <label class="mb-1 block text-xs font-semibold text-stone-500">Name *</label>
-                                <input type="text" name="name" required maxlength="120" value="{{ $member->name }}"
-                                       class="w-full rounded-lg border-stone-200 text-sm">
-                            </div>
-                            <div>
-                                <label class="mb-1 block text-xs font-semibold text-stone-500">Kurzbiografie</label>
-                                <input type="text" name="bio" maxlength="500" value="{{ $member->bio }}"
-                                       class="w-full rounded-lg border-stone-200 text-sm">
-                            </div>
-                            <div>
-                                <label class="mb-1 block text-xs font-semibold text-stone-500">Farbe</label>
-                                <input type="color" name="color" value="{{ $member->color ?? '#0d9488' }}"
-                                       class="h-9 w-12 rounded border-stone-200">
-                            </div>
-                        </div>
-                        @if($services->isNotEmpty())
-                            <div>
-                                <label class="mb-1 block text-xs font-semibold text-stone-500">Angebotene Leistungen</label>
-                                <div class="flex flex-wrap gap-3">
-                                    @foreach($services as $svc)
-                                        <label class="flex items-center gap-1 text-sm">
-                                            <input type="checkbox" name="service_ids[]" value="{{ $svc->id }}"
-                                                   @checked($member->services->contains($svc))>
-                                            {{ $svc->name }}
-                                        </label>
-                                    @endforeach
-                                </div>
-                            </div>
+            <li class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+                {{-- Das Wort „Pausiert“ steht sichtbar in der Zeile und dient als Vorlesetext; das Symbol trägt dann keinen eigenen. --}}
+                <x-status-icon :state="$member->is_active ? 'ok' : 'off'" :label="$member->is_active ? 'Buchbar' : 'Pausiert'" :announce="$member->is_active" />
+                <div class="min-w-0 flex-1">
+                    <button type="button" data-drawer-open="person-{{ $member->id }}"
+                            class="flex items-center gap-2 text-left font-semibold underline-offset-2 hover:underline [overflow-wrap:anywhere]">
+                        @if($dot($member))
+                            <span class="h-3 w-3 shrink-0 rounded-full ring-1 ring-stone-300" style="background-color: {{ $dot($member) }}" aria-hidden="true"></span>
                         @endif
-                        <div class="flex items-center gap-4">
-                            <label class="flex items-center gap-2 text-sm">
-                                <input type="checkbox" name="is_active" value="1" @checked($member->is_active)>
-                                Aktiv
-                            </label>
-                            <button type="submit" class="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700">
-                                Speichern
-                            </button>
-                        </div>
-                    </form>
-
-                    {{-- Arbeitszeiten --}}
-                    <div class="mt-5 border-t border-stone-100 pt-5">
-                        <h3 class="mb-1 font-semibold">Arbeitszeiten</h3>
-                        <p class="mb-3 text-xs text-stone-400">Ohne Eintrag gelten die Öffnungszeiten des Standorts. Mit Einträgen ist die/der Mitarbeiter:in nur in diesen Fenstern buchbar.</p>
-                        <form method="POST" action="{{ route('admin.staff.working-hours', $member) }}">
-                            @csrf @method('PUT')
-                            @php($weekdays = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'])
-                            <div class="space-y-2" id="wh-{{ $member->id }}">
-                                @foreach($member->workingHours->sortBy('weekday')->values() as $i => $wh)
-                                    <div class="wh-row flex items-center gap-2 text-sm">
-                                        <select name="hours[{{ $i }}][weekday]" class="rounded-lg border-stone-200">
-                                            @foreach($weekdays as $wd => $name)<option value="{{ $wd }}" @selected($wh->weekday == $wd)>{{ $name }}</option>@endforeach
-                                        </select>
-                                        <input type="time" name="hours[{{ $i }}][starts_at]" value="{{ substr($wh->starts_at, 0, 5) }}" class="rounded-lg border-stone-200">
-                                        <span>–</span>
-                                        <input type="time" name="hours[{{ $i }}][ends_at]" value="{{ substr($wh->ends_at, 0, 5) }}" class="rounded-lg border-stone-200">
-                                        <button type="button" onclick="this.closest('.wh-row').remove()" class="text-red-500">✕</button>
-                                    </div>
-                                @endforeach
-                            </div>
-                            <div class="mt-2 flex items-center gap-3">
-                                <button type="button" class="text-sm text-teal-700 underline"
-                                        onclick="addWhRow({{ $member->id }})">+ Zeitfenster</button>
-                                <button type="submit" class="rounded-lg bg-stone-900 px-4 py-1.5 text-sm font-semibold text-white">Arbeitszeiten speichern</button>
-                            </div>
-                        </form>
-                    </div>
-
-                    {{-- Abwesenheiten --}}
-                    <div class="mt-5 border-t border-stone-100 pt-5">
-                        <h3 class="mb-3 font-semibold">Abwesenheiten (Urlaub / Krank)</h3>
-                        @if($member->absences->isNotEmpty())
-                            <div class="mb-3 space-y-1 text-sm">
-                                @foreach($member->absences as $absence)
-                                    <div class="flex items-center justify-between rounded-lg bg-stone-50 px-3 py-2">
-                                        <span>
-                                            {{ $absence->starts_at->setTimezone($location->timezone)->format('d.m.Y H:i') }}
-                                            – {{ $absence->ends_at->setTimezone($location->timezone)->format('d.m.Y H:i') }}
-                                            @if($absence->reason)<span class="text-stone-400">· {{ $absence->reason }}</span>@endif
-                                        </span>
-                                        <form method="POST" action="{{ route('admin.staff.absences.destroy', $absence) }}">
-                                            @csrf @method('DELETE')
-                                            <button type="submit" class="text-red-500 hover:underline">entfernen</button>
-                                        </form>
-                                    </div>
-                                @endforeach
-                            </div>
-                        @endif
-                        <form method="POST" action="{{ route('admin.staff.absences.store', $member) }}"
-                              class="grid grid-cols-2 gap-2 text-sm sm:grid-cols-5">
-                            @csrf
-                            <div><label class="mb-1 block text-xs text-stone-500">Von Datum<span class="tip" tabindex="0" data-tip="Beginn der Abwesenheit – Urlaub, Krankheit, Fortbildung. In diesem Zeitraum ist die Person nicht buchbar und bekommt keine neuen Termine.">?</span></label>
-                                <input type="date" name="starts_on" required class="w-full rounded-lg border-stone-200"></div>
-                            <div><label class="mb-1 block text-xs text-stone-500">Uhrzeit (opt.)</label>
-                                <input type="time" name="starts_time" class="w-full rounded-lg border-stone-200"></div>
-                            <div><label class="mb-1 block text-xs text-stone-500">Bis Datum</label>
-                                <input type="date" name="ends_on" required class="w-full rounded-lg border-stone-200"></div>
-                            <div><label class="mb-1 block text-xs text-stone-500">Uhrzeit (opt.)</label>
-                                <input type="time" name="ends_time" class="w-full rounded-lg border-stone-200"></div>
-                            <div class="flex items-end"><button type="submit" class="w-full rounded-lg bg-stone-900 px-4 py-2 font-semibold text-white">Eintragen</button></div>
-                            <div class="col-span-2 sm:col-span-5"><input type="text" name="reason" maxlength="120" placeholder="Grund (optional, z. B. Urlaub)" class="w-full rounded-lg border-stone-200"></div>
-                        </form>
-                    </div>
-
-                    {{-- Löschen --}}
-                    <div class="mt-5 border-t border-stone-100 pt-4">
-                        <form method="POST" action="{{ route('admin.staff.destroy', $member) }}"
-                              onsubmit="return confirm('Mitarbeiter:in wirklich löschen?')">
-                            @csrf @method('DELETE')
-                            <button type="submit" class="rounded-lg border border-red-200 px-3 py-2 text-sm text-red-600 hover:bg-red-50">
-                                Mitarbeiter:in löschen
-                            </button>
-                        </form>
-                    </div>
+                        {{ $member->name }}
+                    </button>
+                    <p class="text-[0.8125rem] text-stone-600">{{ $details($member) }}</p>
                 </div>
-            </details>
+                <x-inline-confirm :id="'person-loeschen-'.$member->id" :action="route('admin.staff.destroy', $member)" method="DELETE"
+                                  label="Löschen" confirm="Person löschen" :subject="$member->name" :reload="true"
+                                  :question="'„'.$member->name.'“ löschen? Arbeitszeiten und Abwesenheiten gehen mit.'" />
+            </li>
         @endforeach
-    </div>
-
-    <script>
-    function addWhRow(memberId) {
-        const container = document.getElementById('wh-' + memberId);
-        const idx = container.querySelectorAll('.wh-row').length;
-        const days = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-        const row = document.createElement('div');
-        row.className = 'wh-row flex items-center gap-2 text-sm';
-        row.innerHTML = '<select name="hours[' + idx + '][weekday]" class="rounded-lg border-stone-200">'
-            + days.map((d, i) => '<option value="' + i + '">' + d + '</option>').join('')
-            + '</select>'
-            + '<input type="time" name="hours[' + idx + '][starts_at]" value="09:00" class="rounded-lg border-stone-200">'
-            + '<span>–</span>'
-            + '<input type="time" name="hours[' + idx + '][ends_at]" value="18:00" class="rounded-lg border-stone-200">'
-            + '<button type="button" onclick="this.closest(\'.wh-row\').remove()" class="text-red-500">✕</button>';
-        container.appendChild(row);
-    }
-    </script>
+    </ul>
 @endif
+
+@push('drawers')
+    <x-drawer id="person-neu" title="Neue Person" description="Arbeitszeiten und Abwesenheiten trägst du danach in ihrer Seitenleiste ein.">
+        <form id="form-person-neu" method="POST" action="{{ route('admin.staff.store') }}" data-ajax data-reset-after-save data-reload-after-save class="space-y-5">
+            @csrf
+            @include('admin.staff.partials.fields', ['member' => null, 'prefix' => 'neu'])
+        </form>
+        <x-slot:footer>
+            <button type="button" data-drawer-close class="btn btn-secondary">Abbrechen</button>
+            <button type="submit" form="form-person-neu" class="btn btn-primary">Person anlegen</button>
+        </x-slot:footer>
+    </x-drawer>
+    @foreach($members as $member)
+        @php
+            $hours = $member->workingHours
+                ->sortBy([['weekday', 'asc'], ['starts_at', 'asc']])
+                ->values()
+                ->map(fn ($hour) => [
+                    'weekday' => (int) $hour->weekday,
+                    'starts_at' => substr((string) $hour->starts_at, 0, 5),
+                    'ends_at' => substr((string) $hour->ends_at, 0, 5),
+                ]);
+        @endphp
+        <x-drawer :id="'person-'.$member->id" :title="$member->name" description="Profil, Arbeitszeiten und Abwesenheiten.">
+            <form id="form-person-{{ $member->id }}" method="POST" action="{{ route('admin.staff.update', $member) }}" data-ajax data-reload-after-save class="space-y-5">
+                @csrf
+                @method('PUT')
+                @include('admin.staff.partials.fields', ['member' => $member, 'prefix' => (string) $member->id])
+            </form>
+
+            <section aria-labelledby="arbeitszeit-{{ $member->id }}-titel" class="space-y-4 border-t border-stone-200 pt-5">
+                <h3 id="arbeitszeit-{{ $member->id }}-titel" class="text-sm font-semibold">Arbeitszeiten</h3>
+                <p class="text-[0.8125rem] text-stone-600">Ohne Eintrag gelten die Öffnungszeiten des Standorts. Mit Einträgen ist {{ $member->name }} in diesen Zeitfenstern buchbar.</p>
+                <form method="POST" action="{{ route('admin.staff.working-hours', $member) }}" data-ajax data-reload-after-save class="space-y-3">
+                    @csrf
+                    @method('PUT')
+                    <div data-rows data-rows-max="{{ $limits['staff_hours_max'] }}" class="space-y-3">
+                        <div data-rows-list class="space-y-3">
+                            @foreach($hours as $key => $hour)
+                                @include('admin.staff.partials.hour-row', ['key' => $key, 'hour' => $hour])
+                            @endforeach
+                        </div>
+                        <template data-rows-template>
+                            @include('admin.staff.partials.hour-row', ['key' => '__INDEX__', 'hour' => ['weekday' => 0, 'starts_at' => '09:00', 'ends_at' => '18:00']])
+                        </template>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" data-rows-add class="btn btn-secondary">Zeitfenster hinzufügen</button>
+                            <button type="submit" class="btn btn-primary">Arbeitszeiten speichern</button>
+                        </div>
+                    </div>
+                </form>
+            </section>
+
+            <section aria-labelledby="abwesenheit-{{ $member->id }}-titel" class="space-y-4 border-t border-stone-200 pt-5">
+                <h3 id="abwesenheit-{{ $member->id }}-titel" class="text-sm font-semibold">Abwesenheiten</h3>
+                @if($member->absences->isEmpty())
+                    <p class="text-sm text-stone-600">Für die kommende Zeit ist nichts eingetragen.</p>
+                @else
+                    <ul class="divide-y divide-stone-200 rounded-lg border border-stone-200">
+                        @foreach($member->absences as $absence)
+                            <li class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
+                                <span class="[overflow-wrap:anywhere]">{{ $span($absence) }}@if($absence->reason) · {{ $absence->reason }}@endif</span>
+                                <x-inline-confirm :id="'abwesenheit-loeschen-'.$absence->id" :action="route('admin.staff.absences.destroy', $absence)" method="DELETE"
+                                                  label="Entfernen" confirm="Entfernen" :subject="$span($absence)" :reload="true"
+                                                  :question="'Abwesenheit '.$span($absence).' entfernen? '.$member->name.' ist dann wieder buchbar.'" />
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+                <form method="POST" action="{{ route('admin.staff.absences.store', $member) }}" data-ajax data-reset-after-save data-reload-after-save class="space-y-3">
+                    @csrf
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <x-field name="starts_on" :id="'abw-'.$member->id.'-von'" label="Von" type="date" required />
+                        <x-field name="starts_time" :id="'abw-'.$member->id.'-von-zeit'" label="ab Uhrzeit" type="time" help="Leer: ab Tagesbeginn." />
+                        <x-field name="ends_on" :id="'abw-'.$member->id.'-bis'" label="Bis" type="date" required />
+                        <x-field name="ends_time" :id="'abw-'.$member->id.'-bis-zeit'" label="bis Uhrzeit" type="time" help="Leer: bis Tagesende." />
+                    </div>
+                    <x-field name="reason" :id="'abw-'.$member->id.'-grund'" label="Grund" :maxlength="$limits['absence_reason_max']" placeholder="etwa Urlaub" autocomplete="off" />
+                    <button type="submit" class="btn btn-secondary">Abwesenheit eintragen</button>
+                </form>
+            </section>
+
+            <x-slot:footer>
+                <button type="button" data-drawer-close class="btn btn-secondary">Abbrechen</button>
+                <button type="submit" form="form-person-{{ $member->id }}" class="btn btn-primary">Profil speichern</button>
+            </x-slot:footer>
+        </x-drawer>
+    @endforeach
+@endpush
 @endsection

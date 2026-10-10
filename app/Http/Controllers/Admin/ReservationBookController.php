@@ -18,6 +18,7 @@ use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -803,23 +804,30 @@ class ReservationBookController extends Controller
         ]);
 
         $location = $reservation->location()->withoutGlobalScope('tenant')->first();
-        $staff = StaffMember::where('location_id', $reservation->location_id)
-            ->where('is_active', true)
-            ->find((int) $validated['staff_member_id']);
-        if ($staff === null || $location === null) {
-            return back()->withErrors(['staff_member_id' => __('Diese Person gibt es hier nicht.')]);
-        }
 
-        $dauer = (int) $reservation->start_at->diffInMinutes($reservation->end_at);
-        if (! $this->salonAvailability->canStaffTake($staff, $dauer, CarbonImmutable::parse($reservation->start_at), $location, $reservation->id)) {
-            return back()->withErrors(['staff_member_id' => __('Diese Person ist zu dem Zeitpunkt nicht verfügbar.')]);
-        }
+        // Die Person wird unter einer geteilten Sperre (FOR SHARE) gelesen und der Termin im selben Zug zugewiesen: Das Löschen
+        // einer Person (StaffMemberController::destroy) sperrt ihre Zeile, wartet auf diese Zuweisung und zählt danach den
+        // Termin mit. Ohne die Sperre bekäme der Termin eine eben gelöschte Person und fehlte im Terminplan.
+        return DB::transaction(function () use ($validated, $reservation, $location, $audit) {
+            $staff = StaffMember::where('location_id', $reservation->location_id)
+                ->where('is_active', true)
+                ->sharedLock()
+                ->find((int) $validated['staff_member_id']);
+            if ($staff === null || $location === null) {
+                return back()->withErrors(['staff_member_id' => __('Diese Person gibt es hier nicht.')]);
+            }
 
-        $alt = $reservation->staff_member_id;
-        $reservation->update(['staff_member_id' => $staff->id]);
-        $audit->log('reservation.staff_assigned', $reservation, ['staff_member_id' => $alt], ['staff_member_id' => $staff->id]);
+            $dauer = (int) $reservation->start_at->diffInMinutes($reservation->end_at);
+            if (! $this->salonAvailability->canStaffTake($staff, $dauer, CarbonImmutable::parse($reservation->start_at), $location, $reservation->id)) {
+                return back()->withErrors(['staff_member_id' => __('Diese Person ist zu dem Zeitpunkt nicht verfügbar.')]);
+            }
 
-        return back()->with('success', __(':name zugewiesen.', ['name' => $staff->name]));
+            $alt = $reservation->staff_member_id;
+            $reservation->update(['staff_member_id' => $staff->id]);
+            $audit->log('reservation.staff_assigned', $reservation, ['staff_member_id' => $alt], ['staff_member_id' => $staff->id]);
+
+            return back()->with('success', __(':name zugewiesen.', ['name' => $staff->name]));
+        });
     }
 
     private function authorizeReservation(Reservation $reservation): void

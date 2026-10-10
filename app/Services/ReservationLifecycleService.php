@@ -91,18 +91,14 @@ class ReservationLifecycleService
             // geprueft werden. Das ausdrueckliche Ueberbuchen haengt an einer
             // eigenen Berechtigung und braucht darum ein eigenes Kennzeichen;
             // ohne das war der Weg fuer Salons tot.
-            $staffMemberId = ($data['allow_staff_conflict'] ?? false) ? null : ($data['staff_member_id'] ?? null);
-            if ($staffMemberId !== null) {
-                $staff = StaffMember::withoutGlobalScope('tenant')->find($staffMemberId);
-                $frei = $staff !== null && $this->salonAvailability->canStaffTake(
-                    $staff, $duration, $startUtc, $location
-                );
-
-                if (! $frei) {
-                    throw ValidationException::withMessages([
-                        'start_at' => __('Dieser Zeitpunkt ist leider gerade vergeben – bitte wählen Sie eine andere Zeit.'),
-                    ]);
-                }
+            // Die zugewiesene Person wird unter einer geteilten Sperre gelesen,
+            // auch beim ausdruecklichen Ueberbuchen (lockAssignedStaff).
+            $staff = $this->lockAssignedStaff($location, $data);
+            if ($staff !== null && ! ($data['allow_staff_conflict'] ?? false)
+                && ! $this->salonAvailability->canStaffTake($staff, $duration, $startUtc, $location)) {
+                throw ValidationException::withMessages([
+                    'start_at' => __('Dieser Zeitpunkt ist leider gerade vergeben – bitte wählen Sie eine andere Zeit.'),
+                ]);
             }
 
             if (! ($data['skip_availability_check'] ?? false)) {
@@ -918,6 +914,45 @@ class ReservationLifecycleService
             'subject' => $subject,
             'status' => 'queued',
         ]);
+    }
+
+    /**
+     * Salon: liest die zugewiesene Person unter einer geteilten Zeilensperre (FOR SHARE) und lehnt die Buchung ab, wenn es sie
+     * an diesem Standort nicht mehr gibt. Ohne zugewiesene Person (Restaurant, Überbuchen ohne gefundene Person) ergibt sich null.
+     *
+     * Eine Person bleibt beim Löschen als Eintrag erhalten (Soft Delete); der Fremdschlüssel des Termins hielte also auch auf
+     * eine gelöschte Person, und ihr Termin fehlte im Terminplan. Das Löschen (StaffMemberController) sperrt die Zeile mit
+     * FOR UPDATE und prüft dann auf kommende Termine. Beide Sperren schließen einander aus: Hat die Buchung die Person zuerst
+     * gelesen, sieht das Löschen ihren Termin; hat das Löschen zuerst festgeschrieben, findet die Buchung die Person nicht mehr.
+     * Die Sperre gilt auch beim ausdrücklichen Überbuchen, denn dort entfällt nur die Prüfung der Zeiten.
+     *
+     * Reihenfolge der Sperren einer Buchung: Betriebstag (Advisory-Sperre), Person, Leistungen (nach Kennung). Person und
+     * Leistungen sperren geteilt; ein Löschen sperrt exklusiv und hält dabei nur seine eine Zeile. So entsteht kein Kreis, in dem
+     * zwei Aufträge aufeinander warten.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function lockAssignedStaff(Location $location, array $data): ?StaffMember
+    {
+        $id = $data['staff_member_id'] ?? null;
+        if ($id === null) {
+            return null;
+        }
+
+        $staff = StaffMember::withoutGlobalScope('tenant')
+            ->where('tenant_id', $location->tenant_id)
+            ->where('location_id', $location->id)
+            ->whereKey((int) $id)
+            ->sharedLock()
+            ->first();
+
+        if ($staff === null) {
+            throw ValidationException::withMessages([
+                'staff_member_id' => __('Die gewählte Person steht nicht mehr zur Verfügung. Bitte eine andere Person wählen.'),
+            ]);
+        }
+
+        return $staff;
     }
 
     /**

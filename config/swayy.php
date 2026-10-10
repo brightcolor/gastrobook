@@ -398,6 +398,17 @@ return [
     | Spalte services.name fasst 255). service_description_max: längste
     | Beschreibung in Zeichen (50–5000; die Spalte ist text und fasst jede
     | Länge, die Obergrenze hält die Buchungsseite lesbar).
+    | staff_name_max: längster Name einer Person in Zeichen (10–255; die Spalte
+    | staff_members.name fasst 255). staff_bio_max: längste Kurzvorstellung in
+    | Zeichen (50–5000; die Spalte ist text, die Obergrenze hält die
+    | Buchungsseite lesbar). staff_hours_max: die meisten Zeitfenster, die eine
+    | Person je Woche haben kann (7–200); sie begrenzt die Arbeitszeiten, die
+    | eine Anfrage senden kann. absence_reason_max: längster Grund einer
+    | Abwesenheit in Zeichen (10–120; die Spalte staff_absences.reason fasst
+    | 120). absence_window_years: Beginn und Ende einer Abwesenheit liegen
+    | höchstens so viele Jahre vor oder nach heute (1–100); das Jahr eines
+    | Tippfehlers wie 0026 fällt so auf, und jedes Datum liegt im Bereich der
+    | Zeitstempel-Spalten.
     |
     */
     'salon' => [
@@ -406,6 +417,11 @@ return [
         'service_price_max' => EnvSetting::integer('SWAYY_SERVICE_PRICE_MAX', default: 1000, min: 1, max: 100000),
         'service_name_max' => EnvSetting::integer('SWAYY_SERVICE_NAME_MAX', default: 120, min: 10, max: 255),
         'service_description_max' => EnvSetting::integer('SWAYY_SERVICE_DESCRIPTION_MAX', default: 1000, min: 50, max: 5000),
+        'staff_name_max' => EnvSetting::integer('SWAYY_STAFF_NAME_MAX', default: 120, min: 10, max: 255),
+        'staff_bio_max' => EnvSetting::integer('SWAYY_STAFF_BIO_MAX', default: 500, min: 50, max: 5000),
+        'staff_hours_max' => EnvSetting::integer('SWAYY_STAFF_HOURS_MAX', default: 28, min: 7, max: 200),
+        'absence_reason_max' => EnvSetting::integer('SWAYY_ABSENCE_REASON_MAX', default: 120, min: 10, max: 120),
+        'absence_window_years' => EnvSetting::integer('SWAYY_ABSENCE_WINDOW_YEARS', default: 10, min: 1, max: 100),
     ],
 
     /*
