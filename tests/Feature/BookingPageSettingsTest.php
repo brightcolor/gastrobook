@@ -230,15 +230,27 @@ class BookingPageSettingsTest extends TestCase
         $owner = $this->createMember($setup['tenant'], 'tenant_owner');
         $this->clearTenantContext();
 
-        foreach (['red', '#12345', "#aa3300\n", '#aa3300" onfocus="alert(1)', '"><script>alert(1)</script>'] as $stored) {
-            $setup['tenant']->update(['brand_primary_color' => $stored]);
+        // Die Spalte fasst 9 Zeichen (varchar(9)); das Maskieren langer Eingaben prüfen die JS-Tests von widget.js.
+        // Je Fall der gespeicherte Wert und das Bruchstück, das die Seite nie ausgeben darf (leer: es zählt die Rückkehr zur Vorgabe).
+        $stored = [
+            ['red', ''],
+            ['#12345', ''],
+            ["#aa3300\n", ''],
+            ['#gggggg', '#gggggg'],
+            ['#AbCdEf ', '#AbCdEf'],
+            ['"><b>x', '<b>x'],
+            ['#aa3300"x', '#aa3300"'],
+        ];
+        foreach ($stored as [$value, $forbidden]) {
+            $setup['tenant']->update(['brand_primary_color' => $value]);
 
             $html = (string) $this->actingAs($owner)->get('/admin/settings/booking-page')->assertOk()->getContent();
 
-            $this->assertStringContainsString('data-default-color="#123456"', $html, $stored);
-            $this->assertSame(2, substr_count($html, 'type="color" value="#123456"'), $stored);
-            $this->assertStringNotContainsString('onfocus', $html, $stored);
-            $this->assertStringNotContainsString('alert(1)', $html, $stored);
+            $this->assertStringContainsString('data-default-color="#123456"', $html, $value);
+            $this->assertSame(2, substr_count($html, 'type="color" value="#123456"'), $value);
+            if ($forbidden !== '') {
+                $this->assertStringNotContainsString($forbidden, $html, $value);
+            }
         }
     }
 
