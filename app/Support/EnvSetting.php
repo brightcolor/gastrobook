@@ -48,6 +48,33 @@ final class EnvSetting
     }
 
     /**
+     * Dezimalzahl von $min bis $max, mit Punkt oder Komma geschrieben.
+     */
+    public static function decimal(string $variable, float $default, float $min, float $max): float
+    {
+        $raw = self::raw($variable);
+        if ($raw === null) {
+            return $default;
+        }
+
+        $value = filter_var(str_replace(',', '.', $raw), FILTER_VALIDATE_FLOAT);
+        if ($value === false) {
+            self::warn("{$variable}=„{$raw}“ ist keine Zahl. Es gilt die Vorgabe {$default}. Bitte einen Wert von {$min} bis {$max} in der .env eintragen.");
+
+            return $default;
+        }
+
+        if ($value < $min || $value > $max) {
+            $limited = max($min, min($max, $value));
+            self::warn("{$variable}={$raw} liegt außerhalb des erlaubten Bereichs von {$min} bis {$max}. Es gilt {$limited}. Bitte den Wert in der .env anpassen.");
+
+            return $limited;
+        }
+
+        return $value;
+    }
+
+    /**
      * Komma-Liste ganzer Zahlen, jede von $min bis $max. Ist ein Eintrag
      * ungueltig, gilt die ganze Vorgabe: Eine halbe Liste aendert die
      * Bedeutung der uebrigen Eintraege.

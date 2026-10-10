@@ -330,6 +330,82 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Gestaltung der Mails
+    |--------------------------------------------------------------------------
+    |
+    | Alle Mails laufen durch einen gemeinsamen Rahmen (App\Mail\Layout).
+    | owner_address: Anrede in Mails an Betriebe und in Swayy-Mails, „du“ oder
+    | „Sie“; Gast-Mails folgen der Anrede des Standorts.
+    | powered_by: „Reserviert mit Swayy“ im Fußbereich der Gast-Mails.
+    | logo_max_kb: größte Logodatei, die eingebettet wird (16–1024); größere
+    | Logos ergeben die Wortmarke. logo_height: Anzeigehöhe in px (24–96).
+    | contrast_min: Mindestkontrast für Knopftext und Links (3,0–7,0); eine zu
+    | helle Markenfarbe wird dafür abgedunkelt.
+    | details_min_rows: Zeilen „Bezeichnung: Wert“, ab denen ein Absatz zur
+    | Tabelle wird (1–6). label_max: längste Bezeichnung darin in Zeichen
+    | (10–80). button_label_max: längste Knopfbeschriftung (20–120).
+    | Ohne Umgebungsvariable: Farben, Tönung, Schriften und Maße des Rahmens.
+    |
+    */
+    'mail' => [
+        'owner_address' => EnvSetting::pattern('SWAYY_MAIL_OWNER_ADDRESS', default: 'du', regex: '/^(du|Sie)$/', hint: 'ist weder „du“ noch „Sie“'),
+        'powered_by' => (bool) env('SWAYY_MAIL_POWERED_BY', true),
+        'logo_max_kb' => EnvSetting::integer('SWAYY_MAIL_LOGO_MAX_KB', default: 200, min: 16, max: 1024),
+        'logo_height' => EnvSetting::integer('SWAYY_MAIL_LOGO_HEIGHT', default: 44, min: 24, max: 96),
+        'contrast_min' => EnvSetting::decimal('SWAYY_MAIL_CONTRAST_MIN', default: 4.5, min: 3.0, max: 7.0),
+        'details_min_rows' => EnvSetting::integer('SWAYY_MAIL_DETAILS_MIN_ROWS', default: 2, min: 1, max: 6),
+        'label_max' => EnvSetting::integer('SWAYY_MAIL_LABEL_MAX', default: 40, min: 10, max: 80),
+        'button_label_max' => EnvSetting::integer('SWAYY_MAIL_BUTTON_LABEL_MAX', default: 60, min: 20, max: 120),
+        'logo_types' => ['png', 'jpg', 'jpeg', 'gif'],
+        'logo_max_width' => 220,
+        'swayy_logo' => resource_path('images/mail/swayy@2x.png'),
+        'swayy_logo_height' => 32,
+        'width' => 600,
+        'mobile_breakpoint' => 520,
+        'font_stack' => "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif",
+        'display_stack' => "'Fraunces',Georgia,'Times New Roman',serif",
+        'tint' => 0.055,
+        'line' => 0.16,
+        'dark_tint' => 0.16,
+        'dark_line' => 0.32,
+        'palette' => [
+            'page' => '#f5f5f4',
+            'card' => '#ffffff',
+            'plate' => '#ffffff',
+            'border' => '#e7e5e4',
+            'strong' => '#1c1917',
+            'body' => '#44403c',
+            'muted' => '#57534e',
+            'faint' => '#78716c',
+            'on_brand' => '#ffffff',
+            'dark_page' => '#0c0a09',
+            'dark_card' => '#1c1917',
+            'dark_border' => '#292524',
+            'dark_strong' => '#fafaf9',
+            'dark_body' => '#d6d3d1',
+            'dark_muted' => '#a8a29e',
+        ],
+    ],
+
+    /*
+    | Links für Gäste: Gültigkeit des Anmeldelinks (10–1440) und des
+    | Bestätigungslinks einer Buchung (60–10080), jeweils in Minuten.
+    */
+    'guest_auth' => [
+        'login_minutes' => EnvSetting::integer('SWAYY_GUEST_LOGIN_LINK_MINUTES', default: 60, min: 10, max: 1440),
+        'verify_minutes' => EnvSetting::integer('SWAYY_GUEST_VERIFY_LINK_MINUTES', default: 1440, min: 60, max: 10080),
+    ],
+
+    /*
+    | Tarifanfrage nach der Testphase: so viele Stunden gilt der
+    | Bestätigungslink an die Kontaktadresse (1–336).
+    */
+    'billing_request' => [
+        'confirm_hours' => EnvSetting::integer('SWAYY_BILLING_CONFIRM_HOURS', default: 72, min: 1, max: 336),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Oberfläche der Verwaltung
     |--------------------------------------------------------------------------
     |
