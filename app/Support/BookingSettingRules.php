@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support;
 
 use App\Models\LocationSettings;
+use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -67,15 +68,17 @@ final class BookingSettingRules
     /**
      * Buchungsregeln: Vorlauf, Vorausbuchung, Gruppengröße online, Fristen,
      * Bestätigung, Warteliste und Walk-ins. Die Schalter sind Pflichtfelder;
-     * x-checkbox sendet ohne Haken eine 0.
+     * x-checkbox sendet ohne Haken eine 0. Salons buchen Termine nach Leistung
+     * und Person; Gruppengröße online und Walk-ins gehören zum Restaurant und
+     * fehlen dort.
      *
      * @return array<string, list<mixed>>
      */
-    public static function booking(): array
+    public static function booking(bool $salon = false): array
     {
         $limits = (array) config('swayy.booking');
 
-        return [
+        $rules = [
             'min_lead_minutes' => ['required', 'integer', 'min:0', 'max:'.$limits['lead_max_minutes']],
             'max_advance_days' => ['required', 'integer', 'min:1', 'max:'.$limits['advance_max_days']],
             'min_party_online' => ['required', 'integer', 'min:1', 'max:'.$limits['party_online_max']],
@@ -88,6 +91,10 @@ final class BookingSettingRules
             'waitlist_enabled' => ['required', 'boolean'],
             'walkins_enabled' => ['required', 'boolean'],
         ];
+
+        return $salon
+            ? Arr::except($rules, ['min_party_online', 'max_party_online', 'large_group_email', 'walkins_enabled'])
+            : $rules;
     }
 
     /**

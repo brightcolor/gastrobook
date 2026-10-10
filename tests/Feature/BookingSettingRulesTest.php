@@ -119,6 +119,18 @@ class BookingSettingRulesTest extends TestCase
         $this->assertSame(['slot_interval_minutes', 'default_duration_minutes', 'buffer_minutes'], array_slice($keys, 0, 3));
     }
 
+    public function test_a_salon_form_leaves_out_group_size_and_walk_ins(): void
+    {
+        $restaurant = array_keys(BookingSettingRules::booking());
+        $salon = array_keys(BookingSettingRules::booking(salon: true));
+
+        $this->assertSame(
+            ['min_party_online', 'max_party_online', 'large_group_email', 'walkins_enabled'],
+            array_values(array_diff($restaurant, $salon)),
+        );
+        $this->assertSame([], array_diff($salon, $restaurant));
+    }
+
     public function test_every_field_of_the_rules_has_a_label(): void
     {
         $keys = array_merge(

@@ -163,6 +163,7 @@ class AuditLog extends Model
         'tenant.general_updated' => 'Betrieb: Stammdaten geändert',
         'location.settings_updated' => 'Standort: Einstellungen geändert',
         'location.capacity_updated' => 'Standort: Kapazität und Dauer geändert',
+        'location.booking_rules_updated' => 'Standort: Buchungsregeln geändert',
         'reservation.attachment_added' => 'Reservierung: Anhang hinzugefügt',
         'reservation.attachment_deleted' => 'Reservierung: Anhang gelöscht',
         'reservation.deposit_shortfall' => 'Reservierung: Anzahlung zu niedrig',
