@@ -58,7 +58,7 @@
                 </div>
                 <x-inline-confirm :id="'person-loeschen-'.$member->id" :action="route('admin.staff.destroy', $member)" method="DELETE"
                                   label="Löschen" confirm="Person löschen" :subject="$member->name" :reload="true"
-                                  :question="'„'.$member->name.'“ löschen? Arbeitszeiten und Abwesenheiten gehen mit.'" />
+                                  :question="'„'.$member->name.'“ löschen? Arbeitszeiten und Abwesenheiten gehen mit. Frühere Termine zeigen die Person dann im Terminplan mit dem Vermerk „entfernt“.'" />
             </li>
         @endforeach
     </ul>
@@ -123,11 +123,24 @@
                 @else
                     <ul class="divide-y divide-stone-200 rounded-lg border border-stone-200">
                         @foreach($member->absences as $absence)
+                            @php
+                                $note = $absenceNotes[$absence->id] ?? null;
+                            @endphp
                             <li class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
                                 <span class="[overflow-wrap:anywhere]">{{ $span($absence) }}@if($absence->reason) · {{ $absence->reason }}@endif</span>
                                 <x-inline-confirm :id="'abwesenheit-loeschen-'.$absence->id" :action="route('admin.staff.absences.destroy', $absence)" method="DELETE"
                                                   label="Entfernen" confirm="Entfernen" :subject="$span($absence)" :reload="true"
                                                   :question="'Abwesenheit '.$span($absence).' entfernen? '.$member->name.' ist dann wieder buchbar.'" />
+                                @if($note)
+                                    {{-- Der Satz steht sichtbar neben dem Symbol; das Symbol trägt darum keinen eigenen Vorlesetext. --}}
+                                    <p class="flex basis-full items-start gap-2 text-[0.8125rem] text-amber-900">
+                                        <x-status-icon state="warn" label="Termine in dieser Zeit" :announce="false" class="mt-0.5" />
+                                        <span>
+                                            {{ trans_choice(':count gebuchter Termin in dieser Zeit. Bitte weise ihn einer anderen Person zu oder sage ihn ab.|:count gebuchte Termine in dieser Zeit. Bitte weise sie anderen Personen zu oder sage sie ab.', $note['count'], ['count' => $note['count']]) }}
+                                            <a href="{{ route('admin.staff.calendar', ['date' => $note['date']]) }}" class="font-semibold underline underline-offset-2">Im Terminplan ansehen</a>
+                                        </span>
+                                    </p>
+                                @endif
                             </li>
                         @endforeach
                     </ul>

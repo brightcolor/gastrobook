@@ -216,7 +216,7 @@ class StaffPageTest extends TestCase
         // Löschen fragt in der Zeile nach, lädt danach neu und benennt die Person für Screenreader.
         $this->assertMatchesRegularExpression('/<form id="person-loeschen-'.$id.'"[^>]*data-ajax\s+data-reload-after-save/', $html);
         $this->assertStringContainsString('<span class="sr-only"> „Anna“</span>', $html);
-        $this->assertStringContainsString('„Anna“ löschen? Arbeitszeiten und Abwesenheiten gehen mit.', $html);
+        $this->assertStringContainsString('„Anna“ löschen? Arbeitszeiten und Abwesenheiten gehen mit. Frühere Termine zeigen die Person dann im Terminplan mit dem Vermerk „entfernt“.', $html);
         // Zeilen: Liste, Vorlage, Hinzufügen, Entfernen, Gruppe mit Namen und die Grenze aus den Einstellungen.
         $this->assertStringContainsString('data-rows data-rows-max="28"', $drawer);
         $this->assertStringContainsString('data-rows-list', $drawer);
@@ -340,6 +340,125 @@ class StaffPageTest extends TestCase
         $this->assertStringContainsString($span.' · Urlaub &lt;b&gt;', $drawer);
         $this->assertMatchesRegularExpression('/<form id="abwesenheit-loeschen-'.$absence->id.'"[^>]*data-ajax\s+data-reload-after-save/', $drawer);
         $this->assertStringContainsString('Abwesenheit '.$span.' entfernen? Anna ist dann wieder buchbar.', $drawer);
+    }
+
+    /** Der Eintrag der Abwesenheit mit diesem Grund in der Seitenleiste. */
+    private function absenceItem(string $drawer, string $reason): string
+    {
+        foreach (explode('<li ', $drawer) as $item) {
+            if (str_contains($item, '>'.$reason.'<') || str_contains($item, ' · '.$reason.'<')) {
+                return $item;
+            }
+        }
+        $this->fail("Keine Abwesenheit mit dem Grund „{$reason}“ in der Seitenleiste.");
+    }
+
+    public function test_the_absence_list_names_the_booked_appointments_of_each_absence(): void
+    {
+        $setup = $this->salon();
+        $anna = $setup['member'];
+        $ben = $this->person($setup, 'Ben');
+        $timezone = $setup['location']->timezone;
+        $day = fn (int $days): CarbonImmutable => CarbonImmutable::now($timezone)->addDays($days)->startOfDay();
+        $absence = fn (StaffMember $member, CarbonImmutable $from, CarbonImmutable $to, string $reason) => StaffAbsence::create([
+            'tenant_id' => $setup['tenant']->id, 'staff_member_id' => $member->id,
+            'starts_at' => $from->utc(), 'ends_at' => $to->utc(), 'reason' => $reason,
+        ]);
+
+        // Null Termine: nichts davon zählt (anderer Tag, abgesagt, gelöscht, andere Person).
+        $absence($anna, $day(20), $day(21)->endOfDay(), 'Leer');
+        $this->appointment($setup, $anna, ReservationStatus::Confirmed, 19);
+        // Ein Termin: nur der bestätigte am Tag selbst.
+        $absence($anna, $day(3), $day(3)->endOfDay(), 'Eins');
+        $this->appointment($setup, $anna, ReservationStatus::Confirmed, 3);
+        $this->appointment($setup, $anna, ReservationStatus::CancelledByGuest, 3);
+        $this->appointment($setup, $anna, ReservationStatus::Confirmed, 3)->delete();
+        $this->appointment($setup, $ben, ReservationStatus::Confirmed, 3);
+        // Mehrere Termine über drei Tage.
+        $absence($anna, $day(5), $day(7)->endOfDay(), 'Drei');
+        foreach ([5, 6, 7] as $days) {
+            $this->appointment($setup, $anna, ReservationStatus::Confirmed, $days);
+        }
+        // Ein Termin, der vor der Abwesenheit beginnt: Der erste betroffene Tag ist der Tag der Abwesenheit.
+        $absence($ben, $day(12), $day(12)->endOfDay(), 'Nacht');
+        Reservation::create([
+            'tenant_id' => $setup['tenant']->id, 'location_id' => $setup['location']->id, 'party_size' => 1,
+            'reservation_date' => $day(11)->toDateString(), 'start_at' => $day(11)->setTime(23, 30)->utc(), 'end_at' => $day(12)->setTime(0, 30)->utc(),
+            'timezone' => $timezone, 'status' => ReservationStatus::Confirmed, 'source' => 'online',
+            'guest_name_snapshot' => 'Nachtgast', 'staff_member_id' => $ben->id,
+        ]);
+        $this->clearTenantContext();
+
+        $html = (string) $this->actingAs($setup['owner'])->get('/admin/staff')->assertOk()->getContent();
+        $annaDrawer = $this->drawerOf($html, $anna);
+        $calendar = fn (CarbonImmutable $date): string => 'href="'.route('admin.staff.calendar', ['date' => $date->toDateString()]).'"';
+
+        $none = $this->absenceItem($annaDrawer, 'Leer');
+        $this->assertStringNotContainsString('gebucht', $none);
+        $this->assertStringNotContainsString('<svg', $none);
+
+        $one = $this->absenceItem($annaDrawer, 'Eins');
+        $this->assertStringContainsString('1 gebuchter Termin in dieser Zeit. Bitte weise ihn einer anderen Person zu oder sage ihn ab.', $one);
+        $this->assertStringContainsString($calendar($day(3)), $one);
+
+        $three = $this->absenceItem($annaDrawer, 'Drei');
+        $this->assertStringContainsString('3 gebuchte Termine in dieser Zeit. Bitte weise sie anderen Personen zu oder sage sie ab.', $three);
+        $this->assertStringContainsString($calendar($day(5)), $three);
+
+        $night = $this->absenceItem($this->drawerOf($html, $ben), 'Nacht');
+        $this->assertStringContainsString('1 gebuchter Termin in dieser Zeit.', $night);
+        $this->assertStringContainsString($calendar($day(12)), $night);
+
+        // Das Warnsymbol trägt keinen eigenen Vorlesetext: Der Satz steht sichtbar daneben.
+        $this->assertStringContainsString('<svg', $three);
+        $this->assertStringNotContainsString('<span class="sr-only">Termine in dieser Zeit</span>', $three);
+        $this->assertStringContainsString('title="Termine in dieser Zeit"', $three);
+        $this->assertStringContainsString('text-amber-700', $three);
+    }
+
+    public function test_the_absence_notes_come_from_one_query_for_the_whole_page(): void
+    {
+        $setup = $this->salon();
+        $timezone = $setup['location']->timezone;
+        $absenceFor = function (StaffMember $member, int $days) use ($setup, $timezone): void {
+            $from = CarbonImmutable::now($timezone)->addDays($days)->startOfDay();
+            StaffAbsence::create([
+                'tenant_id' => $setup['tenant']->id, 'staff_member_id' => $member->id,
+                'starts_at' => $from->utc(), 'ends_at' => $from->endOfDay()->utc(), 'reason' => 'Urlaub',
+            ]);
+            $this->appointment($setup, $member, ReservationStatus::Confirmed, $days);
+        };
+        $absenceFor($setup['member'], 2);
+        $this->clearTenantContext();
+
+        $measure = function () use ($setup): array {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $this->actingAs($setup['owner'])->get('/admin/staff')->assertOk();
+            $queries = collect(DB::getQueryLog())->pluck('query')->map(fn (string $sql) => strtolower($sql));
+
+            return [
+                $queries->count(),
+                $queries->filter(fn (string $sql) => str_contains($sql, 'from "reservations"') && str_contains($sql, '"staff_member_id" in'))->count(),
+            ];
+        };
+        // Die erste Anfrage lädt zusätzlich die Mitgliedschaft des Benutzers; sie zählt nicht mit.
+        $measure();
+        [$few, $fewReservationQueries] = $measure();
+
+        // Mehr Personen mit mehreren Abwesenheiten und Terminen: Die Zahl der Abfragen wächst nicht.
+        foreach (['Ben', 'Cem', 'Dora', 'Emil'] as $name) {
+            $person = $this->person($setup, $name);
+            foreach ([3, 6, 9] as $days) {
+                $absenceFor($person, $days);
+            }
+        }
+        $this->clearTenantContext();
+        [$many, $manyReservationQueries] = $measure();
+
+        $this->assertSame(1, $fewReservationQueries);
+        $this->assertSame(1, $manyReservationQueries);
+        $this->assertSame($few, $many);
     }
 
     public function test_the_page_uses_no_inline_handlers_or_scripts(): void
@@ -1221,6 +1340,24 @@ class StaffPageTest extends TestCase
         $this->assertSame(0, Reservation::withoutGlobalScopes()->count());
     }
 
+    public function test_the_admin_booking_names_the_next_step_for_a_person_who_is_not_available(): void
+    {
+        [$setup, $service, $day] = $this->bookableSalon();
+        $timezone = $setup['location']->timezone;
+        $from = CarbonImmutable::parse($day, $timezone)->startOfDay();
+        StaffAbsence::create([
+            'tenant_id' => $setup['tenant']->id, 'staff_member_id' => $setup['member']->id,
+            'starts_at' => $from->utc(), 'ends_at' => $from->endOfDay()->utc(), 'reason' => 'Urlaub',
+        ]);
+
+        $this->actingAs($setup['owner'])->from('/admin/reservations/create')->post('/admin/reservations', [
+            'service_ids' => [$service->id], 'staff_member_id' => $setup['member']->id, 'date' => $day, 'time' => '14:00', 'party_size' => 1, 'name' => 'Bea',
+        ])
+            ->assertRedirect('/admin/reservations/create')
+            ->assertSessionHasErrors(['staff_member_id' => 'Diese Person ist zu dem Zeitpunkt nicht verfügbar. Bitte eine andere Person oder eine andere Zeit wählen.']);
+        $this->assertSame(0, Reservation::withoutGlobalScopes()->count());
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -1290,6 +1427,34 @@ class StaffPageTest extends TestCase
             $this->assertNotFalse($insert);
             $this->assertTrue($day < $person && $person < $services && $services < $insert, 'Reihenfolge: Tag, Person, Leistungen, Anlegen');
         }
+    }
+
+    public function test_entering_an_absence_locks_the_person_before_the_insert_and_the_count_on_postgresql(): void
+    {
+        if (DB::getDriverName() !== 'pgsql') {
+            $this->markTestSkipped('Zeilensperren gibt es nur unter PostgreSQL (SQLite sperrt die ganze Datei).');
+        }
+
+        $setup = $this->salon();
+        $this->appointment($setup, $setup['member'], ReservationStatus::Confirmed, 1);
+        $this->clearTenantContext();
+        $day = CarbonImmutable::now($setup['location']->timezone)->addDay()->toDateString();
+
+        DB::enableQueryLog();
+        $this->actingAs($setup['owner'])->postJson("/admin/staff/{$setup['member']->id}/absences", ['starts_on' => $day, 'ends_on' => $day])->assertOk();
+
+        // Die Sperre (FOR UPDATE) hält gleichzeitige Buchungen der Person an (sie lesen sie mit FOR SHARE). Eintrag und Zählung
+        // laufen unter ihr, das Protokoll folgt nach dem Festschreiben; eine Buchung, die schon läuft, steht in der Zählung.
+        $queries = collect(DB::getQueryLog())->pluck('query')->map(fn (string $sql) => strtolower($sql))->values();
+        $lock = $queries->search(fn (string $sql) => str_contains($sql, 'from "staff_members"') && str_contains($sql, 'for update'));
+        $insert = $queries->search(fn (string $sql) => str_starts_with($sql, 'insert into "staff_absences"'));
+        $count = $queries->search(fn (string $sql) => str_contains($sql, 'from "reservations"') && str_contains($sql, 'count(*)'));
+        $audit = $queries->search(fn (string $sql) => str_starts_with($sql, 'insert into "audit_logs"'));
+        $this->assertNotFalse($lock);
+        $this->assertNotFalse($insert);
+        $this->assertNotFalse($count);
+        $this->assertNotFalse($audit);
+        $this->assertTrue($lock < $insert && $insert < $count && $count < $audit, 'Reihenfolge: Sperre, Eintrag, Zählung, Protokoll');
     }
 
     public function test_assigning_a_person_later_refuses_a_removed_one(): void

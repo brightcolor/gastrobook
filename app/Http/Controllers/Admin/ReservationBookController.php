@@ -457,7 +457,7 @@ class ReservationBookController extends Controller
                     if ($staff !== null
                         && ! $force
                         && ! $this->salonAvailability->isStaffAvailableForServices($staff, $services, $startLocal->utc(), $location)) {
-                        return back()->withErrors(['staff_member_id' => __('Diese Person ist zu dem Zeitpunkt nicht verfügbar.')])->withInput();
+                        return back()->withErrors(['staff_member_id' => __('Diese Person ist zu dem Zeitpunkt nicht verfügbar. Bitte eine andere Person oder eine andere Zeit wählen.')])->withInput();
                     }
                 } else {
                     $staff = $this->salonAvailability->firstAvailableStaffForServices($services, $startLocal->utc(), $location);

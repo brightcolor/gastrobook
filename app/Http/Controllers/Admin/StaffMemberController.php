@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\ReservationStatus;
 use App\Http\Controllers\Admin\Settings\Concerns\RespondsToSettingsForms;
 use App\Http\Controllers\Controller;
+use App\Models\Location;
 use App\Models\Reservation;
 use App\Models\Service;
 use App\Models\StaffAbsence;
@@ -49,9 +50,12 @@ class StaffMemberController extends Controller
             ->with(['services', 'workingHours', 'absences' => fn ($query) => $query->where('ends_at', '>=', now())->orderBy('starts_at')])
             ->get();
 
+        $members = $this->inOrder($members);
+
         return view('admin.staff.index', [
             'location' => $location,
-            'members' => $this->inOrder($members),
+            'members' => $members,
+            'absenceNotes' => $this->absenceNotes($location, $members),
             'services' => $this->inOrder(Service::where('location_id', $location->id)->where('is_active', true)->get()),
             'defaultColor' => config('swayy.ui.default_staff_color'),
             'limits' => (array) config('swayy.salon'),
@@ -232,13 +236,27 @@ class StaffMemberController extends Controller
             return $this->refuse($request, ['ends_time' => __('Das Ende der Abwesenheit liegt vor dem Beginn. Bitte Datum oder Uhrzeit des Endes später wählen.')]);
         }
 
-        $absence = StaffAbsence::create([
-            'tenant_id' => $member->tenant_id,
-            'staff_member_id' => $member->id,
-            'starts_at' => $startsLocal->utc(),
-            'ends_at' => $endsLocal->utc(),
-            'reason' => $validated['reason'] ?? null,
-        ]);
+        // Eintragen und Zählen laufen unter der Sperre der Person (FOR UPDATE), wie das Löschen: Eine Buchung, die die Person
+        // gerade liest (FOR SHARE), steht danach in der Zählung, und eine Buchung danach findet die Abwesenheit.
+        $booked = 0;
+        $absence = DB::transaction(function () use ($member, $startsLocal, $endsLocal, $validated, &$booked): StaffAbsence {
+            $locked = StaffMember::whereKey($member->id)->where('location_id', $member->location_id)->lockForUpdate()->first();
+            abort_if($locked === null, 404);
+
+            $absence = StaffAbsence::create([
+                'tenant_id' => $locked->tenant_id,
+                'staff_member_id' => $locked->id,
+                'starts_at' => $startsLocal->utc(),
+                'ends_at' => $endsLocal->utc(),
+                'reason' => $validated['reason'] ?? null,
+            ]);
+            $booked = (int) $this->activeAppointments($locked)
+                ->where('start_at', '<', $endsLocal->utc())
+                ->where('end_at', '>', $startsLocal->utc())
+                ->count();
+
+            return $absence;
+        });
 
         // Das Protokoll hält die Zeiten so fest, wie der Betrieb sie eingetragen hat (Ortszeit).
         $this->audit->log('staff_member.absence_created', $absence, null, [
@@ -250,10 +268,6 @@ class StaffMemberController extends Controller
         $message = __('Abwesenheit für „:name“ eingetragen.', ['name' => $member->name]);
 
         // Die Abwesenheit sperrt neue Buchungen; vorhandene Termine in dieser Zeit bleiben bestehen und brauchen eine andere Person.
-        $booked = (int) $this->activeAppointments($member)
-            ->where('start_at', '<', $endsLocal->utc())
-            ->where('end_at', '>', $startsLocal->utc())
-            ->count();
         if ($booked > 0) {
             $message .= ' '.trans_choice(
                 'In dieser Zeit ist noch :count Termin gebucht. Bitte weise ihn einer anderen Person zu oder sage ihn ab.|In dieser Zeit sind noch :count Termine gebucht. Bitte weise sie anderen Personen zu oder sage sie ab.',
@@ -306,17 +320,65 @@ class StaffMemberController extends Controller
     }
 
     /**
-     * Kommende und laufende Termine (ihr Ende ist noch nicht erreicht), die der Person zugewiesen sind. Der Löschschutz und der
-     * Hinweis zur Abwesenheit zählen mit derselben Abfrage.
+     * Kommende und laufende Termine eines Standorts (ihr Ende ist noch nicht erreicht, aktive Status). Der Löschschutz, die
+     * Antwort auf eine neue Abwesenheit und die Liste der Abwesenheiten zählen mit derselben Grundlage.
+     *
+     * @return Builder<Reservation>
+     */
+    private function activeAppointmentsAt(int $locationId): Builder
+    {
+        return Reservation::where('location_id', $locationId)
+            ->where('end_at', '>=', now())
+            ->whereIn('status', ReservationStatus::activeStatuses());
+    }
+
+    /**
+     * Die kommenden und laufenden Termine der Person.
      *
      * @return Builder<Reservation>
      */
     private function activeAppointments(StaffMember $member): Builder
     {
-        return Reservation::where('location_id', $member->location_id)
-            ->where('staff_member_id', $member->id)
-            ->where('end_at', '>=', now())
-            ->whereIn('status', ReservationStatus::activeStatuses());
+        return $this->activeAppointmentsAt($member->location_id)->where('staff_member_id', $member->id);
+    }
+
+    /**
+     * Zu jeder kommenden Abwesenheit der gelisteten Personen die Zahl der aktiven Termine, die in ihre Zeit fallen, und der erste
+     * betroffene Tag (Ortszeit). Eine Abfrage für die ganze Seite; zugeordnet wird in PHP.
+     *
+     * @param  Collection<int, StaffMember>  $members  mit geladenen Abwesenheiten
+     * @return array<int, array{count: int, date: string}> Kennung der Abwesenheit => Hinweis
+     */
+    private function absenceNotes(Location $location, Collection $members): array
+    {
+        $absences = $members->flatMap(fn (StaffMember $member) => $member->absences);
+        if ($absences->isEmpty()) {
+            return [];
+        }
+
+        $booked = $this->activeAppointmentsAt($location->id)
+            ->whereIn('staff_member_id', $members->pluck('id')->all())
+            ->where('start_at', '<', $absences->max('ends_at'))
+            ->where('end_at', '>', $absences->min('starts_at'))
+            ->get(['id', 'staff_member_id', 'start_at', 'end_at'])
+            ->groupBy('staff_member_id');
+
+        $notes = [];
+        foreach ($members as $member) {
+            foreach ($member->absences as $absence) {
+                $hits = $booked->get($member->id, new Collection)
+                    ->filter(fn (Reservation $reservation) => $reservation->start_at->lt($absence->ends_at) && $reservation->end_at->gt($absence->starts_at));
+                if ($hits->isEmpty()) {
+                    continue;
+                }
+
+                // Beginnt der Termin vor der Abwesenheit, ist der Beginn der Abwesenheit der erste betroffene Zeitpunkt.
+                $first = $hits->map(fn (Reservation $reservation) => $reservation->start_at->max($absence->starts_at))->min();
+                $notes[$absence->id] = ['count' => $hits->count(), 'date' => $first->copy()->setTimezone($location->timezone)->toDateString()];
+            }
+        }
+
+        return $notes;
     }
 
     private function upcomingAppointments(StaffMember $member): int

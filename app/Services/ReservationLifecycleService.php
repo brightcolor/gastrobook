@@ -261,7 +261,7 @@ class ReservationLifecycleService
             }
 
             // Mehrere Leistungen: Reihenfolge und Werte zum Zeitpunkt der Buchung stehen mit dem Termin fest, solange die
-            // Leistungen gesperrt sind. Diese Stelle schreibt die Zuordnung allein; die Aufrufer schreiben sie nicht noch einmal.
+            // Leistungen gesperrt sind. Diese Stelle schreibt die Zuordnung allein.
             $composition = collect($data['service_ids'] ?? [])->map(fn ($id) => (int) $id)->filter()->unique()->values();
             if ($composition->isNotEmpty()) {
                 $reservation->services()->sync($composition->mapWithKeys(fn (int $id, int $position) => [
