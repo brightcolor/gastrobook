@@ -316,6 +316,9 @@
     let activeTags = @json($reservation->tags->pluck('id')->values());
     let allTags = [];
 
+    // Tag-Namen und Farben stammen aus Eingaben des Teams und kommen maskiert ins HTML.
+    function esc(s) { return (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
     async function loadTags() {
         const res = await fetch(indexUrl, { headers: { Accept: 'application/json' } });
         if (res.ok) allTags = await res.json();
@@ -343,7 +346,7 @@
             pill.style.background = tag.color + '22';
             pill.style.color = tag.color;
             pill.dataset.id = tag.id;
-            pill.innerHTML = `${tag.name} <button class="tag-remove ml-0.5 opacity-60 hover:opacity-100" data-id="${tag.id}">✕</button>`;
+            pill.innerHTML = `${esc(tag.name)} <button class="tag-remove ml-0.5 opacity-60 hover:opacity-100" data-id="${esc(tag.id)}">✕</button>`;
             btn.before(pill);
         });
         container.querySelectorAll('.tag-remove').forEach(b => b.addEventListener('click', () => {
@@ -358,8 +361,8 @@
         list.innerHTML = allTags.map(tag => {
             const active = activeTags.includes(tag.id);
             return `<button class="tag-pick rounded-full px-2.5 py-1 font-semibold ring-1 transition"
-                            style="background:${active ? tag.color + '22' : 'transparent'};color:${tag.color};ring-color:${tag.color}"
-                            data-id="${tag.id}">${tag.name}</button>`;
+                            style="background:${active ? esc(tag.color) + '22' : 'transparent'};color:${esc(tag.color)};ring-color:${esc(tag.color)}"
+                            data-id="${esc(tag.id)}">${esc(tag.name)}</button>`;
         }).join('');
         list.querySelectorAll('.tag-pick').forEach(b => b.addEventListener('click', () => {
             const id = +b.dataset.id;

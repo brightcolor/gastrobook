@@ -1478,6 +1478,9 @@ document.getElementById('addDurationRule')?.addEventListener('click', () => {
     const updateBase = @json(url('/admin/tags'));
     let tags = [];
 
+    // Tag-Namen und Farben stammen aus Eingaben des Teams und kommen maskiert ins HTML.
+    function esc(s) { return (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
     async function loadTags() {
         const res = await fetch(indexUrl, { headers: { Accept: 'application/json' } });
         if (res.ok) { tags = await res.json(); renderTags(); }
@@ -1489,10 +1492,10 @@ document.getElementById('addDurationRule')?.addEventListener('click', () => {
         list.innerHTML = tags.length
             ? tags.map(t => `
                 <span class="flex items-center gap-1.5 rounded-full px-3 py-1 font-semibold text-sm"
-                      style="background:${t.color}22;color:${t.color}">
-                    ${t.name}
-                    <button class="tag-edit opacity-60 hover:opacity-100" data-id="${t.id}" title="Umbenennen">✎</button>
-                    <button class="tag-del opacity-60 hover:opacity-100" data-id="${t.id}" title="Löschen">✕</button>
+                      style="background:${esc(t.color)}22;color:${esc(t.color)}">
+                    ${esc(t.name)}
+                    <button class="tag-edit opacity-60 hover:opacity-100" data-id="${esc(t.id)}" title="Umbenennen">✎</button>
+                    <button class="tag-del opacity-60 hover:opacity-100" data-id="${esc(t.id)}" title="Löschen">✕</button>
                 </span>`).join('')
             : '<span class="text-sm text-stone-400">Noch keine Tags angelegt.</span>';
 

@@ -1158,6 +1158,9 @@
     let combosData = @json($combosJson);
     let editingId = null;
 
+    // Namen von Kombinationen und Tischen stammen aus Eingaben des Teams und kommen maskiert ins HTML.
+    function esc(s) { return (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
     // ── Capacity suggestion ───────────────────────────────────────────────
     // Returns how many of a rect table's narrow-end (Stirnseite) seats exist.
     // Mirrors chairsHtml: elongated rects with odd seat count get 1 head;
@@ -1225,8 +1228,8 @@
         list.innerHTML = combosData.map(c => `
             <div class="combo-row flex items-start justify-between gap-2 rounded-xl border border-stone-100 bg-stone-50 px-3 py-2.5">
                 <div class="min-w-0">
-                    <p class="font-semibold text-stone-800">${c.name}</p>
-                    <p class="mt-0.5 text-xs text-stone-500">${c.tables.map(t => t.name).join(' + ')} · ${c.min_capacity}–${c.max_capacity} Personen</p>
+                    <p class="font-semibold text-stone-800">${esc(c.name)}</p>
+                    <p class="mt-0.5 text-xs text-stone-500">${c.tables.map(t => esc(t.name)).join(' + ')} · ${esc(c.min_capacity)}–${esc(c.max_capacity)} Personen</p>
                 </div>
                 ${canEdit ? `<div class="flex shrink-0 gap-1">
                     <button class="combo-edit fp-mini fp-mini-ghost !py-1 !px-2 text-teal-600 hover:!border-teal-300 hover:bg-teal-50" data-id="${c.id}" title="Kombination bearbeiten">✎</button>
