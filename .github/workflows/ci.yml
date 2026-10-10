@@ -95,9 +95,11 @@ jobs:
           php artisan key:generate
 
       # phpunit.pgsql.xml erzwingt DB_CONNECTION=pgsql; die übrigen DB_*-Werte
-      # kommen aus der Umgebung dieses Jobs.
+      # kommen aus der Umgebung dieses Jobs. Aufruf über vendor/bin/phpunit:
+      # php artisan test hängt selbst phpunit.xml als Konfiguration an, und die
+      # doppelte Angabe quittiert PHPUnit mit einer Warnung und Exit-Code 1.
       - name: Run tests (PostgreSQL)
-        run: php artisan test --configuration=phpunit.pgsql.xml
+        run: vendor/bin/phpunit -c phpunit.pgsql.xml
 
   frontend:
     runs-on: ubuntu-latest

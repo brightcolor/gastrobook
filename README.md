@@ -766,8 +766,12 @@ Vorgabe ist `gastrobook_test` auf `127.0.0.1:5432` mit Benutzer und Passwort
 docker run -d --rm --name gastrobook-pgtest -p 127.0.0.1:5432:5432 \
   -e POSTGRES_DB=gastrobook_test -e POSTGRES_USER=gastrobook -e POSTGRES_PASSWORD=gastrobook \
   postgres:17-alpine
-php artisan test --configuration=phpunit.pgsql.xml
+vendor/bin/phpunit -c phpunit.pgsql.xml
 ```
+
+Der Aufruf läuft über `vendor/bin/phpunit`, weil `php artisan test` selbst
+`phpunit.xml` als Konfiguration anhängt; eine zweite Angabe beendet den Lauf
+mit einer Warnung und Exit-Code 1.
 
 CI: GitHub Actions (`.github/workflows/ci.yml`) mit Pint, Larastan, Tests unter
 SQLite (PHP 8.3 bis 8.5) und PostgreSQL 17 (PHP 8.4, Job `tests-pgsql`) und dem

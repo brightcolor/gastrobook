@@ -4,11 +4,12 @@
     testet mit SQLite im Speicher; manche Fehler zeigen sich aber nur unter
     PostgreSQL (Spaltenlängen, abgebrochene Transaktionen).
 
-    Aufruf: php artisan test mit der Option configuration=phpunit.pgsql.xml
-    (zwei Bindestriche davor; XML-Kommentare dürfen sie nicht enthalten).
+    Aufruf: vendor/bin/phpunit -c phpunit.pgsql.xml
+    php artisan test hängt selbst phpunit.xml als Konfiguration an; eine zweite
+    Angabe quittiert PHPUnit mit einer Warnung und Exit-Code 1.
 
     DB_CONNECTION ist erzwungen. Host, Port, Datenbank und Zugang sind Vorgaben,
-    die Umgebungsvariablen überschreiben (DB_HOST=… DB_PORT=… php artisan test …).
+    die Umgebungsvariablen überschreiben (DB_HOST=… DB_PORT=… vendor/bin/phpunit …).
     Achtung: RefreshDatabase leert die Datenbank vollständig. Sie muss eine
     eigene Testdatenbank sein.
 -->
