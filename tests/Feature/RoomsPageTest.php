@@ -606,7 +606,7 @@ class RoomsPageTest extends TestCase
         $this->assertStringContainsString('data-ajax data-reset-after-save data-reload-after-save', $form[0]);
         $this->assertDoesNotMatchRegularExpression('/<form[^>]*data-savebar/', $html);
         $this->assertStringContainsString('<input type="hidden" name="room_id" value="'.$room->id.'">', $html);
-        // Maße des Raums stehen ohne überflüssige Nullen im Feld.
+        // Die Maße des Raums stehen als Zahl im Feld (8,5 m als 8.5, 12 m als 12).
         $this->assertMatchesRegularExpression('/name="plan_width_m"[^>]*value="8\.5"/', $html);
         $this->assertMatchesRegularExpression('/name="plan_height_m"[^>]*value="12"/', $html);
         // Die Kombination führt ihre Tische angehakt auf, die Tische vor dem Löschen eine Rückfrage.
