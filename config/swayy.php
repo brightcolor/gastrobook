@@ -503,7 +503,8 @@ return [
     | default_staff_color: Kalenderfarbe, die „Person hinzufügen“ im Salon
     | vorschlägt. default_label_color: Farbe für neue Tags und Leistungen.
     | widget_label_max: längster Text auf dem Buchungsknopf und dem Link, den
-    | „Buchungsseite & Widget“ erzeugt, in Zeichen.
+    | „Buchungsseite & Widget“ erzeugt, in Zeichen. tag_name_max: längster
+    | Name eines Tags in Zeichen (10–255; die Spalte fasst 255).
     |
     */
     'ui' => [
@@ -513,5 +514,6 @@ return [
         'default_staff_color' => EnvSetting::hexColor('SWAYY_UI_DEFAULT_STAFF_COLOR', default: '#0f766e'),
         'default_label_color' => EnvSetting::hexColor('SWAYY_UI_DEFAULT_LABEL_COLOR', default: '#6b7280'),
         'widget_label_max' => EnvSetting::integer('SWAYY_UI_WIDGET_LABEL_MAX', default: 40, min: 10, max: 100),
+        'tag_name_max' => EnvSetting::integer('SWAYY_UI_TAG_NAME_MAX', default: 40, min: 10, max: 255),
     ],
 ];

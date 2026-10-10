@@ -83,7 +83,7 @@ class SettingsFormErrorsTest extends TestCase
                 'max_capacity', 'Höchstkapazität muss mindestens 4 sein.'],
             'Tag anlegen' => ['POST', '/admin/tags',
                 ['name' => '', 'color' => '#aa3300'],
-                'name', 'Name ist ein Pflichtfeld.'],
+                'name', 'Bitte gib dem Tag einen Namen.'],
             'Stripe ohne Secret Key' => ['PUT', '/admin/settings/stripe',
                 ['webhook_secret' => 'whsec_test', 'enabled' => '1'],
                 'secret_key', 'Der Secret Key fehlt. Bitte ihn aus dem Stripe-Dashboard unter Developers → API keys eintragen.'],

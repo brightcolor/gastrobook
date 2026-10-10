@@ -111,8 +111,8 @@ return [
                 'keywords' => ['Formularfelder' => 'felder', 'Pflichtfeld' => 'felder', 'Telefon' => 'felder', 'Anlass' => 'felder', 'Allergien' => 'felder']],
             ['key' => 'booking-page', 'label' => 'Buchungsseite & Widget', 'route' => 'admin.settings.booking-page.show', 'scope' => 'location', 'can' => ['tables.manage'],
                 'keywords' => ['Buchungsseite' => 'buchungsseite', 'Konfetti' => 'buchungsseite', 'Öffentlicher Tischplan' => 'buchungsseite', 'Website-Widget' => 'popup', 'Popup' => 'popup', 'Einbinden' => 'eingebettet', 'Direktlink' => 'direktlink']],
-            ['key' => 'tags', 'label' => 'Tags', 'route' => 'admin.settings.index', 'fragment' => 'raeume', 'active' => [], 'scope' => 'tenant', 'can' => ['tables.manage'],
-                'keywords' => ['Tags', 'Markierung', 'VIP', 'Allergie']],
+            ['key' => 'tags', 'label' => 'Tags', 'route' => 'admin.settings.tags.show', 'scope' => 'tenant', 'can' => ['tables.manage'],
+                'keywords' => ['Tags', 'Markierung', 'VIP', 'Allergie', 'Neuer Tag' => 'tag-neu']],
         ]],
         ['label' => 'Gästekommunikation', 'items' => [
             ['key' => 'notifications', 'label' => 'Benachrichtigungen', 'route' => 'admin.settings.index', 'fragment' => 'buchungsregeln', 'active' => [], 'scope' => 'location', 'can' => ['tables.manage'],
