@@ -227,10 +227,11 @@ class WaitlistService
             Mail::to($entry->guest_email)->queue(app(GuestMailSender::class)->toGuest(
                 __('Ein Tisch ist frei geworden – :location', ['location' => $location->name]),
                 $du
-                    ? __("Hallo :name,\n\nfür :date um :time Uhr ist ein Tisch für :party Personen frei geworden.\n\nBitte bestätige innerhalb von :minutes Minuten:\n:link\n\n:location", $vars)
-                    : __("Hallo :name,\n\nfür :date um :time Uhr ist ein Tisch für :party Personen frei geworden.\n\nBitte bestätigen Sie innerhalb von :minutes Minuten:\n:link\n\n:location", $vars),
+                    ? __("Hallo :name,\n\nfür :date um :time Uhr ist ein Tisch für :party Personen frei geworden. Bestätige bitte innerhalb von :minutes Minuten, dann halten wir ihn für dich.\n\nTisch bestätigen: :link\n\n:location", $vars)
+                    : __("Hallo :name,\n\nfür :date um :time Uhr ist ein Tisch für :party Personen frei geworden. Bitte bestätigen Sie innerhalb von :minutes Minuten, dann halten wir ihn für Sie.\n\nTisch bestätigen: :link\n\n:location", $vars),
                 $location->tenant()->withoutGlobalScopes()->first(),
                 $location,
+                type: 'waitlist_offer',
             )->afterCommit());
         }
 

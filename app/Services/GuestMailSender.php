@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Mail\Layout\MailFrameFactory;
 use App\Mail\TemplatedMail;
 use App\Models\Location;
 use App\Models\Reservation;
@@ -62,15 +63,17 @@ class GuestMailSender
     }
 
     /**
-     * Mail an einen Gast: Name des Betriebs, Antworten an den Betrieb.
+     * Mail an einen Gast: Name des Betriebs, Antworten an den Betrieb, Rahmen
+     * im Auftritt des Betriebs. $type wählt Überschrift und Grund (lang/de/mails.php).
      */
-    public function toGuest(string $subject, string $body, ?Tenant $tenant, ?Location $location, ?Reservation $reservation = null): TemplatedMail
+    public function toGuest(string $subject, string $body, ?Tenant $tenant, ?Location $location, ?Reservation $reservation = null, string $type = 'guest', ?string $unsubscribeUrl = null): TemplatedMail
     {
         return new TemplatedMail(
             $subject,
             $body,
             $this->fromName($tenant, $location),
             $this->relayReplyTo($tenant, $reservation) ?? $this->replyTo($tenant, $location),
+            app(MailFrameFactory::class)->forGuest($type, $tenant, $location, [], $unsubscribeUrl),
         );
     }
 

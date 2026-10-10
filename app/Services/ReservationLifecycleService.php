@@ -543,11 +543,12 @@ class ReservationLifecycleService
                     ? __('Tischänderung zu deiner Reservierung :code – :loc', $vars)
                     : __('Tischänderung zu Ihrer Reservierung :code – :loc', $vars),
                 $du
-                    ? __("Hallo :name,\n\nzu deiner Reservierung am :date um :time Uhr haben wir dir statt deines Wunschtisches Tisch :tables zugewiesen, damit alles optimal passt. An deiner Reservierung ändert sich sonst nichts.\n\nBei Fragen melde dich gerne.\n\n:loc", $vars)
-                    : __("Hallo :name,\n\nzu Ihrer Reservierung am :date um :time Uhr haben wir Ihnen statt Ihres Wunschtisches Tisch :tables zugewiesen, damit alles optimal passt. An Ihrer Reservierung ändert sich sonst nichts.\n\nBei Fragen melden Sie sich gerne.\n\n:loc", $vars),
+                    ? __("Hallo :name,\n\nwir haben dir einen anderen Tisch zugewiesen, damit alles gut passt. Sonst bleibt deine Reservierung, wie sie ist.\n\nDatum: :date\nUhrzeit: :time Uhr\nTisch: :tables\nReservierungsnummer: :code\n\nBei Fragen melde dich gern.\n:loc", $vars)
+                    : __("Hallo :name,\n\nwir haben Ihnen einen anderen Tisch zugewiesen, damit alles gut passt. Sonst bleibt Ihre Reservierung, wie sie ist.\n\nDatum: :date\nUhrzeit: :time Uhr\nTisch: :tables\nReservierungsnummer: :code\n\nBei Fragen melden Sie sich gern.\n:loc", $vars),
                 $tenant,
                 $location,
                 $reservation,
+                'reservation_table_changed',
             ));
 
             $reservation->update(['table_chosen_by_guest' => false]);
@@ -922,7 +923,7 @@ class ReservationLifecycleService
         $location = $reservation->location()->withoutGlobalScope('tenant')->first();
 
         Mail::to($reservation->guest_email_snapshot)->queue(
-            $this->mailSender->toGuest($rendered['subject'], $rendered['body'], $tenant, $location, $reservation)
+            $this->mailSender->toGuest($rendered['subject'], $rendered['body'], $tenant, $location, $reservation, $templateKey)
         );
 
         NotificationLog::withoutGlobalScopes()->create([
