@@ -10,6 +10,7 @@ use App\Provisioning\Outcome;
 use App\Provisioning\ProvisioningError;
 use App\Provisioning\ProvisioningService;
 use App\Provisioning\RequestCheck;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -107,6 +108,14 @@ class ProvisioningController extends Controller
             });
         } catch (ProvisioningError $fehler) {
             return response()->json($fehler->body(), $fehler->status);
+        } catch (QueryException $fehler) {
+            // Die Transaktion ist zurueckgerollt, Kennung eingeschlossen. 5xx
+            // gilt im Vertrag als voruebergehend: Das Panel wiederholt den
+            // Aufruf nach Plan, erst nach dem letzten Versuch wird es ein Fall.
+            report($fehler);
+            $antwort = new ProvisioningError(503, 'database_unavailable', 'Swayy konnte den Aufruf gerade nicht in seiner Datenbank festhalten; es wurde nichts geändert. Wiederhole ihn später mit derselben Kennung. Bleibt der Fehler, steht die Ursache im Serverlog von Swayy.');
+
+            return response()->json($antwort->body(), $antwort->status, [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         }
 
         foreach ($ergebnis->afterCommit as $schritt) {

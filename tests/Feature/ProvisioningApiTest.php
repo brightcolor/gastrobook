@@ -13,10 +13,14 @@ use App\Models\Room;
 use App\Models\Tenant;
 use App\Models\TenantUser;
 use App\Models\User;
+use App\Provisioning\Idempotency;
 use App\Provisioning\Signature;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Testing\TestResponse;
@@ -191,6 +195,57 @@ final class ProvisioningApiTest extends TestCase
         $kopf = ['Idempotency-Key' => 'freigabe-1'];
         $this->api('POST', '/accounts/fbtest-9/approve', [], null, $kopf)->assertStatus(404);
         $this->assertSame(0, DB::table('provisioning_requests')->where('idempotency_key', 'freigabe-1')->count());
+    }
+
+    public function test_gleichzeitiger_aufruf_mit_derselben_kennung_bekommt_die_antwort_des_ersten(): void
+    {
+        $koerper = json_encode($this->account(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $ersteAntwort = ['contract' => 'fbtest-1', 'stand' => 'vom ersten Aufruf'];
+
+        // Der erste Aufruf schreibt seinen Eintrag genau zwischen Nachsehen und
+        // Eintragen des zweiten. Der zweite läuft in den eindeutigen Index.
+        $eingetragen = false;
+        DB::listen(function (QueryExecuted $abfrage) use (&$eingetragen, $koerper, $ersteAntwort) {
+            if ($eingetragen || ! str_starts_with($abfrage->sql, 'select') || ! str_contains($abfrage->sql, 'provisioning_requests')) {
+                return;
+            }
+            $eingetragen = true;
+            DB::table('provisioning_requests')->insert([
+                'idempotency_key' => 'gleiche-kennung',
+                'request_hash' => Idempotency::requestHash('POST', '/provisioning/v1/accounts', (string) $koerper),
+                'status_code' => 201,
+                'response' => json_encode($ersteAntwort),
+                'created_at' => now(),
+            ]);
+        });
+
+        $this->api('POST', '/accounts', $this->account(), null, ['Idempotency-Key' => 'gleiche-kennung'])
+            ->assertCreated()
+            ->assertExactJson($ersteAntwort);
+        $this->assertSame(0, Tenant::count());
+    }
+
+    public function test_datenbankfehler_beim_eintragen_der_kennung_gibt_503_zum_wiederholen(): void
+    {
+        Exceptions::fake();
+
+        // Ein Fehler ohne Schlüsselkonflikt, etwa eine abgerissene Verbindung.
+        // Auf 5xx wiederholt das Panel den Aufruf nach Plan; auf 409 legt es
+        // sofort einen Fall „Zu prüfen“ an.
+        DB::connection()->beforeExecuting(function (string $sql, array $bindings) {
+            if (str_starts_with($sql, 'insert') && str_contains($sql, 'provisioning_requests')) {
+                throw new QueryException((string) config('database.default'), $sql, $bindings, new \PDOException('SQLSTATE[08006]: connection failure'));
+            }
+        });
+
+        $this->api('POST', '/accounts', $this->account(), null, ['Idempotency-Key' => 'kennung-1'])
+            ->assertStatus(503)
+            ->assertJsonPath('error.code', 'database_unavailable')
+            ->assertJsonPath('error.message', fn (string $satz) => str_contains($satz, 'derselben Kennung'));
+
+        Exceptions::assertReported(QueryException::class);
+        $this->assertSame(0, Tenant::count());
+        $this->assertSame(0, DB::table('provisioning_requests')->count());
     }
 
     public function test_aendernder_aufruf_ohne_kennung_und_kein_objekt(): void

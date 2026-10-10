@@ -12,6 +12,10 @@ und Kündigung neuer Betriebe.
   Betrieb anlegen und übernehmen, Stand, Freigabe, Sperre, Kündigung samt
   Rücknahme, Tarif mit Prüfung und Erzwingen, Anmeldelink, Löschen. Signiert mit
   HMAC, Drossel nach Fehlversuchen, Antworten je Aufrufkennung wiederholbar.
+- Ein Datenbankfehler während eines Aufrufs kommt als 503 `database_unavailable`
+  mit Satz im Vertragsformat an und steht im Serverlog. Das Panel wiederholt
+  den Aufruf dann nach Plan. 409 `idempotency_busy` bleibt dem echten
+  Kennungskonflikt vorbehalten.
 - Betriebe mit Vertrag: Zustand und die Grenzen „Standorte“ und „Tische“ aus dem
   Panel, keine eigene Probefrist, Sperrseite mit Weg in den Kundenbereich.
 - „Zum Dienst“ meldet den Inhaber über einen einmaligen Link an; „Tarif und

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Provisioning;
 
-use Illuminate\Database\QueryException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -45,8 +45,10 @@ final class Idempotency
                 'status_code' => 0,
                 'created_at' => now(),
             ]));
-        } catch (QueryException) {
+        } catch (UniqueConstraintViolationException) {
             // Ein gleichzeitiger Aufruf war schneller; seine Antwort gilt.
+            // Andere Datenbankfehler gehen weiter an den Controller, der mit
+            // 503 antwortet; das Panel wiederholt den Aufruf dann.
             $bekannt = $this->find($key);
             if ($bekannt === null) {
                 throw new ProvisioningError(409, 'idempotency_busy', 'Ein Aufruf mit dieser Kennung läuft gerade. Wiederhole ihn gleich mit derselben Kennung.');
