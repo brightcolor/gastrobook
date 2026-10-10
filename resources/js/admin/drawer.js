@@ -15,6 +15,11 @@
 // speichern für sich, die Seitenleiste bleibt dann offen. Geänderte
 // Formulare in der offenen Seitenleiste tragen data-dirty; ein angefordertes
 // Neuladen (forms.js) wartet, bis sie gespeichert oder verworfen sind.
+// Das Speichern des Hauptformulars schließt die Seitenleiste nur, wenn kein
+// weiteres Formular ungespeicherte Eingaben trägt. Sonst bleibt sie offen, und
+// der Hinweis nennt die Abschnitte, die noch offen sind: ihren Namen aus
+// data-drawer-section am Formular, sonst aus der Überschrift (h2 bis h4) des
+// umgebenden Abschnitts (section).
 
 import { focusables } from './dom.js';
 import { snapshot } from './forms.js';
@@ -41,6 +46,18 @@ function trackChange(e) {
     const form = formOf(e.target);
     if (!current || !(form instanceof HTMLFormElement) || !current.drawer.contains(form)) return;
     form.toggleAttribute('data-dirty', snapshot(form) !== baselines.get(form));
+}
+
+// Name des Abschnitts, den ein Formular in der Seitenleiste vertritt.
+function sectionOf(form) {
+    return form.dataset.drawerSection
+        || form.closest('section')?.querySelector('h2, h3, h4')?.textContent.trim()
+        || 'weitere Eingaben';
+}
+
+// Hinweis nach dem Speichern des Hauptformulars, solange andere Formulare offen sind.
+function pendingNote(names) {
+    return `Noch nicht gespeichert: ${names.join(' und ')}. Speichern oder mit „Abbrechen“ verwerfen.`;
 }
 
 // Sperrt alles außer der Seitenleiste: auf jeder Ebene von ihr bis zum
@@ -157,8 +174,19 @@ export function initDrawers() {
         const form = e.target;
         if (!current || !(form instanceof HTMLFormElement) || !current.drawer.contains(form)) return;
         if (closesOnSave(current.drawer, form)) {
-            close();
-            return;
+            const pending = [...current.drawer.querySelectorAll('form[data-dirty]')].filter((other) => other !== form);
+            if (pending.length === 0) {
+                close();
+                return;
+            }
+            // Das Zurücksetzen beim Schließen verwürfe die Eingaben der übrigen Formulare. Die Seitenleiste bleibt offen;
+            // forms.js zeigt danach detail.message, darum steht der Hinweis in derselben Meldung.
+            const note = pendingNote([...new Set(pending.map(sectionOf))]);
+            if (typeof e.detail?.message === 'string') {
+                e.detail.message = `${e.detail.message} ${note}`;
+            } else {
+                showToast(note);
+            }
         }
         baselines.set(form, snapshot(form));
         form.removeAttribute('data-dirty');
