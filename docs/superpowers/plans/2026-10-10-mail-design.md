@@ -34,6 +34,15 @@
 4. **Logo kaputt, zu groß, SVG oder WebP:** immer Wortmarke, nie eine Ausnahme beim Versand. Test: Task 4 (`test_logo_location_first_then_tenant_and_only_supported_files`).
 5. **Unsaubere Vorlagen der Betriebe:** Windows-Zeilenenden, Leerzeichen am Zeilenende, Leerzeilen-Ketten und leere Platzhalter ergeben eine saubere Mail ohne verwaiste Bezeichnungen. Tests: Task 3 (`test_windows_line_endings_trailing_spaces_and_blank_runs_are_normalized`), Task 6 (`test_lines_with_empty_placeholder_disappear`).
 
+## Entscheidungen beim Planen
+
+- Ruling: Das Swayy-Logo gibt es in einer Fassung auf heller Plakette (wie Betriebs-Logos), ohne eigene Dunkel-Fassung — ein Umschalten zweier Bilder bräuchte `display:none`, das die Spec für Spamfilter ausschließt — kostet bei Irrtum: im Dunkelmodus eine helle Plakette um das Logo.
+- Ruling: „Reserviert mit Swayy“ im Fußbereich als Text im Fraunces-Stapel (ohne Webfont also Georgia), kein Bild — ein dunkles Schriftzug-Bild wäre im Dunkelmodus unsichtbar — kostet bei Irrtum: Serifenschrift aus dem System statt Fraunces an dieser einen Stelle.
+- Ruling: Knöpfe im Swayy-Auftritt nur für eigene Adressen; weitergeleitete Gast-Antworten und Kontaktanfragen ohne Struktur-Erkennung — sonst würden Gast-Eingaben zu Swayy-Knöpfen (Phishing) — kostet bei Irrtum: ein fremder Link bleibt Textlink.
+- Ruling: Zusätzliche Mailart `reservation_table_changed` (beim Lesen des Codes gefunden), zusätzliche Einstellungen `SWAYY_MAIL_BUTTON_LABEL_MAX`, `SWAYY_GUEST_*_LINK_MINUTES`, `SWAYY_BILLING_CONFIRM_HOURS` — berührte Stellen ziehen feste Werte in Einstellungen — kostet bei Irrtum: drei Einträge mehr in `.env.example`.
+- Ruling: `mail/guest-link.blade.php` entfällt (Task 8). Die Aufgabe „Anrede und Seitentitel im Gast-Buchungsablauf angleichen“ ändert diese Datei auf eigenem Zweig; beim Zusammenführen gilt die Gestaltung von hier, deren Anrede-Regel steckt in den du/Sie-Texten von Task 8 — kostet bei Irrtum: ein Konflikt, der von Hand aufgelöst wird.
+- Ende-zu-Ende-Test auf dev-swayy gehört nicht in den Plan: Er braucht ein neues Abbild auf dem Server und damit die Freigabe von Mathias nach Task 11.
+
 ## Dateien
 
 | Datei | Aufgabe |
