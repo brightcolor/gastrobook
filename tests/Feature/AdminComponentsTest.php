@@ -62,6 +62,18 @@ class AdminComponentsTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/<form[^>]*role="group"/', $html);
     }
 
+    public function test_inline_confirm_spaces_a_prepended_error_box_from_the_question(): void
+    {
+        $html = Blade::render(<<<'BLADE'
+            <x-inline-confirm id="remove-7" action="/admin/users/7" method="DELETE" label="Entfernen"
+                question="„Kim“ aus dem Betrieb entfernen?" confirm="Entfernen" />
+            BLADE);
+
+        // forms.js setzt die Fehlerzusammenfassung als erstes Kind des Formulars.
+        $this->assertMatchesRegularExpression('/<form[^>]*class="space-y-3 /', $html);
+        $this->assertMatchesRegularExpression('/<div data-inline-confirm-group[^>]*class="space-y-3"/', $html);
+    }
+
     public function test_inline_confirm_names_the_subject_for_screen_readers_when_given(): void
     {
         $with = Blade::render(<<<'BLADE'

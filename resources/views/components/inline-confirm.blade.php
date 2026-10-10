@@ -26,7 +26,7 @@
 <div data-inline-confirm {{ $attributes->merge(['class' => 'min-w-0']) }}>
     <button type="button" data-inline-confirm-open @if($open) hidden @endif class="btn {{ $opener }}">{{ $label }}@if($subject)<span class="sr-only"> „{{ $subject }}“</span>@endif</button>
     <form id="{{ $id }}" data-inline-confirm-panel @unless($open) hidden @endunless method="POST" action="{{ $action }}" @if($ajax) data-ajax @endif @if($reload) data-reload-after-save @endif
-          class="rounded-lg border border-stone-300 bg-stone-50 p-3 text-left">
+          class="space-y-3 rounded-lg border border-stone-300 bg-stone-50 p-3 text-left">
         @csrf
         @if($verb !== 'POST')
             @method($verb)

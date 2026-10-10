@@ -28,6 +28,8 @@ let reloadRequested = false;
 let installed = false;
 const pending = new WeakMap();
 const queued = new WeakMap();
+// Formulare, die seit dem Vormerken ihrer Folgeanfrage zurückgesetzt wurden.
+const resetForms = new WeakSet();
 const sending = new WeakMap();
 const sentSnapshots = new WeakMap();
 
@@ -293,7 +295,11 @@ async function send(form) {
 // Ein zweiter Aufruf während der Anfrage (Doppelklick, Enter und Speicherleiste)
 // bekommt dieselbe Anfrage zurück, solange die Eingaben gleich sind. Wurde
 // inzwischen weitergetippt, folgt genau eine weitere Anfrage mit dem neuesten
-// Stand, sobald die erste fertig ist.
+// Stand, sobald die erste fertig ist. Wurde das Formular zwischen Vormerken und
+// Start zurückgesetzt (data-reset-after-save, Schließen einer Seitenleiste,
+// „Verwerfen“), entfällt die Folgeanfrage: Sie würde den Ausgangsstand oder den
+// schon gespeicherten Datensatz noch einmal senden. Das Ergebnis der ersten
+// Anfrage gilt dann auch für den zweiten Aufruf.
 export function submitForm(form) {
     const running = pending.get(form);
     if (!running) {
@@ -303,8 +309,10 @@ export function submitForm(form) {
     }
     if (snapshot(form) === sending.get(form)) return running;
     if (!queued.has(form)) {
-        queued.set(form, running.then(() => {
+        resetForms.delete(form);
+        queued.set(form, running.then((result) => {
             queued.delete(form);
+            if (resetForms.delete(form)) return result;
             return submitForm(form);
         }));
     }
@@ -327,7 +335,9 @@ export function initAjaxForms() {
     // verschwinden mit ihnen.
     document.addEventListener('reset', (e) => {
         const form = e.target;
-        if (form instanceof HTMLFormElement && form.hasAttribute('data-ajax')) clearProblems(form);
+        if (!(form instanceof HTMLFormElement) || !form.hasAttribute('data-ajax')) return;
+        resetForms.add(form);
+        clearProblems(form);
     }, true);
 
     // Nach „Verwerfen“ kann ein zurückgestelltes Neuladen nachgeholt werden.

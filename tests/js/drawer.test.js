@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { page } from '../../resources/js/admin/dom.js';
 import { initDrawers } from '../../resources/js/admin/drawer.js';
-import { initAjaxForms } from '../../resources/js/admin/forms.js';
+import { initAjaxForms, submitForm } from '../../resources/js/admin/forms.js';
 import { initInlineConfirms } from '../../resources/js/admin/inline-confirm.js';
 import { jsonResponse, mount } from './helpers.js';
 
@@ -180,6 +180,30 @@ describe('Seitenleiste', () => {
         resolve(jsonResponse({ message: 'Standort angelegt.' }));
         await vi.waitFor(() => expect(document.getElementById('standort-neu').hidden).toBe(true));
         expect(button.hasAttribute('aria-busy')).toBe(false);
+    });
+
+    it('sendet nach dem Schließen keine Folgeanfrage mehr mit dem zurückgesetzten Stand', async () => {
+        const resolvers = [];
+        // Die erste Anfrage wartet; jede weitere würde sofort antworten.
+        const fetchMock = vi.fn()
+            .mockImplementationOnce(() => new Promise((r) => { resolvers.push(r); }))
+            .mockImplementation(async () => jsonResponse({ message: 'Standort angelegt.' }));
+        vi.stubGlobal('fetch', fetchMock);
+        mount(layout);
+        initDrawers();
+        document.getElementById('opener').click();
+        const name = document.getElementById('f-neu-name');
+        const formEl = document.getElementById('form-neu');
+
+        name.value = 'Filiale Süd';
+        formEl.requestSubmit();
+        name.value = 'Filiale Süd II';
+        const followUp = submitForm(formEl);
+        resolvers[0](jsonResponse({ message: 'Standort angelegt.' }));
+
+        await vi.waitFor(() => expect(document.getElementById('standort-neu').hidden).toBe(true));
+        await expect(followUp).resolves.toBe(true);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
     it('übersteht eine kaputt kodierte Adresse', () => {

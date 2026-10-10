@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { page } from '../../resources/js/admin/dom.js';
-import { initAjaxForms } from '../../resources/js/admin/forms.js';
+import { initAjaxForms, submitForm } from '../../resources/js/admin/forms.js';
 import { htmlResponse, jsonResponse, mount } from './helpers.js';
 
 const form = (attrs = '') => `
@@ -140,6 +140,50 @@ describe('Formulare mit data-ajax', () => {
         expect(fetchMock.mock.calls[1][1].body.toString()).toContain('name=Zweiter+Stand');
         resolvers[1](jsonResponse({ message: 'Gespeichert.' }));
         await vi.waitFor(() => expect(document.getElementById('swayyToast').textContent).toBe('Gespeichert.'));
+    });
+
+    it('verwerfen die Folgeanfrage, wenn das Formular nach dem Speichern zurückgesetzt wurde', async () => {
+        const resolvers = [];
+        // Die erste Anfrage wartet; jede weitere würde sofort antworten.
+        const fetchMock = vi.fn()
+            .mockImplementationOnce(() => new Promise((r) => { resolvers.push(r); }))
+            .mockImplementation(async () => jsonResponse({ message: 'Angelegt.' }));
+        vi.stubGlobal('fetch', fetchMock);
+        mount(form('data-reset-after-save'));
+        const el = document.getElementById('f');
+        const input = document.getElementById('f-name');
+
+        input.value = 'Terrasse';
+        el.requestSubmit();
+        input.value = 'Terrasse Süd';
+        const followUp = submitForm(el);
+        resolvers[0](jsonResponse({ message: 'Angelegt.' }));
+
+        // Die Folgeanfrage meldet das Ergebnis der ersten.
+        await expect(followUp).resolves.toBe(true);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(input.value).toBe('Alt');
+    });
+
+    it('schicken die Folgeanfrage, wenn das Zurücksetzen vor dem zweiten Absenden lag', async () => {
+        const resolvers = [];
+        const fetchMock = vi.fn(() => new Promise((r) => { resolvers.push(r); }));
+        vi.stubGlobal('fetch', fetchMock);
+        mount(form());
+        const el = document.getElementById('f');
+        const input = document.getElementById('f-name');
+
+        input.value = 'Erster Stand';
+        el.requestSubmit();
+        el.reset();
+        input.value = 'Zweiter Stand';
+        const followUp = submitForm(el);
+        resolvers[0](jsonResponse({ message: 'Gespeichert.' }));
+
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+        expect(fetchMock.mock.calls[1][1].body.toString()).toContain('name=Zweiter+Stand');
+        resolvers[1](jsonResponse({ message: 'Gespeichert.' }));
+        await expect(followUp).resolves.toBe(true);
     });
 
     it('lassen Absendungen liegen, die ein früherer Handler schon abgefangen hat', () => {
