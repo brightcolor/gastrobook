@@ -9,7 +9,8 @@
     <x-status-badge :status="$reservation->status" />
 </div>
 
-<div class="grid gap-6 lg:grid-cols-3">
+{{-- Eine Spalte am Smartphone mit fester Breite (minmax(0,1fr)): Lange Dateinamen und Gastnamen weiten die Seite nicht über den Bildschirm. --}}
+<div class="grid grid-cols-[minmax(0,1fr)] gap-6 [overflow-wrap:anywhere] lg:grid-cols-3">
     <div class="space-y-6 lg:col-span-2">
         {{-- Details --}}
         <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
@@ -214,13 +215,15 @@
             <div id="tagPicker" class="mt-3 hidden">
                 <div id="tagList" class="mb-2 flex flex-wrap gap-1.5 text-xs"></div>
                 <div class="flex gap-2">
-                    <input id="tagNameInput" type="text" maxlength="40" placeholder="Neuer Tag-Name"
-                           class="flex-1 rounded-lg border-stone-200 text-xs">
-                    <input id="tagColorInput" type="color" value="#6b7280"
-                           class="h-8 w-8 cursor-pointer rounded-lg border-stone-200">
+                    <input id="tagNameInput" type="text" maxlength="{{ (int) config('swayy.ui.tag_name_max') }}" placeholder="Neuer Tag-Name"
+                           aria-label="Name des neuen Tags" aria-describedby="tagNameError"
+                           class="min-w-0 flex-1 rounded-lg border-stone-200 text-xs">
+                    <input id="tagColorInput" type="color" value="#6b7280" aria-label="Farbe des neuen Tags"
+                           class="h-8 w-8 shrink-0 cursor-pointer rounded-lg border-stone-200">
                     <button id="tagCreateBtn"
-                            class="rounded-lg bg-stone-900 px-3 py-1.5 text-xs font-semibold text-white">Anlegen</button>
+                            class="shrink-0 rounded-lg bg-stone-900 px-3 py-1.5 text-xs font-semibold text-white">Anlegen</button>
                 </div>
+                <p id="tagNameError" role="alert" class="text-[0.8125rem] text-red-700 [&:not(:empty)]:mt-1.5"></p>
             </div>
         </div>
 
@@ -254,8 +257,8 @@
             <p class="mb-3 text-xs text-stone-500">PDF oder Bild, max. 8 MB. Sichtbar nur für euer Team.</p>
             <div class="space-y-2 text-sm">
                 @forelse($reservation->attachments->sortByDesc('created_at') as $attachment)
-                    <div class="flex items-center justify-between gap-2 rounded-lg bg-stone-50 p-2.5">
-                        <div class="min-w-0">
+                    <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-stone-50 p-2.5">
+                        <div class="min-w-0 flex-1">
                             <a href="{{ route('admin.reservations.attachments.download', [$reservation, $attachment]) }}"
                                class="block truncate font-semibold text-teal-700 hover:underline">{{ $attachment->original_name }}</a>
                             <div class="text-xs text-stone-400">
@@ -264,11 +267,11 @@
                             </div>
                         </div>
                         @if($canEditReservation)
-                            <form method="POST" action="{{ route('admin.reservations.attachments.destroy', [$reservation, $attachment]) }}"
-                                  onsubmit="return confirm('Datei löschen?')">
-                                @csrf @method('DELETE')
-                                <button class="text-xs text-red-500 hover:text-red-700">Löschen</button>
-                            </form>
+                            {{-- Die offene Rückfrage nimmt die ganze Zeile und rückt unter den Dateinamen. --}}
+                            <x-inline-confirm :id="'anhang-loeschen-'.$attachment->id" :action="route('admin.reservations.attachments.destroy', [$reservation, $attachment])" method="DELETE"
+                                              :ajax="false" label="Löschen" confirm="Datei löschen" :subject="$attachment->original_name"
+                                              :question="'„'.$attachment->original_name.'“ löschen? Die Datei lässt sich danach nicht wiederherstellen.'"
+                                              class="has-[[data-inline-confirm-panel]:not([hidden])]:basis-full" />
                         @endif
                     </div>
                 @empty
@@ -318,6 +321,10 @@
     const syncUrl = @json(route('admin.reservations.tags', $reservation));
     const indexUrl = @json(route('admin.tags.index'));
     const storeUrl = @json(route('admin.tags.store'));
+    // Texte für Antworten ohne Meldung der Anwendung, etwa bei fehlender Verbindung oder einer Fehlerseite des Proxys.
+    const problemTexts = window.SwayyAdmin?.problemTexts ?? {};
+    const nameMissingText = @json(__('Bitte gib dem Tag einen Namen.'));
+    const createFailedText = @json(__('Der Tag konnte nicht angelegt werden. Bitte die Seite neu laden und es noch einmal versuchen.'));
 
     let activeTags = @json($reservation->tags->pluck('id')->values());
     let allTags = [];
@@ -388,20 +395,72 @@
         if (!allTags.length) loadTags();
     });
 
+    const nameInput = document.getElementById('tagNameInput');
+    const nameError = document.getElementById('tagNameError');
+
+    // Die Meldung steht unter dem Feld (Live-Region); das Feld verweist per aria-describedby darauf.
+    function showNameError(text) {
+        nameError.textContent = text;
+        nameInput.setAttribute('aria-invalid', 'true');
+        nameInput.focus();
+    }
+
+    function clearNameError() {
+        nameError.textContent = '';
+        nameInput.removeAttribute('aria-invalid');
+    }
+
+    async function readJson(res) {
+        if (!(res.headers.get('Content-Type') || '').includes('json')) return null;
+        try {
+            return await res.json();
+        } catch {
+            return null;
+        }
+    }
+
+    // Erste Meldung des Servers (Prüffehler oder message), sonst der Text zum Statuscode, zuletzt der allgemeine Text.
+    function failureText(res, body) {
+        const first = Object.values(body?.errors ?? {}).flat()[0];
+        if (first) return first;
+        if (body?.message) return body.message;
+        const byStatus = problemTexts[res.status] || (res.status >= 500 ? problemTexts[500] : problemTexts.default) || '';
+        return byStatus.replace(':status', String(res.status)) || createFailedText;
+    }
+
+    nameInput.addEventListener('input', clearNameError);
+
     document.getElementById('tagCreateBtn').addEventListener('click', async () => {
-        const name = document.getElementById('tagNameInput').value.trim();
+        const name = nameInput.value.trim();
         const color = document.getElementById('tagColorInput').value;
-        if (!name) return;
-        const res = await fetch(storeUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, Accept: 'application/json' },
-            body: JSON.stringify({ name, color }),
-        });
-        if (!res.ok) return;
-        const tag = await res.json();
+        clearNameError();
+        if (!name) {
+            showNameError(nameMissingText);
+            return;
+        }
+        let res;
+        try {
+            res = await fetch(storeUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, Accept: 'application/json' },
+                body: JSON.stringify({ name, color }),
+            });
+        } catch {
+            showNameError(problemTexts.network || createFailedText);
+            return;
+        }
+        const tag = await readJson(res);
+        if (!res.ok) {
+            showNameError(failureText(res, tag));
+            return;
+        }
+        if (!tag?.id) {
+            showNameError(problemTexts.unclear || createFailedText);
+            return;
+        }
         if (!allTags.find(t => t.id === tag.id)) allTags.push(tag);
         if (!activeTags.includes(tag.id)) activeTags.push(tag.id);
-        document.getElementById('tagNameInput').value = '';
+        nameInput.value = '';
         sync();
         renderPills();
         renderPicker();
