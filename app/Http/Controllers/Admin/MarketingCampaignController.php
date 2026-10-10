@@ -151,6 +151,8 @@ class MarketingCampaignController extends Controller
             $rendered['body'],
             $location->tenant,
             $location,
+            type: 'marketing',
+            unsubscribeUrl: $this->campaigns->unsubscribeUrl($sample),
         ));
 
         return back()->with('success', __('Testmail an :mail verschickt.', ['mail' => $request->user()->email]));

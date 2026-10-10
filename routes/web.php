@@ -144,6 +144,8 @@ Route::post('/konto/{tenantSlug}/logout', [GuestPortalController::class, 'logout
 // Opt-out from the guest campaigns – signed link from every marketing mail.
 Route::get('/marketing/abmelden/{guest}', MarketingUnsubscribeController::class)
     ->middleware('throttle:booking-slots')->name('marketing.unsubscribe');
+Route::post('/marketing/abmelden/{guest}', [MarketingUnsubscribeController::class, 'oneClick'])
+    ->middleware('throttle:booking-slots')->name('marketing.unsubscribe.oneclick');
 
 Route::get('/feedback/{token}', [FeedbackController::class, 'show'])
     ->middleware('throttle:booking-slots')->name('feedback.show');

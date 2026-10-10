@@ -206,6 +206,8 @@ class MarketingCampaignService
             $rendered['body'],
             $tenant,
             $location,
+            type: 'marketing',
+            unsubscribeUrl: $this->unsubscribeUrl($guest),
         ));
 
         NotificationLog::withoutGlobalScopes()->create([
