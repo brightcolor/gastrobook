@@ -87,7 +87,7 @@
                 ]);
         @endphp
         <x-drawer :id="'person-'.$member->id" :title="$member->name" description="Profil, Arbeitszeiten und Abwesenheiten.">
-            <form id="form-person-{{ $member->id }}" method="POST" action="{{ route('admin.staff.update', $member) }}" data-ajax data-reload-after-save class="space-y-5">
+            <form id="form-person-{{ $member->id }}" method="POST" action="{{ route('admin.staff.update', $member) }}" data-ajax data-reload-after-save data-drawer-section="Profil" class="space-y-5">
                 @csrf
                 @method('PUT')
                 @include('admin.staff.partials.fields', ['member' => $member, 'prefix' => (string) $member->id])
@@ -96,7 +96,7 @@
             <section aria-labelledby="arbeitszeit-{{ $member->id }}-titel" class="space-y-4 border-t border-stone-200 pt-5">
                 <h3 id="arbeitszeit-{{ $member->id }}-titel" class="text-sm font-semibold">Arbeitszeiten</h3>
                 <p class="text-[0.8125rem] text-stone-600">Ohne Eintrag gelten die Öffnungszeiten des Standorts. Mit Einträgen ist {{ $member->name }} in diesen Zeitfenstern buchbar.</p>
-                <form method="POST" action="{{ route('admin.staff.working-hours', $member) }}" data-ajax data-reload-after-save class="space-y-3">
+                <form method="POST" action="{{ route('admin.staff.working-hours', $member) }}" data-ajax data-reload-after-save data-drawer-section="Arbeitszeiten" class="space-y-3">
                     @csrf
                     @method('PUT')
                     <div data-rows data-rows-max="{{ $limits['staff_hours_max'] }}" class="space-y-3">
@@ -132,7 +132,7 @@
                         @endforeach
                     </ul>
                 @endif
-                <form method="POST" action="{{ route('admin.staff.absences.store', $member) }}" data-ajax data-reset-after-save data-reload-after-save class="space-y-3">
+                <form method="POST" action="{{ route('admin.staff.absences.store', $member) }}" data-ajax data-reset-after-save data-reload-after-save data-drawer-section="Abwesenheit" class="space-y-3">
                     @csrf
                     <div class="grid gap-3 sm:grid-cols-2">
                         <x-field name="starts_on" :id="'abw-'.$member->id.'-von'" label="Von" type="date" required />

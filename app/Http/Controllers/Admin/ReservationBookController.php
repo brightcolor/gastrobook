@@ -814,12 +814,12 @@ class ReservationBookController extends Controller
                 ->sharedLock()
                 ->find((int) $validated['staff_member_id']);
             if ($staff === null || $location === null) {
-                return back()->withErrors(['staff_member_id' => __('Diese Person gibt es hier nicht.')]);
+                return back()->withErrors(['staff_member_id' => __('Diese Person gibt es hier nicht. Bitte die Seite neu laden und eine andere Person wählen.')]);
             }
 
             $dauer = (int) $reservation->start_at->diffInMinutes($reservation->end_at);
             if (! $this->salonAvailability->canStaffTake($staff, $dauer, CarbonImmutable::parse($reservation->start_at), $location, $reservation->id)) {
-                return back()->withErrors(['staff_member_id' => __('Diese Person ist zu dem Zeitpunkt nicht verfügbar.')]);
+                return back()->withErrors(['staff_member_id' => __('Diese Person ist zu dem Zeitpunkt nicht verfügbar. Bitte eine andere Person oder eine andere Zeit wählen.')]);
             }
 
             $alt = $reservation->staff_member_id;

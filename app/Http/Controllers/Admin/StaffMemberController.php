@@ -15,6 +15,7 @@ use App\Models\StaffWorkingHour;
 use App\Services\AuditLogger;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -64,7 +65,7 @@ class StaffMemberController extends Controller
         abort_if($location === null, 404);
         $this->ensureSalon();
 
-        $validated = $request->validate($this->rules($location->id, creating: true), $this->messages());
+        $validated = $request->validate($this->rules($location->id), $this->messages());
         [$serviceIds, $problem] = $this->serviceSelection($location->id, $validated);
         if ($problem !== null) {
             return $this->refuse($request, ['service_ids' => $problem]);
@@ -98,7 +99,7 @@ class StaffMemberController extends Controller
         abort_if($member->location_id !== $this->context->locationId(), 404);
         $this->ensureSalon();
 
-        $validated = $request->validate($this->rules($member->location_id, creating: false), $this->messages());
+        $validated = $request->validate($this->rules($member->location_id), $this->messages());
         [$serviceIds, $problem] = $this->serviceSelection($member->location_id, $validated);
         if ($problem !== null) {
             return $this->refuse($request, ['service_ids' => $problem]);
@@ -246,7 +247,21 @@ class StaffMemberController extends Controller
             'reason' => $absence->reason,
         ]);
 
-        return $this->saved($request, __('Abwesenheit für „:name“ eingetragen.', ['name' => $member->name]));
+        $message = __('Abwesenheit für „:name“ eingetragen.', ['name' => $member->name]);
+
+        // Die Abwesenheit sperrt neue Buchungen; vorhandene Termine in dieser Zeit bleiben bestehen und brauchen eine andere Person.
+        $booked = (int) $this->activeAppointments($member)
+            ->where('start_at', '<', $endsLocal->utc())
+            ->where('end_at', '>', $startsLocal->utc())
+            ->count();
+        if ($booked > 0) {
+            $message .= ' '.trans_choice(
+                'In dieser Zeit ist noch :count Termin gebucht. Bitte weise ihn einer anderen Person zu oder sage ihn ab.|In dieser Zeit sind noch :count Termine gebucht. Bitte weise sie anderen Personen zu oder sage sie ab.',
+                $booked,
+            );
+        }
+
+        return $this->saved($request, $message);
     }
 
     public function deleteAbsence(Request $request, StaffAbsence $absence): mixed
@@ -291,15 +306,22 @@ class StaffMemberController extends Controller
     }
 
     /**
-     * Kommende und laufende Termine (ihr Ende ist noch nicht erreicht), die der Person zugewiesen sind.
+     * Kommende und laufende Termine (ihr Ende ist noch nicht erreicht), die der Person zugewiesen sind. Der Löschschutz und der
+     * Hinweis zur Abwesenheit zählen mit derselben Abfrage.
+     *
+     * @return Builder<Reservation>
      */
-    private function upcomingAppointments(StaffMember $member): int
+    private function activeAppointments(StaffMember $member): Builder
     {
-        return (int) Reservation::where('location_id', $member->location_id)
+        return Reservation::where('location_id', $member->location_id)
             ->where('staff_member_id', $member->id)
             ->where('end_at', '>=', now())
-            ->whereIn('status', ReservationStatus::activeStatuses())
-            ->count();
+            ->whereIn('status', ReservationStatus::activeStatuses());
+    }
+
+    private function upcomingAppointments(StaffMember $member): int
+    {
+        return (int) $this->activeAppointments($member)->count();
     }
 
     /**
@@ -309,7 +331,7 @@ class StaffMemberController extends Controller
      *
      * @return array<string, list<string>>
      */
-    private function rules(int $locationId, bool $creating): array
+    private function rules(int $locationId): array
     {
         $limits = (array) config('swayy.salon');
 
@@ -317,9 +339,9 @@ class StaffMemberController extends Controller
             'name' => ['required', 'string', 'max:'.(int) $limits['staff_name_max']],
             'bio' => ['nullable', 'string', 'max:'.(int) $limits['staff_bio_max']],
             'color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/D'],
-            // Der Einrichtungsassistent teilt sich die Route zum Anlegen und sendet den Schalter nur manchmal mit
-            // (fehlt er, gilt die Person als buchbar). Beim Bearbeiten sendet die Seite ihn immer; fehlt er dort, ist das ein Fehler.
-            'is_active' => $creating ? ['nullable', 'boolean'] : ['required', 'boolean'],
+            // Alle Aufrufer senden den Schalter mit: die Seite (verstecktes 0 vor dem Kästchen) und der Einrichtungsassistent.
+            // Fehlt er, wird die Person nicht still auf „buchbar“ gesetzt.
+            'is_active' => ['required', 'boolean'],
             'service_ids' => ['nullable', 'array', 'max:'.Service::where('location_id', $locationId)->count()],
         ];
     }
@@ -372,7 +394,7 @@ class StaffMemberController extends Controller
             'name' => $validated['name'],
             'bio' => $validated['bio'] ?? null,
             'color' => $validated['color'] ?? null,
-            'is_active' => $request->boolean('is_active', true),
+            'is_active' => $request->boolean('is_active'),
         ];
     }
 

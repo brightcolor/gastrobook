@@ -400,8 +400,8 @@ return [
     | Länge, die Obergrenze hält die Buchungsseite lesbar).
     | staff_name_max: längster Name einer Person in Zeichen (10–255; die Spalte
     | staff_members.name fasst 255). staff_bio_max: längste Kurzvorstellung in
-    | Zeichen (50–5000; die Spalte ist text, die Obergrenze hält die
-    | Buchungsseite lesbar). staff_hours_max: die meisten Zeitfenster, die eine
+    | Zeichen (50–5000; die Spalte ist text und fasst jede Länge, die
+    | Obergrenze hält Anfragen und Protokolleinträge klein). staff_hours_max: die meisten Zeitfenster, die eine
     | Person je Woche haben kann (7–200); sie begrenzt die Arbeitszeiten, die
     | eine Anfrage senden kann. absence_reason_max: längster Grund einer
     | Abwesenheit in Zeichen (10–120; die Spalte staff_absences.reason fasst

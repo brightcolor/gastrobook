@@ -225,6 +225,13 @@ class StaffPageTest extends TestCase
         $this->assertStringContainsString('data-rows-remove', $drawer);
         $this->assertMatchesRegularExpression('/<div data-row [^>]*role="group" aria-label="Zeitfenster"/', $drawer);
         $this->assertStringContainsString('<span class="sr-only"> dieses Zeitfenster</span>', $drawer);
+        // Die Seitenleiste führt keine Speicherleiste: Die Zeile trägt keinen Änderungspunkt.
+        $this->assertStringNotContainsString('data-change-dot', $drawer);
+        $this->assertStringNotContainsString('data-change-item', $drawer);
+        // Jedes Formular nennt seinen Abschnitt für den Hinweis, wenn nach dem Speichern des Profils noch etwas offen ist.
+        $this->assertStringContainsString('data-drawer-section="Profil"', $edit[0]);
+        $this->assertStringContainsString('data-drawer-section="Arbeitszeiten"', $hours[0]);
+        $this->assertStringContainsString('data-drawer-section="Abwesenheit"', $absence[0]);
         // Die Vorlage trägt __INDEX__ in allen Namen und IDs, die gespeicherte Zeile ihre Werte.
         $this->assertStringContainsString('name="hours[__INDEX__][starts_at]"', $drawer);
         $this->assertStringContainsString('id="wh-'.$id.'-__INDEX__-start"', $drawer);
@@ -436,7 +443,7 @@ class StaffPageTest extends TestCase
         $this->assertSame('#0d9488', $bea->color);
 
         // Ohne Skript kommt die Bestätigung auf der Seite an.
-        $this->actingAs($setup['owner'])->from('/admin/staff')->post('/admin/staff', ['name' => 'Cem'])
+        $this->actingAs($setup['owner'])->from('/admin/staff')->post('/admin/staff', ['name' => 'Cem', 'is_active' => '1'])
             ->assertRedirect('/admin/staff')
             ->assertSessionHas('success', '„Cem“ angelegt.');
         $this->assertTrue(StaffMember::withoutGlobalScopes()->where('name', 'Cem')->firstOrFail()->is_active);
@@ -460,12 +467,19 @@ class StaffPageTest extends TestCase
         $this->assertSame('Anna', $setup['member']->fresh()->name);
     }
 
-    public function test_the_switch_is_required_when_editing_and_optional_for_the_setup_assistant(): void
+    public function test_the_switch_is_required_when_creating_and_when_editing(): void
     {
         $setup = $this->salon();
         $this->clearTenantContext();
 
-        // Die Seite sendet den Schalter immer mit; fehlt er beim Bearbeiten, wird nicht still auf „buchbar“ gesetzt.
+        // Die Seite und der Einrichtungsassistent senden den Schalter immer mit; fehlt er, wird nicht still auf „buchbar“ gesetzt.
+        $this->actingAs($setup['owner'])->postJson('/admin/staff', ['name' => 'Ben'])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.is_active.0', 'Bitte „Buchbar“ ein- oder ausschalten.');
+        $this->assertSame(1, StaffMember::withoutGlobalScopes()->count());
+        $this->actingAs($setup['owner'])->postJson('/admin/staff', ['name' => 'Ben', 'is_active' => '0'])->assertOk();
+        $this->assertFalse(StaffMember::withoutGlobalScopes()->where('name', 'Ben')->firstOrFail()->is_active);
+
         $this->actingAs($setup['owner'])->putJson("/admin/staff/{$setup['member']->id}", ['name' => 'Anna'])
             ->assertStatus(422)
             ->assertJsonPath('errors.is_active.0', 'Bitte „Buchbar“ ein- oder ausschalten.');
@@ -1023,11 +1037,55 @@ class StaffPageTest extends TestCase
         $this->clearTenantContext();
         $day = CarbonImmutable::now($setup['location']->timezone)->addDay()->toDateString();
 
-        // Die Abwesenheit sperrt neue Buchungen; vorhandene Termine bleiben unverändert.
+        // Die Abwesenheit sperrt neue Buchungen; vorhandene Termine bleiben unverändert, und die Antwort nennt sie.
         $this->actingAs($setup['owner'])->postJson("/admin/staff/{$setup['member']->id}/absences", ['starts_on' => $day, 'ends_on' => $day])
-            ->assertOk()->assertJsonPath('message', 'Abwesenheit für „Anna“ eingetragen.');
+            ->assertOk()
+            ->assertJsonPath('message', 'Abwesenheit für „Anna“ eingetragen. In dieser Zeit ist noch 1 Termin gebucht. Bitte weise ihn einer anderen Person zu oder sage ihn ab.');
         $this->assertSame(ReservationStatus::Confirmed, $appointment->fresh()->status);
         $this->assertSame($setup['member']->id, $appointment->fresh()->staff_member_id);
+        $this->assertSame(1, StaffAbsence::withoutGlobalScopes()->count());
+    }
+
+    public function test_an_absence_names_how_many_active_appointments_it_covers(): void
+    {
+        $setup = $this->salon();
+        $ben = $this->person($setup, 'Ben');
+        $local = fn (int $days): string => CarbonImmutable::now($setup['location']->timezone)->addDays($days)->toDateString();
+        $plain = 'Abwesenheit für „Anna“ eingetragen.';
+        $url = "/admin/staff/{$setup['member']->id}/absences";
+        $enter = fn (array $payload) => $this->actingAs($setup['owner'])->postJson($url, $payload)->assertOk()->json('message');
+
+        // Kein Hindernis: abgesagt, nicht erschienen, gelöscht, eine andere Person, ein anderer Tag, ein bereits beendeter Termin.
+        $this->appointment($setup, $setup['member'], ReservationStatus::CancelledByGuest, 1);
+        $this->appointment($setup, $setup['member'], ReservationStatus::NoShow, 1);
+        $this->appointment($setup, $setup['member'], ReservationStatus::Confirmed, 1)->delete();
+        $this->appointment($setup, $ben, ReservationStatus::Confirmed, 1);
+        $this->appointment($setup, $setup['member'], ReservationStatus::Confirmed, 2);
+        $this->appointment($setup, $setup['member'], ReservationStatus::Confirmed, -3);
+        $this->clearTenantContext();
+
+        $this->assertSame($plain, $enter(['starts_on' => $local(1), 'ends_on' => $local(1)]));
+        $this->assertSame($plain, $enter(['starts_on' => $local(-3), 'ends_on' => $local(-3)]));
+
+        // Ein Termin zählt einmal, auch wenn die Abwesenheit nur einen Teil seiner Zeit deckt (der Termin liegt von 10:00 bis 11:00).
+        $this->appointment($setup, $setup['member'], ReservationStatus::Confirmed, 1);
+        $one = $plain.' In dieser Zeit ist noch 1 Termin gebucht. Bitte weise ihn einer anderen Person zu oder sage ihn ab.';
+        $this->assertSame($one, $enter(['starts_on' => $local(1), 'ends_on' => $local(1)]));
+        $this->assertSame($one, $enter(['starts_on' => $local(1), 'starts_time' => '10:30', 'ends_on' => $local(1), 'ends_time' => '10:45']));
+        // Der Termin endet um 11:00; eine Abwesenheit ab 11:00 überschneidet ihn nicht.
+        $this->assertSame($plain, $enter(['starts_on' => $local(1), 'starts_time' => '11:00', 'ends_on' => $local(1), 'ends_time' => '12:00']));
+
+        // Mehrere Termine, verschiedene aktive Status.
+        $this->appointment($setup, $setup['member'], ReservationStatus::PendingConfirmation, 1);
+        $this->appointment($setup, $setup['member'], ReservationStatus::Seated, 2);
+        $this->assertSame(
+            $plain.' In dieser Zeit sind noch 2 Termine gebucht. Bitte weise sie anderen Personen zu oder sage sie ab.',
+            $enter(['starts_on' => $local(1), 'ends_on' => $local(1)]),
+        );
+        $this->assertSame(
+            $plain.' In dieser Zeit sind noch 4 Termine gebucht. Bitte weise sie anderen Personen zu oder sage sie ab.',
+            $enter(['starts_on' => $local(1), 'ends_on' => $local(2)]),
+        );
     }
 
     public function test_removing_an_absence_of_a_removed_person_answers_404(): void
@@ -1226,6 +1284,7 @@ class StaffPageTest extends TestCase
             $services = $queries->search(fn (string $sql) => str_contains($sql, 'from "services"') && str_contains($sql, 'for share'));
             $insert = $queries->search(fn (string $sql) => str_starts_with($sql, 'insert into "reservations"'));
             $day = $queries->search(fn (string $sql) => str_contains($sql, 'pg_advisory_xact_lock'));
+            $this->assertNotFalse($day, 'force='.(int) $force);
             $this->assertNotFalse($person, 'force='.(int) $force);
             $this->assertNotFalse($services);
             $this->assertNotFalse($insert);
@@ -1245,7 +1304,14 @@ class StaffPageTest extends TestCase
         $url = "/admin/reservations/{$reservation->id}/staff";
 
         $this->actingAs($setup['owner'])->post($url, ['staff_member_id' => $gone->id])
-            ->assertSessionHasErrors(['staff_member_id' => 'Diese Person gibt es hier nicht.']);
+            ->assertSessionHasErrors(['staff_member_id' => 'Diese Person gibt es hier nicht. Bitte die Seite neu laden und eine andere Person wählen.']);
+        $this->assertNull($reservation->fresh()->staff_member_id);
+
+        // Eine Person, die zu dem Zeitpunkt abwesend ist, lehnt die Zuweisung mit dem nächsten Schritt ab.
+        $away = $this->person($setup, 'Urlaub');
+        StaffAbsence::create(['tenant_id' => $setup['tenant']->id, 'staff_member_id' => $away->id, 'starts_at' => now()->subDay(), 'ends_at' => now()->addDays(10)]);
+        $this->actingAs($setup['owner'])->post($url, ['staff_member_id' => $away->id])
+            ->assertSessionHasErrors(['staff_member_id' => 'Diese Person ist zu dem Zeitpunkt nicht verfügbar. Bitte eine andere Person oder eine andere Zeit wählen.']);
         $this->assertNull($reservation->fresh()->staff_member_id);
 
         $this->actingAs($setup['owner'])->post($url, ['staff_member_id' => $ben->id])
