@@ -235,6 +235,72 @@ class NavigationTest extends TestCase
         $this->assertSame(['Adresse', 'Logo#logo', 'Neuer Standort#standort-neu'], $item->keywords);
     }
 
+    public function test_restaurant_keywords_are_added_for_restaurants_only(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $nav = new Navigation(['settings' => [
+            ['label' => 'Betrieb', 'items' => [
+                ['key' => 'a', 'label' => 'A', 'route' => 'admin.locations.index',
+                    'keywords' => ['Takt' => 'takt'], 'keywords_restaurant' => ['Tischzeit' => 'tischzeiten', 'Bar']],
+            ]],
+        ]]);
+
+        $restaurant = $nav->settings($owner, $setup['tenant'], $setup['location'], null)[0]->items[0];
+        $this->assertSame(['Takt#takt', 'Tischzeit#tischzeiten', 'Bar'], $restaurant->keywords);
+
+        $setup['tenant']->update(['type' => TenantType::Salon]);
+        $salon = $nav->settings($owner, $setup['tenant'], $setup['location'], null)[0]->items[0];
+        $this->assertSame(['Takt#takt'], $salon->keywords);
+    }
+
+    public function test_salons_are_not_offered_search_terms_of_restaurant_sections(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $keywordsOf = function (string $key) use ($owner, $setup): array {
+            foreach (Navigation::fromConfig()->settings($owner, $setup['tenant'], $setup['location'], null) as $group) {
+                foreach ($group->items as $item) {
+                    if ($item->key === $key) {
+                        return $item->keywords;
+                    }
+                }
+            }
+
+            return [];
+        };
+
+        // Begriffe, deren Ziel nur die Seite eines Restaurants zeigt.
+        $restaurantOnly = [
+            'capacity' => ['Kapazität#kapazitaet', 'Gäste gleichzeitig#kapazitaet', 'Tischzeit#tischzeiten', 'Besuchsdauer#takt'],
+            'booking-rules' => ['Personen online#gruppen', 'Große Gruppen#gruppen', 'Walk-ins#warteliste'],
+            'booking-form' => ['Pflichtfeld#felder', 'Telefon#felder', 'Anlass#felder', 'Allergien#felder'],
+            'booking-page' => ['Öffentlicher Tischplan#buchungsseite'],
+        ];
+        // Begriffe, die zu beiden Betriebsarten passen.
+        $both = [
+            'capacity' => ['Takt#takt', 'Slot-Intervall#takt', 'Puffer#takt', 'Lückenoptimierung#takt'],
+            'booking-rules' => ['Vorlauf#zeitraum', 'Stornofrist#fristen', 'Warteliste#warteliste'],
+            'booking-form' => ['Formularfelder#felder'],
+            'booking-page' => ['Buchungsseite#buchungsseite', 'Konfetti#buchungsseite', 'Direktlink#direktlink'],
+        ];
+
+        foreach ([$restaurantOnly, $both] as $expected) {
+            foreach ($expected as $key => $terms) {
+                $this->assertSame([], array_values(array_diff($terms, $keywordsOf($key))), "{$key}: Restaurants sehen alle Begriffe");
+            }
+        }
+
+        $setup['tenant']->update(['type' => TenantType::Salon]);
+
+        foreach ($restaurantOnly as $key => $terms) {
+            $this->assertSame([], array_values(array_intersect($terms, $keywordsOf($key))), "{$key}: Salons sehen die Begriffe der Restaurantseiten nicht");
+        }
+        foreach ($both as $key => $terms) {
+            $this->assertSame([], array_values(array_diff($terms, $keywordsOf($key))), "{$key}: Salons behalten die gemeinsamen Begriffe");
+        }
+    }
+
     public function test_roles_limit_an_entry_to_members_with_that_role(): void
     {
         $setup = $this->createTenantSetup();

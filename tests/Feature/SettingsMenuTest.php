@@ -41,6 +41,30 @@ class SettingsMenuTest extends TestCase
             ->assertDontSee('data-nav-key="rooms"', false);
     }
 
+    public function test_search_terms_follow_the_business_type(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->get('/admin/settings/menu')
+            ->assertOk()
+            ->assertSee('Takt#takt', false)
+            ->assertSee('Tischzeit#tischzeiten', false)
+            ->assertSee('Walk-ins#warteliste', false)
+            ->assertSee('Öffentlicher Tischplan#buchungsseite', false);
+
+        $setup['tenant']->update(['type' => TenantType::Salon]);
+
+        $this->actingAs($owner)->get('/admin/settings/menu')
+            ->assertOk()
+            ->assertSee('Takt#takt', false)
+            ->assertSee('Warteliste#warteliste', false)
+            ->assertDontSee('Tischzeit#tischzeiten', false)
+            ->assertDontSee('Walk-ins#warteliste', false)
+            ->assertDontSee('Öffentlicher Tischplan#buchungsseite', false);
+    }
+
     public function test_without_any_settings_page_the_menu_explains_the_missing_permission(): void
     {
         $setup = $this->createTenantSetup();

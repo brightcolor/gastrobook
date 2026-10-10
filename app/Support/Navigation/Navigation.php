@@ -221,6 +221,11 @@ final class Navigation
     {
         $label = $tenant->isSalon() && isset($item['label_salon']) ? $item['label_salon'] : $item['label'];
         $url = route((string) $item['route']).(isset($item['fragment']) ? '#'.$item['fragment'] : '');
+        // keywords_restaurant: Begriffe, deren Ziel nur die Seite eines Restaurants zeigt.
+        $keywords = (array) ($item['keywords'] ?? []);
+        if (! $tenant->isSalon()) {
+            $keywords = array_merge($keywords, (array) ($item['keywords_restaurant'] ?? []));
+        }
 
         return new NavItem(
             key: (string) $item['key'],
@@ -229,7 +234,7 @@ final class Navigation
             icon: (string) ($item['icon'] ?? ''),
             active: $currentRoute !== null && Str::is($this->activePatterns($item), $currentRoute),
             scope: isset($item['scope']) ? (string) $item['scope'] : null,
-            keywords: $this->keywords((array) ($item['keywords'] ?? [])),
+            keywords: $this->keywords($keywords),
         );
     }
 

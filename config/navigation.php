@@ -38,6 +38,9 @@ use App\Support\EnvSetting;
 |   scope       nur Einstellungen: 'tenant' (alle Standorte) oder 'location'
 |   keywords    nur Einstellungen: Begriffe für die Suche; 'Begriff' => 'ziel'
 |               führt direkt zur Stelle #ziel auf der Seite
+|   keywords_restaurant  nur Einstellungen: Begriffe wie keywords, die nur
+|               Restaurants angeboten werden, weil ihr Ziel auf der Seite eines
+|               Salons fehlt; Salons sehen nur keywords
 |
 */
 
@@ -102,15 +105,19 @@ return [
             ['key' => 'staff', 'label' => 'Mitarbeiter', 'route' => 'admin.staff.index', 'scope' => 'location', 'can' => ['tables.manage'], 'only' => 'salon',
                 'keywords' => ['Mitarbeiter', 'Neue Person' => 'person-neu', 'Arbeitszeiten', 'Abwesenheit', 'Urlaub']],
             ['key' => 'capacity', 'label' => 'Kapazität & Dauer', 'route' => 'admin.settings.capacity.show', 'scope' => 'location', 'can' => ['tables.manage', 'opening_hours.manage'],
-                'keywords' => ['Kapazität' => 'kapazitaet', 'Gäste gleichzeitig' => 'kapazitaet', 'Takt' => 'takt', 'Slot-Intervall' => 'takt', 'Besuchsdauer' => 'takt', 'Puffer' => 'takt', 'Tischzeit' => 'tischzeiten', 'Lückenoptimierung' => 'takt']],
+                'keywords' => ['Takt' => 'takt', 'Slot-Intervall' => 'takt', 'Puffer' => 'takt', 'Lückenoptimierung' => 'takt'],
+                'keywords_restaurant' => ['Kapazität' => 'kapazitaet', 'Gäste gleichzeitig' => 'kapazitaet', 'Besuchsdauer' => 'takt', 'Tischzeit' => 'tischzeiten']],
         ]],
         ['label' => 'Buchungen', 'items' => [
             ['key' => 'booking-rules', 'label' => 'Buchungsregeln', 'route' => 'admin.settings.rules.show', 'scope' => 'location', 'can' => ['tables.manage', 'opening_hours.manage'],
-                'keywords' => ['Vorlauf' => 'zeitraum', 'Vorausbuchung' => 'zeitraum', 'Personen online' => 'gruppen', 'Große Gruppen' => 'gruppen', 'Stornofrist' => 'fristen', 'Umbuchungsfrist' => 'fristen', 'Bestätigung' => 'bestaetigung', 'E-Mail-Bestätigung' => 'bestaetigung', 'Warteliste' => 'warteliste', 'Walk-ins' => 'warteliste']],
+                'keywords' => ['Vorlauf' => 'zeitraum', 'Vorausbuchung' => 'zeitraum', 'Stornofrist' => 'fristen', 'Umbuchungsfrist' => 'fristen', 'Bestätigung' => 'bestaetigung', 'E-Mail-Bestätigung' => 'bestaetigung', 'Warteliste' => 'warteliste'],
+                'keywords_restaurant' => ['Personen online' => 'gruppen', 'Große Gruppen' => 'gruppen', 'Walk-ins' => 'warteliste']],
             ['key' => 'booking-form', 'label' => 'Buchungsformular', 'route' => 'admin.settings.booking-form.show', 'scope' => 'location', 'can' => ['tables.manage', 'tenant.settings.manage'],
-                'keywords' => ['Formularfelder' => 'felder', 'Pflichtfeld' => 'felder', 'Telefon' => 'felder', 'Anlass' => 'felder', 'Allergien' => 'felder']],
+                'keywords' => ['Formularfelder' => 'felder'],
+                'keywords_restaurant' => ['Pflichtfeld' => 'felder', 'Telefon' => 'felder', 'Anlass' => 'felder', 'Allergien' => 'felder']],
             ['key' => 'booking-page', 'label' => 'Buchungsseite & Widget', 'route' => 'admin.settings.booking-page.show', 'scope' => 'location', 'can' => ['tables.manage'],
-                'keywords' => ['Buchungsseite' => 'buchungsseite', 'Konfetti' => 'buchungsseite', 'Öffentlicher Tischplan' => 'buchungsseite', 'Website-Widget' => 'popup', 'Popup' => 'popup', 'Einbinden' => 'eingebettet', 'Direktlink' => 'direktlink']],
+                'keywords' => ['Buchungsseite' => 'buchungsseite', 'Konfetti' => 'buchungsseite', 'Website-Widget' => 'popup', 'Popup' => 'popup', 'Einbinden' => 'eingebettet', 'Direktlink' => 'direktlink'],
+                'keywords_restaurant' => ['Öffentlicher Tischplan' => 'buchungsseite']],
             ['key' => 'tags', 'label' => 'Tags', 'route' => 'admin.settings.tags.show', 'scope' => 'tenant', 'can' => ['tables.manage'],
                 'keywords' => ['Tags', 'Markierung', 'VIP', 'Allergie', 'Neuer Tag' => 'tag-neu']],
         ]],
