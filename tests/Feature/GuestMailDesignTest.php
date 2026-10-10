@@ -42,6 +42,28 @@ class GuestMailDesignTest extends TestCase
         });
     }
 
+    public function test_guest_mail_names_the_recipient(): void
+    {
+        // Echter Mailer (array, Queue sync): Mail::fake verwirft den Namen.
+        // Ein nacktes To mit HTML und Bild wertet SpamAssassin ab (TO_NO_BRKTS_HTML_IMG).
+        $setup = $this->createTenantSetup();
+        $setup['location']->settings()->update(['require_email_confirmation' => false]);
+        $this->clearTenantContext();
+        $tag = CarbonImmutable::now($setup['location']->timezone)->addDays(3);
+
+        $this->post('/book/'.$setup['tenant']->slug.'/'.$setup['location']->slug, [
+            'date' => $tag->toDateString(), 'time' => '19:00', 'party_size' => 2,
+            'name' => 'Frau Kessler', 'email' => 'gast@example.test', 'phone' => '+49 451 123456', 'privacy_accepted' => '1',
+        ])->assertRedirect();
+
+        $to = collect(app('mailer')->getSymfonyTransport()->messages())
+            ->map(fn ($sent) => $sent->getOriginalMessage()->getHeaders()->get('To')?->getBodyAsString())
+            ->filter(fn (?string $header) => $header !== null && str_contains($header, 'gast@example.test'));
+
+        $this->assertNotEmpty($to);
+        $this->assertStringContainsString('Frau Kessler <gast@example.test>', (string) $to->first());
+    }
+
     public function test_lines_with_empty_placeholder_disappear(): void
     {
         $body = "Hallo {guest_name},\n\nJetzt bezahlen: {payment_link}\nReservierungsnummer: {reservation_code}\n\nTisch: {table_name}\n\n{custom_message}\n\nBis bald!";

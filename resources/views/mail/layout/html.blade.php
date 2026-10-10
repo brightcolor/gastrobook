@@ -6,7 +6,8 @@
     $breakpoint = (int) config('swayy.mail.mobile_breakpoint');
     $f = $mailFrame->footer;
     $tone = $mailFrame->du ? 'du' : 'Sie';
-    $sep = '<span class="t-muted" style="color:'.e($mailTheme->palette('faint')).';padding:0 6px;">·</span>';
+    // Leerzeichen um den Trennpunkt: Tags direkt zwischen Wortzeichen zählt SpamAssassin als Verschleierung.
+    $sep = ' <span class="t-muted" style="color:'.e($mailTheme->palette('faint')).';padding:0 3px;">·</span> ';
     $footerLink = 'class="t-muted" style="color:'.e($mailTheme->palette('muted')).';text-decoration:underline;"';
     $address = implode($sep, array_map('e', array_filter([$f['street'], $f['city']])));
     $contact = implode($sep, array_filter([

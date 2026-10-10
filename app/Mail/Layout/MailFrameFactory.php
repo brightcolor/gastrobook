@@ -47,7 +47,19 @@ final class MailFrameFactory
             reason: $this->reason($type, $du, $vars),
             unsubscribeUrl: $unsubscribeUrl,
             poweredBy: (bool) config('swayy.mail.powered_by', true),
+            listId: $unsubscribeUrl !== null ? self::listId($name, $tenant) : null,
         );
+    }
+
+    /**
+     * Kennung der Kampagnen-Liste eines Betriebs (RFC 2919). Gehört zum
+     * Abmelde-Kopf; fehlt sie, werten Spamfilter die Liste als unvollständig.
+     */
+    private static function listId(string $name, ?Tenant $tenant): string
+    {
+        $host = strtolower((string) parse_url((string) config('app.url'), PHP_URL_HOST)) ?: 'localhost';
+
+        return 'Neuigkeiten von '.$name.' <marketing-'.($tenant?->id ?? 0).'.'.$host.'>';
     }
 
     /**

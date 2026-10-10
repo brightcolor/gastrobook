@@ -33,6 +33,7 @@ final class MailFrame
         public readonly ?string $unsubscribeUrl = null,
         public readonly bool $poweredBy = false,
         public readonly bool $structured = true,
+        public readonly ?string $listId = null,
     ) {}
 
     public function theme(): MailTheme

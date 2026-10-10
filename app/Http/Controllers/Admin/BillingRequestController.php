@@ -77,7 +77,7 @@ class BillingRequestController extends Controller
             'plan_key' => $billingRequest->plan_key,
         ], null, $request->user(), $tenant->id);
 
-        Mail::to($billingRequest->contact_email)
+        Mail::to($billingRequest->contact_email, $billingRequest->contact_name)
             ->send(new BillingRequestConfirmMail($billingRequest));
 
         return redirect()->route('admin.trial.expired')
@@ -128,7 +128,7 @@ class BillingRequestController extends Controller
         // Notify owner
         $ownerEmail = config('swayy.owner_email');
         if ($ownerEmail) {
-            Mail::to($ownerEmail)->send(new BillingRequestOwnerMail($billingRequest));
+            Mail::to($ownerEmail, config('mail.from.name'))->send(new BillingRequestOwnerMail($billingRequest));
             $billingRequest->update(['owner_notified_at' => now()]);
         }
 

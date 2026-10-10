@@ -539,7 +539,7 @@ class ReservationLifecycleService
                 'code' => $reservation->code,
             ];
 
-            Mail::to($reservation->guest_email_snapshot)->queue($this->mailSender->toGuest(
+            Mail::to($reservation->guest_email_snapshot, $reservation->guest_name_snapshot)->queue($this->mailSender->toGuest(
                 $du
                     ? __('Tischänderung zu deiner Reservierung :code – :loc', $vars)
                     : __('Tischänderung zu Ihrer Reservierung :code – :loc', $vars),
@@ -879,7 +879,7 @@ class ReservationLifecycleService
         $subject = 'Neue Reservierung – '.$localStart->format('d.m.').' '.$localStart->format('H:i').' · '
             .$reservation->guest_name_snapshot.' ('.$reservation->party_size.' P.)';
 
-        Mail::to($to)->queue($this->mailSender->toOperator(
+        Mail::to($to, $location->name)->queue($this->mailSender->toOperator(
             $subject,
             $body,
             $tenant,
@@ -941,7 +941,7 @@ class ReservationLifecycleService
         $tenant = $reservation->tenant()->first();
         $location = $reservation->location()->withoutGlobalScope('tenant')->first();
 
-        Mail::to($reservation->guest_email_snapshot)->queue(
+        Mail::to($reservation->guest_email_snapshot, $reservation->guest_name_snapshot)->queue(
             $this->mailSender->toGuest($rendered['subject'], $rendered['body'], $tenant, $location, $reservation, $templateKey)
         );
 

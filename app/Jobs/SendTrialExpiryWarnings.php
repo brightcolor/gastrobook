@@ -58,7 +58,7 @@ class SendTrialExpiryWarnings implements ShouldQueue
 
                 // Also notify the platform owner
                 if ($ownerEmail) {
-                    Mail::to($ownerEmail)
+                    Mail::to($ownerEmail, config('mail.from.name'))
                         ->queue(new TrialExpiryWarningMail($tenant, 'Admin'));
                 }
             });

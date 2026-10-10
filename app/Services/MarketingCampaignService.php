@@ -201,7 +201,7 @@ class MarketingCampaignService
         $rendered = $this->render($campaign, $location, $guest);
         $tenant = $location->tenant;
 
-        Mail::to($guest->email)->queue(app(GuestMailSender::class)->toGuest(
+        Mail::to($guest->email, trim(($guest->first_name ?? '').' '.$guest->last_name) ?: null)->queue(app(GuestMailSender::class)->toGuest(
             $rendered['subject'],
             $rendered['body'],
             $tenant,

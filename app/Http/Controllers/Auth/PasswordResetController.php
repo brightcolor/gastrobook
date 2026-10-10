@@ -49,7 +49,7 @@ class PasswordResetController extends Controller
                 // silently swallow the mail). Failures are logged, never surfaced,
                 // so we keep the enumeration-safe generic response.
                 try {
-                    Mail::to($user->getEmailForPasswordReset())->send(new PasswordResetMail($url));
+                    Mail::to($user->getEmailForPasswordReset(), $user->name)->send(new PasswordResetMail($url));
                 } catch (\Throwable $e) {
                     Log::error('Password-Reset-Mail konnte nicht gesendet werden.', [
                         'user_id' => $user->getAuthIdentifier(),

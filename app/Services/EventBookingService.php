@@ -193,7 +193,7 @@ class EventBookingService
 
         $body = implode("\n\n", array_filter($parts, static fn (string $part) => $part !== ''));
 
-        Mail::to($booking->guest_email)->queue(app(GuestMailSender::class)->toGuest(
+        Mail::to($booking->guest_email, $booking->guest_name)->queue(app(GuestMailSender::class)->toGuest(
             __('Buchungsbestätigung: :event', ['event' => $event->title]),
             $body,
             $location?->tenant()->withoutGlobalScopes()->first(),

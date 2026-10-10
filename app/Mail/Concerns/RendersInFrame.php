@@ -54,9 +54,10 @@ trait RendersInFrame
             return new Headers;
         }
 
-        return new Headers(text: [
+        return new Headers(text: array_filter([
+            'List-Id' => $frame->listId,
             'List-Unsubscribe' => '<'.$frame->unsubscribeUrl.'>',
             'List-Unsubscribe-Post' => 'List-Unsubscribe=One-Click',
-        ]);
+        ]));
     }
 }

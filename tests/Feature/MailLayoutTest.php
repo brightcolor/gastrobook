@@ -148,6 +148,15 @@ class MailLayoutTest extends TestCase
         $this->assertMatchesRegularExpression('/font-size:13px[^>]*>Der Link gilt 1 Stunde\./', $html);
     }
 
+    public function test_footer_separators_never_glue_words_together(): void
+    {
+        // SpamAssassin zählt Tags zwischen zwei Wortzeichen als Verschleierung (HTML_OBFUSCATE_*).
+        $html = $this->guestMail()->render();
+
+        $this->assertStringContainsString('>·</span>', $html);
+        $this->assertDoesNotMatchRegularExpression('/[^\s>]<span class="t-muted"[^>]*>·<\/span>|>·<\/span>[^\s<]/u', $html);
+    }
+
     public function test_light_brand_colors_get_a_readable_button(): void
     {
         [$tenant, $location] = $this->luna();

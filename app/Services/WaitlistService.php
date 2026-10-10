@@ -224,7 +224,7 @@ class WaitlistService
             // laeuft: Die Queue liegt auf Redis, nicht in derselben Datenbank.
             // Ein Arbeiter koennte die Mail also verschicken, bevor - oder
             // ohne dass - das Angebot ueberhaupt existiert.
-            Mail::to($entry->guest_email)->queue(app(GuestMailSender::class)->toGuest(
+            Mail::to($entry->guest_email, $entry->guest_name)->queue(app(GuestMailSender::class)->toGuest(
                 __('Ein Tisch ist frei geworden – :location', ['location' => $location->name]),
                 $du
                     ? __("Hallo :name,\n\nfür :date um :time Uhr ist ein Tisch für :party Personen frei geworden. Bestätige bitte innerhalb von :minutes Minuten, dann halten wir ihn für dich.\n\nTisch bestätigen: :link\n\n:location", $vars)

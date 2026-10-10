@@ -77,7 +77,7 @@ class MarketingController extends Controller
             'message' => ['required', 'string', 'max:5000'],
         ]);
 
-        Mail::to(config('services.support_email') ?: config('mail.from.address'))
+        Mail::to(config('services.support_email') ?: config('mail.from.address'), config('mail.from.name'))
             ->send(new ContactRequestMail($validated['name'], $validated['email'], $validated['message']));
 
         return back()->with('success', __('Vielen Dank! Wir melden uns so schnell wie möglich.'));

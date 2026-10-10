@@ -168,7 +168,7 @@ class GoCardlessWebhookController extends Controller
             // sendNow bypasses the queue even though TemplatedMail is ShouldQueue:
             // billing notifications (payment failed / mandate cancelled) must
             // not silently rot in a stuck queue when Redis/worker is down.
-            Mail::to($to)->sendNow(new TemplatedMail($subject, $body));
+            Mail::to($to, $tenant->name)->sendNow(new TemplatedMail($subject, $body));
         }
     }
 }

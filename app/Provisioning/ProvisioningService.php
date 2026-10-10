@@ -550,7 +550,7 @@ final class ProvisioningService
     private function sendMail(User $user, Mailable $mail): void
     {
         try {
-            Mail::to($user->email)->send($mail);
+            Mail::to($user->email, $user->name)->send($mail);
         } catch (\Throwable $e) {
             Log::error('Bereitstellung: Mail an den Inhaber ging nicht hinaus. Nächster Schritt: Mailversand prüfen und den Inhaber auf den Kundenbereich hinweisen.', ['user_id' => $user->id, 'mail' => $mail::class, 'error' => $e->getMessage()]);
         }

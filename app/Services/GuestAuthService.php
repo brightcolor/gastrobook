@@ -83,7 +83,7 @@ class GuestAuthService
         // Send synchronously (like the password-reset mail): a magic link is
         // useless if it sits in a stuck queue when Redis/worker is down.
         $name = $guest->first_name ?: $guest->last_name;
-        Mail::to($guest->email)->send(new GuestLinkMail(
+        Mail::to($guest->email, $name)->send(new GuestLinkMail(
             $du ? __('Dein Anmeldelink für :name', ['name' => $tenant->name])
                 : __('Ihr Anmeldelink für :name', ['name' => $tenant->name]),
             $du ? __("Hallo :guest,\n\nhier ist dein Anmeldelink für dein Kundenkonto bei :name.", ['guest' => $name, 'name' => $tenant->name])
@@ -118,7 +118,7 @@ class GuestAuthService
 
         // Synchronous: the guest is waiting on this link to finish booking.
         $name = $guest->first_name ?: $guest->last_name;
-        Mail::to($guest->email)->send(new GuestLinkMail(
+        Mail::to($guest->email, $name)->send(new GuestLinkMail(
             $du ? __('Bitte bestätige deine E-Mail-Adresse')
                 : __('Bitte bestätigen Sie Ihre E-Mail-Adresse'),
             $du ? __("Hallo :guest,\n\nein Klick noch, dann ist deine Buchung :code bei uns.", ['guest' => $name, 'code' => $reservation->code])

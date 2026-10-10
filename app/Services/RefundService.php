@@ -805,7 +805,7 @@ class RefundService
 
         $tenant = Tenant::find($refund?->tenant_id ?? $location->tenant_id);
 
-        Mail::to($to)->queue(app(GuestMailSender::class)->toOperator(
+        Mail::to($to, $location->name)->queue(app(GuestMailSender::class)->toOperator(
             $betreff,
             implode("\n", $refund === null ? $zeilen : [
                 ...$zeilen,

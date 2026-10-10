@@ -36,6 +36,7 @@ class MarketingMailHeadersTest extends TestCase
         $headers = $mail->headers()->text;
         $this->assertSame('<'.$url.'>', $headers['List-Unsubscribe']);
         $this->assertSame('List-Unsubscribe=One-Click', $headers['List-Unsubscribe-Post']);
+        $this->assertMatchesRegularExpression('/^.+ <marketing-'.$location->tenant_id.'\.[a-z0-9.-]+>$/', $headers['List-Id']);
 
         $html = $mail->render();
         $this->assertStringContainsString('>Abmelden</a>', $html);

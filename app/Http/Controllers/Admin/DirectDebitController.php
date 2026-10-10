@@ -290,7 +290,7 @@ class DirectDebitController extends Controller
         foreach (array_unique(array_filter([$customer, $owner])) as $to) {
             // Synchronous (sendNow) so the SEPA setup/cancellation confirmation
             // is guaranteed to go out, independent of the queue worker.
-            Mail::to($to)->sendNow(new TemplatedMail($subject, $body));
+            Mail::to($to, $tenant->name)->sendNow(new TemplatedMail($subject, $body));
         }
     }
 

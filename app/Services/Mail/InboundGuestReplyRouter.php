@@ -131,7 +131,7 @@ final class InboundGuestReplyRouter
             ? "Antwort zur Buchung {$reservation->code} vom ".$reservation->localStart()->format('d.m.Y').":\n\n"
             : "Antwort ohne eindeutige Zuordnung (bitte selbst zuordnen):\n\n";
 
-        Mail::to($to)->queue(new ForwardedGuestReplyMail(
+        Mail::to($to, $location?->name ?? $tenant->name)->queue(new ForwardedGuestReplyMail(
             forwardSubject: trim("{$prefix} {$gastName}: ".(string) $message->subject),
             forwardBody: $kopf.$message->textBody,
             fromName: $tenant->mail_from_name ?: $tenant->name,
