@@ -9,16 +9,20 @@
 // nimmt die Zeile heraus. Danach meldet ein input-Ereignis am Formular die
 // Änderung (Speicherleiste, Seitenleiste). Beim Zurücksetzen des Formulars
 // („Verwerfen“, Schließen der Seitenleiste) kehren die Zeilen zum
-// gespeicherten Stand zurück; nach dem Speichern gilt der neue Stand.
+// gespeicherten Stand zurück; nach dem Speichern gilt der gesendete Stand.
 
 let installed = false;
 let counter = 0;
+// Gespeicherter Stand je Zeilenliste (HTML), auf den „Verwerfen“ zurückkehrt.
 const saved = new WeakMap();
+// Zeilen einer Liste beim Start der letzten Anfrage. Sie halten die gesendeten
+// Werte, auch wenn eine Zeile währenddessen entfernt wurde oder eine dazukam.
+const sent = new WeakMap();
 
 const listOf = (root) => root.querySelector('[data-rows-list]');
 
-// Der gespeicherte Stand wird vor der ersten Änderung festgehalten; die
-// Attribute im HTML tragen dann noch die Werte vom Server.
+// Der gespeicherte Stand wird beim Start festgehalten, solange die Liste noch
+// die Werte vom Server trägt (ohne Fehlermarkierungen früherer Antworten).
 function remember(root) {
     const list = listOf(root);
     if (list && !saved.has(list)) saved.set(list, list.innerHTML);
@@ -35,7 +39,6 @@ function notify(root) {
 }
 
 function addRow(root) {
-    remember(root);
     const template = root.querySelector('template[data-rows-template]');
     const holder = document.createElement('div');
     holder.innerHTML = template.innerHTML.replaceAll('__INDEX__', `n${++counter}`).trim();
@@ -48,7 +51,6 @@ function addRow(root) {
 
 function removeRow(button) {
     const root = button.closest('[data-rows]');
-    remember(root);
     button.closest('[data-row]').remove();
     sync(root);
     notify(root);
@@ -56,7 +58,10 @@ function removeRow(button) {
 }
 
 export function initRows() {
-    document.querySelectorAll('[data-rows]').forEach(sync);
+    document.querySelectorAll('[data-rows]').forEach((root) => {
+        remember(root);
+        sync(root);
+    });
     if (installed) return;
     installed = true;
 
@@ -78,15 +83,38 @@ export function initRows() {
         if (!(form instanceof HTMLFormElement)) return;
         form.querySelectorAll('[data-rows]').forEach((root) => {
             const list = listOf(root);
+            // Setzt sich das Formular mitten in der Anfrage zurück (Formular mit
+            // data-reset-after-save), ersetzen die wiederhergestellten Zeilen die
+            // Zeilen vom Senden.
+            sent.delete(list);
             if (saved.has(list)) list.innerHTML = saved.get(list);
             sync(root);
         });
     }, true);
 
-    // Nach dem Speichern hat forms.js die gesendeten Werte als Vorgabe gesetzt.
+    // Vor jeder Anfrage: Die Zeilen von jetzt sind die, die gesendet werden.
+    document.addEventListener('swayy:sending', (e) => {
+        const form = e.target;
+        if (!(form instanceof HTMLFormElement)) return;
+        form.querySelectorAll('[data-rows]').forEach((root) => {
+            const list = listOf(root);
+            sent.set(list, [...list.children]);
+        });
+    });
+
+    // Nach dem Speichern hat forms.js die gesendeten Werte als Vorgabe dieser
+    // Zeilen gesetzt, auch bei Zeilen, die inzwischen entfernt wurden. Der neue
+    // gespeicherte Stand besteht aus genau diesen Zeilen; was seit dem Senden
+    // dazukam, bleiben ungespeichert. Ohne vorherige Sendemeldung zählen die
+    // aktuellen Zeilen.
     document.addEventListener('swayy:saved', (e) => {
         const form = e.target;
         if (!(form instanceof HTMLFormElement)) return;
-        form.querySelectorAll('[data-rows]').forEach((root) => saved.set(listOf(root), listOf(root).innerHTML));
+        form.querySelectorAll('[data-rows]').forEach((root) => {
+            const list = listOf(root);
+            const rows = sent.get(list) ?? [...list.children];
+            sent.delete(list);
+            saved.set(list, rows.map((row) => row.outerHTML).join(''));
+        });
     });
 }

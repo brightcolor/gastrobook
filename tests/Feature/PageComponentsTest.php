@@ -6,12 +6,21 @@ namespace Tests\Feature;
 
 use App\Models\Location;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Blade;
 use Tests\Concerns\CreatesTenants;
 use Tests\TestCase;
 
 class PageComponentsTest extends TestCase
 {
     use CreatesTenants, RefreshDatabase;
+
+    /** Eingaben wie nach einer abgelehnten Anfrage: old() liest sie aus der Sitzung der aktuellen Anfrage. */
+    private function flashOldInput(array $input): void
+    {
+        $session = $this->app['session']->driver();
+        $session->put('_old_input', $input);
+        $this->app['request']->setLaravelSession($session);
+    }
 
     public function test_field_puts_the_label_above_and_links_help_text(): void
     {
@@ -157,6 +166,36 @@ class PageComponentsTest extends TestCase
         $this->blade('<x-checkbox name="walkins_enabled" label="Walk-ins erfassen" :checked="false" />')
             ->assertDontSee('checked', false)
             ->assertDontSee('aria-describedby', false);
+    }
+
+    public function test_checkbox_box_is_large_enough_to_hit(): void
+    {
+        $html = Blade::render('<x-checkbox name="waitlist_enabled" label="Warteliste anbieten" />');
+
+        // 24 px (h-6 w-6), oben so verschoben, dass die Mitte auf der ersten Textzeile der Beschriftung liegt.
+        $this->assertMatchesRegularExpression('/<input id="f-waitlist_enabled" type="checkbox"[^>]*class="-mt-0\.5 h-6 w-6 shrink-0"/', $html);
+    }
+
+    public function test_checkbox_follows_the_old_input_after_a_rejected_save(): void
+    {
+        $this->flashOldInput(['waitlist_enabled' => '1']);
+        $this->blade('<x-checkbox name="waitlist_enabled" label="Warteliste anbieten" :checked="false" />')
+            ->assertSee('value="1" checked', false);
+
+        $this->flashOldInput(['waitlist_enabled' => '0']);
+        $this->blade('<x-checkbox name="waitlist_enabled" label="Warteliste anbieten" :checked="true" />')
+            ->assertDontSee('checked', false);
+    }
+
+    public function test_checkbox_passes_extra_attributes_to_the_box_and_the_class_to_the_wrapper(): void
+    {
+        $html = Blade::render('<x-checkbox name="waitlist_enabled" label="Warteliste anbieten" class="mt-4" data-foo="bar" />');
+
+        $this->assertMatchesRegularExpression('/<input id="f-waitlist_enabled" type="checkbox"[^>]*data-foo="bar"/', $html);
+        $this->assertMatchesRegularExpression('/<div class="[^"]*mt-4[^"]*">/', $html);
+        $this->assertSame(1, substr_count($html, 'data-foo'));
+        $this->assertDoesNotMatchRegularExpression('/<div[^>]*data-foo/', $html);
+        $this->assertDoesNotMatchRegularExpression('/<input[^>]*class="[^"]*mt-4/', $html);
     }
 
     public function test_change_dot_starts_hidden_and_names_the_state(): void

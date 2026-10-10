@@ -23,7 +23,8 @@ function currentValue(scope, name) {
 function matches(el) {
     const scope = el.closest('form') ?? document;
     return (el.dataset.showIf || '').split(';').filter(Boolean).every((condition) => {
-        const at = condition.lastIndexOf(':');
+        // Der erste Doppelpunkt trennt Feldname und Werte; ein Wert darf selbst Doppelpunkte tragen ("08:00").
+        const at = condition.indexOf(':');
         const name = condition.slice(0, at);
         const allowed = condition.slice(at + 1).split(',');
         return allowed.includes(currentValue(scope, name));

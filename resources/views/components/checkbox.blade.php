@@ -9,7 +9,7 @@
     <input type="hidden" name="{{ $name }}" value="0">
     <input id="{{ $id }}" type="checkbox" name="{{ $name }}" value="{{ $value }}" @checked($isChecked)
            @if($help) aria-describedby="{{ $id }}-help" @endif
-           {{ $attributes->except(['class'])->merge(['class' => 'mt-0.5 h-5 w-5 shrink-0']) }}>
+           {{ $attributes->except(['class'])->merge(['class' => '-mt-0.5 h-6 w-6 shrink-0']) }}>
     <div class="min-w-0">
         <label for="{{ $id }}" class="block text-sm font-semibold text-stone-800">{{ $label }}</label>
         @if($help)

@@ -36,6 +36,40 @@ describe('Hinweise je nach Eingabe', () => {
         expect(document.getElementById('warn').hidden).toBe(false);
     });
 
+    it('trennt Feldname und Werte am ersten Doppelpunkt, damit Uhrzeiten als Wert gehen', () => {
+        mount(`
+            <form>
+                <select name="opens_at"><option value="07:30" selected>07:30</option><option value="08:00">08:00</option></select>
+                <p id="late" data-show-if="opens_at:08:00,09:30">Spät</p>
+            </form>`);
+        applyReveals();
+        expect(document.getElementById('late').hidden).toBe(true);
+
+        document.querySelector('[name="opens_at"]').value = '08:00';
+        applyReveals();
+
+        expect(document.getElementById('late').hidden).toBe(false);
+    });
+
+    it('zeigt nach dem Zurücksetzen wieder den gespeicherten Stand', async () => {
+        mount(`
+            <form id="f">
+                <label><input type="radio" name="capacity_mode" value="table" checked> Tische</label>
+                <label><input type="radio" name="capacity_mode" value="person"> Personen</label>
+                <div id="covers" data-show-if="capacity_mode:person">Höchstzahl</div>
+            </form>`);
+        initReveals();
+        const person = document.querySelector('[value="person"]');
+        person.checked = true;
+        person.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(document.getElementById('covers').hidden).toBe(false);
+
+        document.getElementById('f').reset();
+        await Promise.resolve();
+
+        expect(document.getElementById('covers').hidden).toBe(true);
+    });
+
     it('liest bei einem Kästchen mit verstecktem Feld die 0, solange der Haken fehlt', () => {
         mount(`
             <form>

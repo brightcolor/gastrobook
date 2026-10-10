@@ -118,6 +118,7 @@ export function initSaveBar() {
         form.addEventListener('change', render);
         form.addEventListener('swayy:sending', () => sendingParts.set(form, partsOf(form)));
         form.addEventListener('swayy:saved', () => {
+            // data-reset-after-save und data-savebar schließen sich aus: savedSnapshot hielte den gesendeten Stand eines zurückgesetzten Formulars.
             base.set(form, savedSnapshot(form) ?? snapshot(form));
             baseParts.set(form, sendingParts.get(form) ?? partsOf(form));
             sendingParts.delete(form);
