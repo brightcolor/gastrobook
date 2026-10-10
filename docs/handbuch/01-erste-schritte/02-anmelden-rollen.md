@@ -51,6 +51,10 @@ Ein paar Rechte sind bewusst eng geschnitten:
   protokolliert.
 - **Gäste anonymisieren** und **Profile zusammenführen** sind Leitungsrechte,
   weil beides nicht rückgängig zu machen ist.
+- **Einladen** darf die Betriebsleitung nur in Rollen, deren Rechte sie selbst
+  alle hat: Betriebsleitung, Standortleitung, Empfang, Service und Nur lesen.
+  Verwaltung und Marketing (wegen des Gäste-Exports) vergibt, wer Rollen
+  verwalten darf. Zum Inhaber ernennt nur ein Inhaber.
 
 ## Wer kann was nicht sehen?
 

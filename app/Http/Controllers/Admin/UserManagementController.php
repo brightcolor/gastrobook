@@ -8,8 +8,10 @@ use App\Models\Invitation;
 use App\Models\Tenant;
 use App\Models\TenantUser;
 use App\Models\User;
+use App\Rules\AssignableRole;
 use App\Services\AuditLogger;
 use App\Services\PlanLimitService;
+use App\Support\RoleAssignment;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -68,7 +70,7 @@ class UserManagementController extends Controller
 
         $validated = $request->validate([
             'email' => ['required', 'email:rfc'],
-            'role' => ['required', 'in:'.implode(',', $this->assignableRoles($request, $tenant))],
+            'role' => ['required', new AssignableRole($request->user(), $tenant)],
             'all_locations' => ['nullable', 'boolean'],
             'location_ids' => ['nullable', 'array'],
             'location_ids.*' => ['integer'],
@@ -76,7 +78,6 @@ class UserManagementController extends Controller
             'email.required' => __('Bitte die E-Mail-Adresse der Person eintragen.'),
             'email.email' => __('Die E-Mail-Adresse ist unvollständig. Bitte in der Form name@beispiel.de eintragen.'),
             'role.required' => __('Bitte eine Rolle wählen.'),
-            'role.in' => __('Diese Rolle kannst du nicht vergeben. Bitte eine Rolle aus der Liste wählen.'),
         ]);
 
         $allLocations = $request->boolean('all_locations', true);
@@ -144,23 +145,17 @@ class UserManagementController extends Controller
     /**
      * Welche Rollen darf dieser Benutzer vergeben?
      *
-     * Die Inhaberrolle schliesst Abrechnung und "Betrieb loeschen" ein. Ohne
-     * diese Grenze koennte jemand mit users.invite (z. B. die Betriebsleitung,
-     * die users.roles.manage ausdruecklich NICHT hat) sich ueber eine zweite
-     * Mailadresse selbst zum Inhaber machen.
+     * Die Regel steht in RoleAssignment; die Pruefung beim Speichern
+     * (AssignableRole) nutzt dieselbe. Wer nur einladen darf, bekommt nur
+     * Rollen angeboten, deren Rechte er selbst alle hat.
      *
      * @return array<int, string>
      */
     private function assignableRoles(Request $request, Tenant $tenant): array
     {
-        $alle = array_keys(config('permissions.roles'));
         $user = $request->user();
 
-        if ($user?->isSaasAdmin() || $user?->membershipFor($tenant)?->role === 'tenant_owner') {
-            return $alle;
-        }
-
-        return array_values(array_diff($alle, ['tenant_owner']));
+        return $user !== null ? RoleAssignment::assignable($user, $tenant) : [];
     }
 
     /**
@@ -178,9 +173,7 @@ class UserManagementController extends Controller
         abort_if($membership->tenant_id !== $tenant->id, 404);
 
         $validated = $request->validate([
-            'role' => ['required', 'in:'.implode(',', $this->assignableRoles($request, $tenant))],
-        ], [
-            'role.in' => __('Diese Rolle kannst du nicht vergeben. Bitte eine Rolle aus der Liste wählen.'),
+            'role' => ['required', new AssignableRole($request->user(), $tenant)],
         ]);
 
         // The last owner cannot be demoted
