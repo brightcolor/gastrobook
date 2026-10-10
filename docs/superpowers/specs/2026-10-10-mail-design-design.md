@@ -33,10 +33,14 @@ eines Betriebs kommen in keiner Mail an.
 8. **Überschrift je Mailart** setzt Swayy. Die Standardtexte werden so
    angepasst, dass sie die Überschrift nicht wiederholen; selbst geschriebene
    Vorlagen bleiben unverändert.
+9. **Anrede der Mails an Betriebe:** eine Einstellung für ganz Swayy, Vorgabe
+   du, passend zur Verwaltung (Mathias, 10.10.2026). Gast-Mails folgen weiter
+   der Anrede des Standorts.
 
 Freigegebener Entwurf: Bilder vom 10.10.2026 (Demo-Betrieb Trattoria Luna:
 Reservierung bestätigt hell/dunkel/Handy, Bestätigungslink, Neue Reservierung,
-Passwort zurücksetzen).
+Passwort zurücksetzen). Die beiden Swayy-Mails im Entwurf siezen; mit der
+Vorgabe du erscheinen sie in der du-Fassung.
 
 ## Umfang
 
@@ -47,11 +51,11 @@ Passwort zurücksetzen).
 | Gast | Warteliste | `WaitlistService` → `toGuest` | Betrieb | du/Sie |
 | Gast | Marketing-Kampagne (und Testversand) | `MarketingCampaignService` → `toGuest` | Betrieb | du/Sie |
 | Gast | Bestätigungslink, Anmeldelink | `GuestLinkMail` (heute nur Text) | Betrieb | du/Sie |
-| Betrieb | Neue Reservierung, Erstattungen | `GuestMailSender::toOperator` | Swayy | Sie |
-| Betrieb | Weitergeleitete Gast-Antwort | `ForwardedGuestReplyMail` (nur Text) | Swayy | Sie |
-| Swayy | Passwort zurücksetzen, Testphase endet, Abrechnungsanfrage (Bestätigung, Inhaber), Lastschrift-Meldungen | `PasswordResetMail`, `TrialExpiryWarningMail`, `BillingRequest*Mail`, `TemplatedMail` aus `DirectDebitController` und `GoCardlessWebhookController` | Swayy | Sie |
-| Swayy | Kundenpanel: Willkommen, freigegeben | `ProvisionedWelcomeMail`, `ProvisionedApprovedMail` | Swayy | Sie |
-| Swayy intern | Kontaktanfrage an das Swayy-Team | `ContactRequestMail` | Swayy | Sie |
+| Betrieb | Neue Reservierung, Erstattungen | `GuestMailSender::toOperator` | Swayy | Einstellung (Vorgabe du) |
+| Betrieb | Weitergeleitete Gast-Antwort | `ForwardedGuestReplyMail` (nur Text) | Swayy | Einstellung (Vorgabe du) |
+| Swayy | Passwort zurücksetzen, Testphase endet, Abrechnungsanfrage (Bestätigung, Inhaber), Lastschrift-Meldungen | `PasswordResetMail`, `TrialExpiryWarningMail`, `BillingRequest*Mail`, `TemplatedMail` aus `DirectDebitController` und `GoCardlessWebhookController` | Swayy | Einstellung (Vorgabe du) |
+| Swayy | Kundenpanel: Willkommen, freigegeben | `ProvisionedWelcomeMail`, `ProvisionedApprovedMail` | Swayy | Einstellung (Vorgabe du) |
+| Swayy intern | Kontaktanfrage an das Swayy-Team | `ContactRequestMail` | Swayy | Einstellung (Vorgabe du) |
 
 ### Nicht im Umfang
 
@@ -130,8 +134,10 @@ verworfen, er bleibt Absatz.
 ## Überschriften je Mailart
 
 Jeder Versandweg gibt eine Mailart mit. Die Überschriften stehen in
-`lang/de/mails.php`, je in du und Sie (Swayy-Mails nur Sie). Ebenda steht je
-Mailart der Grund für den Fußbereich.
+`lang/de/mails.php`, je in du und Sie. Gast-Mails wählen nach der Anrede des
+Standorts, Mails an Betriebe und Swayy-Mails nach `SWAYY_MAIL_OWNER_ADDRESS`.
+Ebenda steht je Mailart der Grund für den Fußbereich, ebenfalls in beiden
+Formen.
 
 | Mailart | du | Sie |
 |---|---|---|
@@ -148,17 +154,17 @@ Mailart der Grund für den Fußbereich.
 | `event_booking_confirmed` | Deine Buchung ist bestätigt | Ihre Buchung ist bestätigt |
 | `guest_verify` | Bitte bestätige deine E-Mail-Adresse | Bitte bestätigen Sie Ihre E-Mail-Adresse |
 | `guest_login` | Dein Anmeldelink | Ihr Anmeldelink |
-| `operator_new_reservation` | – | Neue Reservierung für {Standort} |
-| `operator_refund` | – | Erstattung zu einer Reservierung |
-| `operator_guest_reply` | – | Antwort von {Gast} |
-| `swayy_password_reset` | – | Neues Passwort festlegen |
-| `swayy_trial_expiry` | – | Ihre Testphase endet bald |
-| `swayy_billing_confirm` | – | Bitte bestätigen Sie Ihre Anfrage |
-| `swayy_billing_owner` | – | Neue Tarifanfrage von {Betrieb} |
-| `swayy_provisioned_welcome` | – | Willkommen bei Swayy |
-| `swayy_provisioned_approved` | – | Ihr Zugang ist freigeschaltet |
-| `swayy_contact` | – | Neue Kontaktanfrage |
-| `swayy_notice` | – | Betreff ohne den Zusatz „– Swayy“ |
+| `operator_new_reservation` | Neue Reservierung für {Standort} | Neue Reservierung für {Standort} |
+| `operator_refund` | Erstattung zu einer Reservierung | Erstattung zu einer Reservierung |
+| `operator_guest_reply` | Antwort von {Gast} | Antwort von {Gast} |
+| `swayy_password_reset` | Neues Passwort festlegen | Neues Passwort festlegen |
+| `swayy_trial_expiry` | Deine Testphase endet bald | Ihre Testphase endet bald |
+| `swayy_billing_confirm` | Bitte bestätige deine Anfrage | Bitte bestätigen Sie Ihre Anfrage |
+| `swayy_billing_owner` | Neue Tarifanfrage von {Betrieb} | Neue Tarifanfrage von {Betrieb} |
+| `swayy_provisioned_welcome` | Willkommen bei Swayy | Willkommen bei Swayy |
+| `swayy_provisioned_approved` | Dein Zugang ist freigeschaltet | Ihr Zugang ist freigeschaltet |
+| `swayy_contact` | Neue Kontaktanfrage | Neue Kontaktanfrage |
+| `swayy_notice` | Betreff ohne den Zusatz „– Swayy“ | Betreff ohne den Zusatz „– Swayy“ |
 
 `swayy_notice` gilt für die Lastschrift-Meldungen, deren Betreff je Anlass
 wechselt. Marketing-Kampagnen haben keine Überschrift: ihr Inhalt gehört dem
@@ -258,8 +264,9 @@ mit ausgeschriebenen Adressen statt Links.
   zur Gültigkeit. (Die Aufgabe „Anrede und Seitentitel im Gast-Buchungsablauf
   angleichen“ ändert `mail/guest-link.blade.php` auf einem eigenen Zweig; beim
   Zusammenführen gilt deren Anrede-Regel, die neue Gestaltung kommt von hier.)
-- **Swayy-Mails** siezen wie bisher; Texte mit Angaben-Zeilen und
-  Link-Zeilen, damit der Parser Tabelle und Knopf erkennt. Die
+- **Mails an Betriebe und Swayy-Mails** bekommen je eine du- und eine
+  Sie-Fassung; `SWAYY_MAIL_OWNER_ADDRESS` wählt (Vorgabe du). Texte mit
+  Angaben-Zeilen und Link-Zeilen, damit der Parser Tabelle und Knopf erkennt. Die
   Unterstreichung mit `====` in der Testphasen-Mail entfällt (die Überschrift
   übernimmt).
 - **Mail an den Betrieb „Neue Reservierung“:** Angaben in zwei Blöcken
@@ -273,6 +280,7 @@ Grenzen und Hinweis), Einträge in `.env.example`:
 
 | Einstellung | Vorgabe | Grenzen | Wirkung |
 |---|---|---|---|
+| `SWAYY_MAIL_OWNER_ADDRESS` | `du` | `du`, `Sie` | Anrede in Mails an Betriebe und in Swayy-Mails |
 | `SWAYY_MAIL_POWERED_BY` | `true` | bool | „Reserviert mit Swayy“ in Gast-Mails |
 | `SWAYY_MAIL_LOGO_MAX_KB` | 200 | 16–1024 | größte Logodatei, die eingebettet wird |
 | `SWAYY_MAIL_LOGO_HEIGHT` | 44 | 24–96 | Anzeigehöhe des Logos in px |
@@ -320,7 +328,8 @@ Umbruchbreite 520 px.
   ungültige Farbe, `CONTRAST_MIN` 7.
 - **Mails:** jede Mailart rendert HTML und Text; Überschrift in du und Sie;
   Knopf mit richtigem Ziel; Fußbereich mit und ohne Adresse/Telefon/Impressum;
-  `SWAYY_MAIL_POWERED_BY=false`; keine `src="http`, kein `<script`, kein
+  `SWAYY_MAIL_POWERED_BY=false`; Mails an Betriebe und Swayy-Mails mit
+  `SWAYY_MAIL_OWNER_ADDRESS` du und Sie (Überschrift, Text, Grund); keine `src="http`, kein `<script`, kein
   `display:none`; Kampagnen mit beiden Abmelde-Kopfzeilen; One-Click-POST meldet
   ab und ist ohne gültige Signatur wirkungslos; Logo eingebettet und
   Wortmarke als Ersatz (SVG, zu groß, fehlt).
