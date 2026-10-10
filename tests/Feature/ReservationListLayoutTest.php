@@ -6,8 +6,10 @@ namespace Tests\Feature;
 
 use App\Enums\ReservationStatus;
 use App\Enums\TenantType;
+use App\Models\Guest;
 use App\Models\Reservation;
 use App\Models\ReservationAttachment;
+use App\Models\Tag;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\CreatesTenants;
@@ -251,10 +253,87 @@ class ReservationListLayoutTest extends TestCase
         $html = (string) $this->actingAs($owner)->get('/admin/reservations/'.$reservation->id)->assertOk()->getContent();
 
         $this->assertMatchesRegularExpression('/<input id="tagNameInput"[^>]*aria-describedby="tagNameError"/', $html);
-        $this->assertMatchesRegularExpression('/<p id="tagNameError" role="alert"[^>]*><\/p>/', $html);
+        // Fokus plus aria-describedby melden den Fehler; ein zusätzliches role="alert" ließe ihn doppelt vorlesen.
+        $this->assertMatchesRegularExpression('/<p id="tagNameError" class="[^"]*"><\/p>/', $html);
+        $this->assertMatchesRegularExpression('/<p id="tagNameNote" role="status" class="[^"]*"><\/p>/', $html);
+        $this->assertStringContainsString('if (tag.message) nameNote.textContent = tag.message;', $html);
         $this->assertStringNotContainsString('if (!res.ok) return;', $html);
         $this->assertStringContainsString('aria-invalid', $html);
         // Die Rückfallmeldung nennt den nächsten Schritt.
         $this->assertStringContainsString('Der Tag konnte nicht angelegt werden. Bitte die Seite neu laden und es noch einmal versuchen.', $html);
+    }
+
+    public function test_the_remove_buttons_of_tags_are_named_and_large_enough(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $reservation = $this->reservationAt($setup);
+        $tag = Tag::create(['tenant_id' => $setup['tenant']->id, 'name' => 'Hochzeit "groß"', 'color' => '#aa3300', 'scope' => 'reservation']);
+        $reservation->tags()->attach($tag->id);
+        $this->clearTenantContext();
+
+        $html = (string) $this->actingAs($owner)->get('/admin/reservations/'.$reservation->id)->assertOk()->getContent();
+
+        $this->assertStringContainsString('<button type="button" aria-label="Tag „Hochzeit &quot;groß&quot;“ entfernen" class="tag-remove -my-1 -mr-1.5 inline-flex h-6 w-6 ', $html);
+        // Die Schaltfläche, die das Skript baut, trägt Name und Mindestgröße ebenfalls, der Name geht maskiert hinein.
+        $this->assertStringContainsString('`${esc(tag.name)} <button type="button" aria-label="Tag „${esc(tag.name)}“ entfernen" class="tag-remove -my-1 -mr-1.5 inline-flex h-6 w-6 ', $html);
+    }
+
+    public function test_the_markers_of_a_guest_in_the_list_carry_text_for_screen_readers(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $guest = Guest::create(['tenant_id' => $setup['tenant']->id, 'first_name' => 'Test', 'last_name' => 'Gast', 'is_vip' => true]);
+        $reservation = $this->reservationAt($setup);
+        $reservation->update(['guest_id' => $guest->id, 'allergy_note' => 'Nüsse <b>& Soja</b>']);
+        $this->clearTenantContext();
+
+        $body = $this->tableBody((string) $this->actingAs($owner)->get('/admin/reservations?range=all')->assertOk()->getContent());
+
+        $this->assertStringContainsString('<span title="VIP"><span aria-hidden="true">⭐</span><span class="sr-only">VIP</span></span>', $body);
+        $this->assertStringContainsString('<span aria-hidden="true">⚠️</span><span class="sr-only">Allergien: Nüsse &lt;b&gt;&amp; Soja&lt;/b&gt;</span>', $body);
+    }
+
+    public function test_only_rows_with_actions_span_two_grid_rows_on_phones(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $withActions = $this->reservationAt($setup, 'MitAktion');
+        $without = $this->reservationAt($setup, 'OhneAktion');
+        $without->update(['status' => ReservationStatus::Completed]);
+        $this->clearTenantContext();
+
+        $body = $this->tableBody((string) $this->actingAs($owner)->get('/admin/reservations?range=all')->assertOk()->getContent());
+
+        $cellClass = function (Reservation $r) use ($body): string {
+            $this->assertSame(1, preg_match('/<td class="([^"]*)" role="cell"><label[^>]*><input type="checkbox" form="bulkForm" name="ids\[\]" value="'.$r->id.'"/', $body, $m));
+
+            return $m[1];
+        };
+        $this->assertStringContainsString('max-md:row-span-2', $cellClass($withActions));
+        $this->assertStringNotContainsString('row-span-2', $cellClass($without));
+    }
+
+    public function test_the_selection_bar_catches_up_with_restored_checkboxes_at_load(): void
+    {
+        $index = (string) file_get_contents(resource_path('views/admin/reservations/index.blade.php'));
+
+        // Nach „Zurück“ stellt der Browser angehakte Kästchen wieder her; sync() läuft deshalb einmal beim Laden.
+        $this->assertMatchesRegularExpression('/bulkClear\'\)\.addEventListener[^\n]*\n[^\n]*\n\s*sync\(\);\n\}\)\(\);\n<\/script>/', $index);
+    }
+
+    public function test_an_empty_filtered_list_offers_to_reset_the_filters(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $filtered = $this->actingAs($owner)->get('/admin/reservations?range=all&status=confirmed')->assertOk();
+        $filtered->assertSee('Mit den gewählten Filtern passt keine Reservierung.');
+        $this->assertMatchesRegularExpression('/<a href="'.preg_quote(route('admin.reservations.index'), '/').'" class="btn btn-secondary">Filter zurücksetzen<\/a>/', (string) $filtered->getContent());
+
+        $plain = $this->actingAs($owner)->get('/admin/reservations?range=all')->assertOk();
+        $plain->assertDontSee('>Filter zurücksetzen<', false);
+        $plain->assertSee('Wähle einen anderen Zeitraum oder setze die Filter zurück.');
     }
 }

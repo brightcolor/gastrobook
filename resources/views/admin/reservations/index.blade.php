@@ -68,16 +68,19 @@
         'last_week' => 'Letzte Woche', 'this_month' => 'Dieser Monat', 'last_month' => 'Letzter Monat',
         'last_7_days' => 'Letzte 7 Tage', 'last_30_days' => 'Letzte 30 Tage', 'all' => 'Alle',
     ];
+    // Aktive Filter für das Banner und den Leerzustand der Liste.
+    $activeFilters = [
+        'Zeitraum' => request('q') ? null : ($preset === 'all' ? null : $rangeLabel),
+        'Status' => request('status') ? __('reservations.status.' . request('status')) : null,
+        'Quelle' => request('source') ? __('reservations.source.' . request('source')) : null,
+        'Raum' => request('room_id') ? optional($rooms->firstWhere('id', request('room_id')))->name : null,
+        'Suche' => request('q'),
+    ];
+    $hasActiveFilters = array_filter($activeFilters, fn ($v) => $v !== null && $v !== '' && $v !== []) !== [];
 @endphp
 
 {{-- Banner der aktiven Filter mit „Filter löschen“ --}}
-<x-active-filters :reset="route('admin.reservations.index')" :filters="[
-    'Zeitraum' => request('q') ? null : ($preset === 'all' ? null : $rangeLabel),
-    'Status'   => request('status') ? __('reservations.status.' . request('status')) : null,
-    'Quelle'   => request('source') ? __('reservations.source.' . request('source')) : null,
-    'Raum'     => request('room_id') ? optional($rooms->firstWhere('id', request('room_id')))->name : null,
-    'Suche'    => request('q'),
-]" />
+<x-active-filters :reset="route('admin.reservations.index')" :filters="$activeFilters" />
 
 <form method="GET" class="mb-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-100">
     {{-- Zeitbereich: Schnellauswahl oder freier Bereich --}}
@@ -215,15 +218,15 @@
                 @endphp
                 {{-- Unter 768 px: Raster aus Auswahl, Gast mit Kurzzeile, Status und darunter den Aktionen. --}}
                 <tr role="row" class="hover:bg-stone-50 max-md:grid max-md:grid-cols-[auto_minmax(0,1fr)_auto] max-md:items-start max-md:gap-x-3 max-md:gap-y-2 max-md:px-3 max-md:py-3">
-                    <td class="px-3 py-3 max-md:row-span-2 max-md:-mt-1 max-md:p-0" role="cell"><label class="flex h-8 w-8 items-center justify-center"><input type="checkbox" form="bulkForm" name="ids[]" value="{{ $r->id }}" class="bulk-check rounded" aria-label="{{ $r->guest_name_snapshot }} auswählen"></label></td>
+                    <td class="px-3 py-3 {{ $hasActions ? 'max-md:row-span-2 ' : '' }}max-md:-mt-1 max-md:p-0" role="cell"><label class="flex h-8 w-8 items-center justify-center"><input type="checkbox" form="bulkForm" name="ids[]" value="{{ $r->id }}" class="bulk-check rounded" aria-label="{{ $r->guest_name_snapshot }} auswählen"></label></td>
                     <td class="whitespace-nowrap px-4 py-3 max-md:hidden" role="cell">
                         <div class="text-xs font-medium text-stone-500">{{ $r->localDayLabel() }}</div>
                         <div class="font-semibold">{{ $r->localStart()->format('H:i') }}<span class="font-normal text-stone-400">–{{ $r->localEnd()->format('H:i') }}</span></div>
                     </td>
                     <td class="min-w-0 px-4 py-3 max-md:p-0" role="cell">
                         <a href="{{ route('admin.reservations.show', $r) }}" class="font-semibold hover:underline max-md:inline-block max-md:py-1 [overflow-wrap:anywhere]">{{ $r->guest_name_snapshot }}</a>
-                        @if($r->guest?->is_vip)<span title="VIP">⭐</span>@endif
-                        @if($r->allergy_note)<span title="Allergien: {{ $r->allergy_note }}">⚠️</span>@endif
+                        @if($r->guest?->is_vip)<span title="VIP"><span aria-hidden="true">⭐</span><span class="sr-only">VIP</span></span>@endif
+                        @if($r->allergy_note)<span title="Allergien: {{ $r->allergy_note }}"><span aria-hidden="true">⚠️</span><span class="sr-only">Allergien: {{ $r->allergy_note }}</span></span>@endif
                         @if($r->no_show_risk >= 50)<span class="rounded bg-red-100 px-1.5 text-xs text-red-700">Risiko</span>@endif
                         <p class="text-[0.8125rem] text-stone-600 md:hidden">{{ $r->localDayLabel() }} {{ $r->localStart()->format('H:i') }}–{{ $r->localEnd()->format('H:i') }} · {{ $r->party_size }} Pers.{{ $tableNames !== '' ? ' · '.$tableNames : '' }} · {{ __('reservations.source.' . $r->source) }}</p>
                     </td>
@@ -273,7 +276,18 @@
                     </td>
                 </tr>
             @empty
-                <tr role="row"><td colspan="9" role="cell" class="px-4 py-8 text-center text-stone-600">Keine Reservierungen gefunden. Wähle einen anderen Zeitraum oder setze die Filter zurück.</td></tr>
+                <tr role="row">
+                    <td colspan="9" role="cell" class="px-4 py-8 text-center text-stone-600">
+                        @if($hasActiveFilters)
+                            <p>Keine Reservierungen gefunden. Mit den gewählten Filtern passt keine Reservierung.</p>
+                            <div class="mt-3 flex justify-center">
+                                <a href="{{ route('admin.reservations.index') }}" class="btn btn-secondary">Filter zurücksetzen</a>
+                            </div>
+                        @else
+                            Keine Reservierungen gefunden. Wähle einen anderen Zeitraum oder setze die Filter zurück.
+                        @endif
+                    </td>
+                </tr>
             @endforelse
         </tbody>
     </table>
@@ -302,6 +316,8 @@
     alls.forEach(all => all.addEventListener('change', () => { boxes().forEach(b => b.checked = all.checked); sync(); }));
     boxes().forEach(b => b.addEventListener('change', sync));
     document.getElementById('bulkClear').addEventListener('click', () => { boxes().forEach(b => b.checked = false); sync(); });
+    // Nach „Zurück“ stellt der Browser angehakte Kästchen oft wieder her; Leiste und Zähler ziehen sofort nach.
+    sync();
 })();
 </script>
 

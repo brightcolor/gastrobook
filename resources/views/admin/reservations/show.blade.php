@@ -204,7 +204,7 @@
                           style="background:{{ $tag->color }}22;color:{{ $tag->color }}"
                           data-id="{{ $tag->id }}">
                         {{ $tag->name }}
-                        <button class="tag-remove ml-0.5 opacity-60 hover:opacity-100" data-id="{{ $tag->id }}">✕</button>
+                        <button type="button" aria-label="Tag „{{ $tag->name }}“ entfernen" class="tag-remove -my-1 -mr-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full opacity-70 hover:opacity-100" data-id="{{ $tag->id }}">✕</button>
                     </span>
                 @endforeach
                 <button id="tagAddBtn"
@@ -223,7 +223,9 @@
                     <button id="tagCreateBtn"
                             class="shrink-0 rounded-lg bg-stone-900 px-3 py-1.5 text-xs font-semibold text-white">Anlegen</button>
                 </div>
-                <p id="tagNameError" role="alert" class="text-[0.8125rem] text-red-700 [&:not(:empty)]:mt-1.5"></p>
+                {{-- Fehler: Der Fokus springt ins Feld, das per aria-describedby auf diesen Text zeigt (ohne role="alert", sonst hört man ihn doppelt). Hinweis zu einem Erfolg: Live-Region. --}}
+                <p id="tagNameError" class="text-[0.8125rem] text-red-700 [&:not(:empty)]:mt-1.5"></p>
+                <p id="tagNameNote" role="status" class="text-[0.8125rem] text-stone-700 [&:not(:empty)]:mt-1.5"></p>
             </div>
         </div>
 
@@ -359,7 +361,7 @@
             pill.style.background = tag.color + '22';
             pill.style.color = tag.color;
             pill.dataset.id = tag.id;
-            pill.innerHTML = `${esc(tag.name)} <button class="tag-remove ml-0.5 opacity-60 hover:opacity-100" data-id="${esc(tag.id)}">✕</button>`;
+            pill.innerHTML = `${esc(tag.name)} <button type="button" aria-label="Tag „${esc(tag.name)}“ entfernen" class="tag-remove -my-1 -mr-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full opacity-70 hover:opacity-100" data-id="${esc(tag.id)}">✕</button>`;
             btn.before(pill);
         });
         container.querySelectorAll('.tag-remove').forEach(b => b.addEventListener('click', () => {
@@ -397,16 +399,19 @@
 
     const nameInput = document.getElementById('tagNameInput');
     const nameError = document.getElementById('tagNameError');
+    const nameNote = document.getElementById('tagNameNote');
 
-    // Die Meldung steht unter dem Feld (Live-Region); das Feld verweist per aria-describedby darauf.
+    // Ein Fehler steht unter dem Feld, das Feld verweist per aria-describedby darauf. Der Fokus springt ins Feld;
+    // dabei liest der Screenreader Fehler und Beschreibung vor.
     function showNameError(text) {
         nameError.textContent = text;
         nameInput.setAttribute('aria-invalid', 'true');
         nameInput.focus();
     }
 
-    function clearNameError() {
+    function clearNameFeedback() {
         nameError.textContent = '';
+        nameNote.textContent = '';
         nameInput.removeAttribute('aria-invalid');
     }
 
@@ -428,12 +433,12 @@
         return byStatus.replace(':status', String(res.status)) || createFailedText;
     }
 
-    nameInput.addEventListener('input', clearNameError);
+    nameInput.addEventListener('input', clearNameFeedback);
 
     document.getElementById('tagCreateBtn').addEventListener('click', async () => {
         const name = nameInput.value.trim();
         const color = document.getElementById('tagColorInput').value;
-        clearNameError();
+        clearNameFeedback();
         if (!name) {
             showNameError(nameMissingText);
             return;
@@ -461,6 +466,8 @@
         if (!allTags.find(t => t.id === tag.id)) allTags.push(tag);
         if (!activeTags.includes(tag.id)) activeTags.push(tag.id);
         nameInput.value = '';
+        // Der Server meldet auch, wenn der Name schon vergeben war und der Tag seine Farbe geändert hat.
+        if (tag.message) nameNote.textContent = tag.message;
         sync();
         renderPills();
         renderPicker();
