@@ -98,7 +98,7 @@ return [
             ['key' => 'rooms', 'label' => 'Räume & Tische', 'route' => 'admin.settings.rooms.index', 'scope' => 'location', 'can' => ['tables.manage'], 'only' => 'restaurant',
                 'keywords' => ['Raum', 'Neuer Raum' => 'raum-neu', 'Tisch', 'Tischkombination' => 'kombinationen', 'Kombination' => 'kombinationen', 'Raummaße', 'Kinderstuhl', 'Barrierefrei']],
             ['key' => 'services', 'label' => 'Leistungen', 'route' => 'admin.services.index', 'scope' => 'location', 'can' => ['tables.manage'], 'only' => 'salon', 'active' => ['admin.services.*'],
-                'keywords' => ['Leistung', 'Dauer', 'Preis']],
+                'keywords' => ['Leistung', 'Neue Leistung' => 'leistung-neu', 'Dauer', 'Preis']],
             ['key' => 'staff', 'label' => 'Mitarbeiter', 'route' => 'admin.staff.index', 'scope' => 'location', 'can' => ['tables.manage'], 'only' => 'salon',
                 'keywords' => ['Mitarbeiter', 'Arbeitszeiten', 'Abwesenheit', 'Urlaub']],
             ['key' => 'capacity', 'label' => 'Kapazität & Dauer', 'route' => 'admin.settings.capacity.show', 'scope' => 'location', 'can' => ['tables.manage', 'opening_hours.manage'],

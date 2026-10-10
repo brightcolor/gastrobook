@@ -1,157 +1,87 @@
 @extends('layouts.admin')
 @section('title', 'Leistungen')
+
 @section('content')
-<div class="mb-5 flex items-center justify-between">
-    <h1 class="text-2xl font-bold">Leistungen – {{ $location->name }}</h1>
-</div>
+@php
+    $question = fn ($service): string => __('Leistung „:name“ löschen? Gäste können sie dann nicht mehr buchen.', ['name' => $service->name]);
+    // Dauer, Preis, wer die Leistung anbietet; eine pausierte Leistung nennt das dazu.
+    $details = fn ($service): string => collect([
+        $service->durationFormatted(),
+        $service->priceFormatted(),
+        $service->staff->isNotEmpty() ? $service->staff->pluck('name')->join(', ') : __('Noch niemandem zugeordnet'),
+        $service->is_active ? null : __('Pausiert'),
+    ])->filter()->implode(' · ');
+    // Die Spalte fasst auch Werte, die das Farbfeld nicht kennt; nur #rrggbb gelangt in den Stil.
+    $dot = fn ($service): ?string => preg_match('/^#[0-9a-fA-F]{6}$/D', (string) $service->color) === 1 ? $service->color : null;
+@endphp
+<x-page-header title="Leistungen" :crumb="['Einstellungen', 'Platz & Zeiten']" scope="location"
+               description="Was Gäste buchen können, mit Dauer, Preis und den Personen, die es anbieten.">
+    <x-slot:actions>
+        <button type="button" data-drawer-open="leistung-neu" class="btn btn-primary">Leistung hinzufügen</button>
+    </x-slot:actions>
+</x-page-header>
 
-{{-- Neue Leistung anlegen --}}
-<div class="mb-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
-    <h2 class="mb-4 font-bold">Neue Leistung</h2>
-    <form method="POST" action="{{ route('admin.services.store') }}" class="space-y-3">
-        @csrf
-        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div class="sm:col-span-2">
-                <label class="mb-1 block text-xs font-semibold text-stone-500">Name *</label>
-                <input type="text" name="name" required maxlength="120" value="{{ old('name') }}"
-                       class="w-full rounded-lg border-stone-200 text-sm" placeholder="z.B. Haarschnitt Herren">
-            </div>
-            <div>
-                <label class="mb-1 block text-xs font-semibold text-stone-500">Dauer (Min.) *<span class="tip" tabindex="0" data-tip="Wie lange die Leistung dauert. Daraus errechnet das System die buchbaren Uhrzeiten – ein 30-Minuten-Termin passt öfter in den Tag als einer über 90 Minuten.">?</span></label>
-                <input type="number" name="duration_minutes" required min="5" max="480"
-                       value="{{ old('duration_minutes', 30) }}"
-                       class="w-full rounded-lg border-stone-200 text-sm">
-            </div>
-            <div>
-                <label class="mb-1 block text-xs font-semibold text-stone-500">Preis (Cent, 0 = auf Anfrage)<span class="tip" tabindex="0" data-tip="In Cent eintragen: 2500 sind 25,00 €. Bei 0 steht auf der Buchungsseite „auf Anfrage“ statt eines Preises.">?</span></label>
-                <input type="number" name="price_minor" required min="0" max="100000"
-                       value="{{ old('price_minor', 0) }}"
-                       class="w-full rounded-lg border-stone-200 text-sm">
-            </div>
-        </div>
-        <div class="grid gap-3 sm:grid-cols-2">
-            <div>
-                <label class="mb-1 block text-xs font-semibold text-stone-500">Beschreibung</label>
-                <input type="text" name="description" maxlength="1000" value="{{ old('description') }}"
-                       class="w-full rounded-lg border-stone-200 text-sm" placeholder="Kurze Beschreibung (optional)">
-            </div>
-            <div>
-                <label class="mb-1 block text-xs font-semibold text-stone-500">Mitarbeiter (kann diese Leistung)<span class="tip" tabindex="0" data-tip="Nur die hier angehakten Personen werden für diese Leistung als buchbar angeboten. Wer nicht angehakt ist, taucht bei der Terminwahl nicht auf.">?</span></label>
-                <div class="flex flex-wrap gap-2">
-                    @foreach($staff as $member)
-                        <label class="flex items-center gap-1 text-sm">
-                            <input type="checkbox" name="staff_ids[]" value="{{ $member->id }}"
-                                   @checked(in_array($member->id, old('staff_ids', [])))>
-                            {{ $member->name }}
-                        </label>
-                    @endforeach
-                    @if($staff->isEmpty())
-                        <span class="text-xs text-stone-400">Zuerst Mitarbeiter anlegen.</span>
-                    @endif
-                </div>
-            </div>
-        </div>
-        <div class="flex items-center gap-4">
-            <label class="flex items-center gap-2 text-sm">
-                <input type="checkbox" name="is_active" value="1" @checked(old('is_active', true))>
-                Aktiv (online buchbar)
-                <span class="tip" tabindex="0" data-tip="Ohne Haken bleibt die Leistung erhalten, wird aber online nicht mehr angeboten – gut für Saisonales, das später wiederkommt. Bestehende Termine bleiben davon unberührt.">?</span>
-            </label>
-            <button type="submit" class="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700">
-                Leistung anlegen
-            </button>
-        </div>
-    </form>
-</div>
-
-{{-- Leistungsliste --}}
-@if($services->isEmpty())
-    <p class="rounded-2xl bg-white p-6 text-center text-sm text-stone-500 shadow-sm">Noch keine Leistungen angelegt.</p>
-@else
-    <div class="space-y-3">
-        @foreach($services as $service)
-            <details class="rounded-2xl bg-white shadow-sm ring-1 ring-stone-100">
-                <summary class="flex cursor-pointer items-center gap-4 p-4 hover:bg-stone-50">
-                    @if($service->color)
-                        <span class="inline-block h-4 w-4 rounded-full" style="background:{{ $service->color }}"></span>
-                    @endif
-                    <span class="font-semibold">{{ $service->name }}</span>
-                    <span class="rounded-full bg-stone-100 px-2 py-0.5 text-xs">{{ $service->durationFormatted() }}</span>
-                    <span class="rounded-full bg-stone-100 px-2 py-0.5 text-xs">{{ $service->priceFormatted() }}</span>
-                    @if(!$service->is_active)
-                        <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">inaktiv</span>
-                    @endif
-                    @if($service->staff->isNotEmpty())
-                        <span class="text-xs text-stone-400">{{ $service->staff->pluck('name')->join(', ') }}</span>
-                    @endif
-                    <span class="ml-auto text-xs text-stone-400">bearbeiten ▾</span>
-                </summary>
-                <div class="border-t border-stone-100 p-5">
-                    <form method="POST" action="{{ route('admin.services.update', $service) }}" class="space-y-3">
-                        @csrf @method('PUT')
-                        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                            <div class="sm:col-span-2">
-                                <label class="mb-1 block text-xs font-semibold text-stone-500">Name *</label>
-                                <input type="text" name="name" required maxlength="120" value="{{ $service->name }}"
-                                       class="w-full rounded-lg border-stone-200 text-sm">
-                            </div>
-                            <div>
-                                <label class="mb-1 block text-xs font-semibold text-stone-500">Dauer (Min.) *</label>
-                                <input type="number" name="duration_minutes" required min="5" max="480"
-                                       value="{{ $service->duration_minutes }}" class="w-full rounded-lg border-stone-200 text-sm">
-                            </div>
-                            <div>
-                                <label class="mb-1 block text-xs font-semibold text-stone-500">Preis (Cent)</label>
-                                <input type="number" name="price_minor" required min="0" max="100000"
-                                       value="{{ $service->price_minor }}" class="w-full rounded-lg border-stone-200 text-sm">
-                            </div>
-                        </div>
-                        <div class="grid gap-3 sm:grid-cols-2">
-                            <div>
-                                <label class="mb-1 block text-xs font-semibold text-stone-500">Beschreibung</label>
-                                <input type="text" name="description" maxlength="1000" value="{{ $service->description }}"
-                                       class="w-full rounded-lg border-stone-200 text-sm">
-                            </div>
-                            <div>
-                                <label class="mb-1 block text-xs font-semibold text-stone-500">Farbe</label>
-                                <input type="color" name="color" value="{{ $service->color ?? '#6b7280' }}"
-                                       class="h-9 w-12 rounded border-stone-200">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="mb-1 block text-xs font-semibold text-stone-500">Mitarbeiter</label>
-                            <div class="flex flex-wrap gap-3">
-                                @foreach($staff as $member)
-                                    <label class="flex items-center gap-1 text-sm">
-                                        <input type="checkbox" name="staff_ids[]" value="{{ $member->id }}"
-                                               @checked($service->staff->contains($member))>
-                                        {{ $member->name }}
-                                    </label>
-                                @endforeach
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-4">
-                            <label class="flex items-center gap-2 text-sm">
-                                <input type="checkbox" name="is_active" value="1" @checked($service->is_active)>
-                                Aktiv
-                            </label>
-                            <button type="submit" class="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700">
-                                Speichern
-                            </button>
-                        </div>
-                    </form>
-                    <div class="mt-4 border-t border-stone-100 pt-4">
-                        <form method="POST" action="{{ route('admin.services.destroy', $service) }}"
-                              onsubmit="return confirm('Leistung wirklich löschen?')">
-                            @csrf @method('DELETE')
-                            <button type="submit" class="rounded-lg border border-red-200 px-3 py-2 text-sm text-red-600 hover:bg-red-50">
-                                Leistung löschen
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </details>
-        @endforeach
-    </div>
+@if($staff->isEmpty())
+    <p role="note" class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        Buchbar wird eine Leistung, sobald eine Person sie anbietet. Lege die Personen unter
+        <a href="{{ route('admin.staff.index') }}" class="font-semibold underline underline-offset-2">Mitarbeiter</a> an.
+    </p>
 @endif
+
+@if($services->isEmpty())
+    <x-empty-state title="Noch keine Leistungen">
+        Leistungen sind das, was Gäste buchen: etwa Haarschnitt, Färben oder Beratung.
+        <x-slot:action>
+            <button type="button" data-drawer-open="leistung-neu" class="btn btn-primary">Leistung hinzufügen</button>
+        </x-slot:action>
+    </x-empty-state>
+@else
+    <ul class="divide-y divide-stone-200 rounded-xl border border-stone-200 bg-white">
+        @foreach($services as $service)
+            <li class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+                {{-- Das Wort „Pausiert“ steht sichtbar in der Zeile und dient als Vorlesetext; das Symbol trägt dann keinen eigenen. --}}
+                <x-status-icon :state="$service->is_active ? 'ok' : 'off'" :label="$service->is_active ? 'Online buchbar' : 'Pausiert'" :announce="$service->is_active" />
+                <div class="min-w-0 flex-1">
+                    <button type="button" data-drawer-open="leistung-{{ $service->id }}"
+                            class="flex items-center gap-2 text-left font-semibold underline-offset-2 hover:underline [overflow-wrap:anywhere]">
+                        @if($dot($service))
+                            <span class="h-3 w-3 shrink-0 rounded-full ring-1 ring-stone-300" style="background-color: {{ $dot($service) }}" aria-hidden="true"></span>
+                        @endif
+                        {{ $service->name }}
+                    </button>
+                    <p class="text-[0.8125rem] text-stone-600">{{ $details($service) }}</p>
+                </div>
+                <x-inline-confirm :id="'leistung-loeschen-'.$service->id" :action="route('admin.services.destroy', $service)" method="DELETE"
+                                  label="Löschen" confirm="Leistung löschen" :subject="$service->name" :reload="true"
+                                  :question="$question($service)" />
+            </li>
+        @endforeach
+    </ul>
+@endif
+
+@push('drawers')
+    <x-drawer id="leistung-neu" title="Neue Leistung" description="Name, Dauer und Preis, wie Gäste sie auf der Buchungsseite sehen.">
+        <form id="form-leistung-neu" method="POST" action="{{ route('admin.services.store') }}" data-ajax data-reset-after-save data-reload-after-save class="space-y-5">
+            @csrf
+            @include('admin.services.partials.fields', ['service' => null, 'prefix' => 'neu'])
+        </form>
+        <x-slot:footer>
+            <button type="button" data-drawer-close class="btn btn-secondary">Abbrechen</button>
+            <button type="submit" form="form-leistung-neu" class="btn btn-primary">Leistung anlegen</button>
+        </x-slot:footer>
+    </x-drawer>
+    @foreach($services as $service)
+        <x-drawer :id="'leistung-'.$service->id" :title="$service->name" description="Änderungen gelten für neue Termine.">
+            <form id="form-leistung-{{ $service->id }}" method="POST" action="{{ route('admin.services.update', $service) }}" data-ajax data-reload-after-save class="space-y-5">
+                @csrf
+                @method('PUT')
+                @include('admin.services.partials.fields', ['service' => $service, 'prefix' => (string) $service->id])
+            </form>
+            <x-slot:footer>
+                <button type="button" data-drawer-close class="btn btn-secondary">Abbrechen</button>
+                <button type="submit" form="form-leistung-{{ $service->id }}" class="btn btn-primary">Speichern</button>
+            </x-slot:footer>
+        </x-drawer>
+    @endforeach
+@endpush
 @endsection

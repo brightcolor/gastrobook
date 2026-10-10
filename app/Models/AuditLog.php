@@ -64,6 +64,7 @@ class AuditLog extends Model
         'end_at' => 'Ende',
         'duration_minutes' => 'Dauer (Min.)',
         'table_ids' => 'Tische',
+        'staff_ids' => 'Personen',
         'tables' => 'Tische',
         'color' => 'Farbe',
         'min_capacity' => 'Min. Personen',

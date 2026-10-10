@@ -394,12 +394,18 @@ return [
     | service_price_max: höchster Preis einer Leistung in Euro. Die Spalte
     | price_minor speichert Cent bis 2147483647 und fasst damit jeden erlaubten
     | Preis (Obergrenze der Einstellung: 100000 Euro).
+    | service_name_max: längster Name einer Leistung in Zeichen (10–255; die
+    | Spalte services.name fasst 255). service_description_max: längste
+    | Beschreibung in Zeichen (50–5000; die Spalte ist text und fasst jede
+    | Länge, die Obergrenze hält die Buchungsseite lesbar).
     |
     */
     'salon' => [
         'service_duration_min' => $serviceDurationMin,
         'service_duration_max' => max($serviceDurationMin, EnvSetting::integer('SWAYY_SERVICE_DURATION_MAX', default: 480, min: 30, max: 1440)),
         'service_price_max' => EnvSetting::integer('SWAYY_SERVICE_PRICE_MAX', default: 1000, min: 1, max: 100000),
+        'service_name_max' => EnvSetting::integer('SWAYY_SERVICE_NAME_MAX', default: 120, min: 10, max: 255),
+        'service_description_max' => EnvSetting::integer('SWAYY_SERVICE_DESCRIPTION_MAX', default: 1000, min: 50, max: 5000),
     ],
 
     /*

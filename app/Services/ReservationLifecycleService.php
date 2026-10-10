@@ -10,10 +10,12 @@ use App\Models\NotificationLog;
 use App\Models\Reservation;
 use App\Models\ReservationStatusHistory;
 use App\Models\RestaurantTable;
+use App\Models\Service;
 use App\Models\StaffMember;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
@@ -157,6 +159,9 @@ class ReservationLifecycleService
                 }
             }
 
+            // Salon: Die gebuchten Leistungen werden hier, unter der Transaktion, gelesen und gesperrt.
+            $bookedServices = $this->lockBookedServices($location, $data);
+
             // Guest profile (skip for anonymous walk-ins)
             $guest = null;
             if (! empty($data['guest_email']) || ! empty($data['guest_phone'])) {
@@ -257,6 +262,18 @@ class ReservationLifecycleService
 
             if ($tableIds !== []) {
                 $reservation->tables()->sync($tableIds);
+            }
+
+            // Mehrere Leistungen: Reihenfolge und Werte zum Zeitpunkt der Buchung stehen mit dem Termin fest, solange die
+            // Leistungen gesperrt sind. Schreiben die Aufrufer die Zuordnung danach noch einmal, ändert das nichts.
+            if (isset($data['service_ids']) && $bookedServices->isNotEmpty()) {
+                $reservation->services()->sync($bookedServices->mapWithKeys(fn (Service $service, int $position) => [
+                    $service->id => [
+                        'sort_order' => $position,
+                        'duration_minutes' => $service->duration_minutes,
+                        'price_minor' => $service->price_minor,
+                    ],
+                ])->all());
             }
 
             ReservationStatusHistory::create([
@@ -900,6 +917,46 @@ class ReservationLifecycleService
             'subject' => $subject,
             'status' => 'queued',
         ]);
+    }
+
+    /**
+     * Salon: liest die gebuchten Leistungen unter einer geteilten Zeilensperre (FOR SHARE) und lehnt die Buchung ab, wenn eine
+     * davon inzwischen gelöscht wurde.
+     *
+     * Eine Leistung bleibt beim Löschen als Eintrag erhalten (Soft Delete); der Fremdschlüssel des Termins hielte also auch
+     * auf eine gelöschte Leistung. Das Löschen (ServiceController) sperrt die Zeile mit FOR UPDATE und prüft dann auf
+     * kommende Termine. Beide Sperren schließen einander aus: Hat die Buchung die Leistung zuerst gelesen, sieht das Löschen
+     * ihren Termin; hat das Löschen zuerst festgeschrieben, findet die Buchung die Leistung nicht mehr.
+     *
+     * @param  array<string, mixed>  $data  service_ids (alle Leistungen der Buchung) oder service_id (die erste)
+     * @return Collection<int, Service> in der Reihenfolge der Buchung
+     */
+    private function lockBookedServices(Location $location, array $data): Collection
+    {
+        $ids = collect($data['service_ids'] ?? [$data['service_id'] ?? null])
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+        if ($ids->isEmpty()) {
+            return new Collection;
+        }
+
+        $found = Service::withoutGlobalScope('tenant')
+            ->where('tenant_id', $location->tenant_id)
+            ->where('location_id', $location->id)
+            ->whereIn('id', $ids)
+            ->sharedLock()
+            ->get()
+            ->keyBy('id');
+
+        if ($found->count() < $ids->count()) {
+            throw ValidationException::withMessages([
+                'service_ids' => __('Mindestens eine gewählte Leistung wurde gerade entfernt. Bitte die Leistungen neu wählen.'),
+            ]);
+        }
+
+        return $ids->map(fn (int $id) => $found[$id])->values();
     }
 
     /**
