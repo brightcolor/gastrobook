@@ -238,6 +238,11 @@ class CapCaptchaTest extends TestCase
         'POST reservation/{code}/reschedule/{token}',
         'POST waitlist/{entry}/{token}',
 
+        // Abmeldung per Klick (RFC 8058): Das Mailprogramm schickt den POST
+        // ohne Seite, eine Prüfung ist dort nicht lösbar. Geschützt durch die
+        // Signatur im Link, nur Abmelden möglich.
+        'POST marketing/abmelden/{guest}',
+
         // Ends a session, costs nothing and sends nothing.
         'POST konto/{tenantSlug}/logout',
 
