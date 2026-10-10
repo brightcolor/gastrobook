@@ -5,6 +5,12 @@ use App\Models\Location;
 use App\Models\Reservation;
 use App\Support\EnvSetting;
 
+// Kleinster und größter Wert eines Paares stehen unabhängig in der .env. Der
+// größte Wert liegt nie unter dem kleinsten, sonst lehnte das Feld jeden Wert ab.
+$bookingDurationMin = EnvSetting::integer('SWAYY_BOOKING_DURATION_MIN', default: 30, min: 5, max: 240);
+$bookingRuleDurationMin = EnvSetting::integer('SWAYY_BOOKING_RULE_DURATION_MIN', default: 15, min: 5, max: 240);
+$serviceDurationMin = EnvSetting::integer('SWAYY_SERVICE_DURATION_MIN', default: 5, min: 1, max: 60);
+
 return [
     /*
     |--------------------------------------------------------------------------
@@ -328,20 +334,28 @@ return [
     | deadline_max_minutes: längste Storno- und Umbuchungsfrist in Minuten.
     | party_online_max: größte Gruppe, die online buchen kann.
     |
+    | Liegt der größte Wert eines Paares (duration, rule_duration) in der .env
+    | unter dem kleinsten, gilt der kleinste auch als größter. covers_max,
+    | lead_max_minutes und deadline_max_minutes enden bei 32767, dem größten
+    | Wert der Datenbankspalten (smallint).
+    |
     */
     'booking' => [
         'slot_intervals' => EnvSetting::integerList('SWAYY_BOOKING_SLOT_INTERVALS', default: [15, 30, 60], min: 5, max: 240),
-        'duration_min' => EnvSetting::integer('SWAYY_BOOKING_DURATION_MIN', default: 30, min: 5, max: 240),
-        'duration_max' => EnvSetting::integer('SWAYY_BOOKING_DURATION_MAX', default: 480, min: 60, max: 1440),
+        'duration_min' => $bookingDurationMin,
+        'duration_max' => max($bookingDurationMin, EnvSetting::integer('SWAYY_BOOKING_DURATION_MAX', default: 480, min: 60, max: 1440)),
         'buffer_max' => EnvSetting::integer('SWAYY_BOOKING_BUFFER_MAX', default: 120, min: 0, max: 480),
         'duration_rules_max' => EnvSetting::integer('SWAYY_BOOKING_DURATION_RULES_MAX', default: 20, min: 1, max: 50),
-        'rule_duration_min' => EnvSetting::integer('SWAYY_BOOKING_RULE_DURATION_MIN', default: 15, min: 5, max: 240),
-        'rule_duration_max' => EnvSetting::integer('SWAYY_BOOKING_RULE_DURATION_MAX', default: 600, min: 60, max: 1440),
+        'rule_duration_min' => $bookingRuleDurationMin,
+        'rule_duration_max' => max($bookingRuleDurationMin, EnvSetting::integer('SWAYY_BOOKING_RULE_DURATION_MAX', default: 600, min: 60, max: 1440)),
         'rule_party_max' => EnvSetting::integer('SWAYY_BOOKING_RULE_PARTY_MAX', default: 200, min: 1, max: 1000),
-        'covers_max' => EnvSetting::integer('SWAYY_BOOKING_COVERS_MAX', default: 2000, min: 1, max: 100000),
-        'lead_max_minutes' => EnvSetting::integer('SWAYY_BOOKING_LEAD_MAX', default: 10080, min: 0, max: 43200),
+        // Spalte location_settings.max_covers_per_slot (smallint): höchstens 32767.
+        'covers_max' => EnvSetting::integer('SWAYY_BOOKING_COVERS_MAX', default: 2000, min: 1, max: 32767),
+        // Spalte location_settings.min_lead_minutes (smallint): höchstens 32767.
+        'lead_max_minutes' => EnvSetting::integer('SWAYY_BOOKING_LEAD_MAX', default: 10080, min: 0, max: 32767),
         'advance_max_days' => EnvSetting::integer('SWAYY_BOOKING_ADVANCE_MAX', default: 730, min: 1, max: 1825),
-        'deadline_max_minutes' => EnvSetting::integer('SWAYY_BOOKING_DEADLINE_MAX', default: 20160, min: 0, max: 43200),
+        // Spalten cancellation_deadline_minutes und modification_deadline_minutes (smallint): höchstens 32767.
+        'deadline_max_minutes' => EnvSetting::integer('SWAYY_BOOKING_DEADLINE_MAX', default: 20160, min: 0, max: 32767),
         'party_online_max' => EnvSetting::integer('SWAYY_BOOKING_PARTY_ONLINE_MAX', default: 100, min: 1, max: 1000),
     ],
 
@@ -364,12 +378,16 @@ return [
     |--------------------------------------------------------------------------
     |
     | service_duration_min, service_duration_max: Dauer einer Leistung in Minuten.
-    | service_price_max: höchster Preis einer Leistung in Euro.
+    | Liegt der größte Wert in der .env unter dem kleinsten, gilt der kleinste
+    | auch als größter.
+    | service_price_max: höchster Preis einer Leistung in Euro. Die Spalte
+    | price_minor speichert Cent bis 2147483647 und fasst damit jeden erlaubten
+    | Preis (Obergrenze der Einstellung: 100000 Euro).
     |
     */
     'salon' => [
-        'service_duration_min' => EnvSetting::integer('SWAYY_SERVICE_DURATION_MIN', default: 5, min: 1, max: 60),
-        'service_duration_max' => EnvSetting::integer('SWAYY_SERVICE_DURATION_MAX', default: 480, min: 30, max: 1440),
+        'service_duration_min' => $serviceDurationMin,
+        'service_duration_max' => max($serviceDurationMin, EnvSetting::integer('SWAYY_SERVICE_DURATION_MAX', default: 480, min: 30, max: 1440)),
         'service_price_max' => EnvSetting::integer('SWAYY_SERVICE_PRICE_MAX', default: 1000, min: 1, max: 100000),
     ],
 

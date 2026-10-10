@@ -87,7 +87,7 @@ class BookingSettingRulesTest extends TestCase
             'duration_rules' => [$row, $row, $row],
         ], BookingSettingRules::capacity(null, salon: false), BookingSettingRules::messages())->errors();
 
-        $this->assertSame(['Höchstens 2 Tischzeiten sind möglich. Bitte Gruppengrößen zusammenfassen.'], $errors->get('duration_rules'));
+        $this->assertSame(['Die Zahl der Tischzeiten ist auf 2 begrenzt. Bitte Gruppengrößen zusammenfassen.'], $errors->get('duration_rules'));
         $this->assertSame(['Eine Tischzeit darf höchstens 90 Minuten betragen.'], $errors->get('duration_rules.0.duration'));
         $this->assertTrue($errors->has('buffer_minutes'));
         $this->assertFalse($errors->has('slot_interval_minutes'));
@@ -117,6 +117,59 @@ class BookingSettingRulesTest extends TestCase
         $keys = array_keys(BookingSettingRules::capacity(null, salon: false));
 
         $this->assertSame(['slot_interval_minutes', 'default_duration_minutes', 'buffer_minutes'], array_slice($keys, 0, 3));
+    }
+
+    public function test_every_field_of_the_rules_has_a_label(): void
+    {
+        $keys = array_merge(
+            array_keys(BookingSettingRules::capacity(null, salon: false)),
+            array_keys(BookingSettingRules::capacity(null, salon: true)),
+            array_keys(BookingSettingRules::booking()),
+        );
+
+        $this->assertSame([], array_values(array_diff($keys, array_keys(BookingSettingRules::attributes()))));
+    }
+
+    public function test_a_largest_value_below_the_smallest_is_raised_to_it(): void
+    {
+        [$config] = $this->swayyConfig([
+            'SWAYY_BOOKING_DURATION_MIN' => '120',
+            'SWAYY_BOOKING_DURATION_MAX' => '90',
+            'SWAYY_BOOKING_RULE_DURATION_MIN' => '200',
+            'SWAYY_BOOKING_RULE_DURATION_MAX' => '100',
+            'SWAYY_SERVICE_DURATION_MIN' => '45',
+            'SWAYY_SERVICE_DURATION_MAX' => '30',
+        ]);
+
+        $this->assertSame([120, 120], [$config['booking']['duration_min'], $config['booking']['duration_max']]);
+        $this->assertSame([200, 200], [$config['booking']['rule_duration_min'], $config['booking']['rule_duration_max']]);
+        $this->assertSame([45, 45], [$config['salon']['service_duration_min'], $config['salon']['service_duration_max']]);
+
+        [$config, $warnings] = $this->swayyConfig([
+            'SWAYY_BOOKING_DURATION_MIN' => '60',
+            'SWAYY_BOOKING_DURATION_MAX' => '300',
+        ]);
+
+        $this->assertSame([60, 300], [$config['booking']['duration_min'], $config['booking']['duration_max']]);
+        $this->assertSame('', $warnings);
+    }
+
+    public function test_limits_end_at_the_size_of_their_database_columns(): void
+    {
+        $names = ['SWAYY_BOOKING_COVERS_MAX', 'SWAYY_BOOKING_LEAD_MAX', 'SWAYY_BOOKING_DEADLINE_MAX'];
+        $effective = fn (array $config) => [$config['booking']['covers_max'], $config['booking']['lead_max_minutes'], $config['booking']['deadline_max_minutes']];
+
+        [$config, $warnings] = $this->swayyConfig(array_fill_keys($names, '32767'));
+
+        $this->assertSame([32767, 32767, 32767], $effective($config));
+        $this->assertSame('', $warnings);
+
+        [$config, $warnings] = $this->swayyConfig(array_combine($names, ['70000', '43200', '32768']));
+
+        $this->assertSame([32767, 32767, 32767], $effective($config));
+        foreach ($names as $name) {
+            $this->assertStringContainsString($name, $warnings);
+        }
     }
 
     public function test_duration_rules_are_sorted_and_empty_rows_dropped(): void
@@ -160,5 +213,34 @@ class BookingSettingRulesTest extends TestCase
                 $e->errors(),
             );
         }
+    }
+
+    /**
+     * Liest config/swayy.php mit den angegebenen Umgebungsvariablen neu ein
+     * und liefert die Einstellungen samt den Warnungen im Fehlerprotokoll.
+     *
+     * @param  array<string, string>  $env
+     * @return array{0: array<string, mixed>, 1: string}
+     */
+    private function swayyConfig(array $env): array
+    {
+        $file = (string) tempnam(sys_get_temp_dir(), 'swayy-config');
+        $previous = ini_set('error_log', $file);
+        foreach ($env as $name => $value) {
+            $_SERVER[$name] = $_ENV[$name] = $value;
+        }
+
+        try {
+            $config = require config_path('swayy.php');
+        } finally {
+            foreach (array_keys($env) as $name) {
+                unset($_SERVER[$name], $_ENV[$name]);
+            }
+            ini_set('error_log', $previous === false ? '' : $previous);
+            $warnings = (string) file_get_contents($file);
+            @unlink($file);
+        }
+
+        return [$config, $warnings];
     }
 }

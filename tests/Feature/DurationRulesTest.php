@@ -152,7 +152,53 @@ class DurationRulesTest extends TestCase
             ['min_party' => 3, 'max_party' => 4, 'duration' => 60],
             ['min_party' => 5, 'max_party' => 6, 'duration' => 60],
         ]);
-        $response->assertSessionHasErrors(['duration_rules' => 'Höchstens 2 Tischzeiten sind möglich. Bitte Gruppengrößen zusammenfassen.']);
+        $response->assertSessionHasErrors(['duration_rules' => 'Die Zahl der Tischzeiten ist auf 2 begrenzt. Bitte Gruppengrößen zusammenfassen.']);
+    }
+
+    public function test_the_largest_values_the_settings_allow_fit_their_columns(): void
+    {
+        // Unter PostgreSQL (tests-pgsql) lehnt eine zu kleine Spalte den Wert mit einem Fehler ab.
+        config([
+            'swayy.booking.slot_intervals' => [240],
+            'swayy.booking.duration_max' => 1440,
+            'swayy.booking.buffer_max' => 480,
+            'swayy.booking.covers_max' => 32767,
+            'swayy.booking.lead_max_minutes' => 32767,
+            'swayy.booking.advance_max_days' => 1825,
+            'swayy.booking.deadline_max_minutes' => 32767,
+            'swayy.booking.party_online_max' => 1000,
+        ]);
+        $setup = $this->createTenantSetup();
+        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
+        $this->clearTenantContext();
+
+        $this->actingAs($admin)
+            ->put('/admin/settings/booking-rules', $this->payload([
+                'slot_interval_minutes' => 240,
+                'default_duration_minutes' => 1440,
+                'buffer_minutes' => 480,
+                'capacity_mode' => 'person',
+                'max_covers_per_slot' => 32767,
+                'min_lead_minutes' => 32767,
+                'max_advance_days' => 1825,
+                'min_party_online' => 1000,
+                'max_party_online' => 1000,
+                'cancellation_deadline_minutes' => 32767,
+                'modification_deadline_minutes' => 32767,
+            ]))
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $settings = $setup['location']->settings()->first();
+        $this->assertSame(
+            [240, 1440, 480, 32767, 32767, 1825, 1000, 1000, 32767, 32767],
+            [
+                $settings->slot_interval_minutes, $settings->default_duration_minutes, $settings->buffer_minutes,
+                $settings->max_covers_per_slot, $settings->min_lead_minutes, $settings->max_advance_days,
+                $settings->min_party_online, $settings->max_party_online,
+                $settings->cancellation_deadline_minutes, $settings->modification_deadline_minutes,
+            ],
+        );
     }
 
     public function test_editor_is_visible_in_the_booking_rules_tab(): void

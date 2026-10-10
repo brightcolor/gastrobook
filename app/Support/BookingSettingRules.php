@@ -96,7 +96,7 @@ final class BookingSettingRules
     public static function messages(): array
     {
         return [
-            'duration_rules.max' => __('Höchstens :max Tischzeiten sind möglich. Bitte Gruppengrößen zusammenfassen.'),
+            'duration_rules.max' => __('Die Zahl der Tischzeiten ist auf :max begrenzt. Bitte Gruppengrößen zusammenfassen.'),
             'duration_rules.*.duration.min' => __('Eine Tischzeit muss mindestens :min Minuten betragen.'),
             'duration_rules.*.duration.max' => __('Eine Tischzeit darf höchstens :max Minuten betragen.'),
             'max_party_online.gte' => __('Die größte Gruppe ist kleiner als die kleinste. Bitte bei „Größte Gruppe“ mindestens :value eintragen.'),
@@ -117,6 +117,7 @@ final class BookingSettingRules
             'capacity_mode' => __('Zählweise'),
             'max_covers_per_slot' => __('Höchstens gleichzeitig'),
             'gap_optimization_enabled' => __('Lückenoptimierung'),
+            'duration_rules' => __('Tischzeiten'),
             'duration_rules.*.min_party' => __('Ab Personen'),
             'duration_rules.*.max_party' => __('Bis Personen'),
             'duration_rules.*.duration' => __('Tischzeit'),
