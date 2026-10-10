@@ -101,8 +101,8 @@ return [
                 'keywords' => ['Leistung', 'Dauer', 'Preis']],
             ['key' => 'staff', 'label' => 'Mitarbeiter', 'route' => 'admin.staff.index', 'scope' => 'location', 'can' => ['tables.manage'], 'only' => 'salon',
                 'keywords' => ['Mitarbeiter', 'Arbeitszeiten', 'Abwesenheit', 'Urlaub']],
-            ['key' => 'capacity', 'label' => 'Kapazität & Dauer', 'route' => 'admin.settings.index', 'fragment' => 'buchungsregeln', 'active' => [], 'scope' => 'location', 'can' => ['tables.manage'],
-                'keywords' => ['Kapazität', 'Besuchsdauer', 'Puffer', 'Slot-Intervall', 'Lückenoptimierung']],
+            ['key' => 'capacity', 'label' => 'Kapazität & Dauer', 'route' => 'admin.settings.capacity.show', 'scope' => 'location', 'can' => ['tables.manage', 'opening_hours.manage'],
+                'keywords' => ['Kapazität' => 'kapazitaet', 'Gäste gleichzeitig' => 'kapazitaet', 'Takt' => 'takt', 'Slot-Intervall' => 'takt', 'Besuchsdauer' => 'takt', 'Puffer' => 'takt', 'Tischzeit' => 'tischzeiten', 'Lückenoptimierung' => 'takt']],
         ]],
         ['label' => 'Buchungen', 'items' => [
             ['key' => 'booking-rules', 'label' => 'Buchungsregeln', 'route' => 'admin.settings.index', 'fragment' => 'buchungsregeln', 'active' => [], 'scope' => 'location', 'can' => ['tables.manage'],

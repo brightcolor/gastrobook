@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ReservationAttachmentController;
 use App\Http\Controllers\Admin\ReservationBookController;
 use App\Http\Controllers\Admin\ServiceController;
+use App\Http\Controllers\Admin\Settings\CapacityController;
 use App\Http\Controllers\Admin\Settings\DataController;
 use App\Http\Controllers\Admin\Settings\GeneralController;
 use App\Http\Controllers\Admin\Settings\SettingsMenuController;
@@ -439,6 +440,10 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
             ->middleware('permission:tenant.settings.manage')->name('settings.branding');
         Route::put('/settings/guest-mail', [SettingsController::class, 'updateGuestMail'])
             ->middleware('permission:tenant.settings.manage')->name('settings.guest-mail');
+        Route::get('/settings/capacity', [CapacityController::class, 'show'])
+            ->middleware('permission:opening_hours.manage')->name('settings.capacity.show');
+        Route::put('/settings/capacity', [CapacityController::class, 'update'])
+            ->middleware('permission:opening_hours.manage')->name('settings.capacity');
     });
 
     // Salon: Leistungen
