@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ReservationAttachmentController;
 use App\Http\Controllers\Admin\ReservationBookController;
 use App\Http\Controllers\Admin\ServiceController;
+use App\Http\Controllers\Admin\Settings\BookingFormController;
 use App\Http\Controllers\Admin\Settings\BookingRulesController;
 use App\Http\Controllers\Admin\Settings\CapacityController;
 use App\Http\Controllers\Admin\Settings\DataController;
@@ -393,7 +394,9 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
         Route::post('/settings/combinations', [SettingsController::class, 'storeCombination'])->name('settings.combinations.store');
         Route::put('/settings/combinations/{combination}', [SettingsController::class, 'updateCombination'])->name('settings.combinations.update');
         Route::delete('/settings/combinations/{combination}', [SettingsController::class, 'deleteCombination'])->name('settings.combinations.delete');
-        Route::put('/settings/field-rules', [SettingsController::class, 'updateFieldRules'])
+        Route::get('/settings/booking-form', [BookingFormController::class, 'show'])
+            ->middleware('permission:tenant.settings.manage')->name('settings.booking-form.show');
+        Route::put('/settings/field-rules', [BookingFormController::class, 'update'])
             ->middleware('permission:tenant.settings.manage')->name('settings.field-rules');
         Route::post('/settings/logo', [SettingsController::class, 'uploadLogo'])
             ->middleware('permission:tenant.settings.manage')->name('settings.logo.upload');

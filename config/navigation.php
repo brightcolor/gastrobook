@@ -107,8 +107,8 @@ return [
         ['label' => 'Buchungen', 'items' => [
             ['key' => 'booking-rules', 'label' => 'Buchungsregeln', 'route' => 'admin.settings.rules.show', 'scope' => 'location', 'can' => ['tables.manage', 'opening_hours.manage'],
                 'keywords' => ['Vorlauf' => 'zeitraum', 'Vorausbuchung' => 'zeitraum', 'Personen online' => 'gruppen', 'Große Gruppen' => 'gruppen', 'Stornofrist' => 'fristen', 'Umbuchungsfrist' => 'fristen', 'Bestätigung' => 'bestaetigung', 'E-Mail-Bestätigung' => 'bestaetigung', 'Warteliste' => 'warteliste', 'Walk-ins' => 'warteliste']],
-            ['key' => 'booking-form', 'label' => 'Buchungsformular', 'route' => 'admin.settings.index', 'fragment' => 'allgemein', 'active' => [], 'scope' => 'location', 'can' => ['tables.manage'],
-                'keywords' => ['Formularfelder', 'Pflichtfeld', 'Telefon', 'Anlass', 'Allergien']],
+            ['key' => 'booking-form', 'label' => 'Buchungsformular', 'route' => 'admin.settings.booking-form.show', 'scope' => 'location', 'can' => ['tables.manage', 'tenant.settings.manage'],
+                'keywords' => ['Formularfelder' => 'felder', 'Pflichtfeld' => 'felder', 'Telefon' => 'felder', 'Anlass' => 'felder', 'Allergien' => 'felder']],
             ['key' => 'booking-page', 'label' => 'Buchungsseite & Widget', 'route' => 'admin.settings.index', 'fragment' => 'widget', 'active' => [], 'scope' => 'location', 'can' => ['tables.manage'],
                 'keywords' => ['Website-Widget', 'Einbinden', 'Direktlink', 'Popup', 'Konfetti', 'Öffentlicher Tischplan']],
             ['key' => 'tags', 'label' => 'Tags', 'route' => 'admin.settings.index', 'fragment' => 'raeume', 'active' => [], 'scope' => 'tenant', 'can' => ['tables.manage'],

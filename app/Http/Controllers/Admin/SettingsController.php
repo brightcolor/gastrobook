@@ -183,28 +183,6 @@ class SettingsController extends Controller
     }
 
     /**
-     * Booking widget field visibility: hidden | optional | required per field.
-     */
-    public function updateFieldRules(Request $request)
-    {
-        $location = $this->context->location();
-        abort_if($location === null, 404);
-
-        $fields = ['email', 'phone', 'occasion', 'note', 'allergies'];
-        $validated = $request->validate(
-            collect($fields)->mapWithKeys(fn ($f) => ["fields.{$f}" => ['required', 'in:hidden,optional,required']])->all()
-        );
-
-        $settings = $location->settings()->firstOrCreate(['tenant_id' => $location->tenant_id]);
-        $old = $settings->field_rules;
-        $settings->update(['field_rules' => $validated['fields']]);
-
-        $this->audit->log('location.field_rules_updated', $settings, ['field_rules' => $old], $validated['fields']);
-
-        return $this->saved($request, __('Formularfelder gespeichert.'));
-    }
-
-    /**
      * MailWizz newsletter integration (tenant-wide). Credentials are stored
      * encrypted; the API key is never displayed again after saving.
      */
