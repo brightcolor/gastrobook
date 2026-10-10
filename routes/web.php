@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\ReservationAttachmentController;
 use App\Http\Controllers\Admin\ReservationBookController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\Settings\BookingFormController;
+use App\Http\Controllers\Admin\Settings\BookingPageController;
 use App\Http\Controllers\Admin\Settings\BookingRulesController;
 use App\Http\Controllers\Admin\Settings\CapacityController;
 use App\Http\Controllers\Admin\Settings\DataController;
@@ -452,6 +453,9 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
             ->middleware('permission:opening_hours.manage')->name('settings.rules.show');
         Route::put('/settings/rules', [BookingRulesController::class, 'update'])
             ->middleware('permission:opening_hours.manage')->name('settings.rules');
+        Route::get('/settings/booking-page', [BookingPageController::class, 'show'])->name('settings.booking-page.show');
+        Route::put('/settings/booking-page', [BookingPageController::class, 'update'])
+            ->middleware('permission:opening_hours.manage')->name('settings.booking-page');
     });
 
     // Salon: Leistungen

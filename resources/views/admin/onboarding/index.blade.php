@@ -346,7 +346,7 @@
                         <div class="mt-3 flex flex-wrap gap-3 text-sm">
                             <a href="{{ route('booking.landing', $tenant->slug) }}" target="_blank"
                                class="rounded-lg bg-stone-100 px-3 py-1.5 font-semibold text-stone-700 hover:bg-stone-200">Buchungsseite ansehen ↗</a>
-                            <a href="{{ route('admin.settings.index') }}#widget"
+                            <a href="{{ route('admin.settings.booking-page.show') }}#popup"
                                class="rounded-lg bg-teal-50 px-3 py-1.5 font-semibold text-teal-700 hover:bg-teal-100">Website-Widget einrichten ↗</a>
                         </div>
                     </div>

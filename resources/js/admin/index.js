@@ -8,6 +8,7 @@ import { initAutosubmit, initMoreSheet, initRail, initSettingsSearch } from './n
 import { initReveals } from './reveal.js';
 import { initRows } from './rows.js';
 import { initSaveBar } from './savebar.js';
+import { initWidgetBuilder } from './widget.js';
 
 export function initAdmin() {
     initRail();
@@ -22,4 +23,5 @@ export function initAdmin() {
     initInlineConfirms();
     initDrawers();
     initCopyButtons();
+    initWidgetBuilder();
 }
