@@ -224,7 +224,7 @@ class LocationLogoTest extends TestCase
         $setup['location']->update(['brand_logo_path' => $old]);
         $this->clearTenantContext();
 
-        // Der Speicher nimmt die Datei nicht an: putFileAs liefert false statt eines Pfads.
+        // Der Speicher nimmt die Datei nicht an: putFileAs liefert false und damit keinen Pfad.
         $failing = Mockery::mock(Storage::disk('public'))->makePartial();
         $failing->shouldReceive('putFileAs')->andReturn(false);
         Storage::set('public', $failing);

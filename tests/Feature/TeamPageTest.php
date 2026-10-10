@@ -186,7 +186,9 @@ class TeamPageTest extends TestCase
     public function test_role_summaries_name_what_stays_with_the_owner(): void
     {
         $this->assertStringContainsString('bleiben beim Inhaber', __('roles.tenant_admin.summary'));
-        $this->assertStringContainsString('Rollen vergibt die Administration', __('roles.operations_manager.summary'));
+        $this->assertStringContainsString('Ernennung zum Inhaber', __('roles.tenant_admin.summary'));
+        $this->assertStringContainsString('bis zur eigenen Stufe', __('roles.operations_manager.summary'));
+        $this->assertStringContainsString('Rollen ändert die Administration', __('roles.operations_manager.summary'));
     }
 
     public function test_role_change_answers_without_reload(): void
