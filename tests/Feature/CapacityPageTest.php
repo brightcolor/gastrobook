@@ -53,8 +53,13 @@ class CapacityPageTest extends TestCase
             ->assertSee('name="duration_rules[0][min_party]"', false)
             ->assertSee('data-rows-template', false)
             ->assertSee('name="duration_rules[__INDEX__][duration]"', false)
-            ->assertSee('<option value="15"', false);
+            ->assertSee('<option value="15"', false)
+            ->assertSee('Takt und Dauer')
+            ->assertSee('etwa zum Abräumen und Eindecken.')
+            ->assertDontSee('diese Tischzeit');
         $this->assertMatchesRegularExpression('/data-nav-key="capacity"[^>]*aria-current="page"/', (string) $response->getContent());
+        // Die gespeicherte Zeile und die Vorlage für neue Zeilen tragen dieselbe Gruppe.
+        $this->assertSame(2, substr_count((string) $response->getContent(), 'role="group" aria-label="Tischzeit"'));
     }
 
     public function test_roles_without_settings_rights_are_turned_away(): void
@@ -194,7 +199,11 @@ class CapacityPageTest extends TestCase
             ->assertOk()
             ->assertSee('name="gap_optimization_enabled"', false)
             ->assertDontSee('name="capacity_mode"', false)
-            ->assertDontSee('name="default_duration_minutes"', false);
+            ->assertDontSee('name="default_duration_minutes"', false)
+            ->assertSee('Takt und Puffer')
+            ->assertDontSee('Takt und Dauer')
+            ->assertSee('etwa zum Aufräumen und Vorbereiten.')
+            ->assertDontSee('Abräumen und Eindecken');
 
         $this->actingAs($owner)->putJson('/admin/settings/capacity', [
             'slot_interval_minutes' => 30,
@@ -222,6 +231,50 @@ class CapacityPageTest extends TestCase
         $this->actingAs($owner)->putJson('/admin/settings/capacity', $this->restaurant(['buffer_minutes' => 45]))
             ->assertStatus(422)
             ->assertJsonPath('errors.buffer_minutes.0', 'Puffer nach jeder Buchung darf höchstens 30 sein.');
+    }
+
+    public function test_the_number_of_rules_follows_the_settings(): void
+    {
+        config(['swayy.booking.duration_rules_max' => 2]);
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->get('/admin/settings/capacity')
+            ->assertOk()
+            ->assertSee('data-rows-max="2"', false)
+            ->assertSee('bis zu 2 Regeln');
+
+        $this->actingAs($owner)->putJson('/admin/settings/capacity', $this->restaurant([
+            'duration_rules' => [
+                'n1' => ['min_party' => 1, 'max_party' => 2, 'duration' => 75],
+                'n2' => ['min_party' => 3, 'max_party' => 4, 'duration' => 90],
+                'n3' => ['min_party' => 5, 'max_party' => 6, 'duration' => 120],
+            ],
+        ]))
+            ->assertStatus(422)
+            ->assertJsonPath('errors.duration_rules.0', 'Die Zahl der Tischzeiten ist auf 2 begrenzt. Bitte Gruppengrößen zusammenfassen.');
+    }
+
+    public function test_a_rejected_form_without_javascript_keeps_the_input(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $content = (string) $this->actingAs($owner)
+            ->from('/admin/settings/capacity')
+            ->followingRedirects()
+            ->put('/admin/settings/capacity', $this->restaurant([
+                'slot_interval_minutes' => 17,
+                'capacity_mode' => 'person',
+            ]))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertMatchesRegularExpression('/<select id="f-slot_interval_minutes"[^>]*aria-invalid="true"/', $content);
+        $this->assertMatchesRegularExpression('/<input type="radio" name="capacity_mode" value="person" checked/', $content);
+        $this->assertMatchesRegularExpression('/<div data-show-if="capacity_mode:person,hybrid"\s*>/', $content);
     }
 
     public function test_a_stored_interval_outside_the_list_stays_selectable(): void

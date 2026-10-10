@@ -12,13 +12,17 @@
     @csrf
     @method('PUT')
 
-    <x-settings.section id="takt" title="Takt und Dauer">
+    <x-settings.section id="takt" :title="$salon ? 'Takt und Puffer' : 'Takt und Dauer'">
         <x-slot:description>
             <p>Der Takt bestimmt, welche Uhrzeiten die Buchungsseite anbietet: bei 30 Minuten etwa 18:00, 18:30 und 19:00.</p>
             @unless($salon)
                 <p>Die Standarddauer gilt für jede Buchung, zu der unten keine Tischzeit passt.</p>
             @endunless
-            <p>Der Puffer hält nach jeder Buchung Zeit frei, etwa zum Abräumen und Eindecken.</p>
+            @if($salon)
+                <p>Der Puffer hält nach jeder Buchung Zeit frei, etwa zum Aufräumen und Vorbereiten.</p>
+            @else
+                <p>Der Puffer hält nach jeder Buchung Zeit frei, etwa zum Abräumen und Eindecken.</p>
+            @endif
         </x-slot:description>
         <x-field name="slot_interval_minutes" label="Takt der Uhrzeiten" required class="max-w-48">
             <div class="flex items-stretch">
@@ -87,7 +91,7 @@
                     </label>
                 @endforeach
             </fieldset>
-            <div data-show-if="capacity_mode:person,hybrid" @unless(in_array($settings->capacity_mode, ['person', 'hybrid'], true)) hidden @endunless>
+            <div data-show-if="capacity_mode:person,hybrid" @unless(in_array(old('capacity_mode', $settings->capacity_mode), ['person', 'hybrid'], true)) hidden @endunless>
                 <x-field name="max_covers_per_slot" label="Höchstens gleichzeitig" type="number" unit="Gäste" class="max-w-56"
                          :value="$settings->max_covers_per_slot" min="1" :max="$limits['covers_max']"
                          help="Ohne Eintrag gilt keine Höchstzahl." />
