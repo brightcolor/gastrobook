@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.134.5] – 2026-10-10
+
+### PostgreSQL-Testjob startet PHPUnit direkt
+
+Der Job `tests-pgsql` ruft jetzt `vendor/bin/phpunit -c phpunit.pgsql.xml` auf.
+`php artisan test` hängt selbst `phpunit.xml` als Konfiguration an; mit der
+zweiten Angabe meldete PHPUnit eine Warnung und Exit-Code 1, obwohl alle Tests
+bestanden. Deshalb blieb 1.134.4 ohne Docker-Image und wurde nie ausgeliefert.
+Diese Fassung enthält die Änderungen von 1.134.4 vollständig.
+
 ## [1.134.4] – 2026-10-10
 
 ### Tests laufen auch gegen PostgreSQL
