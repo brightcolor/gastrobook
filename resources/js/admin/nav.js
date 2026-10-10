@@ -149,7 +149,7 @@ export function initMoreSheet() {
     opener.addEventListener('click', open);
     sheet.querySelectorAll('[data-more-close]').forEach((el) => el.addEventListener('click', close));
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && !sheet.hidden) close();
+        if (e.key === 'Escape' && !sheet.hidden && !e.defaultPrevented) close();
     });
     // Ab 768 px gibt es kein Blatt mehr; ein offener Zustand würde Seite und Bildlauf sperren.
     window.matchMedia('(min-width: 768px)').addEventListener('change', (e) => {

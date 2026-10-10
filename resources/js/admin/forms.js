@@ -8,17 +8,27 @@
 // der Zeile). Der Bestätigungsdialog des Layouts und der Doppelklickschutz in
 // app.js sehen das Ereignis danach als erledigt (defaultPrevented).
 //
-// data-reset-on-error: Das Formular kehrt bei einem Fehler zum gespeicherten
-// Stand zurück, etwa eine Rollenauswahl, die sofort speichert.
+// Attribute am Formular:
+//   data-reset-on-error     lehnt der Server ab, kehrt das Formular zum
+//                           gespeicherten Stand zurück (etwa eine Rollenauswahl)
+//   data-reset-after-save   nach dem Speichern zurück zum Ausgangsstand
+//                           (Seitenleisten zum Anlegen)
+//   data-reload-after-save  nach dem Speichern neu laden, wie reload in der
+//                           Antwort (Listen)
+//
+// Vor jeder Anfrage blubbert swayy:sending, nach dem Speichern swayy:saved.
 
 import { page } from './dom.js';
 import { showToast } from './toast.js';
 
 let problemCount = 0;
+let groupCount = 0;
 let inFlight = 0;
 let reloadRequested = false;
 let installed = false;
 const pending = new WeakMap();
+const queued = new WeakMap();
+const sending = new WeakMap();
 const sentSnapshots = new WeakMap();
 
 function texts() {
@@ -71,28 +81,42 @@ function clearProblems(form) {
     });
 }
 
+// Wo der Text am Feld steht: am Feld selbst oder, bei Feldern ohne eigene ID
+// (Kästchen, Optionsfelder), an der umgebenden Gruppe.
+function errorTarget(field) {
+    if (field.id) return field;
+    const group = field.closest('fieldset');
+    if (!group) return null;
+    if (!group.id) group.id = `fieldset${++groupCount}`;
+    return group;
+}
+
 // Fehlertext direkt am Feld, mit derselben ID wie bei x-field ({id}-error):
-// unter dem Feld in seinem Block (Beschriftung, Feld, Hilfesatz).
-function showFieldError(form, field, text) {
-    const errorId = `${field.id}-error`;
+// unter dem Feld in seinem Block (Beschriftung, Feld, Hilfesatz), bei einer
+// Gruppe am Ende der Gruppe.
+function showFieldError(form, target, text) {
+    const errorId = `${target.id}-error`;
     let note = document.getElementById(errorId);
     if (!note) {
         note = document.createElement('p');
         note.id = errorId;
         note.className = 'text-[0.8125rem] text-red-700';
-        const block = form.querySelector(`label[for="${CSS.escape(field.id)}"]`)?.parentElement ?? field.parentElement;
+        const block = target instanceof HTMLFieldSetElement
+            ? target
+            : form.querySelector(`label[for="${CSS.escape(target.id)}"]`)?.parentElement ?? target.parentElement;
         block.append(note);
     }
     note.dataset.ajaxError = '';
     note.textContent = text;
-    describedBy(field, errorId);
+    describedBy(target, errorId);
+    if (target instanceof HTMLFieldSetElement) target.setAttribute('data-ajax-invalid', '');
 }
 
 // Eintrag der Zusammenfassung: mit Feld als Link, der den Fokus dorthin setzt.
-function summaryEntry({ message, field }) {
-    if (!field?.id) return document.createTextNode(message);
+function summaryEntry({ message, field, anchor }) {
+    if (!field || !anchor?.id) return document.createTextNode(message);
     const link = document.createElement('a');
-    link.href = `#${field.id}`;
+    link.href = `#${anchor.id}`;
     link.className = 'underline underline-offset-2';
     link.textContent = message;
     link.addEventListener('click', (e) => {
@@ -118,20 +142,24 @@ function showProblems(form, json, messages) {
     Object.entries(json?.errors ?? {}).forEach(([key, list]) => {
         const [head, ...rest] = key.split('.');
         const name = head + rest.map((part) => `[${part}]`).join('');
-        const fields = [...form.querySelectorAll(`[name="${CSS.escape(name)}"], [name="${CSS.escape(name)}[]"]`)];
+        const fields = [...form.querySelectorAll(`[name="${CSS.escape(name)}"], [name="${CSS.escape(name)}[]"]`)]
+            .filter((el) => el.type !== 'hidden');
         const text = [].concat(list).join(' ');
         const field = fields[0] ?? null;
         fields.forEach((el) => {
             el.setAttribute('aria-invalid', 'true');
             el.setAttribute('data-ajax-invalid', '');
-            // Felder ohne eigene ID (etwa Optionsfelder) verweisen auf die Zusammenfassung.
-            if (!el.id) describedBy(el, box.id);
         });
-        if (field?.id) showFieldError(form, field, text);
+        const anchor = field ? errorTarget(field) : null;
+        if (anchor) showFieldError(form, anchor, text);
+        fields.forEach((el) => {
+            // Felder ohne eigene ID und ohne Gruppe verweisen auf die Zusammenfassung.
+            if (!el.id && !anchor) describedBy(el, box.id);
+        });
         first ??= field;
-        entries.push({ message: text, field });
+        entries.push({ message: text, field, anchor });
     });
-    if (entries.length === 0) messages.forEach((message) => entries.push({ message, field: null }));
+    if (entries.length === 0) messages.forEach((message) => entries.push({ message, field: null, anchor: null }));
 
     if (entries.length === 1) {
         box.append(summaryEntry(entries[0]));
@@ -150,9 +178,12 @@ function showProblems(form, json, messages) {
     (first ?? box).focus();
 }
 
-function fail(form, json, messages) {
+// rejected: Der Server hat geantwortet und abgelehnt. Nur dann kehrt ein
+// Formular mit data-reset-on-error zum gespeicherten Stand zurück; bei einer
+// unklaren Antwort oder ohne Verbindung bleibt die Eingabe stehen.
+function fail(form, json, messages, rejected) {
     showToast(messages.join(' · '), { error: true });
-    if (form.hasAttribute('data-reset-on-error')) form.reset();
+    if (rejected && form.hasAttribute('data-reset-on-error')) form.reset();
     showProblems(form, json, messages);
 }
 
@@ -202,12 +233,14 @@ function reloadWhenIdle() {
 
 async function send(form) {
     clearProblems(form);
+    form.dispatchEvent(new CustomEvent('swayy:sending', { bubbles: true }));
     // Knöpfe in der Fußzeile einer Seitenleiste stehen außerhalb des Formulars (form="…").
     const submitter = form.querySelector('[type="submit"]')
         ?? (form.id ? document.querySelector(`[type="submit"][form="${CSS.escape(form.id)}"]`) : null);
     submitter?.setAttribute('aria-busy', 'true');
     const values = readValues(form);
     const sent = snapshot(form);
+    sending.set(form, sent);
     inFlight++;
 
     try {
@@ -225,40 +258,57 @@ async function send(form) {
         const json = await readJson(res);
 
         if (!res.ok) {
-            fail(form, json, problemsOf(res, json));
+            fail(form, json, problemsOf(res, json), true);
             return false;
         }
 
         // Gespeichert meldet nur, wer es bestätigt. Eine Antwort ohne JSON
         // (etwa nach einer Weiterleitung) lässt offen, ob die Änderung ankam.
         if (!json || typeof json.message !== 'string') {
-            fail(form, null, [texts().unclear || '']);
+            fail(form, null, [texts().unclear || ''], false);
             return false;
         }
 
-        commitDefaults(values);
+        if (form.hasAttribute('data-reset-after-save')) {
+            form.reset();
+        } else {
+            commitDefaults(values);
+        }
         sentSnapshots.set(form, sent);
         form.dispatchEvent(new CustomEvent('swayy:saved', { detail: json, bubbles: true }));
         showToast(json.message);
-        if (json.reload) reloadRequested = true;
+        if (json.reload || form.hasAttribute('data-reload-after-save')) reloadRequested = true;
         return true;
     } catch {
-        fail(form, null, [texts().network || '']);
+        fail(form, null, [texts().network || ''], false);
         return false;
     } finally {
         submitter?.removeAttribute('aria-busy');
+        sending.delete(form);
         inFlight--;
         if (reloadRequested) reloadWhenIdle();
     }
 }
 
 // Ein zweiter Aufruf während der Anfrage (Doppelklick, Enter und Speicherleiste)
-// bekommt dieselbe Anfrage zurück; abgeschickt wird nur einmal.
+// bekommt dieselbe Anfrage zurück, solange die Eingaben gleich sind. Wurde
+// inzwischen weitergetippt, folgt genau eine weitere Anfrage mit dem neuesten
+// Stand, sobald die erste fertig ist.
 export function submitForm(form) {
-    if (!pending.has(form)) {
-        pending.set(form, send(form).finally(() => pending.delete(form)));
+    const running = pending.get(form);
+    if (!running) {
+        const run = send(form).finally(() => pending.delete(form));
+        pending.set(form, run);
+        return run;
     }
-    return pending.get(form);
+    if (snapshot(form) === sending.get(form)) return running;
+    if (!queued.has(form)) {
+        queued.set(form, running.then(() => {
+            queued.delete(form);
+            return submitForm(form);
+        }));
+    }
+    return queued.get(form);
 }
 
 export function initAjaxForms() {
@@ -267,7 +317,7 @@ export function initAjaxForms() {
 
     document.addEventListener('submit', (e) => {
         const form = e.target;
-        if (!(form instanceof HTMLFormElement) || !form.hasAttribute('data-ajax')) return;
+        if (e.defaultPrevented || !(form instanceof HTMLFormElement) || !form.hasAttribute('data-ajax')) return;
         e.preventDefault();
         submitForm(form);
     }, true);

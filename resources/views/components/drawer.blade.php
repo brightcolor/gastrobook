@@ -3,7 +3,7 @@
      Seiten legen sie mit @push('drawers') ans Ende des Dokuments. Geöffnet von data-drawer-open="{id}" oder der Adresse #{id}.
      Knöpfe im Slot "footer" verweisen mit form="…" auf das Formular im Inhalt. --}}
 <div id="{{ $id }}" data-drawer hidden class="fixed inset-0 z-50">
-    <div data-drawer-close class="absolute inset-0 bg-stone-900/40" aria-hidden="true"></div>
+    <div data-drawer-close data-drawer-backdrop class="absolute inset-0 bg-stone-900/40" aria-hidden="true"></div>
     <div role="dialog" aria-modal="true" aria-labelledby="{{ $id }}-title" @if($description) aria-describedby="{{ $id }}-description" @endif
          class="absolute inset-y-0 right-0 flex w-full flex-col bg-white shadow-2xl md:max-w-md">
         <div class="flex items-start justify-between gap-3 border-b border-stone-200 px-5 py-4">

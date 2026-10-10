@@ -77,4 +77,30 @@ describe('Rückfrage in der Zeile', () => {
         escape();
         expect(document.getElementById('d').hidden).toBe(true);
     });
+
+    it('fokussiert eine beim Laden offene Frage', () => {
+        mount(`
+            <div data-inline-confirm>
+                <button type="button" data-inline-confirm-open hidden>Betrieb löschen …</button>
+                <form data-inline-confirm-panel method="POST" action="/admin/account/tenant">
+                    <input id="confirm-tenant-name" name="confirm">
+                    <button type="submit">Betrieb endgültig löschen</button>
+                </form>
+            </div>`);
+
+        initInlineConfirms();
+
+        expect(document.activeElement).toBe(document.getElementById('confirm-tenant-name'));
+    });
+
+    it('übergeht offene Fragen in verborgenen Bereichen', () => {
+        mount(`
+            <div hidden><div data-inline-confirm>
+                <form data-inline-confirm-panel method="POST" action="/x"><input id="hidden-input" name="x"></form>
+            </div></div>`);
+
+        initInlineConfirms();
+
+        expect(document.activeElement).not.toBe(document.getElementById('hidden-input'));
+    });
 });

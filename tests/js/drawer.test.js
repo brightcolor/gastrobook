@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { page } from '../../resources/js/admin/dom.js';
 import { initDrawers } from '../../resources/js/admin/drawer.js';
 import { initAjaxForms } from '../../resources/js/admin/forms.js';
+import { initInlineConfirms } from '../../resources/js/admin/inline-confirm.js';
 import { jsonResponse, mount } from './helpers.js';
 
 const layout = `
@@ -28,6 +29,7 @@ const escape = () => document.activeElement.dispatchEvent(new KeyboardEvent('key
 
 beforeAll(() => {
     initAjaxForms();
+    initInlineConfirms();
 });
 
 describe('Seitenleiste', () => {
@@ -186,5 +188,96 @@ describe('Seitenleiste', () => {
 
         expect(() => initDrawers()).not.toThrow();
         expect(document.getElementById('standort-neu').hidden).toBe(true);
+    });
+
+    it('schreibt das Ziel beim Öffnen in die Adresse und nimmt es beim Schließen heraus', () => {
+        mount(layout);
+        initDrawers();
+
+        document.getElementById('opener').click();
+        expect(window.location.hash).toBe('#standort-neu');
+
+        escape();
+        expect(window.location.hash).toBe('');
+    });
+
+    it('schließt über den Hintergrund nur ohne ungespeicherte Eingaben', () => {
+        mount(layout.replace('<div data-drawer-close></div>', '<div data-drawer-close data-drawer-backdrop id="backdrop"></div>'));
+        initDrawers();
+        document.getElementById('opener').click();
+        const name = document.getElementById('f-neu-name');
+        name.value = 'Halb getippt';
+        name.dispatchEvent(new Event('input', { bubbles: true }));
+
+        document.getElementById('backdrop').click();
+
+        expect(document.getElementById('standort-neu').hidden).toBe(false);
+        expect(name.value).toBe('Halb getippt');
+        expect(document.getElementById('swayyToast').textContent)
+            .toBe('Die Eingaben sind noch nicht gespeichert. Speichern oder mit „Abbrechen“ verwerfen.');
+
+        document.getElementById('close').click();
+        expect(document.getElementById('standort-neu').hidden).toBe(true);
+    });
+
+    it('schließt offene Rückfragen in der Seitenleiste mit', () => {
+        mount(`
+            <div id="app"><button type="button" id="opener" data-drawer-open="d">Öffnen</button></div>
+            <div id="d" data-drawer hidden><div role="dialog"><div data-drawer-body>
+                <div data-inline-confirm>
+                    <button type="button" id="ask" data-inline-confirm-open>Entfernen</button>
+                    <form id="c" data-inline-confirm-panel hidden method="POST" action="/x" data-ajax>
+                        <button type="submit">Entfernen</button>
+                        <button type="button" data-inline-confirm-cancel>Abbrechen</button>
+                    </form>
+                </div>
+                <button type="button" id="close" data-drawer-close>Schließen</button>
+            </div></div></div>`);
+        initDrawers();
+        document.getElementById('opener').click();
+        document.getElementById('ask').click();
+
+        document.getElementById('close').click();
+
+        expect(document.getElementById('c').hidden).toBe(true);
+        expect(document.getElementById('ask').hidden).toBe(false);
+        expect(document.activeElement).toBe(document.getElementById('opener'));
+    });
+
+    it('sperrt bei einer Seitenleiste im Inhalt die Geschwister auf jeder Ebene', () => {
+        mount(`
+            <div id="app">
+                <nav id="side"><a href="/admin">Übersicht</a></nav>
+                <main id="m">
+                    <p id="text"><button type="button" id="opener" data-drawer-open="d">Öffnen</button></p>
+                    <div id="d" data-drawer hidden><div role="dialog"><div data-drawer-body><input id="f-x" name="x"></div></div></div>
+                </main>
+            </div>`);
+        initDrawers();
+
+        document.getElementById('opener').click();
+
+        expect(document.getElementById('side').hasAttribute('inert')).toBe(true);
+        expect(document.getElementById('text').hasAttribute('inert')).toBe(true);
+        expect(document.getElementById('m').hasAttribute('inert')).toBe(false);
+        expect(document.getElementById('app').hasAttribute('inert')).toBe(false);
+        expect(document.activeElement).toBe(document.getElementById('f-x'));
+
+        escape();
+        expect(document.getElementById('side').hasAttribute('inert')).toBe(false);
+        expect(document.getElementById('text').hasAttribute('inert')).toBe(false);
+    });
+
+    it('zählt ein input-Ereignis am Formular selbst als Änderung', () => {
+        mount(layout);
+        initDrawers();
+        document.getElementById('opener').click();
+        const formEl = document.getElementById('form-neu');
+        document.getElementById('f-neu-name').value = 'Neue Zeile';
+
+        formEl.dispatchEvent(new Event('input', { bubbles: true }));
+
+        expect(formEl.hasAttribute('data-dirty')).toBe(true);
+        escape();
     });
 });

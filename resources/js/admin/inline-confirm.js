@@ -2,7 +2,8 @@
 // Bestätigen und „Abbrechen“. Escape und „Abbrechen“ schließen sie und setzen
 // ihr Formular zurück, der Fokus kehrt zum Knopf zurück. Gesendet wird über
 // das Formular der Frage, mit data-ajax per fetch (forms.js); eine Ablehnung
-// des Servers erscheint dann in der Zeile.
+// des Servers erscheint dann in der Zeile. Steht eine Frage beim Laden schon
+// offen (nach einer Ablehnung mit Weiterleitung), bekommt sie den Fokus.
 
 let installed = false;
 
@@ -20,15 +21,23 @@ function open(root) {
     (panel.querySelector('input:not([type="hidden"]), select, textarea') ?? panel.querySelector('[type="submit"]'))?.focus();
 }
 
-function close(root) {
+export function closeInlineConfirm(root, { focus = true } = {}) {
     const { opener, panel } = parts(root);
+    if (!opener || !panel) return;
     panel.hidden = true;
     panel.reset();
     opener.hidden = false;
-    opener.focus();
+    if (focus) opener.focus();
+}
+
+function focusOpenPanel() {
+    const panel = [...document.querySelectorAll('[data-inline-confirm-panel]')]
+        .find((el) => !el.closest('[hidden]'));
+    (panel?.querySelector('input:not([type="hidden"]), select, textarea') ?? panel?.querySelector('[type="submit"]'))?.focus();
 }
 
 export function initInlineConfirms() {
+    focusOpenPanel();
     if (installed) return;
     installed = true;
 
@@ -40,7 +49,7 @@ export function initInlineConfirms() {
             return;
         }
         const cancel = e.target.closest('[data-inline-confirm-cancel]');
-        if (cancel) close(cancel.closest('[data-inline-confirm]'));
+        if (cancel) closeInlineConfirm(cancel.closest('[data-inline-confirm]'));
     });
 
     // Capture-Phase: Escape schließt zuerst die Frage; eine umgebende
@@ -50,6 +59,6 @@ export function initInlineConfirms() {
         const root = e.target.closest('[data-inline-confirm]');
         if (!root || parts(root).panel.hidden) return;
         e.preventDefault();
-        close(root);
+        closeInlineConfirm(root);
     }, true);
 }

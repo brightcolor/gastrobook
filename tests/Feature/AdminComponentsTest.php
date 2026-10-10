@@ -27,6 +27,7 @@ class AdminComponentsTest extends TestCase
         $this->assertStringContainsString('data-drawer-body', $html);
         $this->assertStringContainsString('<p>Inhalt</p>', $html);
         $this->assertStringContainsString('<button type="submit">Anlegen</button>', $html);
+        $this->assertStringContainsString('data-drawer-close data-drawer-backdrop', $html);
         $this->assertSame(2, substr_count($html, 'data-drawer-close'));
     }
 
@@ -57,6 +58,8 @@ class AdminComponentsTest extends TestCase
         $this->assertStringContainsString('<p id="remove-7-question"', $html);
         $this->assertMatchesRegularExpression('/role="group"\s+aria-labelledby="remove-7-question"/', $html);
         $this->assertMatchesRegularExpression('/<button type="submit"[^>]*aria-describedby="remove-7-question"/', $html);
+        $this->assertMatchesRegularExpression('/<div data-inline-confirm-group role="group"\s+aria-labelledby="remove-7-question"/', $html);
+        $this->assertDoesNotMatchRegularExpression('/<form[^>]*role="group"/', $html);
     }
 
     public function test_inline_confirm_names_the_subject_for_screen_readers_when_given(): void
@@ -72,6 +75,21 @@ class AdminComponentsTest extends TestCase
 
         $this->assertMatchesRegularExpression('/data-inline-confirm-open[^>]*>Entfernen<span class="sr-only"> „Kim“<\/span><\/button>/', $with);
         $this->assertStringNotContainsString('sr-only', $without);
+    }
+
+    public function test_inline_confirm_can_reload_the_list_after_confirming(): void
+    {
+        $with = Blade::render(<<<'BLADE'
+            <x-inline-confirm id="tag-7" action="/admin/tags/7" method="DELETE" label="Löschen"
+                question="„VIP“ löschen?" confirm="Tag löschen" :reload="true" />
+            BLADE);
+        $without = Blade::render(<<<'BLADE'
+            <x-inline-confirm id="tag-7" action="/admin/tags/7" method="DELETE" label="Löschen"
+                question="„VIP“ löschen?" confirm="Tag löschen" />
+            BLADE);
+
+        $this->assertStringContainsString('data-reload-after-save', $with);
+        $this->assertStringNotContainsString('data-reload-after-save', $without);
     }
 
     public function test_inline_confirm_can_start_open_and_post_natively(): void

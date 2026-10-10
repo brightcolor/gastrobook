@@ -119,4 +119,116 @@ describe('Formulare mit data-ajax', () => {
 
         await vi.waitFor(() => expect(page.reload).toHaveBeenCalledTimes(1));
     });
+
+    it('schicken während einer Anfrage geänderte Daten danach noch einmal', async () => {
+        const resolvers = [];
+        const fetchMock = vi.fn(() => new Promise((r) => { resolvers.push(r); }));
+        vi.stubGlobal('fetch', fetchMock);
+        mount(form());
+        const el = document.getElementById('f');
+        const input = document.getElementById('f-name');
+
+        input.value = 'Erster Stand';
+        el.requestSubmit();
+        input.value = 'Zweiter Stand';
+        el.requestSubmit();
+        el.requestSubmit();
+        resolvers[0](jsonResponse({ message: 'Gespeichert.' }));
+
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+        expect(fetchMock.mock.calls[0][1].body.toString()).toContain('name=Erster+Stand');
+        expect(fetchMock.mock.calls[1][1].body.toString()).toContain('name=Zweiter+Stand');
+        resolvers[1](jsonResponse({ message: 'Gespeichert.' }));
+        await vi.waitFor(() => expect(document.getElementById('swayyToast').textContent).toBe('Gespeichert.'));
+    });
+
+    it('lassen Absendungen liegen, die ein früherer Handler schon abgefangen hat', () => {
+        const fetchMock = vi.fn();
+        vi.stubGlobal('fetch', fetchMock);
+        mount(form());
+        const stop = (e) => e.preventDefault();
+        window.addEventListener('submit', stop, true);
+        try {
+            document.getElementById('f').requestSubmit();
+        } finally {
+            window.removeEventListener('submit', stop, true);
+        }
+
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('lassen data-reset-on-error-Formulare bei unklarer Antwort auf der Eingabe stehen', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => htmlResponse(200)));
+        mount(`
+            <form id="r" method="POST" action="/admin/users/1/role" data-ajax data-reset-on-error>
+                <select id="role-1" name="role">
+                    <option value="tenant_owner" selected>Inhaber</option>
+                    <option value="staff">Service</option>
+                </select>
+            </form>`);
+        const select = document.getElementById('role-1');
+        select.value = 'staff';
+
+        document.getElementById('r').requestSubmit();
+
+        await vi.waitFor(() => expect(document.querySelector('#r [data-form-problems]')?.textContent)
+            .toBe('Unklar, ob gespeichert wurde. Bitte die Seite neu laden und prüfen.'));
+        expect(select.value).toBe('staff');
+    });
+
+    it('zeigen Fehler zu Kästchen ohne eigene ID in ihrer Gruppe', async () => {
+        const text = 'Bitte mindestens einen Standort auswählen oder „Alle Standorte“ anhaken.';
+        vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ message: text, errors: { location_ids: [text] } }, 422)));
+        mount(`
+            <form id="i" method="POST" action="/admin/users/invite" data-ajax>
+                <fieldset>
+                    <legend>Standorte</legend>
+                    <label><input type="checkbox" name="location_ids[]" value="1"> Mitte</label>
+                    <label><input type="checkbox" name="location_ids[]" value="2"> Hafen</label>
+                </fieldset>
+            </form>`);
+
+        document.getElementById('i').requestSubmit();
+
+        const group = document.querySelector('#i fieldset');
+        await vi.waitFor(() => expect(group.querySelector('[data-ajax-error]')?.textContent).toBe(text));
+        expect(group.id).not.toBe('');
+        expect(group.getAttribute('aria-describedby')).toBe(`${group.id}-error`);
+        expect(document.querySelector('#i [data-form-problems] a').getAttribute('href')).toBe(`#${group.id}`);
+        expect(document.activeElement).toBe(document.querySelector('[name="location_ids[]"]'));
+    });
+
+    it('kehren mit data-reset-after-save nach dem Speichern zum Ausgangsstand zurück', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ message: 'Angelegt.' })));
+        mount(form('data-reset-after-save'));
+        document.getElementById('f-name').value = 'Terrasse';
+
+        document.getElementById('f').requestSubmit();
+
+        await vi.waitFor(() => expect(document.getElementById('swayyToast').textContent).toBe('Angelegt.'));
+        expect(document.getElementById('f-name').value).toBe('Alt');
+    });
+
+    it('laden mit data-reload-after-save nach dem Speichern neu', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ message: 'Gespeichert.' })));
+        mount(form('data-reload-after-save'));
+
+        document.getElementById('f').requestSubmit();
+
+        await vi.waitFor(() => expect(page.reload).toHaveBeenCalledTimes(1));
+    });
+
+    it('melden den Versand vorab als swayy:sending', async () => {
+        const order = [];
+        vi.stubGlobal('fetch', vi.fn(async () => {
+            order.push('fetch');
+            return jsonResponse({ message: 'Gespeichert.' });
+        }));
+        mount(`<div id="wrap">${form()}</div>`);
+        document.getElementById('wrap').addEventListener('swayy:sending', () => order.push('sending'));
+
+        document.getElementById('f').requestSubmit();
+
+        await vi.waitFor(() => expect(order).toEqual(['sending', 'fetch']));
+    });
 });

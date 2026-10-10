@@ -1,10 +1,13 @@
 // Seitenleiste zum Anlegen und Bearbeiten (x-drawer): von rechts, auf dem
 // Smartphone bildschirmfüllend. Ein Element mit data-drawer-open="{id}"
 // öffnet sie, ebenso die Adresse mit #{id} (Suche in den Einstellungen).
-// Escape, [data-drawer-close] und erfolgreiches Speichern des Hauptformulars
-// schließen sie; die Formulare darin kehren zum gespeicherten Stand zurück,
-// der Fokus zum öffnenden Element. Solange sie offen ist, ist alles andere
-// gesperrt (inert), ausgenommen Ebenen mit data-overlay-layer (Hinweis,
+// Solange sie offen ist, steht #{id} in der Adresse; ein Neuladen öffnet sie
+// so wieder. Escape, [data-drawer-close] und erfolgreiches Speichern des
+// Hauptformulars schließen sie; Formulare und Rückfragen darin kehren zum
+// gespeicherten Stand zurück, der Fokus zum öffnenden Element. Ein Klick auf
+// den abgedunkelten Hintergrund (data-drawer-backdrop) schließt nur, solange
+// nichts ungespeichert ist. Solange sie offen ist, ist alles andere gesperrt
+// (inert), ausgenommen Ebenen mit data-overlay-layer (Hinweis,
 // Bestätigungsdialog).
 //
 // Hauptformular ist das Formular, auf das ein Knopf mit form="…" in der
@@ -15,6 +18,8 @@
 
 import { focusables } from './dom.js';
 import { snapshot } from './forms.js';
+import { closeInlineConfirm } from './inline-confirm.js';
+import { showToast } from './toast.js';
 
 let installed = false;
 let current = null;
@@ -25,24 +30,46 @@ function closesOnSave(drawer, form) {
     return primary.length === 0 || primary.includes(form.id);
 }
 
+// Ein input-Ereignis kommt vom Feld oder, nach „Zeile entfernen“ (rows.js),
+// vom Formular selbst.
+function formOf(target) {
+    if (target instanceof HTMLFormElement) return target;
+    return target?.form ?? null;
+}
+
 function trackChange(e) {
-    const form = e.target?.form;
+    const form = formOf(e.target);
     if (!current || !(form instanceof HTMLFormElement) || !current.drawer.contains(form)) return;
     form.toggleAttribute('data-dirty', snapshot(form) !== baselines.get(form));
+}
+
+// Sperrt alles außer der Seitenleiste: auf jeder Ebene von ihr bis zum
+// <body> die Geschwister, ausgenommen Skripte und Ebenen mit data-overlay-layer.
+function cover(drawer) {
+    const covered = [];
+    for (let node = drawer; node.parentElement && node !== document.body; node = node.parentElement) {
+        [...node.parentElement.children].forEach((el) => {
+            if (el !== node && !el.matches('script, [data-overlay-layer]') && !el.hasAttribute('inert')) {
+                el.setAttribute('inert', '');
+                covered.push(el);
+            }
+        });
+    }
+    return covered;
 }
 
 function open(drawer, opener = null) {
     if (current?.drawer === drawer) return;
     if (current) close();
 
-    const covered = [...document.body.children].filter(
-        (el) => el !== drawer && !el.matches('script, [data-overlay-layer]') && !el.hasAttribute('inert'),
-    );
-    covered.forEach((el) => el.setAttribute('inert', ''));
+    const covered = cover(drawer);
     drawer.hidden = false;
     document.body.style.overflow = 'hidden';
     drawer.querySelectorAll('form').forEach((form) => baselines.set(form, snapshot(form)));
     current = { drawer, opener, covered };
+    if (window.location.hash !== `#${drawer.id}`) {
+        history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${drawer.id}`);
+    }
 
     const dialog = drawer.querySelector('[role="dialog"]') ?? drawer;
     const body = drawer.querySelector('[data-drawer-body]') ?? dialog;
@@ -57,6 +84,7 @@ function close() {
     current = null;
 
     drawer.hidden = true;
+    drawer.querySelectorAll('[data-inline-confirm]').forEach((root) => closeInlineConfirm(root, { focus: false }));
     drawer.querySelectorAll('form').forEach((form) => {
         form.reset();
         form.removeAttribute('data-dirty');
@@ -108,7 +136,12 @@ export function initDrawers() {
             }
             return;
         }
-        if (current && current.drawer.contains(e.target) && e.target.closest('[data-drawer-close]')) close();
+        if (!current || !current.drawer.contains(e.target)) return;
+        if (e.target.closest('[data-drawer-backdrop]') && current.drawer.querySelector('form[data-dirty]')) {
+            showToast('Die Eingaben sind noch nicht gespeichert. Speichern oder mit „Abbrechen“ verwerfen.');
+            return;
+        }
+        if (e.target.closest('[data-drawer-close]')) close();
     });
 
     // Eine offene Rückfrage in der Zeile schließt Escape zuerst
