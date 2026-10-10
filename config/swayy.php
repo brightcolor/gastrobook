@@ -308,6 +308,73 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Buchungseinstellungen eines Standorts
+    |--------------------------------------------------------------------------
+    |
+    | Grenzen der Seiten „Kapazität & Dauer“ und „Buchungsregeln“ (bis Teil 3
+    | auch der alten Sammelseite), gelesen über App\Support\BookingSettingRules.
+    | Die Seiten zeigen sie als Feldgrenzen, die Prüfung beim Speichern nutzt
+    | dieselben Werte.
+    |
+    | slot_intervals: Auswahl für den Takt der Uhrzeiten in Minuten (je 5–240).
+    | duration_min, duration_max: Standarddauer eines Besuchs in Minuten.
+    | buffer_max: längster Puffer nach einer Buchung in Minuten.
+    | duration_rules_max: höchstens so viele Tischzeiten je Gruppengröße.
+    | rule_duration_min, rule_duration_max: Grenzen einer Tischzeit in Minuten.
+    | rule_party_max: größte Gruppe in einer Tischzeit-Regel.
+    | covers_max: größte Zahl für „Höchstens gleichzeitig“ (Gäste).
+    | lead_max_minutes: längster Mindestvorlauf in Minuten.
+    | advance_max_days: so viele Tage im Voraus ist höchstens buchbar.
+    | deadline_max_minutes: längste Storno- und Umbuchungsfrist in Minuten.
+    | party_online_max: größte Gruppe, die online buchen kann.
+    |
+    */
+    'booking' => [
+        'slot_intervals' => EnvSetting::integerList('SWAYY_BOOKING_SLOT_INTERVALS', default: [15, 30, 60], min: 5, max: 240),
+        'duration_min' => EnvSetting::integer('SWAYY_BOOKING_DURATION_MIN', default: 30, min: 5, max: 240),
+        'duration_max' => EnvSetting::integer('SWAYY_BOOKING_DURATION_MAX', default: 480, min: 60, max: 1440),
+        'buffer_max' => EnvSetting::integer('SWAYY_BOOKING_BUFFER_MAX', default: 120, min: 0, max: 480),
+        'duration_rules_max' => EnvSetting::integer('SWAYY_BOOKING_DURATION_RULES_MAX', default: 20, min: 1, max: 50),
+        'rule_duration_min' => EnvSetting::integer('SWAYY_BOOKING_RULE_DURATION_MIN', default: 15, min: 5, max: 240),
+        'rule_duration_max' => EnvSetting::integer('SWAYY_BOOKING_RULE_DURATION_MAX', default: 600, min: 60, max: 1440),
+        'rule_party_max' => EnvSetting::integer('SWAYY_BOOKING_RULE_PARTY_MAX', default: 200, min: 1, max: 1000),
+        'covers_max' => EnvSetting::integer('SWAYY_BOOKING_COVERS_MAX', default: 2000, min: 1, max: 100000),
+        'lead_max_minutes' => EnvSetting::integer('SWAYY_BOOKING_LEAD_MAX', default: 10080, min: 0, max: 43200),
+        'advance_max_days' => EnvSetting::integer('SWAYY_BOOKING_ADVANCE_MAX', default: 730, min: 1, max: 1825),
+        'deadline_max_minutes' => EnvSetting::integer('SWAYY_BOOKING_DEADLINE_MAX', default: 20160, min: 0, max: 43200),
+        'party_online_max' => EnvSetting::integer('SWAYY_BOOKING_PARTY_ONLINE_MAX', default: 100, min: 1, max: 1000),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Tische
+    |--------------------------------------------------------------------------
+    |
+    | capacity_max: größte Platzzahl eines Tisches (1–255; mehr fasst die
+    | Spalte in der Datenbank nicht). Gilt für „Räume & Tische“ und den Tischplan.
+    |
+    */
+    'tables' => [
+        'capacity_max' => EnvSetting::integer('SWAYY_TABLE_CAPACITY_MAX', default: 50, min: 1, max: 255),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Salon
+    |--------------------------------------------------------------------------
+    |
+    | service_duration_min, service_duration_max: Dauer einer Leistung in Minuten.
+    | service_price_max: höchster Preis einer Leistung in Euro.
+    |
+    */
+    'salon' => [
+        'service_duration_min' => EnvSetting::integer('SWAYY_SERVICE_DURATION_MIN', default: 5, min: 1, max: 60),
+        'service_duration_max' => EnvSetting::integer('SWAYY_SERVICE_DURATION_MAX', default: 480, min: 30, max: 1440),
+        'service_price_max' => EnvSetting::integer('SWAYY_SERVICE_PRICE_MAX', default: 1000, min: 1, max: 100000),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Hochgeladene Dateien
     |--------------------------------------------------------------------------
     |
@@ -415,11 +482,15 @@ return [
     | Betriebstyp), in Millisekunden; so bleibt „Gespeichert“ lesbar.
     | default_brand_color: Markenfarbe, solange ein Betrieb keine eigene
     | gewählt hat (Buchungsseite, Buchungsknopf, Farbwahl in den Einstellungen).
+    | default_staff_color: Kalenderfarbe, die „Person hinzufügen“ im Salon
+    | vorschlägt. default_label_color: Farbe für neue Tags und Leistungen.
     |
     */
     'ui' => [
         'toast_ms' => EnvSetting::integer('SWAYY_UI_TOAST_MS', default: 3200, min: 1000, max: 20000),
         'reload_delay_ms' => EnvSetting::integer('SWAYY_UI_RELOAD_DELAY_MS', default: 1200, min: 0, max: 10000),
         'default_brand_color' => EnvSetting::hexColor('SWAYY_UI_DEFAULT_BRAND_COLOR', default: '#0f766e'),
+        'default_staff_color' => EnvSetting::hexColor('SWAYY_UI_DEFAULT_STAFF_COLOR', default: '#0f766e'),
+        'default_label_color' => EnvSetting::hexColor('SWAYY_UI_DEFAULT_LABEL_COLOR', default: '#6b7280'),
     ],
 ];

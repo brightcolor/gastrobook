@@ -140,6 +140,21 @@ class DurationRulesTest extends TestCase
         $this->assertSame(120, $settings->durationFor(3));
     }
 
+    public function test_the_limits_follow_the_settings(): void
+    {
+        config(['swayy.booking.rule_duration_max' => 90, 'swayy.booking.duration_rules_max' => 2]);
+
+        [$response] = $this->save([['min_party' => 1, 'max_party' => 2, 'duration' => 120]]);
+        $response->assertSessionHasErrors(['duration_rules.0.duration' => 'Eine Tischzeit darf höchstens 90 Minuten betragen.']);
+
+        [$response] = $this->save([
+            ['min_party' => 1, 'max_party' => 2, 'duration' => 60],
+            ['min_party' => 3, 'max_party' => 4, 'duration' => 60],
+            ['min_party' => 5, 'max_party' => 6, 'duration' => 60],
+        ]);
+        $response->assertSessionHasErrors(['duration_rules' => 'Höchstens 2 Tischzeiten sind möglich. Bitte Gruppengrößen zusammenfassen.']);
+    }
+
     public function test_editor_is_visible_in_the_booking_rules_tab(): void
     {
         $setup = $this->createTenantSetup();

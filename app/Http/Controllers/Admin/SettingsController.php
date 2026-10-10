@@ -25,6 +25,7 @@ use App\Services\Mail\GuestReplyAddress;
 use App\Services\Newsletter\MailwizzProvider;
 use App\Services\PlanLimitService;
 use App\Services\Sms\SevenIoProvider;
+use App\Support\BookingSettingRules;
 use App\Support\OutboundUrlBlocked;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
@@ -32,7 +33,6 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\ValidationException;
 
 class SettingsController extends Controller
 {
@@ -129,49 +129,34 @@ class SettingsController extends Controller
         $location = $this->context->location();
         abort_if($location === null, 404);
 
-        $validated = $request->validate([
-            'slot_interval_minutes' => ['required', 'integer', 'in:15,30,60'],
-            'default_duration_minutes' => ['required', 'integer', 'min:30', 'max:480'],
-            'buffer_minutes' => ['required', 'integer', 'min:0', 'max:120'],
-            'min_lead_minutes' => ['required', 'integer', 'min:0', 'max:10080'],
-            'max_advance_days' => ['required', 'integer', 'min:1', 'max:730'],
-            'min_party_online' => ['required', 'integer', 'min:1', 'max:50'],
-            'max_party_online' => ['required', 'integer', 'min:1', 'max:100', 'gte:min_party_online'],
-            'large_group_email' => ['nullable', 'email:rfc', 'max:200'],
-            'booking_confirmation_mode' => ['required', 'in:auto,manual'],
-            'capacity_mode' => ['required', 'in:table,person,hybrid'],
-            'max_covers_per_slot' => ['nullable', 'integer', 'min:1', 'max:2000'],
-            'waitlist_enabled' => ['nullable', 'boolean'],
-            'walkins_enabled' => ['nullable', 'boolean'],
-            'cancellation_deadline_minutes' => ['required', 'integer', 'min:0', 'max:20160'],
-            'modification_deadline_minutes' => ['required', 'integer', 'min:0', 'max:20160'],
-            'reminder_enabled' => ['nullable', 'boolean'],
-            'reminder_hours_before' => ['required', 'integer', 'min:1', 'max:168'],
-            'sms_reminder_enabled' => ['nullable', 'boolean'],
-            'gap_optimization_enabled' => ['nullable', 'boolean'],
-            'public_floorplan_enabled' => ['nullable', 'boolean'],
-            'refund_mode' => ['required', 'in:off,manual,auto'],
-            'refund_percent' => ['required', 'integer', 'min:0', 'max:100'],
-            'refund_processing' => ['required', 'in:immediate,scheduled'],
-            'require_email_confirmation' => ['nullable', 'boolean'],
-            'confetti_on_booking' => ['nullable', 'boolean'],
-            'owner_notification_enabled' => ['nullable', 'boolean'],
-            'owner_notification_email' => ['nullable', 'email:rfc', 'max:200'],
-            'guest_address' => ['required', 'in:du,Sie'],
-            'feedback_enabled' => ['nullable', 'boolean'],
-            'feedback_hours_after' => ['required', 'integer', 'min:1', 'max:336'],
-            'feedback_redirect_min_score' => ['required', 'integer', 'min:1', 'max:5'],
-            'feedback_external_url' => ['nullable', 'url:https', 'max:300'],
-            'duration_rules' => ['nullable', 'array', 'max:20'],
-            'duration_rules.*.min_party' => ['nullable', 'integer', 'min:1', 'max:200'],
-            'duration_rules.*.max_party' => ['nullable', 'integer', 'min:1', 'max:200'],
-            'duration_rules.*.duration' => ['nullable', 'integer', 'min:15', 'max:600'],
-        ], [
-            'duration_rules.*.duration.min' => 'Eine Tischzeit muss mindestens 15 Minuten betragen.',
-            'duration_rules.*.duration.max' => 'Eine Tischzeit darf höchstens 600 Minuten betragen.',
-        ]);
+        $validated = $request->validate(array_merge(
+            BookingSettingRules::capacity($location->effectiveSettings(), salon: false),
+            BookingSettingRules::booking(),
+            [
+                // Die alte Sammelseite sendet nur angehakte Kästchen; ein fehlendes Kästchen gilt als „aus“.
+                'waitlist_enabled' => ['nullable', 'boolean'],
+                'walkins_enabled' => ['nullable', 'boolean'],
+                'require_email_confirmation' => ['nullable', 'boolean'],
+                'gap_optimization_enabled' => ['nullable', 'boolean'],
+                'reminder_enabled' => ['nullable', 'boolean'],
+                'reminder_hours_before' => ['required', 'integer', 'min:1', 'max:168'],
+                'sms_reminder_enabled' => ['nullable', 'boolean'],
+                'public_floorplan_enabled' => ['nullable', 'boolean'],
+                'refund_mode' => ['required', 'in:off,manual,auto'],
+                'refund_percent' => ['required', 'integer', 'min:0', 'max:100'],
+                'refund_processing' => ['required', 'in:immediate,scheduled'],
+                'confetti_on_booking' => ['nullable', 'boolean'],
+                'owner_notification_enabled' => ['nullable', 'boolean'],
+                'owner_notification_email' => ['nullable', 'email:rfc', 'max:200'],
+                'guest_address' => ['required', 'in:du,Sie'],
+                'feedback_enabled' => ['nullable', 'boolean'],
+                'feedback_hours_after' => ['required', 'integer', 'min:1', 'max:336'],
+                'feedback_redirect_min_score' => ['required', 'integer', 'min:1', 'max:5'],
+                'feedback_external_url' => ['nullable', 'url:https', 'max:300'],
+            ],
+        ), BookingSettingRules::messages());
 
-        $validated['duration_rules'] = $this->durationRules($request);
+        $validated['duration_rules'] = BookingSettingRules::durationRules((array) $request->input('duration_rules', []), atField: false);
 
         $settings = $location->settings()->firstOrCreate(['tenant_id' => $location->tenant_id]);
         $old = $settings->only(array_keys($validated));
@@ -195,60 +180,6 @@ class SettingsController extends Controller
         $this->audit->log('location.settings_updated', $settings, $old, $validated);
 
         return $this->saved($request, __('Buchungsregeln gespeichert.'));
-    }
-
-    /**
-     * Table time per party size ("2–4 Personen → 90 Minuten").
-     *
-     * LocationSettings::durationFor() takes the first matching rule, so the
-     * order in the stored array decides the outcome. Rows are sorted by party
-     * size and overlaps are rejected — otherwise a rule further down would
-     * silently never apply, which is exactly the kind of thing nobody notices
-     * until a table is blocked for the wrong length of time.
-     *
-     * @return array<int, array{min_party: int, max_party: int, duration: int}>
-     */
-    private function durationRules(Request $request): array
-    {
-        $rules = [];
-
-        foreach ((array) $request->input('duration_rules', []) as $row) {
-            $min = (int) ($row['min_party'] ?? 0);
-            $max = (int) ($row['max_party'] ?? 0);
-            $duration = (int) ($row['duration'] ?? 0);
-
-            // A row where nothing was filled in is simply an empty line.
-            if ($min < 1 && $max < 1 && $duration < 1) {
-                continue;
-            }
-
-            if ($min < 1 || $max < 1 || $duration < 1) {
-                throw ValidationException::withMessages([
-                    'duration_rules' => 'Bitte bei jeder Tischzeit-Regel Von, Bis und Minuten ausfüllen – oder die Zeile leer lassen.',
-                ]);
-            }
-
-            if ($max < $min) {
-                throw ValidationException::withMessages([
-                    'duration_rules' => "Bei „{$min} bis {$max} Personen“ ist die Bis-Zahl kleiner als die Von-Zahl.",
-                ]);
-            }
-
-            $rules[] = ['min_party' => $min, 'max_party' => $max, 'duration' => $duration];
-        }
-
-        usort($rules, fn (array $a, array $b) => $a['min_party'] <=> $b['min_party']);
-
-        foreach ($rules as $i => $rule) {
-            $previous = $rules[$i - 1] ?? null;
-            if ($previous !== null && $rule['min_party'] <= $previous['max_party']) {
-                throw ValidationException::withMessages([
-                    'duration_rules' => "Die Gruppengrößen überschneiden sich: „{$previous['min_party']}–{$previous['max_party']}“ und „{$rule['min_party']}–{$rule['max_party']}“. Jede Gruppengröße darf nur in einer Regel vorkommen.",
-                ]);
-            }
-        }
-
-        return $rules;
     }
 
     /**
