@@ -89,6 +89,8 @@ class ReservationBookController extends Controller
             'to' => $to,
             'preset' => $preset,
             'rangeLabel' => $this->rangeLabel($from, $to, $preset),
+            // Wie die Route zu reservierungen.create: Wer sie nicht öffnen darf, bekommt keinen Knopf dorthin.
+            'canCreate' => $request->user()->canInTenant('reservations.create', $this->context->tenant(), $location),
             'rooms' => $location->rooms()->orderBy('sort_order')->get(),
             'statuses' => ReservationStatus::cases(),
             'timeline' => $request->input('view') === 'timeline' ? $this->timelineData($location, $from) : null,

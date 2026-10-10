@@ -128,7 +128,7 @@ class ReservationListLayoutTest extends TestCase
         $html = (string) $this->actingAs($owner)->get('/admin/reservations?range=all')->assertOk()->getContent();
 
         $this->assertStringNotContainsString('aria-controls="reservationList"', $html);
-        $this->assertStringContainsString('Keine Reservierungen gefunden. Wähle einen anderen Zeitraum oder setze die Filter zurück.', $html);
+        $this->assertStringContainsString('Noch keine Reservierungen.', $html);
     }
 
     public function test_the_table_keeps_its_roles_when_phones_turn_it_into_blocks(): void
@@ -291,7 +291,10 @@ class ReservationListLayoutTest extends TestCase
         $body = $this->tableBody((string) $this->actingAs($owner)->get('/admin/reservations?range=all')->assertOk()->getContent());
 
         $this->assertStringContainsString('<span title="VIP"><span aria-hidden="true">⭐</span><span class="sr-only">VIP</span></span>', $body);
-        $this->assertStringContainsString('<span aria-hidden="true">⚠️</span><span class="sr-only">Allergien: Nüsse &lt;b&gt;&amp; Soja&lt;/b&gt;</span>', $body);
+        $this->assertStringContainsString('<span aria-hidden="true">⚠️</span><span class="sr-only max-md:hidden">Allergien: Nüsse &lt;b&gt;&amp; Soja&lt;/b&gt;</span>', $body);
+        // Unter 768 px steht der Text als sichtbare Zeile da (und der sr-only-Span ist ausgeblendet), ab 768 px umgekehrt.
+        $this->assertStringContainsString('<p class="line-clamp-2 text-[0.8125rem] font-semibold text-red-700 md:hidden [overflow-wrap:anywhere]">Allergien: Nüsse &lt;b&gt;&amp; Soja&lt;/b&gt;</p>', $body);
+        $this->assertSame(1, substr_count($body, 'text-red-700 md:hidden'));
     }
 
     public function test_only_rows_with_actions_span_two_grid_rows_on_phones(): void
@@ -330,10 +333,39 @@ class ReservationListLayoutTest extends TestCase
 
         $filtered = $this->actingAs($owner)->get('/admin/reservations?range=all&status=confirmed')->assertOk();
         $filtered->assertSee('Mit den gewählten Filtern passt keine Reservierung.');
+        // Ein Satz genügt: Die Meldung sagt nicht zweimal dasselbe.
+        $filtered->assertDontSee('Keine Reservierungen gefunden', false);
         $this->assertMatchesRegularExpression('/<a href="'.preg_quote(route('admin.reservations.index'), '/').'" class="btn btn-secondary">Filter zurücksetzen<\/a>/', (string) $filtered->getContent());
+        $filtered->assertDontSee('Noch keine Reservierungen.');
+    }
 
-        $plain = $this->actingAs($owner)->get('/admin/reservations?range=all')->assertOk();
-        $plain->assertDontSee('>Filter zurücksetzen<', false);
-        $plain->assertSee('Wähle einen anderen Zeitraum oder setze die Filter zurück.');
+    public function test_an_empty_book_offers_to_create_the_first_reservation(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $html = (string) $this->actingAs($owner)->get('/admin/reservations?range=all')->assertOk()->getContent();
+
+        $this->assertStringContainsString('<p>Noch keine Reservierungen.</p>', $html);
+        // Am Smartphone füllt die Leerzeile die Breite (display: block), damit Satz und Knopf mittig stehen.
+        $this->assertStringContainsString('<td colspan="9" role="cell" class="px-4 py-8 text-center text-stone-600 max-md:block">', $html);
+        $this->assertStringNotContainsString('>Filter zurücksetzen<', $html);
+        $this->assertStringNotContainsString('setze die Filter zurück', $html);
+        $this->assertMatchesRegularExpression('/<a href="'.preg_quote(route('admin.reservations.create'), '/').'" class="btn btn-primary">\+ Neu<\/a>/', $html);
+    }
+
+    public function test_users_without_the_right_to_create_get_the_sentence_without_the_link(): void
+    {
+        $setup = $this->createTenantSetup();
+        $viewer = $this->createMember($setup['tenant'], 'readonly');
+        $this->clearTenantContext();
+
+        $html = (string) $this->actingAs($viewer)->get('/admin/reservations?range=all')->assertOk()->getContent();
+
+        $this->assertStringContainsString('<p>Noch keine Reservierungen.</p>', $html);
+        // Weder in der Leerzeile noch im Kopf führt ein Knopf zu einer Seite, die dieses Recht verlangt.
+        $this->assertStringNotContainsString(route('admin.reservations.create'), $html);
+        $this->assertStringNotContainsString('+ Neu', $html);
     }
 }

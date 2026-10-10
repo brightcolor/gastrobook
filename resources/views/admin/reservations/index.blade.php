@@ -57,8 +57,10 @@
                 link.addEventListener('click', () => drop.classList.add('hidden'));
             })();
         </script>
-        <a href="{{ route('admin.reservations.create', ['date' => $from ?? now()->toDateString()]) }}"
-           class="rounded-xl bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-stone-700">+ Neu</a>
+        @if($canCreate)
+            <a href="{{ route('admin.reservations.create', ['date' => $from ?? now()->toDateString()]) }}"
+               class="rounded-xl bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-stone-700">+ Neu</a>
+        @endif
     </div>
 </div>
 
@@ -226,8 +228,10 @@
                     <td class="min-w-0 px-4 py-3 max-md:p-0" role="cell">
                         <a href="{{ route('admin.reservations.show', $r) }}" class="font-semibold hover:underline max-md:inline-block max-md:py-1 [overflow-wrap:anywhere]">{{ $r->guest_name_snapshot }}</a>
                         @if($r->guest?->is_vip)<span title="VIP"><span aria-hidden="true">⭐</span><span class="sr-only">VIP</span></span>@endif
-                        @if($r->allergy_note)<span title="Allergien: {{ $r->allergy_note }}"><span aria-hidden="true">⚠️</span><span class="sr-only">Allergien: {{ $r->allergy_note }}</span></span>@endif
+                        {{-- Der Allergietext steht je Breite genau einmal im Zugriffsbaum: ab 768 px als sr-only-Span, darunter als sichtbare Zeile (das jeweils andere ist per display: none ausgeblendet). --}}
+                        @if($r->allergy_note)<span title="Allergien: {{ $r->allergy_note }}"><span aria-hidden="true">⚠️</span><span class="sr-only max-md:hidden">Allergien: {{ $r->allergy_note }}</span></span>@endif
                         @if($r->no_show_risk >= 50)<span class="rounded bg-red-100 px-1.5 text-xs text-red-700">Risiko</span>@endif
+                        @if($r->allergy_note)<p class="line-clamp-2 text-[0.8125rem] font-semibold text-red-700 md:hidden [overflow-wrap:anywhere]">Allergien: {{ $r->allergy_note }}</p>@endif
                         <p class="text-[0.8125rem] text-stone-600 md:hidden">{{ $r->localDayLabel() }} {{ $r->localStart()->format('H:i') }}–{{ $r->localEnd()->format('H:i') }} · {{ $r->party_size }} Pers.{{ $tableNames !== '' ? ' · '.$tableNames : '' }} · {{ __('reservations.source.' . $r->source) }}</p>
                     </td>
                     <td class="px-4 py-3 max-md:hidden" role="cell">{{ $r->party_size }}</td>
@@ -276,15 +280,21 @@
                     </td>
                 </tr>
             @empty
-                <tr role="row">
-                    <td colspan="9" role="cell" class="px-4 py-8 text-center text-stone-600">
+                <tr role="row" class="max-md:block">
+                    <td colspan="9" role="cell" class="px-4 py-8 text-center text-stone-600 max-md:block">
                         @if($hasActiveFilters)
-                            <p>Keine Reservierungen gefunden. Mit den gewählten Filtern passt keine Reservierung.</p>
+                            <p>Mit den gewählten Filtern passt keine Reservierung.</p>
                             <div class="mt-3 flex justify-center">
                                 <a href="{{ route('admin.reservations.index') }}" class="btn btn-secondary">Filter zurücksetzen</a>
                             </div>
                         @else
-                            Keine Reservierungen gefunden. Wähle einen anderen Zeitraum oder setze die Filter zurück.
+                            {{-- Ohne Filter ist das Buch leer; der einzige Schritt ist die erste Reservierung (nur mit dem Recht dazu). --}}
+                            <p>Noch keine Reservierungen.</p>
+                            @if($canCreate)
+                                <div class="mt-3 flex justify-center">
+                                    <a href="{{ route('admin.reservations.create') }}" class="btn btn-primary">+ Neu</a>
+                                </div>
+                            @endif
                         @endif
                     </td>
                 </tr>
