@@ -236,11 +236,8 @@ class FloorPlanController extends Controller
             'pos_y' => ['nullable', 'integer', 'min:0', 'max:5000'],
         ], TableRules::messages(), TableRules::attributes());
 
-        abort_unless(
-            $location->rooms()->where('id', $validated['room_id'])->exists(),
-            422,
-            __('Dieser Raum gehört nicht zu diesem Standort. Bitte die Seite neu laden.'),
-        );
+        $roomMissing = __('Dieser Raum gehört nicht zu diesem Standort. Bitte die Seite neu laden.');
+        abort_unless($location->rooms()->where('id', $validated['room_id'])->exists(), 422, $roomMissing);
 
         // Size the table by its capacity so it isn't a tiny box and leaves room
         // for the chairs. Set width/height explicitly – otherwise the in-memory
@@ -250,19 +247,33 @@ class FloorPlanController extends Controller
         $max = (int) $validated['max_capacity'];
         [$width, $height] = RestaurantTable::sizeForCapacity($shape, $max);
 
-        $table = $limits->createWithinLimit($tenant, 'max_tables', fn () => $location->tables()->create([
-            'tenant_id' => $location->tenant_id,
-            'room_id' => (int) $validated['room_id'],
-            'name' => $validated['name'],
-            'min_capacity' => (int) $validated['min_capacity'],
-            'max_capacity' => $max,
-            'shape' => $shape,
-            'width' => $width,
-            'height' => $height,
-            'rotation' => 0,
-            'pos_x' => (int) ($validated['pos_x'] ?? 40),
-            'pos_y' => (int) ($validated['pos_y'] ?? 40),
-        ]));
+        // Der Raum wird unter der Sperre erneut gelesen, mit einer Lesesperre: Löscht ein zweites Fenster ihn
+        // zwischen Prüfung und Anlegen, endet das nicht in einem Datenbankfehler.
+        $roomGone = false;
+        $table = $limits->createWithinLimit($tenant, 'max_tables', function () use ($location, $validated, $max, $shape, $width, $height, &$roomGone) {
+            if ($location->rooms()->whereKey($validated['room_id'])->sharedLock()->first(['id']) === null) {
+                $roomGone = true;
+
+                return null;
+            }
+
+            return $location->tables()->create([
+                'tenant_id' => $location->tenant_id,
+                'room_id' => (int) $validated['room_id'],
+                'name' => $validated['name'],
+                'min_capacity' => (int) $validated['min_capacity'],
+                'max_capacity' => $max,
+                'shape' => $shape,
+                'width' => $width,
+                'height' => $height,
+                'rotation' => 0,
+                'pos_x' => (int) ($validated['pos_x'] ?? 40),
+                'pos_y' => (int) ($validated['pos_y'] ?? 40),
+            ]);
+        });
+        if ($roomGone) {
+            return response()->json(['message' => $roomMissing], 422);
+        }
         if ($table === null) {
             return $limitReached();
         }

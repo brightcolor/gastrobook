@@ -29,7 +29,10 @@ class PlanLimitService
      * gleichzeitig kommen. Die Prüfung "noch Platz?" und das Anlegen laufen in
      * einer Transaktion, die die Zeile des Betriebs sperrt: Die zweite Anfrage
      * wartet, zählt danach neu und sieht den Eintrag der ersten. Die Grenze
-     * kommt dabei frisch aus der Datenbank.
+     * kommt dabei frisch aus der Datenbank. Unter PostgreSQL ist es eine Sperre
+     * "for no key update": Sie schließt gleichzeitiges Anlegen aus, hält aber die
+     * Fremdschlüsselprüfung anderer Zeilen des Betriebs (Reservierungen,
+     * Protokoll, Gäste) nicht auf; "for update" täte das.
      *
      * @template T
      *
@@ -39,7 +42,9 @@ class PlanLimitService
     public function createWithinLimit(Tenant $tenant, string $limitKey, Closure $create): mixed
     {
         return DB::transaction(function () use ($tenant, $limitKey, $create) {
-            $locked = Tenant::query()->whereKey($tenant->getKey())->lockForUpdate()->first();
+            $locked = Tenant::query()->whereKey($tenant->getKey())
+                ->lock(DB::getDriverName() === 'pgsql' ? 'for no key update' : true)
+                ->first();
             if ($locked === null || ! $this->canAdd($locked, $limitKey)) {
                 return null;
             }

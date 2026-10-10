@@ -58,8 +58,12 @@ class RoomsController extends Controller
 
             return $room->tables->each(fn (RestaurantTable $table) => $table->setRelation('room', $room));
         });
-        $combinations = $this->inOrder($location->tableCombinations()->with('tables:id,name')->get());
-        $combinations->each(fn (TableCombination $combination) => $combination->setRelation('tables', $this->inOrder($combination->tables)));
+        // Die Mitglieder einer Kombination mit Raum, Größe und "Kombinierbar", auch wenn ein Tisch nicht mehr kombinierbar ist.
+        $combinations = $this->inOrder($location->tableCombinations()->with('tables:id,name,room_id,min_capacity,max_capacity,joinable')->get());
+        $byId = $tables->keyBy('id');
+        $combinations->each(fn (TableCombination $combination) => $combination->setRelation('tables', $this->inOrder(
+            $combination->tables->map(fn (RestaurantTable $member) => $byId->get($member->id) ?? $member),
+        )));
 
         return view('admin.settings.rooms', [
             'rooms' => $rooms,
@@ -182,26 +186,42 @@ class RoomsController extends Controller
         );
 
         if (! $location->rooms()->where('id', $validated['room_id'])->exists()) {
-            return $this->failed($request, 'room_id', __('Dieser Raum gehört nicht zu diesem Standort. Bitte die Seite neu laden und einen Raum aus der Liste wählen.'));
+            return $this->failed($request, 'room_id', self::roomMissing());
         }
 
         [$width, $height] = RestaurantTable::sizeForCapacity('rect', (int) $validated['max_capacity']);
 
-        $table = $this->limits->createWithinLimit($tenant, 'max_tables', fn () => $location->tables()->create([
-            'tenant_id' => $location->tenant_id,
-            'room_id' => (int) $validated['room_id'],
-            'name' => $validated['name'],
-            'min_capacity' => (int) $validated['min_capacity'],
-            'max_capacity' => (int) $validated['max_capacity'],
-            'outdoor' => $request->boolean('outdoor'),
-            'accessible' => $request->boolean('accessible'),
-            'high_chair_possible' => $request->boolean('high_chair_possible'),
-            // Ohne Angabe (Einrichtungsassistent) ist ein neuer Tisch kombinierbar und online buchbar.
-            'joinable' => $request->boolean('joinable', true),
-            'online_bookable' => $request->boolean('online_bookable', true),
-            'width' => $width, 'height' => $height,
-            'pos_x' => 50, 'pos_y' => 50,
-        ]));
+        // Der Raum wird unter der Sperre erneut gelesen, mit einer Lesesperre: Löscht ein zweites Fenster ihn
+        // zwischen Prüfung und Anlegen, endet das nicht in einem Datenbankfehler, und ein Löschauftrag wartet
+        // auf den neuen Tisch und findet dann einen Tisch im Raum.
+        $roomGone = false;
+        $table = $this->limits->createWithinLimit($tenant, 'max_tables', function () use ($location, $validated, $request, $width, $height, &$roomGone) {
+            if ($location->rooms()->whereKey($validated['room_id'])->sharedLock()->first(['id']) === null) {
+                $roomGone = true;
+
+                return null;
+            }
+
+            return $location->tables()->create([
+                'tenant_id' => $location->tenant_id,
+                'room_id' => (int) $validated['room_id'],
+                'name' => $validated['name'],
+                'min_capacity' => (int) $validated['min_capacity'],
+                'max_capacity' => (int) $validated['max_capacity'],
+                'outdoor' => $request->boolean('outdoor'),
+                'accessible' => $request->boolean('accessible'),
+                'high_chair_possible' => $request->boolean('high_chair_possible'),
+                // Ohne Angabe (Einrichtungsassistent) ist ein neuer Tisch kombinierbar und online buchbar.
+                'joinable' => $request->boolean('joinable', true),
+                'online_bookable' => $request->boolean('online_bookable', true),
+                'width' => $width, 'height' => $height,
+                'pos_x' => 50, 'pos_y' => 50,
+            ]);
+        });
+
+        if ($roomGone) {
+            return $this->failed($request, 'room_id', self::roomMissing());
+        }
 
         if ($table === null) {
             return $this->failed($request, 'name', PlanLimitMessage::tables($tenant, $request->user()));
@@ -246,27 +266,42 @@ class RoomsController extends Controller
     {
         abort_if($table->location_id !== $this->context->locationId(), 404);
 
-        // Eine kommende Reservierung verlöre sonst still ihren Tisch.
-        $upcoming = $table->reservations()
-            ->where('start_at', '>=', now())
-            ->whereIn('status', ReservationStatus::activeStatuses())
-            ->count();
-        if ($upcoming > 0) {
-            return $this->failed($request, 'table', trans_choice(
-                '„:name“ hat noch eine kommende Reservierung. Bitte sie zuerst an einen anderen Tisch legen oder stornieren.|„:name“ hat noch :count kommende Reservierungen. Bitte sie zuerst an andere Tische legen oder stornieren.',
-                $upcoming,
-                ['name' => $table->name, 'count' => $upcoming],
-            ));
+        // Eine kommende oder laufende Reservierung verlöre sonst still ihren Tisch: Ein gelöschter Tisch
+        // verschwindet aus der Reservierung, auch aus Live-Board und Kasse. Die Sperre auf dem Tisch hält
+        // zwischen Zählung und Löschen jede andere Änderung an seiner Zeile fern; ein zweiter Löschauftrag
+        // (Doppelklick, zweites Fenster) findet ihn nicht mehr und schreibt nichts ins Protokoll.
+        $reservations = 0;
+        $deleted = null;
+        DB::transaction(function () use ($table, &$reservations, &$deleted): void {
+            $locked = RestaurantTable::whereKey($table->id)->where('location_id', $table->location_id)->lockForUpdate()->first();
+            if ($locked === null) {
+                return;
+            }
+
+            $reservations = $locked->reservations()
+                ->where('reservations.end_at', '>=', now())
+                ->whereIn('reservations.status', ReservationStatus::activeStatuses())
+                ->count();
+            if ($reservations > 0) {
+                return;
+            }
+
+            $locked->delete();
+            $deleted = $locked;
+        });
+
+        // Der Protokolleintrag folgt nach dem Festschreiben, wie bei deleteRoom: Sein Fremdschlüssel sperrt die Zeile des Betriebs.
+        if ($deleted !== null) {
+            $this->audit->log('table.deleted', $deleted);
         }
 
-        // Ein zweiter Löschauftrag für denselben Tisch (Doppelklick, zweites
-        // Fenster) trifft keine Zeile mehr und schreibt nichts ins Protokoll.
-        DB::transaction(function () use ($table): void {
-            $deleted = RestaurantTable::whereKey($table->id)->where('location_id', $table->location_id)->delete();
-            if ($deleted === 1) {
-                $this->audit->log('table.deleted', $table);
-            }
-        });
+        if ($reservations > 0) {
+            return $this->failed($request, 'table', trans_choice(
+                '„:name“ hat noch eine kommende oder laufende Reservierung. Bitte sie zuerst an einen anderen Tisch legen oder stornieren.|„:name“ hat noch :count kommende oder laufende Reservierungen. Bitte sie zuerst an andere Tische legen oder stornieren.',
+                $reservations,
+                ['name' => $table->name, 'count' => $reservations],
+            ));
+        }
 
         return $this->saved($request, __('Tisch gelöscht.'));
     }
@@ -311,7 +346,9 @@ class RoomsController extends Controller
         abort_if($combination->location_id !== $location->id, 404);
 
         $validated = $request->validate(TableRules::combination(self::COMBINATION_CAPACITY_MAX), TableRules::messages(), TableRules::attributes());
-        $tableIds = $this->joinableIds($location, $validated['table_ids']);
+        // Ein Tisch, der schon zur Kombination gehört, darf bleiben, auch wenn er inzwischen nicht mehr
+        // kombinierbar ist; neu hinzu kommt nur ein kombinierbarer Tisch.
+        $tableIds = $this->joinableIds($location, $validated['table_ids'], $combination->tables()->pluck('restaurant_tables.id'));
         $problem = $this->tablesProblem($validated['table_ids'], $tableIds);
         if ($problem !== null) {
             return $this->failed($request, 'table_ids', $problem);
@@ -367,14 +404,24 @@ class RoomsController extends Controller
     }
 
     /**
-     * Nur kombinierbare Tische dieses Standorts; fremde IDs fallen weg.
+     * Nur kombinierbare Tische dieses Standorts und die Tische aus $keep (die
+     * bisherigen Mitglieder einer Kombination); fremde IDs fallen weg.
      *
      * @param  array<int, mixed>  $ids
+     * @param  Collection<int, int>|null  $keep
      * @return Collection<int, int>
      */
-    private function joinableIds(Location $location, array $ids): Collection
+    private function joinableIds(Location $location, array $ids, ?Collection $keep = null): Collection
     {
-        return $location->tables()->whereIn('id', $ids)->where('joinable', true)->pluck('id');
+        return $location->tables()
+            ->whereIn('id', $ids)
+            ->where(fn ($query) => $query->where('joinable', true)->orWhereIn('id', $keep ?? []))
+            ->pluck('id');
+    }
+
+    private static function roomMissing(): string
+    {
+        return __('Dieser Raum gehört nicht zu diesem Standort. Bitte die Seite neu laden und einen Raum aus der Liste wählen.');
     }
 
     /**

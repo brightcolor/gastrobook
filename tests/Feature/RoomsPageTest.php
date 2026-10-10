@@ -18,6 +18,7 @@ use App\Models\Tenant;
 use App\Services\PlanLimitService;
 use App\Support\PlanLimitMessage;
 use Carbon\CarbonImmutable;
+use Closure;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -171,7 +172,53 @@ class RoomsPageTest extends TestCase
 
         $this->actingAs($owner)->deleteJson("/admin/settings/tables/{$table->id}")
             ->assertStatus(422)
-            ->assertJsonPath('errors.table.0', '„'.$table->name.'“ hat noch eine kommende Reservierung. Bitte sie zuerst an einen anderen Tisch legen oder stornieren.');
+            ->assertJsonPath('errors.table.0', '„'.$table->name.'“ hat noch eine kommende oder laufende Reservierung. Bitte sie zuerst an einen anderen Tisch legen oder stornieren.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $setup
+     */
+    private function reservationOn(array $setup, RestaurantTable $table, CarbonImmutable $start, CarbonImmutable $end, ReservationStatus $status): Reservation
+    {
+        $reservation = Reservation::create([
+            'tenant_id' => $setup['tenant']->id, 'location_id' => $setup['location']->id, 'party_size' => 2,
+            'reservation_date' => $start->toDateString(), 'start_at' => $start->utc(), 'end_at' => $end->utc(),
+            'timezone' => $setup['location']->timezone, 'status' => $status, 'source' => 'online',
+            'guest_name_snapshot' => 'Testgast',
+        ]);
+        $reservation->tables()->attach($table->id);
+
+        return $reservation;
+    }
+
+    public function test_a_running_reservation_keeps_the_table_until_it_has_ended(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $table = $setup['tables'][0];
+        $now = CarbonImmutable::now($setup['location']->timezone);
+        // Die Gäste sitzen seit einer Stunde, die Reservierung endet in einer Stunde.
+        $seated = $this->reservationOn($setup, $table, $now->subHour(), $now->addHour(), ReservationStatus::Seated);
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->deleteJson("/admin/settings/tables/{$table->id}")
+            ->assertStatus(422)
+            ->assertJsonPath('errors.table.0', '„'.$table->name.'“ hat noch eine kommende oder laufende Reservierung. Bitte sie zuerst an einen anderen Tisch legen oder stornieren.');
+        $this->assertFalse($table->fresh()->trashed());
+        $this->assertSame(0, AuditLog::where('action', 'table.deleted')->count());
+
+        // Zwei Reservierungen: Die Meldung nennt die Zahl.
+        $upcoming = $this->reservationOn($setup, $table, $now->addDay(), $now->addDay()->addHours(2), ReservationStatus::Confirmed);
+        $this->actingAs($owner)->deleteJson("/admin/settings/tables/{$table->id}")
+            ->assertStatus(422)
+            ->assertJsonPath('errors.table.0', '„'.$table->name.'“ hat noch 2 kommende oder laufende Reservierungen. Bitte sie zuerst an andere Tische legen oder stornieren.');
+
+        // Endet die laufende Reservierung in der Vergangenheit und liegt keine weitere an, geht das Löschen.
+        $seated->update(['start_at' => $now->subHours(3)->utc(), 'end_at' => $now->subMinutes(5)->utc(), 'status' => ReservationStatus::Completed]);
+        $upcoming->update(['status' => ReservationStatus::CancelledByRestaurant]);
+        $this->actingAs($owner)->deleteJson("/admin/settings/tables/{$table->id}")->assertOk()->assertJsonPath('message', 'Tisch gelöscht.');
+        $this->assertTrue($table->fresh()->trashed());
+        $this->assertSame(1, AuditLog::where('action', 'table.deleted')->count());
     }
 
     public function test_a_combination_needs_two_joinable_tables(): void
@@ -544,7 +591,7 @@ class RoomsPageTest extends TestCase
         $this->assertSame('angelegt', $service->createWithinLimit($stale, 'max_tables', fn () => 'angelegt'));
     }
 
-    public function test_the_limit_check_locks_the_row_of_the_tenant_on_postgresql(): void
+    public function test_the_limit_check_locks_the_row_of_the_tenant_without_blocking_foreign_keys_on_postgresql(): void
     {
         if (DB::getDriverName() !== 'pgsql') {
             $this->markTestSkipped('Zeilensperren gibt es nur unter PostgreSQL (SQLite sperrt die ganze Datei).');
@@ -555,8 +602,112 @@ class RoomsPageTest extends TestCase
         app(PlanLimitService::class)->createWithinLimit($setup['tenant'], 'max_tables', fn () => 'angelegt');
 
         $locks = collect(DB::getQueryLog())->pluck('query')
-            ->filter(fn (string $sql) => str_contains($sql, 'from "tenants"') && str_contains($sql, 'for update'));
+            ->filter(fn (string $sql) => str_contains($sql, 'from "tenants"') && str_contains($sql, 'for no key update'));
         $this->assertCount(1, $locks);
+
+        // Ein 'for update' würde die Fremdschlüsselprüfung jeder Reservierung und jedes Protokolleintrags des Betriebs aufhalten.
+        $this->assertCount(0, collect(DB::getQueryLog())->pluck('query')
+            ->filter(fn (string $sql) => str_contains($sql, 'from "tenants"') && str_ends_with(trim($sql), 'for update')));
+    }
+
+    public function test_a_room_deleted_while_a_table_is_created_is_refused_with_a_reason(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $room = Room::factory()->create(['location_id' => $setup['location']->id, 'name' => 'Flüchtig']);
+        $this->clearTenantContext();
+
+        $this->roomVanishesBeforeTheTableIsCreated($room->id);
+
+        $this->actingAs($owner)->postJson('/admin/settings/tables', [
+            'room_id' => $room->id, 'name' => 'T9', 'min_capacity' => 2, 'max_capacity' => 4,
+        ])->assertStatus(422)
+            ->assertJsonPath('errors.room_id.0', 'Dieser Raum gehört nicht zu diesem Standort. Bitte die Seite neu laden und einen Raum aus der Liste wählen.');
+
+        $this->assertSame(0, RestaurantTable::withoutGlobalScopes()->where('name', 'T9')->count());
+        $this->assertSame(0, AuditLog::where('action', 'table.created')->count());
+    }
+
+    public function test_a_room_deleted_while_a_table_is_placed_in_the_floorplan_is_refused_with_a_reason(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $room = Room::factory()->create(['location_id' => $setup['location']->id, 'name' => 'Flüchtig']);
+        $this->clearTenantContext();
+        $this->roomVanishesBeforeTheTableIsCreated($room->id);
+
+        $this->actingAs($owner)->postJson('/admin/floorplan/tables', [
+            'room_id' => $room->id, 'name' => 'T9', 'min_capacity' => 2, 'max_capacity' => 4,
+        ])->assertStatus(422)
+            ->assertJsonPath('message', 'Dieser Raum gehört nicht zu diesem Standort. Bitte die Seite neu laden.');
+
+        $this->assertSame(0, RestaurantTable::withoutGlobalScopes()->where('name', 'T9')->count());
+    }
+
+    /**
+     * Der Raum verschwindet zwischen der Prüfung und dem Anlegen, wie bei einem zweiten Fenster:
+     * Die Grenzprüfung löscht ihn vor ihrer Sperre und legt dann an.
+     */
+    private function roomVanishesBeforeTheTableIsCreated(int $roomId): void
+    {
+        $this->app->bind(PlanLimitService::class, fn () => new class($roomId) extends PlanLimitService
+        {
+            public function __construct(private readonly int $roomId) {}
+
+            public function createWithinLimit(Tenant $tenant, string $limitKey, Closure $create): mixed
+            {
+                DB::table('rooms')->where('id', $this->roomId)->delete();
+
+                return parent::createWithinLimit($tenant, $limitKey, $create);
+            }
+        });
+    }
+
+    // ── Kombination mit einem Tisch, der nicht mehr kombinierbar ist ──────
+
+    public function test_a_combination_keeps_a_member_that_is_no_longer_joinable(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        [$one, $two, $three] = $setup['tables'];
+        $combo = $setup['location']->tableCombinations()->create(['tenant_id' => $setup['tenant']->id, 'name' => 'Tafel', 'min_capacity' => 2, 'max_capacity' => 6]);
+        $combo->tables()->sync([$one->id, $two->id]);
+        $two->update(['joinable' => false]);
+        $this->clearTenantContext();
+
+        // Die Seitenleiste führt den Tisch weiter auf: angehakt und als „nicht kombinierbar“ benannt, nur in dieser Kombination.
+        $html = (string) $this->actingAs($owner)->get('/admin/settings/rooms')->assertOk()->getContent();
+        $this->assertSame(1, preg_match_all('/name="table_ids\[\]" value="'.$two->id.'"/', $html));
+        $this->assertMatchesRegularExpression('/name="table_ids\[\]" value="'.$two->id.'" checked[^>]*>\s*<span[^>]*>T2 <span[^>]*>\([^)]*nicht kombinierbar\)/', $html);
+        $this->assertStringContainsString('gehören bereits zur Kombination', $html);
+
+        // Nur den Namen ändern: Der Tisch bleibt in der Kombination.
+        $this->actingAs($owner)->putJson("/admin/settings/combinations/{$combo->id}", [
+            'name' => 'Lange Tafel', 'min_capacity' => 2, 'max_capacity' => 6, 'table_ids' => [$one->id, $two->id],
+        ])->assertOk()->assertJsonPath('combination.name', 'Lange Tafel');
+        $this->assertEqualsCanonicalizing([$one->id, $two->id], $combo->fresh()->tables()->pluck('restaurant_tables.id')->all());
+
+        // Neu hinzufügen darf man nur einen kombinierbaren Tisch.
+        $three->update(['joinable' => false]);
+        $reason = 'Mindestens ein gewählter Tisch gehört nicht zu diesem Standort oder ist nicht mehr kombinierbar. Bitte die Seite neu laden und die Tische neu wählen.';
+        $this->actingAs($owner)->putJson("/admin/settings/combinations/{$combo->id}", [
+            'name' => 'Lange Tafel', 'min_capacity' => 2, 'max_capacity' => 6, 'table_ids' => [$one->id, $two->id, $three->id],
+        ])->assertStatus(422)->assertJsonPath('errors.table_ids.0', $reason);
+        $this->assertEqualsCanonicalizing([$one->id, $two->id], $combo->fresh()->tables()->pluck('restaurant_tables.id')->all());
+
+        // Eine neue Kombination nimmt ihn nicht auf, auch wenn er in einer anderen steckt.
+        $three->update(['joinable' => true]);
+        $this->actingAs($owner)->postJson('/admin/settings/combinations', [
+            'name' => 'Neu', 'min_capacity' => 2, 'max_capacity' => 6, 'table_ids' => [$one->id, $two->id, $three->id],
+        ])->assertStatus(422)->assertJsonPath('errors.table_ids.0', $reason);
+
+        // Wer den Tisch abwählt, nimmt ihn heraus; danach lässt er sich nicht wieder hinzufügen.
+        $this->actingAs($owner)->putJson("/admin/settings/combinations/{$combo->id}", [
+            'name' => 'Lange Tafel', 'min_capacity' => 2, 'max_capacity' => 6, 'table_ids' => [$one->id, $three->id],
+        ])->assertOk();
+        $this->actingAs($owner)->putJson("/admin/settings/combinations/{$combo->id}", [
+            'name' => 'Lange Tafel', 'min_capacity' => 2, 'max_capacity' => 6, 'table_ids' => [$one->id, $three->id, $two->id],
+        ])->assertStatus(422)->assertJsonPath('errors.table_ids.0', $reason);
     }
 
     // ── Doppelter Klick beim Löschen ─────────────────────────────────────
