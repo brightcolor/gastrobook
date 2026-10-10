@@ -60,7 +60,7 @@
     </x-slot:description>
     <div class="grid gap-4 sm:grid-cols-2">
         <x-field name="widget_label" id="w-label" label="Text auf dem Knopf" :value="$defaultLabel" :maxlength="$labelMax" autocomplete="off" data-widget-input="label" />
-        <x-field name="widget_color" id="w-color" label="Farbe" :help="$colorHelp">
+        <x-field name="widget_color" id="w-color" label="Farbe des Knopfs" :help="$colorHelp">
             <input id="w-color" type="color" value="{{ $brandColor }}" data-widget-input="color" aria-describedby="w-color-help"
                    class="h-10 w-16 cursor-pointer rounded border border-stone-300 bg-white p-1">
         </x-field>
@@ -83,7 +83,7 @@
     </x-slot:description>
     <div class="grid gap-4 sm:grid-cols-2">
         <x-field name="widget_link_label" id="w-link-label" label="Text des Links" :value="$defaultLabel" :maxlength="$labelMax" autocomplete="off" data-widget-input="link-label" />
-        <x-field name="widget_link_color" id="w-link-color" label="Farbe" :help="$colorHelp">
+        <x-field name="widget_link_color" id="w-link-color" label="Farbe des Links" :help="$colorHelp">
             <input id="w-link-color" type="color" value="{{ $brandColor }}" data-widget-input="link-color" aria-describedby="w-link-color-help"
                    class="h-10 w-16 cursor-pointer rounded border border-stone-300 bg-white p-1">
         </x-field>

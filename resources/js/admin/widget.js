@@ -7,7 +7,7 @@
 //
 // Der Code landet auf fremden Websites. Jeder Wert, der aus einer Eingabe oder
 // von der Seite stammt, wird für seine Stelle maskiert (attr, text), und Farben
-// gelten nur in der Schreibweise #rrggbb.
+// gelten in der Schreibweise #rrggbb.
 
 // Farbe, die der Code übernimmt: #rrggbb, Groß- und Kleinbuchstaben.
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
@@ -36,14 +36,16 @@ function colorOf(value, fallback) {
 
 export function buildSnippets({ popupSrc, embedSrc, bookingUrl, label, color, float, linkLabel, linkColor, defaultColor = '' }) {
     const buttonColor = colorOf(color, defaultColor);
-    const background = colorOf(linkColor, defaultColor);
+    // Mit Hintergrund steht die Schrift weiß darauf. Fehlt jede gültige Farbe, gilt die Linkfarbe der Website.
+    const linkColors = colorOf(linkColor, defaultColor);
+    const colors = linkColors ? `background:${attr(linkColors)};color:#fff;` : '';
 
     return {
         // Fehlt jede gültige Farbe, setzt das Skript des Betriebs seine Markenfarbe selbst.
         popup: `<script src="${attr(popupSrc)}" data-label="${attr(label)}"${buttonColor ? ` data-color="${attr(buttonColor)}"` : ''}${float ? ' data-float="1"' : ''} defer></script>`,
         inline: `<div id="swayy-widget"></div>\n<script src="${attr(embedSrc)}" defer></script>`,
         link: `<a href="${attr(bookingUrl)}" target="_blank" rel="noopener"\n`
-            + `   style="display:inline-flex;align-items:center;gap:8px;padding:12px 24px;${background ? `background:${attr(background)};` : ''}color:#fff;border-radius:10px;font-family:inherit;font-size:15px;font-weight:600;text-decoration:none;">\n`
+            + `   style="display:inline-flex;align-items:center;gap:8px;padding:12px 24px;${colors}border-radius:10px;font-family:inherit;font-size:15px;font-weight:600;text-decoration:none;">\n`
             + `  ${text(linkLabel)}\n</a>`,
     };
 }

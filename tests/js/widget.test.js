@@ -107,7 +107,7 @@ describe('Maskierung', () => {
         expect([...inline.children].map((el) => el.tagName)).toEqual(['DIV', 'SCRIPT']);
         expect(inline.querySelector('script').getAttribute('src')).toBe(`https://swayy.test/b${evil}`);
 
-        // Link: ein a-Element ohne Kind-Elemente; der Text bleibt Text.
+        // Link: ein a-Element, dessen Inhalt aus Text besteht.
         const link = parse(code.link);
         expect(link.children).toHaveLength(1);
         const a = link.querySelector('a');
@@ -147,6 +147,8 @@ describe('Farben', () => {
 
         expect(code.popup).toBe('<script src="https://swayy.test/widget/demo/popup.js" data-label="Reservieren" defer></script>');
         expect(code.link).not.toContain('background');
+        expect(code.link).not.toContain('color:');
+        expect(code.link).toContain('padding:12px 24px;border-radius:10px;');
     });
 
     it('übernimmt Farben in Groß- und Kleinschreibung', () => {
@@ -196,7 +198,7 @@ describe('Eingaben der Seite', () => {
         expect(document.querySelector('[data-widget-snippet="link"]').textContent.endsWith('\n  Jetzt reservieren\n</a>')).toBe(true);
     });
 
-    it('verwirft eine Farbe, die kein #rrggbb ist, und nimmt die Markenfarbe', () => {
+    it('verwirft eine ungültige Farbe und nimmt die Markenfarbe', () => {
         mountBuilder();
         initWidgetBuilder();
 
@@ -210,7 +212,7 @@ describe('Eingaben der Seite', () => {
         expect(link).toContain('background:#0f766e;');
     });
 
-    it('maskiert Eingaben im angezeigten Code und legt kein Element an', () => {
+    it('zeigt Eingaben als Text im Code', () => {
         mountBuilder();
         initWidgetBuilder();
 
@@ -246,7 +248,7 @@ describe('Eingaben der Seite', () => {
         spy.mockRestore();
     });
 
-    it('tut ohne Einstellungen der Seite nichts', () => {
+    it('bleibt auf Seiten ohne Einstellungen unverändert', () => {
         mount('<input data-widget-input="label" value="x"><pre data-widget-snippet="popup"></pre>');
 
         expect(() => initWidgetBuilder()).not.toThrow();

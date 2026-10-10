@@ -16,7 +16,7 @@ class BookingPageSettingsTest extends TestCase
 {
     use CreatesTenants, RefreshDatabase;
 
-    /** Inhalt der Seite ohne Navigation, deren Suchbegriffe alle Seiten nennen. */
+    /** Inhalt der Seite; die Navigation nennt die Suchbegriffe aller Seiten. */
     private function mainContent(string $html): string
     {
         $this->assertSame(1, preg_match('/<main.*?<\/main>/s', $html, $main));
@@ -45,6 +45,10 @@ class BookingPageSettingsTest extends TestCase
             ->assertSee('data-default-color="#aa3300"', false)
             ->assertSee('value="#aa3300"', false)
             ->assertSee('data-ajax data-savebar', false)
+            ->assertSee('for="w-color"', false)
+            ->assertSee('Farbe des Knopfs')
+            ->assertSee('for="w-link-color"', false)
+            ->assertSee('Farbe des Links')
             ->assertSee('name="public_floorplan_enabled"', false)
             ->assertSee('name="confetti_on_booking"', false)
             ->assertSee('<input type="hidden" name="confetti_on_booking" value="0">', false)
@@ -157,7 +161,7 @@ class BookingPageSettingsTest extends TestCase
             ->assertDontSee('name="public_floorplan_enabled"', false);
 
         $main = $this->mainContent((string) $response->getContent());
-        // Die Erklärung des Seiteninhalts spricht von Terminen, nicht von Tischen.
+        // Die Erklärung spricht von Terminen.
         $this->assertStringContainsString('value="Termin buchen"', $main);
         $this->assertStringContainsString('Unterseite „Termin buchen“', $main);
         foreach (['Tisch', 'Reservier', 'Grundriss'] as $restaurantOnly) {
@@ -407,7 +411,7 @@ class BookingPageSettingsTest extends TestCase
             ->assertStatus(422)
             ->assertJsonPath('errors.confetti_on_booking.0', 'Die Einstellung „Konfetti nach dem Buchen“ fehlt im gesendeten Formular. Bitte die Seite neu laden und erneut speichern.');
 
-        // Das Formular eines Salons sendet keinen Tischplan; ein Restaurant braucht ihn.
+        // Das Formular eines Salons lässt den Tischplan weg; ein Restaurant braucht ihn.
         $this->actingAs($owner)->putJson('/admin/settings/booking-page', ['confetti_on_booking' => '1'])
             ->assertStatus(422)
             ->assertJsonPath('errors.public_floorplan_enabled.0', 'Die Einstellung „Tischplan zeigen“ fehlt im gesendeten Formular. Bitte die Seite neu laden und erneut speichern.');
