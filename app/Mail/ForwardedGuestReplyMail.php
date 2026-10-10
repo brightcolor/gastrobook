@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
+use App\Mail\Concerns\RendersInFrame;
+use App\Mail\Layout\MailFrame;
+use App\Mail\Layout\MailFrameFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -20,7 +23,7 @@ use Illuminate\Queue\SerializesModels;
  */
 class ForwardedGuestReplyMail extends Mailable implements ShouldQueue
 {
-    use Queueable, SerializesModels;
+    use Queueable, RendersInFrame, SerializesModels;
 
     /** @param list<array{name:string,mime:string,data:string}> $forwardedAttachments */
     public function __construct(
@@ -29,6 +32,7 @@ class ForwardedGuestReplyMail extends Mailable implements ShouldQueue
         public readonly ?string $fromName,
         public readonly string $guestReplyTo,
         public readonly array $forwardedAttachments = [],
+        public readonly ?MailFrame $frame = null,
     ) {}
 
     public function envelope(): Envelope
@@ -42,9 +46,10 @@ class ForwardedGuestReplyMail extends Mailable implements ShouldQueue
 
     public function content(): Content
     {
-        return new Content(
-            text: 'mail.templated-text',
-            with: ['body' => $this->forwardBody, 'fromName' => $this->fromName],
+        // Text des Gastes: gerahmt, aber ohne Tabelle und Knöpfe (Spec, Review Focus 1).
+        return $this->framedContent(
+            $this->forwardBody,
+            $this->frame ?? app(MailFrameFactory::class)->forSwayy('operator_guest_reply', ['guest' => $this->guestReplyTo], structured: false),
         );
     }
 

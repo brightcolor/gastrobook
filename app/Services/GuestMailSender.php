@@ -94,10 +94,13 @@ class GuestMailSender
     }
 
     /**
-     * Mail an den Betrieb. Mit $guestEmail gehen Antworten direkt an den
-     * Gast, sofern die Einstellung owner_reply_to_guest das erlaubt.
+     * Mail an den Betrieb im Swayy-Auftritt. Mit $guestEmail gehen Antworten
+     * direkt an den Gast, sofern owner_reply_to_guest das erlaubt. Anzeigename
+     * ist MAIL_FROM_NAME.
+     *
+     * @param  array<string, string>  $vars
      */
-    public function toOperator(string $subject, string $body, ?Tenant $tenant, ?Location $location, ?string $guestEmail = null): TemplatedMail
+    public function toOperator(string $subject, string $body, ?Tenant $tenant, ?Location $location, ?string $guestEmail = null, string $type = 'operator_new_reservation', array $vars = []): TemplatedMail
     {
         $antwort = $guestEmail !== null
             && config('swayy.guest_mail.owner_reply_to_guest', true)
@@ -105,6 +108,10 @@ class GuestMailSender
                 ? $guestEmail
                 : null;
 
-        return new TemplatedMail($subject, $body, $this->fromName($tenant, $location), $antwort);
+        return new TemplatedMail($subject, $body, null, $antwort, app(MailFrameFactory::class)->forSwayy($type, [
+            'location' => (string) ($location?->name ?? ''),
+            'tenant' => (string) ($tenant?->name ?? ''),
+            ...$vars,
+        ]));
     }
 }

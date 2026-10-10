@@ -818,6 +818,7 @@ class RefundService
             ]),
             $tenant,
             $location,
+            type: 'operator_refund',
         ));
     }
 
