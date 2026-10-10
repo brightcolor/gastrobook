@@ -180,9 +180,9 @@
             </div>
             <div class="fp-grid2">
                 <label class="fp-field"><span>Plätze min.</span>
-                    <input name="min_capacity" type="number" min="1" max="50" value="2" required><span class="tip" tabindex="0" data-tip="Ab wie vielen Personen dieser Tisch überhaupt vergeben wird. Verhindert, dass ein Paar am großen Achtertisch sitzt, während die Sechsergruppe keinen Platz findet.">?</span></label>
+                    <input name="min_capacity" type="number" min="1" max="{{ config('swayy.tables.capacity_max') }}" value="2" required><span class="tip" tabindex="0" data-tip="Ab wie vielen Personen dieser Tisch überhaupt vergeben wird. Verhindert, dass ein Paar am großen Achtertisch sitzt, während die Sechsergruppe keinen Platz findet.">?</span></label>
                 <label class="fp-field"><span>Plätze max.</span>
-                    <input name="max_capacity" type="number" min="1" max="50" value="4" required><span class="tip" tabindex="0" data-tip="Wie viele Personen höchstens an den Tisch passen. Bestimmt zugleich, wie viele Stühle im Plan gezeichnet werden.">?</span></label>
+                    <input name="max_capacity" type="number" min="1" max="{{ config('swayy.tables.capacity_max') }}" value="4" required><span class="tip" tabindex="0" data-tip="Wie viele Personen höchstens an den Tisch passen. Bestimmt zugleich, wie viele Stühle im Plan gezeichnet werden.">?</span></label>
             </div>
             <p id="newTableErr" class="fp-err hidden"></p>
             <div class="fp-modal-foot">
@@ -207,9 +207,9 @@
             </label>
             <div class="fp-grid2">
                 <label class="fp-field"><span>Plätze min.</span>
-                    <input name="min_capacity" type="number" min="1" max="50" required></label>
+                    <input name="min_capacity" type="number" min="1" max="{{ config('swayy.tables.capacity_max') }}" required></label>
                 <label class="fp-field"><span>Plätze max.</span>
-                    <input name="max_capacity" type="number" min="1" max="50" required></label>
+                    <input name="max_capacity" type="number" min="1" max="{{ config('swayy.tables.capacity_max') }}" required></label>
             </div>
             <div class="fp-field">
                 <span>Eigenschaften</span>

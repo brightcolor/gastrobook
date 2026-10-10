@@ -10,6 +10,8 @@ use App\Models\RestaurantTable;
 use App\Models\Room;
 use App\Services\AuditLogger;
 use App\Services\PlanLimitService;
+use App\Support\PlanLimitMessage;
+use App\Support\TableRules;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -175,12 +177,9 @@ class FloorPlanController extends Controller
     {
         $this->authorizeRoom($room);
 
-        $data = $request->validate([
-            'plan_width' => ['nullable', 'integer', 'min:200', 'max:50000'],
-            'plan_height' => ['nullable', 'integer', 'min:200', 'max:50000'],
-            'plan_width_m' => ['nullable', 'numeric', 'min:1', 'max:500'],
-            'plan_height_m' => ['nullable', 'numeric', 'min:1', 'max:500'],
-        ]);
+        // Die Obergrenze kommt aus swayy.tables.room_size_max_m und liegt unter dem,
+        // was die smallint-Spalten plan_width und plan_height fassen.
+        $data = $request->validate(TableRules::roomSize(), TableRules::messages(), TableRules::attributes());
 
         // 1 plan unit = 1 cm. When real-world meters are given they drive the
         // logical canvas size so it scales with the actual room; otherwise an
@@ -199,13 +198,17 @@ class FloorPlanController extends Controller
         $room->update($update);
         $this->audit->log('floorplan.room_size.updated', null, null, null, ['room_id' => $room->id]);
 
-        return response()->json(['ok' => true, 'room' => [
-            'id' => $room->id,
-            'plan_width' => $room->plan_width,
-            'plan_height' => $room->plan_height,
-            'plan_width_m' => $room->plan_width_m,
-            'plan_height_m' => $room->plan_height_m,
-        ]]);
+        return response()->json([
+            'ok' => true,
+            'message' => __('Maße von „:name“ gespeichert.', ['name' => $room->name]),
+            'room' => [
+                'id' => $room->id,
+                'plan_width' => $room->plan_width,
+                'plan_height' => $room->plan_height,
+                'plan_width_m' => $room->plan_width_m,
+                'plan_height_m' => $room->plan_height_m,
+            ],
+        ]);
     }
 
     /**
@@ -217,21 +220,27 @@ class FloorPlanController extends Controller
         $location = $this->context->location();
         abort_if($location === null, 404);
 
-        if (! $limits->canAdd($location->tenant, 'max_tables')) {
-            return response()->json(['message' => __('Tisch-Limit Ihres Tarifs erreicht.')], 422);
+        // Ist der Tarif voll, nützt auch eine fehlerfreie Eingabe nichts. Verbindlich
+        // zählt die Prüfung unter der Sperre beim Anlegen weiter unten.
+        $tenant = $location->tenant;
+        $limitReached = fn () => response()->json(['message' => PlanLimitMessage::tables($tenant, $request->user())], 422);
+        if (! $limits->canAdd($tenant, 'max_tables')) {
+            return $limitReached();
         }
 
         $validated = $request->validate([
             'room_id' => ['required', 'integer'],
-            'name' => ['required', 'string', 'max:40'],
-            'min_capacity' => ['required', 'integer', 'min:1', 'max:50'],
-            'max_capacity' => ['required', 'integer', 'min:1', 'max:50', 'gte:min_capacity'],
+            ...TableRules::table(),
             'shape' => ['nullable', 'in:rect,round'],
             'pos_x' => ['nullable', 'integer', 'min:0', 'max:5000'],
             'pos_y' => ['nullable', 'integer', 'min:0', 'max:5000'],
-        ]);
+        ], TableRules::messages(), TableRules::attributes());
 
-        abort_unless($location->rooms()->where('id', $validated['room_id'])->exists(), 422);
+        abort_unless(
+            $location->rooms()->where('id', $validated['room_id'])->exists(),
+            422,
+            __('Dieser Raum gehört nicht zu diesem Standort. Bitte die Seite neu laden.'),
+        );
 
         // Size the table by its capacity so it isn't a tiny box and leaves room
         // for the chairs. Set width/height explicitly – otherwise the in-memory
@@ -241,7 +250,7 @@ class FloorPlanController extends Controller
         $max = (int) $validated['max_capacity'];
         [$width, $height] = RestaurantTable::sizeForCapacity($shape, $max);
 
-        $table = $location->tables()->create([
+        $table = $limits->createWithinLimit($tenant, 'max_tables', fn () => $location->tables()->create([
             'tenant_id' => $location->tenant_id,
             'room_id' => (int) $validated['room_id'],
             'name' => $validated['name'],
@@ -253,7 +262,10 @@ class FloorPlanController extends Controller
             'rotation' => 0,
             'pos_x' => (int) ($validated['pos_x'] ?? 40),
             'pos_y' => (int) ($validated['pos_y'] ?? 40),
-        ]);
+        ]));
+        if ($table === null) {
+            return $limitReached();
+        }
 
         $this->audit->log('table.created', $table, null, $validated);
 
@@ -283,16 +295,10 @@ class FloorPlanController extends Controller
         abort_if($table->location_id !== $this->context->locationId(), 404);
 
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:40'],
-            'min_capacity' => ['required', 'integer', 'min:1', 'max:50'],
-            'max_capacity' => ['required', 'integer', 'min:1', 'max:50', 'gte:min_capacity'],
-            'outdoor' => ['nullable', 'boolean'],
-            'accessible' => ['nullable', 'boolean'],
-            'high_chair_possible' => ['nullable', 'boolean'],
-            'joinable' => ['nullable', 'boolean'],
-            'online_bookable' => ['nullable', 'boolean'],
+            ...TableRules::table(),
+            ...TableRules::tableFlags(),
             'head_seats_enabled' => ['nullable', 'boolean'],
-        ]);
+        ], TableRules::messages(), TableRules::attributes());
 
         $old = ['name' => $table->name, 'min_capacity' => $table->min_capacity, 'max_capacity' => $table->max_capacity];
         $table->update([

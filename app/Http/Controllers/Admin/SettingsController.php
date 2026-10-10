@@ -18,12 +18,10 @@ use App\Models\SeasonPeriod;
 use App\Models\Service;
 use App\Models\SpecialOpeningHour;
 use App\Models\TableBlock;
-use App\Models\TableCombination;
 use App\Rules\AllowedOutboundUrl;
 use App\Services\AuditLogger;
 use App\Services\Mail\GuestReplyAddress;
 use App\Services\Newsletter\MailwizzProvider;
-use App\Services\PlanLimitService;
 use App\Services\Sms\SevenIoProvider;
 use App\Support\BookingSettingRules;
 use App\Support\OutboundUrlBlocked;
@@ -41,7 +39,6 @@ class SettingsController extends Controller
     public function __construct(
         private readonly TenantContext $context,
         private readonly AuditLogger $audit,
-        private readonly PlanLimitService $limits,
     ) {}
 
     public function index()
@@ -607,74 +604,6 @@ class SettingsController extends Controller
         return back()->with('success', __('Anzahlungsregel gelöscht.'));
     }
 
-    public function storeRoom(Request $request)
-    {
-        $location = $this->context->location();
-        abort_if($location === null, 404);
-
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:80'],
-            'is_outdoor' => ['nullable', 'boolean'],
-        ]);
-
-        $room = $location->rooms()->create([
-            'tenant_id' => $location->tenant_id,
-            'name' => $validated['name'],
-            'is_outdoor' => $request->boolean('is_outdoor'),
-        ]);
-
-        $this->audit->log('room.created', $room, null, $validated);
-
-        return $this->saved($request, __('Raum angelegt.'));
-    }
-
-    public function storeTable(Request $request)
-    {
-        $location = $this->context->location();
-        abort_if($location === null, 404);
-
-        if (! $this->limits->canAdd($location->tenant, 'max_tables')) {
-            return $this->failed($request, 'name', __('Das Tisch-Limit des Tarifs ist erreicht. Für mehr Tische bitte den Tarif unter „Abrechnung“ wechseln oder einen Administrator des Betriebs fragen.'));
-        }
-
-        $validated = $request->validate([
-            'room_id' => ['required', 'integer'],
-            'name' => ['required', 'string', 'max:40'],
-            'min_capacity' => ['required', 'integer', 'min:1', 'max:50'],
-            'max_capacity' => ['required', 'integer', 'min:1', 'max:50', 'gte:min_capacity'],
-            'outdoor' => ['nullable', 'boolean'],
-            'accessible' => ['nullable', 'boolean'],
-            'high_chair_possible' => ['nullable', 'boolean'],
-            'joinable' => ['nullable', 'boolean'],
-            'online_bookable' => ['nullable', 'boolean'],
-        ]);
-
-        if (! $location->rooms()->where('id', $validated['room_id'])->exists()) {
-            return $this->failed($request, 'room_id', __('Dieser Raum gehört nicht zu diesem Standort. Bitte die Seite neu laden und einen Raum aus der Liste wählen.'));
-        }
-
-        [$width, $height] = RestaurantTable::sizeForCapacity('rect', (int) $validated['max_capacity']);
-
-        $table = $location->tables()->create([
-            'tenant_id' => $location->tenant_id,
-            'room_id' => (int) $validated['room_id'],
-            'name' => $validated['name'],
-            'min_capacity' => (int) $validated['min_capacity'],
-            'max_capacity' => (int) $validated['max_capacity'],
-            'outdoor' => $request->boolean('outdoor'),
-            'accessible' => $request->boolean('accessible'),
-            'high_chair_possible' => $request->boolean('high_chair_possible'),
-            'joinable' => $request->boolean('joinable', true),
-            'online_bookable' => $request->boolean('online_bookable', true),
-            'width' => $width, 'height' => $height,
-            'pos_x' => 50, 'pos_y' => 50,
-        ]);
-
-        $this->audit->log('table.created', $table, null, $validated);
-
-        return $this->saved($request, __('Tisch angelegt.'));
-    }
-
     public function uploadLogo(Request $request)
     {
         $location = $this->context->location();
@@ -716,74 +645,6 @@ class SettingsController extends Controller
         $this->audit->log('location.logo.deleted', $location);
 
         return back()->with('success', __('Logo entfernt.'));
-    }
-
-    public function deleteTable(RestaurantTable $table, Request $request)
-    {
-        abort_if($table->location_id !== $this->context->locationId(), 404);
-
-        // Refuse deletion while the table still has upcoming active reservations —
-        // otherwise the reservation silently loses its table with no warning.
-        $hasUpcoming = $table->reservations()
-            ->where('start_at', '>=', now())
-            ->whereIn('status', ReservationStatus::activeStatuses())
-            ->exists();
-        if ($hasUpcoming) {
-            return back()->withErrors([
-                'table' => __('Dieser Tisch hat noch bevorstehende Reservierungen. Bitte diese zuerst umbelegen oder stornieren.'),
-            ]);
-        }
-
-        $table->delete();
-        $this->audit->log('table.deleted', $table);
-
-        return back()->with('success', __('Tisch gelöscht.'));
-    }
-
-    public function storeCombination(Request $request)
-    {
-        $location = $this->context->location();
-        abort_if($location === null, 404);
-
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:80'],
-            'table_ids' => ['required', 'array', 'min:2'],
-            'table_ids.*' => ['integer'],
-            'min_capacity' => ['required', 'integer', 'min:1'],
-            'max_capacity' => ['required', 'integer', 'min:1', 'gte:min_capacity'],
-        ]);
-
-        $tableIds = collect($validated['table_ids'])
-            ->filter(fn ($id) => $location->tables()->where('id', $id)->where('joinable', true)->exists())
-            ->values();
-        abort_if($tableIds->count() < 2, 422, 'Mindestens zwei kombinierbare Tische erforderlich.');
-
-        $combo = $location->tableCombinations()->create([
-            'tenant_id' => $location->tenant_id,
-            'name' => $validated['name'],
-            'min_capacity' => (int) $validated['min_capacity'],
-            'max_capacity' => (int) $validated['max_capacity'],
-        ]);
-        $combo->tables()->sync($tableIds);
-
-        $this->audit->log('table_combination.created', $combo, null, $validated);
-
-        if ($request->wantsJson()) {
-            $combo->load('tables:id,name');
-
-            return response()->json([
-                'message' => __('Tischkombination angelegt.'),
-                'combination' => [
-                    'id' => $combo->id,
-                    'name' => $combo->name,
-                    'min_capacity' => $combo->min_capacity,
-                    'max_capacity' => $combo->max_capacity,
-                    'tables' => $combo->tables->map(fn ($t) => ['id' => $t->id, 'name' => $t->name])->values(),
-                ],
-            ]);
-        }
-
-        return back()->with('success', __('Tischkombination angelegt.'));
     }
 
     public function updateOpeningHours(Request $request)
@@ -886,61 +747,6 @@ class SettingsController extends Controller
         $this->audit->log('special_hours.created', $special, null, $validated);
 
         return $this->saved($request, __('Sonderöffnungszeit gespeichert.'), true);
-    }
-
-    public function updateCombination(Request $request, TableCombination $combination)
-    {
-        $location = $this->context->location();
-        abort_if($location === null, 404);
-        abort_if($combination->location_id !== $location->id, 404);
-
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:80'],
-            'table_ids' => ['required', 'array', 'min:2'],
-            'table_ids.*' => ['integer'],
-            'min_capacity' => ['required', 'integer', 'min:1'],
-            'max_capacity' => ['required', 'integer', 'min:1', 'gte:min_capacity'],
-        ]);
-
-        $tableIds = collect($validated['table_ids'])
-            ->filter(fn ($id) => $location->tables()->where('id', $id)->where('joinable', true)->exists())
-            ->values();
-        abort_if($tableIds->count() < 2, 422, 'Mindestens zwei kombinierbare Tische erforderlich.');
-
-        $combination->update([
-            'name' => $validated['name'],
-            'min_capacity' => (int) $validated['min_capacity'],
-            'max_capacity' => (int) $validated['max_capacity'],
-        ]);
-        $combination->tables()->sync($tableIds);
-
-        $this->audit->log('table_combination.updated', $combination, null, $validated);
-
-        if ($request->wantsJson()) {
-            $combination->load('tables:id,name');
-
-            return response()->json([
-                'message' => __('Tischkombination aktualisiert.'),
-                'combination' => [
-                    'id' => $combination->id,
-                    'name' => $combination->name,
-                    'min_capacity' => $combination->min_capacity,
-                    'max_capacity' => $combination->max_capacity,
-                    'tables' => $combination->tables->map(fn ($t) => ['id' => $t->id, 'name' => $t->name])->values(),
-                ],
-            ]);
-        }
-
-        return back()->with('success', __('Tischkombination aktualisiert.'));
-    }
-
-    public function deleteCombination(TableCombination $combination, Request $request)
-    {
-        abort_if($combination->location_id !== $this->context->locationId(), 404);
-        $this->audit->log('table_combination.deleted', $combination, ['name' => $combination->name]);
-        $combination->delete();
-
-        return $this->saved($request, __('Tischkombination gelöscht.'));
     }
 
     public function deleteSpecialHours(SpecialOpeningHour $special, Request $request)
@@ -1116,74 +922,5 @@ class SettingsController extends Controller
         $block->delete();
 
         return $this->saved($request, __('Tischsperre aufgehoben.'), true);
-    }
-
-    public function updateRoom(Request $request, Room $room)
-    {
-        abort_if($room->location_id !== $this->context->locationId(), 404);
-
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:80'],
-            'is_outdoor' => ['nullable', 'boolean'],
-        ]);
-
-        $old = ['name' => $room->name, 'is_outdoor' => $room->is_outdoor];
-        $room->update([
-            'name' => $validated['name'],
-            'is_outdoor' => $request->boolean('is_outdoor'),
-        ]);
-
-        $this->audit->log('room.updated', $room, $old, $validated);
-
-        return $this->saved($request, __('Raum gespeichert.'));
-    }
-
-    public function deleteRoom(Room $room, Request $request)
-    {
-        abort_if($room->location_id !== $this->context->locationId(), 404);
-
-        // Rooms cascade-delete their tables (and thereby reservation links) at the
-        // DB level. Refuse deletion while tables exist so the operator removes them
-        // deliberately first instead of silently losing tables + their history.
-        if ($room->tables()->exists()) {
-            return back()->withErrors([
-                'room' => __('Dieser Raum enthält noch Tische. Bitte zuerst die Tische löschen.'),
-            ]);
-        }
-
-        $this->audit->log('room.deleted', $room, ['name' => $room->name]);
-        $room->delete();
-
-        return $this->saved($request, __('Raum gelöscht.'));
-    }
-
-    public function updateTable(Request $request, RestaurantTable $table)
-    {
-        abort_if($table->location_id !== $this->context->locationId(), 404);
-
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:40'],
-            'min_capacity' => ['required', 'integer', 'min:1', 'max:50'],
-            'max_capacity' => ['required', 'integer', 'min:1', 'max:50', 'gte:min_capacity'],
-            'outdoor' => ['nullable', 'boolean'],
-            'accessible' => ['nullable', 'boolean'],
-            'joinable' => ['nullable', 'boolean'],
-            'online_bookable' => ['nullable', 'boolean'],
-        ]);
-
-        $old = ['name' => $table->name, 'min_capacity' => $table->min_capacity, 'max_capacity' => $table->max_capacity];
-        $table->update([
-            'name' => $validated['name'],
-            'min_capacity' => (int) $validated['min_capacity'],
-            'max_capacity' => (int) $validated['max_capacity'],
-            'outdoor' => $request->boolean('outdoor'),
-            'accessible' => $request->boolean('accessible'),
-            'joinable' => $request->boolean('joinable'),
-            'online_bookable' => $request->boolean('online_bookable'),
-        ]);
-
-        $this->audit->log('table.updated', $table, $old, $validated);
-
-        return $this->saved($request, __('Tisch gespeichert.'));
     }
 }

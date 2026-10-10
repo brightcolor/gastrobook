@@ -177,11 +177,11 @@
                                 </div>
                                 <div>
                                     <label class="mb-1 block text-xs font-semibold text-stone-500">Min. Personen *</label>
-                                    <input id="obTableMin" type="number" value="1" min="1" max="50" class="w-full rounded-lg border-stone-200">
+                                    <input id="obTableMin" type="number" value="1" min="1" max="{{ config('swayy.tables.capacity_max') }}" class="w-full rounded-lg border-stone-200">
                                 </div>
                                 <div>
                                     <label class="mb-1 block text-xs font-semibold text-stone-500">Max. Personen *</label>
-                                    <input id="obTableMax" type="number" value="4" min="1" max="50" class="w-full rounded-lg border-stone-200">
+                                    <input id="obTableMax" type="number" value="4" min="1" max="{{ config('swayy.tables.capacity_max') }}" class="w-full rounded-lg border-stone-200">
                                 </div>
                             </div>
                         </div>

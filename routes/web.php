@@ -27,6 +27,7 @@ use App\Http\Controllers\Admin\Settings\BookingRulesController;
 use App\Http\Controllers\Admin\Settings\CapacityController;
 use App\Http\Controllers\Admin\Settings\DataController;
 use App\Http\Controllers\Admin\Settings\GeneralController;
+use App\Http\Controllers\Admin\Settings\RoomsController;
 use App\Http\Controllers\Admin\Settings\SettingsMenuController;
 use App\Http\Controllers\Admin\Settings\TagSettingsController;
 use App\Http\Controllers\Admin\SettingsController;
@@ -384,18 +385,19 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
         Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
         Route::put('/settings/booking-rules', [SettingsController::class, 'updateBookingRules'])
             ->middleware('permission:opening_hours.manage')->name('settings.booking-rules');
-        Route::post('/settings/rooms', [SettingsController::class, 'storeRoom'])
+        Route::get('/settings/rooms', [RoomsController::class, 'index'])->name('settings.rooms.index');
+        Route::post('/settings/rooms', [RoomsController::class, 'storeRoom'])
             ->middleware('permission:rooms.manage')->name('settings.rooms.store');
-        Route::put('/settings/rooms/{room}', [SettingsController::class, 'updateRoom'])
+        Route::put('/settings/rooms/{room}', [RoomsController::class, 'updateRoom'])
             ->middleware('permission:rooms.manage')->name('settings.rooms.update');
-        Route::delete('/settings/rooms/{room}', [SettingsController::class, 'deleteRoom'])
+        Route::delete('/settings/rooms/{room}', [RoomsController::class, 'deleteRoom'])
             ->middleware('permission:rooms.manage')->name('settings.rooms.delete');
-        Route::post('/settings/tables', [SettingsController::class, 'storeTable'])->name('settings.tables.store');
-        Route::put('/settings/tables/{table}', [SettingsController::class, 'updateTable'])->name('settings.tables.update');
-        Route::delete('/settings/tables/{table}', [SettingsController::class, 'deleteTable'])->name('settings.tables.delete');
-        Route::post('/settings/combinations', [SettingsController::class, 'storeCombination'])->name('settings.combinations.store');
-        Route::put('/settings/combinations/{combination}', [SettingsController::class, 'updateCombination'])->name('settings.combinations.update');
-        Route::delete('/settings/combinations/{combination}', [SettingsController::class, 'deleteCombination'])->name('settings.combinations.delete');
+        Route::post('/settings/tables', [RoomsController::class, 'storeTable'])->name('settings.tables.store');
+        Route::put('/settings/tables/{table}', [RoomsController::class, 'updateTable'])->name('settings.tables.update');
+        Route::delete('/settings/tables/{table}', [RoomsController::class, 'deleteTable'])->name('settings.tables.delete');
+        Route::post('/settings/combinations', [RoomsController::class, 'storeCombination'])->name('settings.combinations.store');
+        Route::put('/settings/combinations/{combination}', [RoomsController::class, 'updateCombination'])->name('settings.combinations.update');
+        Route::delete('/settings/combinations/{combination}', [RoomsController::class, 'deleteCombination'])->name('settings.combinations.delete');
         Route::get('/settings/booking-form', [BookingFormController::class, 'show'])
             ->middleware('permission:tenant.settings.manage')->name('settings.booking-form.show');
         Route::put('/settings/field-rules', [BookingFormController::class, 'update'])

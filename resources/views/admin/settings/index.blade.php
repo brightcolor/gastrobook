@@ -776,14 +776,14 @@
             <div class="ml-auto flex items-end gap-2">
                 <div>
                     <label class="mb-1 block text-xs font-semibold text-stone-500">Breite (m) <span class="tip" tabindex="0" data-tip="Echte Raummaße in Metern – optional, aber fein: Das System zeigt dann im Tischplan einen Maßstab-Ruler, damit Tische maßstabsgetreu dargestellt werden.">?</span></label>
-                    <input type="number" step="0.5" min="1" max="500"
+                    <input type="number" step="0.5" min="1" max="{{ config('swayy.tables.room_size_max_m') }}"
                            value="{{ $room->plan_width_m }}" placeholder="—"
                            class="room-size-m w-20 rounded-lg border-stone-200 text-sm"
                            data-room="{{ $room->id }}" data-field="plan_width_m">
                 </div>
                 <div>
                     <label class="mb-1 block text-xs font-semibold text-stone-500">Tiefe (m) <span class="tip" tabindex="0" data-tip="Die echte Tiefe (Länge) des Raums in Metern. Zusammen mit der Breite entsteht ein maßstabsgetreuer Tischplan mit Ruler.">?</span></label>
-                    <input type="number" step="0.5" min="1" max="500"
+                    <input type="number" step="0.5" min="1" max="{{ config('swayy.tables.room_size_max_m') }}"
                            value="{{ $room->plan_height_m }}" placeholder="—"
                            class="room-size-m w-20 rounded-lg border-stone-200 text-sm"
                            data-room="{{ $room->id }}" data-field="plan_height_m">
@@ -819,12 +819,16 @@
                     <div><label class="block text-xs text-stone-500">Name</label>
                         <input name="name" value="{{ $t->name }}" required class="w-24 rounded-lg border-stone-200 text-sm"></div>
                     <div><label class="block text-xs text-stone-500">Min</label>
-                        <input type="number" name="min_capacity" value="{{ $t->min_capacity }}" min="1" max="50" required class="w-16 rounded-lg border-stone-200 text-sm"></div>
+                        <input type="number" name="min_capacity" value="{{ $t->min_capacity }}" min="1" max="{{ config('swayy.tables.capacity_max') }}" required class="w-16 rounded-lg border-stone-200 text-sm"></div>
                     <div><label class="block text-xs text-stone-500">Max</label>
-                        <input type="number" name="max_capacity" value="{{ $t->max_capacity }}" min="1" max="50" required class="w-16 rounded-lg border-stone-200 text-sm"></div>
+                        <input type="number" name="max_capacity" value="{{ $t->max_capacity }}" min="1" max="{{ config('swayy.tables.capacity_max') }}" required class="w-16 rounded-lg border-stone-200 text-sm"></div>
+                    <input type="hidden" name="online_bookable" value="0">
                     <label class="flex items-center gap-1 pb-2 text-xs"><input type="checkbox" name="online_bookable" value="1" @checked($t->online_bookable)> Online</label>
+                    <input type="hidden" name="joinable" value="0">
                     <label class="flex items-center gap-1 pb-2 text-xs"><input type="checkbox" name="joinable" value="1" @checked($t->joinable)> Komb.</label>
+                    <input type="hidden" name="accessible" value="0">
                     <label class="flex items-center gap-1 pb-2 text-xs"><input type="checkbox" name="accessible" value="1" @checked($t->accessible)> Barrierefrei</label>
+                    <input type="hidden" name="high_chair_possible" value="0">
                     <label class="flex items-center gap-1 pb-2 text-xs"><input type="checkbox" name="high_chair_possible" value="1" @checked($t->high_chair_possible)> Kinderstuhl</label>
                     <button class="rounded-lg bg-stone-800 px-3 py-2 text-xs font-semibold text-white hover:bg-stone-700">Speichern</button>
                 </form>

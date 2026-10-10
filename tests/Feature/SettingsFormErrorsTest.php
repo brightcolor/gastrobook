@@ -71,16 +71,16 @@ class SettingsFormErrorsTest extends TestCase
                 'ends_at', 'Ende ist ein Pflichtfeld.'],
             'Raum anlegen' => ['POST', '/admin/settings/rooms',
                 ['name' => ''],
-                'name', 'Name ist ein Pflichtfeld.'],
+                'name', 'Bitte einen Namen eintragen.'],
             'Raum umbenennen' => ['PUT', '/admin/settings/rooms/{room}',
                 ['name' => ''],
-                'name', 'Name ist ein Pflichtfeld.'],
+                'name', 'Bitte einen Namen eintragen.'],
             'Raumgröße' => ['PATCH', '/admin/floorplan/rooms/{room}/size',
                 ['plan_width_m' => 0.5],
-                'plan_width_m', 'Raumbreite (m) muss mindestens 1 sein.'],
+                'plan_width_m', 'Die Breite muss mindestens 1 Meter betragen. Bitte eine größere Zahl eintragen.'],
             'Tisch bearbeiten' => ['PUT', '/admin/settings/tables/{table}',
                 ['name' => 'T1', 'min_capacity' => 4, 'max_capacity' => 2],
-                'max_capacity', 'Höchstkapazität muss mindestens 4 sein.'],
+                'max_capacity', 'Die größte Personenzahl ist kleiner als die kleinste. Bitte mindestens 4 eintragen.'],
             'Tag anlegen' => ['POST', '/admin/tags',
                 ['name' => '', 'color' => '#aa3300'],
                 'name', 'Bitte gib dem Tag einen Namen.'],
@@ -213,7 +213,7 @@ class SettingsFormErrorsTest extends TestCase
         ])->assertStatus(422);
 
         $this->assertSame(
-            'Das Tisch-Limit des Tarifs ist erreicht. Für mehr Tische bitte den Tarif unter „Abrechnung“ wechseln oder einen Administrator des Betriebs fragen.',
+            'Dein Tarif umfasst 3 Tische, und alle sind schon angelegt. Für weitere Tische den Tarif unter „Abo & Rechnungen“ wechseln.',
             $response->json('errors.name.0')
         );
     }

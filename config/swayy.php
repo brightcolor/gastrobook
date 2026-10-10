@@ -366,10 +366,21 @@ return [
     |
     | capacity_max: größte Platzzahl eines Tisches (1–255; mehr fasst die
     | Spalte in der Datenbank nicht). Gilt für „Räume & Tische“ und den Tischplan.
+    | room_size_max_m: größte Breite und Tiefe eines Raums im Tischplan in
+    | Metern (10–327). Der Tischplan rechnet 1 Meter als 100 Einheiten; die
+    | Spalten rooms.plan_width und plan_height sind smallint und fassen
+    | höchstens 32767, also 327 Meter.
+    | name_max, room_name_max, combination_name_max: längster Name eines
+    | Tisches, eines Raums und einer Tischkombination in Zeichen (10–255; die
+    | Spalten fassen 255).
     |
     */
     'tables' => [
         'capacity_max' => EnvSetting::integer('SWAYY_TABLE_CAPACITY_MAX', default: 50, min: 1, max: 255),
+        'room_size_max_m' => EnvSetting::integer('SWAYY_ROOM_SIZE_MAX_M', default: 300, min: 10, max: 327),
+        'name_max' => EnvSetting::integer('SWAYY_TABLE_NAME_MAX', default: 40, min: 10, max: 255),
+        'room_name_max' => EnvSetting::integer('SWAYY_ROOM_NAME_MAX', default: 80, min: 10, max: 255),
+        'combination_name_max' => EnvSetting::integer('SWAYY_COMBINATION_NAME_MAX', default: 80, min: 10, max: 255),
     ],
 
     /*
