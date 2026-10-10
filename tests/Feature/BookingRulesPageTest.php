@@ -200,7 +200,30 @@ class BookingRulesPageTest extends TestCase
 
         $this->actingAs($owner)->putJson('/admin/settings/rules', $payload)
             ->assertStatus(422)
-            ->assertJsonPath('errors.waitlist_enabled.0', 'Warteliste anbieten ist ein Pflichtfeld.');
+            ->assertJsonPath('errors.waitlist_enabled.0', 'Die Einstellung „Warteliste anbieten“ fehlt im gesendeten Formular. Bitte die Seite neu laden und erneut speichern.');
+    }
+
+    public function test_an_unclear_switch_and_an_unknown_choice_name_the_next_step(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->putJson('/admin/settings/rules', $this->rules(['walkins_enabled' => 'vielleicht', 'booking_confirmation_mode' => 'sofort']))
+            ->assertStatus(422)
+            ->assertJsonPath('errors.walkins_enabled.0', 'Bitte „Walk-ins erfassen“ ein- oder ausschalten.')
+            ->assertJsonPath('errors.booking_confirmation_mode.0', 'Der Wert bei „Online-Buchungen“ steht nicht zur Auswahl. Bitte einen Wert aus der Liste wählen oder die Seite neu laden.');
+    }
+
+    public function test_a_value_that_is_no_number_names_the_next_step(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->putJson('/admin/settings/rules', $this->rules(['max_advance_days' => 'bald']))
+            ->assertStatus(422)
+            ->assertJsonPath('errors.max_advance_days.0', 'Bei „Vorausbuchung“ bitte eine ganze Zahl eintragen.');
     }
 
     public function test_the_largest_group_must_not_be_smaller_than_the_smallest(): void

@@ -166,7 +166,7 @@ class DurationRulesTest extends TestCase
             'swayy.booking.lead_max_minutes' => 32767,
             'swayy.booking.advance_max_days' => 1825,
             'swayy.booking.deadline_max_minutes' => 32767,
-            'swayy.booking.party_online_max' => 1000,
+            'swayy.booking.party_online_max' => 100,
         ]);
         $setup = $this->createTenantSetup();
         $admin = $this->createMember($setup['tenant'], 'tenant_admin');
@@ -181,8 +181,8 @@ class DurationRulesTest extends TestCase
                 'max_covers_per_slot' => 32767,
                 'min_lead_minutes' => 32767,
                 'max_advance_days' => 1825,
-                'min_party_online' => 1000,
-                'max_party_online' => 1000,
+                'min_party_online' => 100,
+                'max_party_online' => 100,
                 'cancellation_deadline_minutes' => 32767,
                 'modification_deadline_minutes' => 32767,
             ]))
@@ -191,7 +191,7 @@ class DurationRulesTest extends TestCase
 
         $settings = $setup['location']->settings()->first();
         $this->assertSame(
-            [240, 1440, 480, 32767, 32767, 1825, 1000, 1000, 32767, 32767],
+            [240, 1440, 480, 32767, 32767, 1825, 100, 100, 32767, 32767],
             [
                 $settings->slot_interval_minutes, $settings->default_duration_minutes, $settings->buffer_minutes,
                 $settings->max_covers_per_slot, $settings->min_lead_minutes, $settings->max_advance_days,

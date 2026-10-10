@@ -161,7 +161,50 @@ class CapacityPageTest extends TestCase
 
         $this->actingAs($owner)->putJson('/admin/settings/capacity', $payload)
             ->assertStatus(422)
-            ->assertJsonPath('errors.capacity_mode.0', 'Zählweise ist ein Pflichtfeld.');
+            ->assertJsonPath('errors.capacity_mode.0', 'Die Einstellung „Zählweise“ fehlt im gesendeten Formular. Bitte die Seite neu laden und erneut speichern.');
+    }
+
+    public function test_an_unknown_choice_names_the_next_step(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->putJson('/admin/settings/capacity', $this->restaurant(['capacity_mode' => 'beides', 'slot_interval_minutes' => 7]))
+            ->assertStatus(422)
+            ->assertJsonPath('errors.capacity_mode.0', 'Der Wert bei „Zählweise“ steht nicht zur Auswahl. Bitte einen Wert aus der Liste wählen oder die Seite neu laden.')
+            ->assertJsonPath('errors.slot_interval_minutes.0', 'Der Wert bei „Takt der Uhrzeiten“ steht nicht zur Auswahl. Bitte einen Wert aus der Liste wählen oder die Seite neu laden.');
+    }
+
+    public function test_a_value_that_is_no_number_names_the_next_step(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $response = $this->actingAs($owner)->putJson('/admin/settings/capacity', $this->restaurant([
+            'buffer_minutes' => 'viel',
+            'duration_rules' => ['n1' => ['min_party' => 'zwei', 'max_party' => 4, 'duration' => 90]],
+        ]))->assertStatus(422);
+
+        $this->assertSame('Bei „Puffer nach jeder Buchung“ bitte eine ganze Zahl eintragen.', $response->json('errors.buffer_minutes.0'));
+        $this->assertSame('Bei „Ab Personen“ bitte eine ganze Zahl eintragen.', $response->json('errors')['duration_rules.n1.min_party'][0] ?? null);
+    }
+
+    public function test_the_salon_switch_names_the_next_step_when_it_is_missing_or_unclear(): void
+    {
+        $setup = $this->createTenantSetup();
+        $setup['tenant']->update(['type' => TenantType::Salon]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->putJson('/admin/settings/capacity', ['slot_interval_minutes' => 30, 'buffer_minutes' => 15])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.gap_optimization_enabled.0', 'Die Einstellung „Lückenoptimierung“ fehlt im gesendeten Formular. Bitte die Seite neu laden und erneut speichern.');
+
+        $this->actingAs($owner)->putJson('/admin/settings/capacity', ['slot_interval_minutes' => 30, 'buffer_minutes' => 15, 'gap_optimization_enabled' => 'vielleicht'])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.gap_optimization_enabled.0', 'Bitte „Lückenoptimierung“ ein- oder ausschalten.');
     }
 
     public function test_an_overlapping_rule_points_to_its_row(): void

@@ -7,6 +7,7 @@ namespace App\Support;
 use App\Models\LocationSettings;
 use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\In;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -98,16 +99,42 @@ final class BookingSettingRules
     }
 
     /**
+     * Meldungen der Prüfung. Sie nennen die Einstellung und den nächsten
+     * Schritt. Ein Pflichtfeld, ein Schalter oder eine Auswahl ist nur dann
+     * falsch, wenn die Seite älter ist als die Einstellung oder jemand das
+     * Formular von Hand sendet; die Meldung schickt deshalb zum Neuladen.
+     * Die Texte für required, boolean, in und integer entstehen für jedes Feld
+     * der Regeln, damit kein Feld die allgemeine Meldung von Laravel zeigt.
+     *
      * @return array<string, string>
      */
     public static function messages(): array
     {
-        return [
+        $messages = [
             'duration_rules.max' => __('Die Zahl der Tischzeiten ist auf :max begrenzt. Bitte Gruppengrößen zusammenfassen.'),
             'duration_rules.*.duration.min' => __('Eine Tischzeit muss mindestens :min Minuten betragen.'),
             'duration_rules.*.duration.max' => __('Eine Tischzeit darf höchstens :max Minuten betragen.'),
             'max_party_online.gte' => __('Die größte Gruppe ist kleiner als die kleinste. Bitte bei „Größte Gruppe“ mindestens :value eintragen.'),
         ];
+
+        $fields = self::capacity(null, salon: false) + self::capacity(null, salon: true) + self::booking();
+        foreach ($fields as $field => $rules) {
+            foreach ($rules as $rule) {
+                $name = $rule instanceof In ? 'in' : (is_string($rule) ? strtok($rule, ':') : null);
+                $text = match ($name) {
+                    'required' => __('Die Einstellung „:attribute“ fehlt im gesendeten Formular. Bitte die Seite neu laden und erneut speichern.'),
+                    'boolean' => __('Bitte „:attribute“ ein- oder ausschalten.'),
+                    'in' => __('Der Wert bei „:attribute“ steht nicht zur Auswahl. Bitte einen Wert aus der Liste wählen oder die Seite neu laden.'),
+                    'integer' => __('Bei „:attribute“ bitte eine ganze Zahl eintragen.'),
+                    default => null,
+                };
+                if ($text !== null) {
+                    $messages["{$field}.{$name}"] = $text;
+                }
+            }
+        }
+
+        return $messages;
     }
 
     /**

@@ -339,7 +339,11 @@ return [
     | Liegt der größte Wert eines Paares (duration, rule_duration) in der .env
     | unter dem kleinsten, gilt der kleinste auch als größter. covers_max,
     | lead_max_minutes und deadline_max_minutes enden bei 32767, dem größten
-    | Wert der Datenbankspalten (smallint).
+    | Wert der Datenbankspalten (smallint). party_online_max und rule_party_max
+    | enden bei 100: Jeder Buchungsweg (öffentliche Buchung, Buchen in der
+    | Verwaltung, Walk-in, Warteliste, API) nimmt höchstens 100 Personen an
+    | (party_size, max:100). Eine Grenze oder Tischzeit für größere Gruppen
+    | käme nie zur Anwendung.
     |
     */
     'booking' => [
@@ -350,7 +354,7 @@ return [
         'duration_rules_max' => EnvSetting::integer('SWAYY_BOOKING_DURATION_RULES_MAX', default: 20, min: 1, max: 50),
         'rule_duration_min' => $bookingRuleDurationMin,
         'rule_duration_max' => max($bookingRuleDurationMin, EnvSetting::integer('SWAYY_BOOKING_RULE_DURATION_MAX', default: 600, min: 60, max: 1440)),
-        'rule_party_max' => EnvSetting::integer('SWAYY_BOOKING_RULE_PARTY_MAX', default: 200, min: 1, max: 1000),
+        'rule_party_max' => EnvSetting::integer('SWAYY_BOOKING_RULE_PARTY_MAX', default: 100, min: 1, max: 100),
         // Spalte location_settings.max_covers_per_slot (smallint): höchstens 32767.
         'covers_max' => EnvSetting::integer('SWAYY_BOOKING_COVERS_MAX', default: 2000, min: 1, max: 32767),
         // Spalte location_settings.min_lead_minutes (smallint): höchstens 32767.
@@ -358,7 +362,7 @@ return [
         'advance_max_days' => EnvSetting::integer('SWAYY_BOOKING_ADVANCE_MAX', default: 730, min: 1, max: 1825),
         // Spalten cancellation_deadline_minutes und modification_deadline_minutes (smallint): höchstens 32767.
         'deadline_max_minutes' => EnvSetting::integer('SWAYY_BOOKING_DEADLINE_MAX', default: 20160, min: 0, max: 32767),
-        'party_online_max' => EnvSetting::integer('SWAYY_BOOKING_PARTY_ONLINE_MAX', default: 100, min: 1, max: 1000),
+        'party_online_max' => EnvSetting::integer('SWAYY_BOOKING_PARTY_ONLINE_MAX', default: 100, min: 1, max: 100),
     ],
 
     /*

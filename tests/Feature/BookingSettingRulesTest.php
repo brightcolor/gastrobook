@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Models\LocationSettings;
 use App\Support\BookingSettingRules;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rules\In;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -26,7 +27,7 @@ class BookingSettingRulesTest extends TestCase
         $this->assertSame(20, config('swayy.booking.duration_rules_max'));
         $this->assertSame(15, config('swayy.booking.rule_duration_min'));
         $this->assertSame(600, config('swayy.booking.rule_duration_max'));
-        $this->assertSame(200, config('swayy.booking.rule_party_max'));
+        $this->assertSame(100, config('swayy.booking.rule_party_max'));
         $this->assertSame(2000, config('swayy.booking.covers_max'));
         $this->assertSame(10080, config('swayy.booking.lead_max_minutes'));
         $this->assertSame(730, config('swayy.booking.advance_max_days'));
@@ -129,6 +130,80 @@ class BookingSettingRulesTest extends TestCase
             array_values(array_diff($restaurant, $salon)),
         );
         $this->assertSame([], array_diff($salon, $restaurant));
+    }
+
+    public function test_failed_required_boolean_in_and_integer_rules_name_the_next_step(): void
+    {
+        $messages = BookingSettingRules::messages();
+
+        $this->assertSame('Die Einstellung „:attribute“ fehlt im gesendeten Formular. Bitte die Seite neu laden und erneut speichern.', $messages['capacity_mode.required']);
+        $this->assertSame('Bitte „:attribute“ ein- oder ausschalten.', $messages['waitlist_enabled.boolean']);
+        $this->assertSame('Der Wert bei „:attribute“ steht nicht zur Auswahl. Bitte einen Wert aus der Liste wählen oder die Seite neu laden.', $messages['slot_interval_minutes.in']);
+        $this->assertSame('Bei „:attribute“ bitte eine ganze Zahl eintragen.', $messages['buffer_minutes.integer']);
+        $this->assertSame('Bei „:attribute“ bitte eine ganze Zahl eintragen.', $messages['duration_rules.*.duration.integer']);
+    }
+
+    public function test_every_required_boolean_in_and_integer_rule_has_its_own_message(): void
+    {
+        $messages = BookingSettingRules::messages();
+        $checked = 0;
+
+        foreach ([
+            BookingSettingRules::capacity(null, salon: false),
+            BookingSettingRules::capacity(null, salon: true),
+            BookingSettingRules::booking(),
+            BookingSettingRules::booking(salon: true),
+        ] as $rules) {
+            foreach ($rules as $field => $fieldRules) {
+                foreach ($fieldRules as $rule) {
+                    $name = $rule instanceof In ? 'in' : (is_string($rule) ? strtok($rule, ':') : null);
+                    if (in_array($name, ['required', 'boolean', 'in', 'integer'], true)) {
+                        $this->assertArrayHasKey("{$field}.{$name}", $messages);
+                        $this->assertStringContainsString(':attribute', $messages["{$field}.{$name}"]);
+                        $checked++;
+                    }
+                }
+            }
+        }
+
+        $this->assertGreaterThan(40, $checked);
+    }
+
+    public function test_the_failure_texts_carry_the_field_name_and_a_next_step(): void
+    {
+        $errors = Validator::make(
+            ['slot_interval_minutes' => '7', 'buffer_minutes' => 'viel', 'gap_optimization_enabled' => 'vielleicht'],
+            BookingSettingRules::capacity(null, salon: true),
+            BookingSettingRules::messages(),
+            BookingSettingRules::attributes(),
+        )->errors();
+
+        $this->assertSame(['Der Wert bei „Takt der Uhrzeiten“ steht nicht zur Auswahl. Bitte einen Wert aus der Liste wählen oder die Seite neu laden.'], $errors->get('slot_interval_minutes'));
+        $this->assertSame(['Bei „Puffer nach jeder Buchung“ bitte eine ganze Zahl eintragen.'], $errors->get('buffer_minutes'));
+        $this->assertSame(['Bitte „Lückenoptimierung“ ein- oder ausschalten.'], $errors->get('gap_optimization_enabled'));
+
+        $errors = Validator::make([], BookingSettingRules::capacity(null, salon: true), BookingSettingRules::messages(), BookingSettingRules::attributes())->errors();
+
+        $this->assertSame(['Die Einstellung „Lückenoptimierung“ fehlt im gesendeten Formular. Bitte die Seite neu laden und erneut speichern.'], $errors->get('gap_optimization_enabled'));
+    }
+
+    public function test_party_limits_end_at_the_limit_of_the_booking_paths(): void
+    {
+        [$config, $warnings] = $this->swayyConfig(['SWAYY_BOOKING_PARTY_ONLINE_MAX' => '100', 'SWAYY_BOOKING_RULE_PARTY_MAX' => '100']);
+
+        $this->assertSame([100, 100], [$config['booking']['party_online_max'], $config['booking']['rule_party_max']]);
+        $this->assertSame('', $warnings);
+
+        [$config, $warnings] = $this->swayyConfig(['SWAYY_BOOKING_PARTY_ONLINE_MAX' => '250', 'SWAYY_BOOKING_RULE_PARTY_MAX' => '101']);
+
+        $this->assertSame([100, 100], [$config['booking']['party_online_max'], $config['booking']['rule_party_max']]);
+        $this->assertStringContainsString('SWAYY_BOOKING_PARTY_ONLINE_MAX', $warnings);
+        $this->assertStringContainsString('SWAYY_BOOKING_RULE_PARTY_MAX', $warnings);
+
+        [$config, $warnings] = $this->swayyConfig(['SWAYY_BOOKING_PARTY_ONLINE_MAX' => '12', 'SWAYY_BOOKING_RULE_PARTY_MAX' => '40']);
+
+        $this->assertSame([12, 40], [$config['booking']['party_online_max'], $config['booking']['rule_party_max']]);
+        $this->assertSame('', $warnings);
     }
 
     public function test_every_field_of_the_rules_has_a_label(): void
