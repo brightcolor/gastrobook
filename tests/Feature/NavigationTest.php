@@ -330,4 +330,32 @@ class NavigationTest extends TestCase
 
         $this->assertSame([[null, ['dashboard']]], $this->shape($groups));
     }
+
+    public function test_platform_support_sees_every_settings_page_except_data(): void
+    {
+        $setup = $this->createTenantSetup();
+        $support = User::factory()->create(['saas_role' => 'support_admin']);
+
+        $keys = array_merge(...array_column($this->shape(
+            Navigation::fromConfig()->settings($support, $setup['tenant'], $setup['location'], null),
+        ), 1));
+
+        $this->assertContains('general', $keys);
+        $this->assertContains('capacity', $keys);
+        $this->assertContains('tags', $keys);
+        $this->assertNotContains('data', $keys);
+    }
+
+    public function test_platform_read_access_sees_only_pages_for_viewing(): void
+    {
+        $setup = $this->createTenantSetup();
+        $reader = User::factory()->create(['saas_role' => 'readonly_admin']);
+        $nav = Navigation::fromConfig();
+
+        $this->assertSame([[null, ['audit']]], $this->shape($nav->settings($reader, $setup['tenant'], $setup['location'], null)));
+        $this->assertSame(
+            ['dashboard', 'board', 'floorplan', 'reservations', 'guests', 'reports'],
+            array_merge(...array_column($this->shape($nav->main($reader, $setup['tenant'], $setup['location'], null)), 1)),
+        );
+    }
 }

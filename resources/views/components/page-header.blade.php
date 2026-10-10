@@ -1,5 +1,6 @@
 @props(['title', 'description' => null, 'crumb' => [], 'scope' => null])
-{{-- Seitenkopf: Pfad, Titel, ein Satz, Geltungsbereich, eine Hauptaktion (Slot "actions"). --}}
+{{-- Seitenkopf: Pfad, Titel, ein Satz, Geltungsbereich, eine Hauptaktion (Slot "actions").
+     Standortwahl und Aktionen stehen in data-page-header-controls; die Speicherleiste sperrt nur diesen Teil. --}}
 <div data-page-header class="mb-6 border-b border-stone-200 pb-5">
     @if($crumb)
         <p class="mb-1 text-[0.8125rem] text-stone-600">{{ implode(' › ', $crumb) }}</p>
@@ -12,7 +13,7 @@
             @endif
         </div>
         @if($scope || isset($actions))
-            <div class="flex flex-wrap items-center gap-2.5">
+            <div data-page-header-controls class="flex flex-wrap items-center gap-2.5">
                 @if($scope)
                     <x-scope-switch :scope="$scope" />
                 @endif

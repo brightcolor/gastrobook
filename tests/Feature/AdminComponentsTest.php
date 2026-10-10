@@ -151,4 +151,38 @@ class AdminComponentsTest extends TestCase
         $this->assertStringContainsString('Eingeladene Personen erscheinen hier', $html);
         $this->assertStringContainsString('<button type="button">Person einladen</button>', $html);
     }
+
+    public function test_status_icon_gives_each_state_its_own_shape(): void
+    {
+        $shapes = [];
+        foreach (['ok', 'off', 'warn', 'error'] as $state) {
+            $html = Blade::render('<x-status-icon :state="$state" label="X" />', ['state' => $state]);
+            preg_match('/<svg[^>]*>(.*?)<\/svg>/s', $html, $match);
+            $shapes[$state] = $match[1] ?? '';
+        }
+
+        $this->assertCount(4, array_unique($shapes));
+        $this->assertStringContainsString('<circle', $shapes['ok']);
+        $this->assertStringContainsString('<path d="M8 1.5l7 12.5H1z"', $shapes['warn']);
+        $this->assertStringContainsString('<rect', $shapes['error']);
+    }
+
+    public function test_status_icon_leaves_the_word_to_visible_text_when_asked(): void
+    {
+        $html = Blade::render('<x-status-icon state="ok" label="Aktiv" :announce="false" />');
+
+        $this->assertStringContainsString('title="Aktiv"', $html);
+        $this->assertStringNotContainsString('sr-only', $html);
+    }
+
+    public function test_button_levels_exist_with_large_enough_targets(): void
+    {
+        $css = (string) file_get_contents(resource_path('css/app.css'));
+
+        foreach (['.btn-primary {', '.btn-secondary {', '.btn-danger {', '.btn-quiet {', '.btn-quiet-danger {'] as $rule) {
+            $this->assertStringContainsString($rule, $css, $rule);
+        }
+        $this->assertMatchesRegularExpression('/\.btn \{[^}]*min-height: 2\.5rem/', $css);
+        $this->assertMatchesRegularExpression('/\.btn-quiet, \.btn-quiet-danger \{ min-height: 2\.25rem/', $css);
+    }
 }

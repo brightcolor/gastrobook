@@ -1,6 +1,7 @@
-@props(['state', 'label'])
+@props(['state', 'label', 'announce' => true])
 {{-- Zustand als Symbol mit eigener Form und Farbe; das Wort steht im Tooltip und für Screenreader.
-     ok = gefüllter Kreis mit Haken, off = leerer Kreis, warn = Dreieck, error = Quadrat mit Kreuz. --}}
+     ok = gefüllter Kreis mit Haken, off = leerer Kreis, warn = Dreieck, error = Quadrat mit Kreuz.
+     :announce="false", wenn das Wort sichtbar daneben steht (sonst hört der Screenreader es doppelt). --}}
 @php
     $shapes = [
         'ok' => ['text-emerald-700', '<circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M4.8 8.2l2.1 2.1 4.3-4.6" fill="none" stroke="var(--color-white)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'],
@@ -12,5 +13,5 @@
 @endphp
 <span {{ $attributes->merge(['class' => 'inline-flex shrink-0 items-center '.$color]) }} title="{{ $label }}">
     <svg viewBox="0 0 16 16" class="h-4 w-4" aria-hidden="true" focusable="false">{!! $shape !!}</svg>
-    <span class="sr-only">{{ $label }}</span>
+    @if($announce)<span class="sr-only">{{ $label }}</span>@endif
 </span>

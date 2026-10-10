@@ -116,4 +116,53 @@ class PageComponentsTest extends TestCase
             ->assertSee('data-save-bar-save', false)
             ->assertSee('<p class="sr-only" role="status" data-save-bar-status></p>', false);
     }
+
+    public function test_save_bar_names_the_unit_of_its_counter(): void
+    {
+        $this->blade('<x-save-bar one="1 Tag geändert" many=":count Tage geändert" />')
+            ->assertSee('data-count-one="1 Tag geändert"', false)
+            ->assertSee('data-count-many=":count Tage geändert"', false)
+            ->assertSee('data-save-bar-count', false);
+
+        $this->blade('<x-save-bar />')
+            ->assertSee('data-count-one="1 Einstellung geändert"', false)
+            ->assertSee('data-count-many=":count Einstellungen geändert"', false);
+    }
+
+    public function test_page_header_groups_scope_and_actions_for_the_save_bar(): void
+    {
+        $this->blade('<x-page-header title="Tags" scope="tenant"><x-slot:actions><button type="button">Tag hinzufügen</button></x-slot:actions></x-page-header>')
+            ->assertSeeInOrder(['data-page-header-controls', 'Gilt für alle Standorte', 'Tag hinzufügen'], false);
+    }
+
+    public function test_field_can_explain_minutes_in_hours(): void
+    {
+        $this->blade('<x-field name="buffer_minutes" label="Puffer" type="number" unit="Min." :minutes="true" value="90" />')
+            ->assertSee('data-minutes-hint', false)
+            ->assertSee('<p id="f-buffer_minutes-minutes" data-minutes-hint-for="f-buffer_minutes"', false)
+            ->assertSee('aria-describedby="f-buffer_minutes-unit f-buffer_minutes-minutes"', false);
+    }
+
+    public function test_checkbox_sends_zero_without_a_tick_and_links_its_help(): void
+    {
+        $this->blade('<x-checkbox name="waitlist_enabled" label="Warteliste anbieten" :checked="true" help="Gäste tragen sich ein, wenn alles belegt ist." />')
+            ->assertSeeInOrder([
+                '<input type="hidden" name="waitlist_enabled" value="0">',
+                'id="f-waitlist_enabled" type="checkbox" name="waitlist_enabled" value="1"',
+            ], false)
+            ->assertSee('checked', false)
+            ->assertSee('aria-describedby="f-waitlist_enabled-help"', false)
+            ->assertSee('<label for="f-waitlist_enabled"', false);
+
+        $this->blade('<x-checkbox name="walkins_enabled" label="Walk-ins erfassen" :checked="false" />')
+            ->assertDontSee('checked', false)
+            ->assertDontSee('aria-describedby', false);
+    }
+
+    public function test_change_dot_starts_hidden_and_names_the_state(): void
+    {
+        $this->blade('<x-change-dot />')
+            ->assertSee('data-change-dot hidden', false)
+            ->assertSee('<span class="sr-only">Geändert</span>', false);
+    }
 }

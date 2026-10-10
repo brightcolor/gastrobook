@@ -4,6 +4,13 @@
 // Wer die Seite mit Änderungen verlässt, bekommt die Rückfrage des Browsers.
 // Formulare mit data-savebar enthalten keine Dateifelder; Uploads speichern
 // sofort über eigene Formulare.
+//
+// Die Leiste nennt, wie viel geändert ist. Jede Zeile mit data-change-item
+// (Wert: fester Schlüssel der Zeile) zählt einmal, jedes Feld außerhalb
+// solcher Zeilen nach seinem Namen; hinzugefügte und entfernte Zeilen zählen
+// mit. Geänderte Zeilen tragen data-changed und zeigen ihren Punkt
+// ([data-change-dot], x-change-dot). Die Wörter stehen an der Leiste:
+// data-count-one („1 Tag geändert“) und data-count-many („:count Tage geändert“).
 
 import { keyboardFocused } from './dom.js';
 import { savedSnapshot, snapshot, submitForm } from './forms.js';
@@ -15,29 +22,78 @@ const firstField = (form) =>
         (el) => el.matches('input:not([type="hidden"]), select, textarea') && !el.disabled && el.getClientRects().length > 0,
     );
 
+function valueOf(el) {
+    if (el.type === 'checkbox' || el.type === 'radio') return `${el.value}:${el.checked}`;
+    if (el instanceof HTMLSelectElement) return [...el.selectedOptions].map((option) => option.value).join(',');
+    return el.value;
+}
+
+// Stand der Zählteile eines Formulars: Zeilen nach Schlüssel, übrige Felder nach Name.
+function partsOf(form) {
+    const parts = new Map();
+    form.querySelectorAll('[data-change-item]').forEach((item) => {
+        const values = [...item.querySelectorAll('input, select, textarea')]
+            .filter((el) => el.name)
+            .map((el) => `${el.name}=${valueOf(el)}`);
+        parts.set(`item:${item.dataset.changeItem}`, values.join('&'));
+    });
+    for (const el of form.elements) {
+        if (!el.name || el.type === 'submit' || el.type === 'button' || el.closest('[data-change-item]')) continue;
+        const key = `field:${el.name}`;
+        parts.set(key, `${parts.get(key) ?? ''}|${valueOf(el)}`);
+    }
+    return parts;
+}
+
+function changedKeys(base, now) {
+    const keys = new Set([...base.keys(), ...now.keys()]);
+    return new Set([...keys].filter((key) => base.get(key) !== now.get(key)));
+}
+
 export function initSaveBar() {
     const bar = document.querySelector('[data-save-bar]');
     const forms = [...document.querySelectorAll('form[data-savebar]')];
     if (!bar || forms.length === 0) return;
 
     const base = new Map(forms.map((form) => [form, snapshot(form)]));
+    const baseParts = new Map(forms.map((form) => [form, partsOf(form)]));
+    const sendingParts = new Map();
     const dirtyForms = () => forms.filter((form) => snapshot(form) !== base.get(form));
     const status = document.querySelector('[data-save-bar-status]');
+    const count = bar.querySelector('[data-save-bar-count]');
     let wasDirty = false;
     let saving = false;
 
+    const words = (n) => (n === 1
+        ? bar.dataset.countOne ?? ''
+        : (bar.dataset.countMany ?? '').replace(':count', String(n)));
+
     // Ab 768 px (md) liegt die Leiste über dem Seitenkopf. Solange sie steht,
     // sind dessen Bedienelemente (Standortwahl, Hauptaktion) gesperrt, damit
-    // der Tastaturfokus nie unter der Leiste verschwindet (WCAG 2.4.11).
-    const header = document.querySelector('[data-page-header]');
+    // der Tastaturfokus nie unter der Leiste verschwindet (WCAG 2.4.11). Titel
+    // und Beschreibung bleiben für Screenreader lesbar.
+    const controls = document.querySelector('[data-page-header-controls]');
     const wide = window.matchMedia('(min-width: 768px)');
-    const syncHeader = () => header?.toggleAttribute('inert', !bar.hidden && wide.matches);
+    const syncHeader = () => controls?.toggleAttribute('inert', !bar.hidden && wide.matches);
     wide.addEventListener('change', syncHeader);
 
     const render = () => {
         const dirty = dirtyForms();
+        let changed = 0;
+        forms.forEach((form) => {
+            const keys = changedKeys(baseParts.get(form), partsOf(form));
+            changed += keys.size;
+            form.querySelectorAll('[data-change-item]').forEach((item) => {
+                const on = keys.has(`item:${item.dataset.changeItem}`);
+                item.toggleAttribute('data-changed', on);
+                item.querySelectorAll('[data-change-dot]').forEach((dot) => {
+                    dot.hidden = !on;
+                });
+            });
+            form.toggleAttribute('data-dirty', dirty.includes(form));
+        });
         bar.hidden = dirty.length === 0;
-        forms.forEach((form) => form.toggleAttribute('data-dirty', dirty.includes(form)));
+        if (count) count.textContent = dirty.length > 0 && changed > 0 ? ` · ${words(changed)}` : '';
         syncHeader();
 
         // Angesagt wird nur der Wechsel, damit der Screenreader nicht bei jedem Tastendruck spricht.
@@ -60,13 +116,17 @@ export function initSaveBar() {
     forms.forEach((form) => {
         form.addEventListener('input', render);
         form.addEventListener('change', render);
+        form.addEventListener('swayy:sending', () => sendingParts.set(form, partsOf(form)));
         form.addEventListener('swayy:saved', () => {
             base.set(form, savedSnapshot(form) ?? snapshot(form));
+            baseParts.set(form, sendingParts.get(form) ?? partsOf(form));
+            sendingParts.delete(form);
             moveFocusOut(form);
             render();
         });
         form.addEventListener('swayy:rebase', () => {
             base.set(form, snapshot(form));
+            baseParts.set(form, partsOf(form));
             render();
         });
     });

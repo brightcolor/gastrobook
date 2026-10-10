@@ -7,10 +7,12 @@
     'unit' => null,
     'required' => false,
     'id' => null,
+    'minutes' => false,
 ])
 {{-- Feld mit Beschriftung darüber, Hilfesatz und Fehler am Feld. Der Standard-Slot ersetzt das Eingabefeld (Auswahl, Textfeld).
      Ein Steuerelement im Slot setzt id="{id}", aria-describedby ("{id}-help", "{id}-error") und den alten Wert selbst;
-     die Komponente liefert Beschriftung, Hilfesatz und Fehler mit diesen IDs. --}}
+     die Komponente liefert Beschriftung, Hilfesatz und Fehler mit diesen IDs.
+     :minutes="true" zeigt unter einem Minutenfeld, was die Zahl bedeutet („entspricht 2 Std.“, resources/js/admin/minutes.js). --}}
 @php
     $id = $id ?? 'f-'.trim((string) preg_replace('/[^A-Za-z0-9_]+/', '-', $name), '-');
     $dotted = str_replace(['[', ']'], ['.', ''], $name);
@@ -20,6 +22,7 @@
     $error = $bag->first($dotted);
     $describedBy = implode(' ', array_filter([
         $unit ? $id.'-unit' : null,
+        $minutes ? $id.'-minutes' : null,
         $help ? $id.'-help' : null,
         $error ? $id.'-error' : null,
     ]));
@@ -34,6 +37,7 @@
         <div class="flex items-stretch">
             <input id="{{ $id }}" name="{{ $name }}" type="{{ $type }}" value="{{ old($dotted, $value) }}"
                    @if($required) required aria-required="true" @endif
+                   @if($minutes) data-minutes-hint @endif
                    @if($describedBy) aria-describedby="{{ $describedBy }}" @endif
                    @if($error) aria-invalid="true" @endif
                    {{ $attributes->except(['class'])->merge(['class' => 'w-full min-w-0'.($unit ? ' rounded-r-none' : '')]) }}>
@@ -41,6 +45,9 @@
                 <span id="{{ $id }}-unit" class="inline-flex items-center rounded-r border border-l-0 border-stone-300 bg-stone-50 px-3 text-sm text-stone-600">{{ $unit }}</span>
             @endif
         </div>
+    @endif
+    @if($minutes)
+        <p id="{{ $id }}-minutes" data-minutes-hint-for="{{ $id }}" class="text-[0.8125rem] text-stone-600"></p>
     @endif
     @if($help)
         <p id="{{ $id }}-help" class="text-[0.8125rem] text-stone-500">{{ $help }}</p>

@@ -39,4 +39,15 @@ describe('showToast', () => {
         showToast('Keine Verbindung', { error: true });
         expect(document.getElementById('swayyToast').dataset.state).toBe('error');
     });
+
+    it('ruft Rückgängig auf und blendet den Hinweis aus', () => {
+        mount('');
+        const undo = vi.fn();
+
+        showToast('Raum gelöscht', { undo });
+        document.querySelector('#swayyToast button').click();
+
+        expect(undo).toHaveBeenCalledTimes(1);
+        expect(document.getElementById('swayyToast').classList.contains('opacity-0')).toBe(true);
+    });
 });
