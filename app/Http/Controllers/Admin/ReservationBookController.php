@@ -484,7 +484,6 @@ class ReservationBookController extends Controller
                     // Ausdrueckliches Ueberbuchen, hinter overbook.manual.
                     'allow_staff_conflict' => $force,
                 ];
-                $salonServices = $services;
             }
         }
 
@@ -503,18 +502,6 @@ class ReservationBookController extends Controller
             'table_ids' => $tableIds,
             'skip_availability_check' => $force,
         ], $request->user());
-
-        if (isset($salonServices)) {
-            $reservation->services()->sync(
-                $salonServices->values()->mapWithKeys(fn (Service $s, int $i) => [
-                    $s->id => [
-                        'sort_order' => $i,
-                        'duration_minutes' => $s->duration_minutes,
-                        'price_minor' => $s->price_minor,
-                    ],
-                ])->all()
-            );
-        }
 
         return redirect()->route('admin.reservations.show', $reservation)
             ->with('success', __('Reservierung :code angelegt.', ['code' => $reservation->code]));

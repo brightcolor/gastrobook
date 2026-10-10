@@ -265,13 +265,14 @@ class ReservationLifecycleService
             }
 
             // Mehrere Leistungen: Reihenfolge und Werte zum Zeitpunkt der Buchung stehen mit dem Termin fest, solange die
-            // Leistungen gesperrt sind. Schreiben die Aufrufer die Zuordnung danach noch einmal, ändert das nichts.
-            if (isset($data['service_ids']) && $bookedServices->isNotEmpty()) {
-                $reservation->services()->sync($bookedServices->mapWithKeys(fn (Service $service, int $position) => [
-                    $service->id => [
+            // Leistungen gesperrt sind. Diese Stelle schreibt die Zuordnung allein; die Aufrufer schreiben sie nicht noch einmal.
+            $composition = collect($data['service_ids'] ?? [])->map(fn ($id) => (int) $id)->filter()->unique()->values();
+            if ($composition->isNotEmpty()) {
+                $reservation->services()->sync($composition->mapWithKeys(fn (int $id, int $position) => [
+                    $id => [
                         'sort_order' => $position,
-                        'duration_minutes' => $service->duration_minutes,
-                        'price_minor' => $service->price_minor,
+                        'duration_minutes' => $bookedServices[$id]->duration_minutes,
+                        'price_minor' => $bookedServices[$id]->price_minor,
                     ],
                 ])->all());
             }
@@ -928,15 +929,20 @@ class ReservationLifecycleService
      * kommende Termine. Beide Sperren schließen einander aus: Hat die Buchung die Leistung zuerst gelesen, sieht das Löschen
      * ihren Termin; hat das Löschen zuerst festgeschrieben, findet die Buchung die Leistung nicht mehr.
      *
-     * @param  array<string, mixed>  $data  service_ids (alle Leistungen der Buchung) oder service_id (die erste)
-     * @return Collection<int, Service> in der Reihenfolge der Buchung
+     * Gesperrt wird die Vereinigung aus service_ids (alle Leistungen der Buchung) und service_id (die erste; sie steht in
+     * reservations.service_id), in der Reihenfolge der Kennungen: Zwei Buchungen mit denselben Leistungen sperren in derselben
+     * Reihenfolge.
+     *
+     * @param  array<string, mixed>  $data
+     * @return Collection<int, Service> die gesperrten Leistungen, nach Kennung geschlüsselt
      */
     private function lockBookedServices(Location $location, array $data): Collection
     {
-        $ids = collect($data['service_ids'] ?? [$data['service_id'] ?? null])
+        $ids = collect([...(array) ($data['service_ids'] ?? []), $data['service_id'] ?? null])
             ->filter()
             ->map(fn ($id) => (int) $id)
             ->unique()
+            ->sort()
             ->values();
         if ($ids->isEmpty()) {
             return new Collection;
@@ -946,6 +952,7 @@ class ReservationLifecycleService
             ->where('tenant_id', $location->tenant_id)
             ->where('location_id', $location->id)
             ->whereIn('id', $ids)
+            ->orderBy('id')
             ->sharedLock()
             ->get()
             ->keyBy('id');
@@ -956,7 +963,7 @@ class ReservationLifecycleService
             ]);
         }
 
-        return $ids->map(fn (int $id) => $found[$id])->values();
+        return $found;
     }
 
     /**

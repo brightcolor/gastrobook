@@ -718,7 +718,7 @@ class PublicBookingController extends Controller
                 'duration_minutes' => $duration,
                 'source' => 'online',
                 'service_id' => $services->first()->id, // primary service
-                'service_ids' => $services->pluck('id')->all(), // deposit rules look at all of them
+                'service_ids' => $services->pluck('id')->all(), // Anzahlungsregeln prüfen alle; create schreibt auch die Zuordnung
                 'staff_member_id' => $staff->id,
                 'guest_name' => $validated['name'],
                 'guest_email' => $validated['email'],
@@ -735,17 +735,6 @@ class PublicBookingController extends Controller
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors())->withInput();
         }
-
-        // Record the full service composition (snapshot price/duration)
-        $reservation->services()->sync(
-            $services->values()->mapWithKeys(fn (Service $s, int $i) => [
-                $s->id => [
-                    'sort_order' => $i,
-                    'duration_minutes' => $s->duration_minutes,
-                    'price_minor' => $s->price_minor,
-                ],
-            ])->all()
-        );
 
         if ($needsConfirm && $reservation->guest) {
             $this->guestAuth->sendVerification($reservation->guest, $reservation);

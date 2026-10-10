@@ -3,7 +3,7 @@
 
 @section('content')
 @php
-    $question = fn ($service): string => __('Leistung „:name“ löschen? Gäste können sie dann nicht mehr buchen.', ['name' => $service->name]);
+    $question = fn ($service): string => __('Leistung „:name“ löschen? Gäste können sie dann nicht mehr buchen. Vergangene Termine zeigen sie dann nicht mehr.', ['name' => $service->name]);
     // Dauer, Preis, wer die Leistung anbietet; eine pausierte Leistung nennt das dazu.
     $details = fn ($service): string => collect([
         $service->durationFormatted(),

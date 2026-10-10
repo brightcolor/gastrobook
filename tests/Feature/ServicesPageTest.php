@@ -13,10 +13,14 @@ use App\Models\Reservation;
 use App\Models\Service;
 use App\Models\StaffMember;
 use App\Services\ReservationLifecycleService;
+use App\Services\SalonAvailabilityService;
+use App\Services\TimeSlotService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Tests\Concerns\CreatesTenants;
 use Tests\TestCase;
@@ -118,7 +122,7 @@ class ServicesPageTest extends TestCase
             ->assertSee('<span class="sr-only">Online buchbar</span>', false)
             ->assertSee('name="price"', false)
             ->assertSee('value="35.00"', false)
-            ->assertSee('Leistung „Schnitt“ löschen? Gäste können sie dann nicht mehr buchen.');
+            ->assertSee('Leistung „Schnitt“ löschen? Gäste können sie dann nicht mehr buchen. Vergangene Termine zeigen sie dann nicht mehr.');
         $this->assertMatchesRegularExpression('/data-nav-key="services"[^>]*aria-current="page"/', (string) $response->getContent());
     }
 
@@ -635,7 +639,7 @@ class ServicesPageTest extends TestCase
 
         $this->actingAs($setup['owner'])->deleteJson("/admin/services/{$service->id}")
             ->assertStatus(422)
-            ->assertJsonPath('errors.service.0', '„Schnitt“ ist noch für einen kommenden Termin gebucht. Bitte den Termin zuerst stornieren oder bis nach dem Termin warten. Um nur neue Buchungen zu stoppen, entfernst du den Haken bei „Online buchbar“.');
+            ->assertJsonPath('errors.service.0', '„Schnitt“ ist noch für einen kommenden oder laufenden Termin gebucht. Bitte den Termin zuerst stornieren oder bis nach dem Termin warten. Um nur neue Buchungen zu stoppen, entfernst du den Haken bei „Online buchbar“.');
         $this->assertNotNull($service->fresh());
         $this->assertSame(0, AuditLog::where('action', 'service.deleted')->count());
 
@@ -678,7 +682,7 @@ class ServicesPageTest extends TestCase
 
         $this->actingAs($setup2['owner'])->deleteJson("/admin/services/{$combo->id}")
             ->assertStatus(422)
-            ->assertJsonPath('errors.service.0', '„Färben“ ist noch für 2 kommende Termine gebucht. Bitte die Termine zuerst stornieren oder bis nach den Terminen warten. Um nur neue Buchungen zu stoppen, entfernst du den Haken bei „Online buchbar“.');
+            ->assertJsonPath('errors.service.0', '„Färben“ ist noch für 2 kommende oder laufende Termine gebucht. Bitte die Termine zuerst stornieren oder bis nach den Terminen warten. Um nur neue Buchungen zu stoppen, entfernst du den Haken bei „Online buchbar“.');
     }
 
     public function test_one_appointment_with_both_links_counts_once(): void
@@ -691,7 +695,7 @@ class ServicesPageTest extends TestCase
 
         $this->actingAs($setup['owner'])->deleteJson("/admin/services/{$service->id}")
             ->assertStatus(422)
-            ->assertJsonPath('errors.service.0', fn (string $message) => str_contains($message, 'für einen kommenden Termin gebucht'));
+            ->assertJsonPath('errors.service.0', fn (string $message) => str_contains($message, 'für einen kommenden oder laufenden Termin gebucht'));
     }
 
     public function test_a_second_delete_of_the_same_service_logs_nothing_more(): void
@@ -818,6 +822,208 @@ class ServicesPageTest extends TestCase
         $this->assertNotFalse($lock);
         $this->assertNotFalse($insert);
         $this->assertTrue($lock < $insert, 'Die Sperre steht vor dem Anlegen der Buchung.');
+        $this->assertStringContainsString('order by "id" asc', (string) $queries[$lock]);
+    }
+
+    // ── Buchung über die Seiten: gelöschte und geänderte Leistungen ──────
+
+    /**
+     * Setzt SalonAvailabilityService durch eine Fassung, die nach der Prüfung der Person $hook ausführt. Das ist der Moment,
+     * nachdem der Controller die Leistungen gelesen hat und bevor er die Buchung anlegt.
+     */
+    private function afterStaffCheck(\Closure $hook): void
+    {
+        $this->app->bind(SalonAvailabilityService::class, fn ($app) => new class($app->make(TimeSlotService::class), $hook) extends SalonAvailabilityService
+        {
+            public function __construct(TimeSlotService $slots, private readonly \Closure $hook)
+            {
+                parent::__construct($slots);
+            }
+
+            public function isStaffAvailableForServices(StaffMember $staff, Collection $services, CarbonImmutable $startUtc, Location $location): bool
+            {
+                $available = parent::isStaffAvailableForServices($staff, $services, $startUtc, $location);
+                ($this->hook)();
+
+                return $available;
+            }
+        });
+    }
+
+    /**
+     * Hook für afterStaffCheck: löscht bei jedem Aufruf die nächste Leistung aus $queue und zählt in $ran mit. Die Fassung bleibt
+     * für die ganze Testmethode gebunden (der Router hält den Controller), spätere Anfragen füllen $queue neu.
+     *
+     * @param  list<Service>  $queue
+     */
+    private function removeNext(array &$queue, int &$ran): \Closure
+    {
+        return function () use (&$queue, &$ran): void {
+            $service = array_shift($queue);
+            if ($service !== null) {
+                $ran++;
+                Service::withoutGlobalScopes()->whereKey($service->id)->first()->delete();
+            }
+        };
+    }
+
+    /**
+     * Salon mit einer Leistung und einer Person, die sie anbietet.
+     *
+     * @return array{0: array<string, mixed>, 1: Service, 2: string} Einrichtung, Leistung und ein Tag in der Zukunft
+     */
+    private function bookableSalon(): array
+    {
+        $setup = $this->salon();
+        $service = $this->service($setup);
+        $service->staff()->attach($setup['staff']->id);
+        $this->clearTenantContext();
+
+        return [$setup, $service, CarbonImmutable::now($setup['location']->timezone)->addDays(2)->toDateString()];
+    }
+
+    public function test_the_public_booking_refuses_a_service_removed_after_it_was_read(): void
+    {
+        Mail::fake();
+        [$setup, $service, $day] = $this->bookableSalon();
+        $url = '/book/'.$setup['tenant']->slug.'/'.$setup['location']->slug;
+        $queue = [$service];
+        $ran = 0;
+        $this->afterStaffCheck($this->removeNext($queue, $ran));
+
+        $this->from($url)->post($url, [
+            'service_ids' => [$service->id], 'staff_member_id' => $setup['staff']->id, 'date' => $day, 'time' => '14:00',
+            'name' => 'Frau Kessler', 'email' => 'kessler@example.test', 'privacy_accepted' => '1',
+        ])
+            ->assertRedirect($url)
+            ->assertSessionHasErrors(['service_ids' => 'Mindestens eine gewählte Leistung wurde gerade entfernt. Bitte die Leistungen neu wählen.']);
+
+        $this->assertSame(1, $ran);
+        $this->assertSame(0, Reservation::withoutGlobalScopes()->count());
+        $this->assertSame(0, DB::table('reservation_service')->count());
+    }
+
+    public function test_the_admin_booking_refuses_a_service_removed_after_it_was_read(): void
+    {
+        [$setup, $service, $day] = $this->bookableSalon();
+        $payload = ['service_ids' => [$service->id], 'staff_member_id' => $setup['staff']->id, 'date' => $day, 'time' => '14:00', 'party_size' => 1, 'name' => 'Bea'];
+        $message = 'Mindestens eine gewählte Leistung wurde gerade entfernt. Bitte die Leistungen neu wählen.';
+        $queue = [$service];
+        $ran = 0;
+        $this->afterStaffCheck($this->removeNext($queue, $ran));
+
+        $this->actingAs($setup['owner'])->from('/admin/reservations/new')->post('/admin/reservations', $payload)
+            ->assertRedirect('/admin/reservations/new')
+            ->assertSessionHasErrors(['service_ids' => $message]);
+        $this->assertSame(1, $ran);
+        $this->assertSame(0, Reservation::withoutGlobalScopes()->count());
+
+        // Mit JSON antwortet die Verwaltung mit 422 und derselben Meldung.
+        $other = $this->service($setup, 'Pflege');
+        $other->staff()->attach($setup['staff']->id);
+        $queue = [$other];
+        $this->actingAs($setup['owner'])->postJson('/admin/reservations', ['service_ids' => [$other->id]] + $payload)
+            ->assertStatus(422)
+            ->assertJsonPath('errors.service_ids.0', $message);
+        $this->assertSame(2, $ran);
+        $this->assertSame(0, Reservation::withoutGlobalScopes()->count());
+    }
+
+    public function test_the_snapshot_written_under_lock_is_the_only_one(): void
+    {
+        Mail::fake();
+        [$setup, $service, $day] = $this->bookableSalon();
+        $url = '/book/'.$setup['tenant']->slug.'/'.$setup['location']->slug;
+        // Zwischen dem Lesen im Controller und dem Anlegen ändert sich der Preis: Die Zuordnung hält den Preis, den die Buchung
+        // unter der Sperre gelesen hat; kein späterer Aufruf überschreibt ihn mit dem älteren Wert des Controllers.
+        $this->afterStaffCheck(fn () => Service::withoutGlobalScopes()->whereKey($service->id)->update(['price_minor' => 4200]));
+
+        $this->post($url, [
+            'service_ids' => [$service->id], 'staff_member_id' => $setup['staff']->id, 'date' => $day, 'time' => '14:00',
+            'name' => 'Frau Kessler', 'email' => 'kessler@example.test', 'privacy_accepted' => '1',
+        ])->assertRedirect();
+
+        $this->assertSame([4200], DB::table('reservation_service')->pluck('price_minor')->map(fn ($price) => (int) $price)->all());
+
+        $this->afterStaffCheck(fn () => Service::withoutGlobalScopes()->whereKey($service->id)->update(['price_minor' => 5100]));
+        $this->actingAs($setup['owner'])->post('/admin/reservations', [
+            'service_ids' => [$service->id], 'staff_member_id' => $setup['staff']->id, 'date' => $day, 'time' => '16:00', 'party_size' => 1, 'name' => 'Bea',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame([4200, 5100], DB::table('reservation_service')->orderBy('id')->pluck('price_minor')->map(fn ($price) => (int) $price)->all());
+    }
+
+    public function test_a_booking_locks_the_primary_service_even_when_it_is_missing_from_the_list(): void
+    {
+        $setup = $this->salon();
+        $primary = $this->service($setup);
+        $second = $this->service($setup, 'Pflege', ['duration_minutes' => 30, 'price_minor' => 1500]);
+        $start = CarbonImmutable::now($setup['location']->timezone)->addDay()->setTime(14, 0);
+        $booking = fn (CarbonImmutable $at) => [
+            'party_size' => 1, 'start_local' => $at, 'duration_minutes' => 90, 'source' => 'manual', 'guest_name' => 'Bea',
+            'service_id' => $primary->id, 'service_ids' => [$second->id], 'staff_member_id' => $setup['staff']->id,
+            'skip_availability_check' => true,
+        ];
+
+        // Beide sind da: Die Zuordnung hält die Liste der Buchung, die erste Leistung steht im Termin.
+        $reservation = app(ReservationLifecycleService::class)->create($setup['location'], $booking($start));
+        $this->assertSame($primary->id, $reservation->service_id);
+        $this->assertSame([$second->id], DB::table('reservation_service')->where('reservation_id', $reservation->id)->pluck('service_id')->map(fn ($id) => (int) $id)->all());
+
+        // Die erste Leistung fehlt inzwischen: Der Fremdschlüssel hielte auch auf die gelöschte Zeile, die Prüfung schließt sie ein.
+        $primary->delete();
+        try {
+            app(ReservationLifecycleService::class)->create($setup['location'], $booking($start->addHours(3)));
+            $this->fail('Die Buchung ist mit einer gelöschten ersten Leistung durchgegangen.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('service_ids', $e->errors());
+        }
+        $this->assertSame(1, Reservation::withoutGlobalScopes()->count());
+    }
+
+    public function test_a_booking_reads_its_services_in_the_order_of_their_ids(): void
+    {
+        $setup = $this->salon();
+        $first = $this->service($setup);
+        $second = $this->service($setup, 'Pflege');
+        $start = CarbonImmutable::now($setup['location']->timezone)->addDay()->setTime(14, 0);
+
+        DB::enableQueryLog();
+        app(ReservationLifecycleService::class)->create($setup['location'], [
+            'party_size' => 1, 'start_local' => $start, 'duration_minutes' => 90, 'source' => 'manual', 'guest_name' => 'Bea',
+            'service_id' => $second->id, 'service_ids' => [$second->id, $first->id], 'staff_member_id' => $setup['staff']->id,
+            'skip_availability_check' => true,
+        ]);
+
+        // Zwei Buchungen mit denselben Leistungen sperren in derselben Reihenfolge, auch wenn der Aufrufer anders ordnet.
+        $read = collect(DB::getQueryLog())->pluck('query')->map(fn (string $sql) => strtolower($sql))
+            ->first(fn (string $sql) => str_contains($sql, 'from "services"') && str_contains($sql, '"id" in'));
+        $this->assertNotNull($read);
+        $this->assertStringContainsString('order by "id" asc', $read);
+    }
+
+    public function test_a_running_appointment_keeps_the_service(): void
+    {
+        $setup = $this->salon();
+        $service = $this->service($setup);
+        $now = CarbonImmutable::now($setup['location']->timezone);
+        Reservation::create([
+            'tenant_id' => $setup['tenant']->id, 'location_id' => $setup['location']->id, 'party_size' => 1,
+            'reservation_date' => $now->toDateString(), 'start_at' => $now->subMinutes(30)->utc(), 'end_at' => $now->addMinutes(30)->utc(),
+            'timezone' => $setup['location']->timezone, 'status' => ReservationStatus::Seated, 'source' => 'manual',
+            'guest_name_snapshot' => 'Testgast', 'service_id' => $service->id,
+        ]);
+        $this->clearTenantContext();
+
+        $this->actingAs($setup['owner'])->deleteJson("/admin/services/{$service->id}")
+            ->assertStatus(422)
+            ->assertJsonPath('errors.service.0', fn (string $message) => str_contains($message, 'für einen kommenden oder laufenden Termin gebucht'));
+        $this->assertNull($service->fresh()->deleted_at);
+
+        // Ist der Termin vorbei, steht dem Löschen nichts im Weg.
+        Reservation::withoutGlobalScopes()->update(['end_at' => $now->subMinute()->utc()]);
+        $this->actingAs($setup['owner'])->deleteJson("/admin/services/{$service->id}")->assertOk();
+        $this->assertNull(Service::find($service->id));
     }
 
     // ── Protokoll ────────────────────────────────────────────────────────

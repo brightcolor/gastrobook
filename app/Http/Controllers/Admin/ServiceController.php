@@ -146,7 +146,7 @@ class ServiceController extends Controller
 
         if ($upcoming > 0) {
             return $this->failed($request, 'service', trans_choice(
-                '„:name“ ist noch für einen kommenden Termin gebucht. Bitte den Termin zuerst stornieren oder bis nach dem Termin warten. Um nur neue Buchungen zu stoppen, entfernst du den Haken bei „Online buchbar“.|„:name“ ist noch für :count kommende Termine gebucht. Bitte die Termine zuerst stornieren oder bis nach den Terminen warten. Um nur neue Buchungen zu stoppen, entfernst du den Haken bei „Online buchbar“.',
+                '„:name“ ist noch für einen kommenden oder laufenden Termin gebucht. Bitte den Termin zuerst stornieren oder bis nach dem Termin warten. Um nur neue Buchungen zu stoppen, entfernst du den Haken bei „Online buchbar“.|„:name“ ist noch für :count kommende oder laufende Termine gebucht. Bitte die Termine zuerst stornieren oder bis nach den Terminen warten. Um nur neue Buchungen zu stoppen, entfernst du den Haken bei „Online buchbar“.',
                 $upcoming,
                 ['name' => $service->name, 'count' => $upcoming],
             ));
@@ -161,13 +161,13 @@ class ServiceController extends Controller
     }
 
     /**
-     * Kommende Termine, die die Leistung verwenden: als erste Leistung des Termins oder in der Zuordnung mehrerer Leistungen.
-     * Ein Termin zählt einmal.
+     * Kommende und laufende Termine (ihr Ende ist noch nicht erreicht), die die Leistung verwenden: als erste Leistung des
+     * Termins oder in der Zuordnung mehrerer Leistungen. Ein Termin zählt einmal.
      */
     private function upcomingAppointments(Service $service): int
     {
         return (int) Reservation::where('location_id', $service->location_id)
-            ->where('start_at', '>=', now())
+            ->where('end_at', '>=', now())
             ->whereIn('status', ReservationStatus::activeStatuses())
             ->where(fn ($query) => $query->where('service_id', $service->id)
                 ->orWhereHas('services', fn ($services) => $services->where('services.id', $service->id)))
