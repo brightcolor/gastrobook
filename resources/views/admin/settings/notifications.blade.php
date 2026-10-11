@@ -3,6 +3,8 @@
 
 @section('content')
 @php
+    $guest = $salon ? 'Kunde' : 'Gast';
+    $guests = $salon ? 'Kunden' : 'Gäste';
     $visit = $salon ? 'dem Termin' : 'der Reservierung';
     $reminderOn = (bool) old('reminder_enabled', $settings->reminder_enabled);
     $feedbackOn = (bool) old('feedback_enabled', $settings->feedback_enabled);
@@ -13,8 +15,8 @@
     $linkClass = 'font-semibold underline underline-offset-2';
 @endphp
 <x-save-bar one="1 Einstellung geändert" many=":count Einstellungen geändert" />
-<x-page-header title="Benachrichtigungen" :crumb="['Einstellungen', 'Gästekommunikation']" scope="location"
-               description="Wie du Gäste ansprichst und wann sie von dir hören: bei der Buchung, vor und nach dem Besuch. Dazu die Info an deinen Betrieb." />
+<x-page-header title="Benachrichtigungen" :crumb="['Einstellungen', $salon ? 'Kundenkommunikation' : 'Gästekommunikation']" scope="location"
+               :description="'Wie du '.$guests.' ansprichst und wann sie von dir hören: bei der Buchung, vor und nach dem Besuch. Dazu die Info an deinen Betrieb.'" />
 
 <form id="formNotifications" method="POST" action="{{ route('admin.settings.notifications') }}" data-ajax data-savebar>
     @csrf
@@ -22,10 +24,10 @@
 
     <x-settings.section id="anrede" title="Anrede">
         <x-slot:description>
-            <p>Gilt für Buchungsseite, Mails und SMS an Gäste.</p>
+            <p>Gilt für Buchungsseite, Mails und SMS an {{ $guests }}.</p>
         </x-slot:description>
         <fieldset id="f-guest_address" class="grid gap-3 sm:grid-cols-2" @if($addressError) aria-describedby="f-guest_address-error" @endif>
-            <legend class="mb-2 text-sm font-semibold text-stone-800">Gäste ansprechen mit</legend>
+            <legend class="mb-2 text-sm font-semibold text-stone-800">{{ $guests }} ansprechen mit</legend>
             @foreach([
                 'du' => ['du', $salon ? '„Hallo Anna, dein Termin …“' : '„Hallo Anna, deine Reservierung …“'],
                 'Sie' => ['Sie', $salon ? '„Guten Tag Frau Muster, Ihr Termin …“' : '„Guten Tag Frau Muster, Ihre Reservierung …“'],
@@ -49,7 +51,7 @@
         <x-slot:description>
             <p>Ob du Buchungen von Hand freigibst, stellst du unter <a href="{{ route('admin.settings.rules.show') }}#bestaetigung" class="{{ $linkClass }}">Buchungsregeln</a> ein.</p>
         </x-slot:description>
-        <p class="text-sm text-stone-700">Nach jeder Buchung bekommt der Gast eine Bestätigung, bei Freigabe von Hand zuerst eine Eingangsbestätigung.</p>
+        <p class="text-sm text-stone-700">Nach jeder Buchung bekommt der {{ $guest }} eine Bestätigung, bei Freigabe von Hand zuerst eine Eingangsbestätigung.</p>
         @if($canTemplates)
             <ul class="space-y-1.5 text-sm">
                 <li><a href="{{ $templates }}#vorlage-reservation_confirmed" class="{{ $linkClass }}">Text der Bestätigung bearbeiten</a></li>
@@ -62,7 +64,7 @@
 
     <x-settings.section id="erinnerung" title="Erinnerung">
         <x-slot:description>
-            <p>Die Erinnerung geht vor dem Besuch an Gäste mit E-Mail-Adresse, auf Wunsch zusätzlich als SMS.</p>
+            <p>Die Erinnerung geht vor dem Besuch an {{ $guests }} mit E-Mail-Adresse, auf Wunsch zusätzlich als SMS.</p>
         </x-slot:description>
         <x-checkbox name="reminder_enabled" label="E-Mail-Erinnerung schicken" :checked="(bool) $settings->reminder_enabled" />
         <div data-show-if="reminder_enabled:1" @unless($reminderOn) hidden @endunless class="space-y-5">
@@ -70,7 +72,7 @@
                      :value="$settings->reminder_hours_before" :min="$limits['reminder_hours_min']" :max="$limits['reminder_hours_max']"
                      :help="'So viele Stunden vor '.$visit.' kommt die Erinnerung.'" />
             <x-checkbox name="sms_reminder_enabled" label="Erinnerung zusätzlich per SMS" :checked="(bool) $settings->sms_reminder_enabled"
-                        help="Geht nur an Gäste mit Telefonnummer." />
+                        :help="'Geht nur an '.$guests.' mit Telefonnummer.'" />
             @unless($smsReady)
                 <p class="text-[0.8125rem] text-stone-600">
                     SMS-Versand ist noch nicht eingerichtet.
@@ -89,16 +91,16 @@
 
     <x-settings.section id="feedback" title="Feedback nach dem Besuch">
         <x-slot:description>
-            <p>Nach dem Besuch bittet Swayy den Gast per Mail um eine Bewertung von 1 bis 5 Sternen. Zufriedene Gäste leitet Swayy zu deinem Bewertungsportal weiter, etwa bei Google.</p>
+            <p>Nach dem Besuch bittet Swayy den {{ $guest }} per Mail um eine Bewertung von 1 bis 5 Sternen. Zufriedene {{ $guests }} leitet Swayy zu deinem Bewertungsportal weiter, etwa bei Google.</p>
         </x-slot:description>
         <x-checkbox name="feedback_enabled" label="Feedback-Anfrage schicken" :checked="(bool) $settings->feedback_enabled"
-                    help="Die Anfrage geht nach einem abgeschlossenen Besuch an Gäste mit E-Mail-Adresse." />
+                    :help="'Die Anfrage geht nach einem abgeschlossenen Besuch an '.$guests.' mit E-Mail-Adresse.'" />
         <div data-show-if="feedback_enabled:1" @unless($feedbackOn) hidden @endunless class="space-y-5">
             <x-field name="feedback_hours_after" label="Stunden nach dem Besuch" type="number" unit="Std." minutes="hours" required class="max-w-48"
                      :value="$settings->feedback_hours_after" :min="$limits['feedback_hours_min']" :max="$limits['feedback_hours_max']"
                      help="So viele Stunden nach dem Besuch kommt die Anfrage." />
             <x-field name="feedback_redirect_min_score" label="Ab Sternen zum Portal" required class="max-w-64"
-                     help="Gäste mit dieser Bewertung oder einer besseren bekommen den Link zum Bewertungsportal.">
+                     :help="$guests.' mit dieser Bewertung oder einer besseren bekommen den Link zum Bewertungsportal.'">
                 <select id="f-feedback_redirect_min_score" name="feedback_redirect_min_score" required aria-required="true"
                         @error('feedback_redirect_min_score') aria-invalid="true" aria-describedby="f-feedback_redirect_min_score-help f-feedback_redirect_min_score-error" @else aria-describedby="f-feedback_redirect_min_score-help" @enderror
                         class="w-full">
@@ -109,7 +111,7 @@
             </x-field>
             <x-field name="feedback_external_url" label="Link zum Bewertungsportal" type="url" :maxlength="$limits['feedback_url_max']"
                      :value="$settings->feedback_external_url" placeholder="https://g.page/r/…/review"
-                     help="Ab dieser Sternezahl leitet Swayy zufriedene Gäste dorthin weiter. Ohne Link bleibt jedes Feedback bei dir." />
+                     :help="'Ab dieser Sternezahl leitet Swayy zufriedene '.$guests.' dorthin weiter. Ohne Link bleibt jedes Feedback bei dir.'" />
         </div>
         @if($canTemplates)
             <p class="text-sm"><a href="{{ $templates }}#vorlage-feedback_request" class="{{ $linkClass }}">Text der Feedback-Anfrage bearbeiten</a></p>

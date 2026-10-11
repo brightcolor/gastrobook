@@ -50,7 +50,7 @@
 </div>
 <div class="grid gap-4 sm:grid-cols-2">
     <x-field name="from_time" label="Nur ab Uhrzeit" type="time" :id="$p.'-from'" :value="$fromTime"
-             help="Die Regel gilt erst ab dieser Uhrzeit, etwa 18:00 für Abendtische. Leer: ganztags." />
+             :help="'Die Regel gilt erst ab dieser Uhrzeit, etwa '.($salon ? '17:00 für Termine am Abend' : '18:00 für Abendtische').'. Leer: ganztags.'" />
     <x-field name="until_time" label="Nur bis Uhrzeit" type="time" :id="$p.'-until'" :value="$untilTime"
              help="Die Regel gilt bis zu dieser Uhrzeit. Leer: bis zum Ende des Tages." />
 </div>

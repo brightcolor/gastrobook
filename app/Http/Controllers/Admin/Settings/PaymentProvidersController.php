@@ -56,6 +56,7 @@ class PaymentProvidersController extends Controller
         }
 
         return view('admin.settings.payment-providers', [
+            'salon' => $tenant->isSalon(),
             'stripe' => $stripe,
             'paypal' => $paypal,
             // Zugangsdaten verlassen den Controller nur als Ja/Nein; der PayPal-Modus ist kein Geheimnis.

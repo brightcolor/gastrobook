@@ -3,6 +3,8 @@
 
 @section('content')
 @php
+    $guest = $salon ? 'Kunde' : 'Gast';
+    $guests = $salon ? 'Kunden' : 'Gäste';
     $linkClass = 'font-semibold underline underline-offset-2';
     // Eine neue Anbindung startet eingeschaltet; nur ein ausdrücklich ausgeschalteter Anbieter bleibt es.
     $stripeOn = $stripe === null || $stripe->status !== 'disconnected';
@@ -10,7 +12,7 @@
     $modeError = $errors->first('mode');
 @endphp
 <x-page-header title="Zahlungsanbieter" :crumb="['Einstellungen', 'Zahlungen']" scope="tenant"
-               description="Wie Gäste Anzahlungen online bezahlen." />
+               :description="'Wie '.$guests.' Anzahlungen online bezahlen.'" />
 
 <x-settings.section id="stripe" title="Stripe">
     <x-slot:description>
@@ -57,9 +59,9 @@
 
 <x-settings.section id="paypal" title="PayPal">
     <x-slot:description>
-        <p>PayPal gibt es zusätzlich zu Stripe. Sind beide eingeschaltet, wählt der Gast bei der Zahlung. Das Geld geht auf dein PayPal-Konto.</p>
-        <p>Client-ID und Secret findest du im PayPal Developer Dashboard unter Apps &amp; Credentials. Swayy speichert sie verschlüsselt und gibt sie nie an Gäste weiter.</p>
-        <p>PayPal braucht keinen Webhook. Swayy erfasst die Zahlung, sobald der Gast von PayPal zurückkommt.</p>
+        <p>PayPal gibt es zusätzlich zu Stripe. Sind beide eingeschaltet, wählt der {{ $guest }} bei der Zahlung. Das Geld geht auf dein PayPal-Konto.</p>
+        <p>Client-ID und Secret findest du im PayPal Developer Dashboard unter Apps &amp; Credentials. Swayy speichert sie verschlüsselt und gibt sie nie an {{ $guests }} weiter.</p>
+        <p>PayPal braucht keinen Webhook. Swayy erfasst die Zahlung, sobald der {{ $guest }} von PayPal zurückkommt.</p>
     </x-slot:description>
 
     <p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
@@ -77,7 +79,7 @@
             <legend class="mb-2 text-sm font-semibold text-stone-800">Modus</legend>
             @foreach([
                 'sandbox' => ['Test (Sandbox)', 'Zum Ausprobieren mit Testgeld.'],
-                'live' => ['Live', 'Für echte Zahlungen von Gästen. Stelle vor dem Start auf Live um.'],
+                'live' => ['Live', 'Für echte Zahlungen von '.($salon ? 'Kunden' : 'Gästen').'. Stelle vor dem Start auf Live um.'],
             ] as $mode => [$modeLabel, $modeSummary])
                 <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-stone-300 p-4 has-[:checked]:border-(--brand) has-[:checked]:ring-1 has-[:checked]:ring-(--brand) has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-(--brand)">
                     <input type="radio" name="mode" value="{{ $mode }}" @checked(old('mode', $paypalMode) === $mode)

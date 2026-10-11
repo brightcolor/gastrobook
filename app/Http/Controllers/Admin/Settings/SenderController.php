@@ -39,6 +39,7 @@ class SenderController extends Controller
 
         return view('admin.settings.sender', [
             'tenant' => $tenant,
+            'salon' => $tenant->isSalon(),
             'location' => $this->context->location(),
             'fallbackName' => $fallbackName,
             'fallbackReply' => $fallbackReply,

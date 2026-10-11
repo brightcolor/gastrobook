@@ -2,8 +2,12 @@
 @section('title', 'Vorlagen')
 
 @section('content')
-<x-page-header title="Vorlagen" :crumb="['Einstellungen', 'Gästekommunikation']" scope="tenant"
-               description="Betreff und Text der Mails an Gäste. Ohne eigene Fassung schickt Swayy den Standardtext." />
+@php
+    $guest = $salon ? 'Kunde' : 'Gast';
+    $guests = $salon ? 'Kunden' : 'Gäste';
+@endphp
+<x-page-header title="Vorlagen" :crumb="['Einstellungen', $salon ? 'Kundenkommunikation' : 'Gästekommunikation']" scope="tenant"
+               :description="'Betreff und Text der Mails an '.$guests.'. Ohne eigene Fassung schickt Swayy den Standardtext.'" />
 
 <x-settings.section id="platzhalter" title="Platzhalter">
     <x-slot:description>
@@ -22,7 +26,7 @@
     </ul>
 </x-settings.section>
 
-<x-settings.section id="mails" title="Mails an Gäste">
+<x-settings.section id="mails" :title="'Mails an '.$guests">
     <x-slot:description>
         <p>Die Vorlage öffnet sich an der Seite. Mit „Speichern“ legst du eine eigene Fassung an, die für alle Standorte gilt.</p>
     </x-slot:description>

@@ -37,7 +37,8 @@ class SmsController extends Controller
 
     public function show(): View
     {
-        abort_if($this->context->tenant() === null, 404);
+        $tenant = $this->context->tenant();
+        abort_if($tenant === null, 404);
 
         $connection = $this->connection();
         $credentials = $this->credentials($connection);
@@ -46,6 +47,7 @@ class SmsController extends Controller
         $status = $hasKey ? $connection?->status : null;
 
         return view('admin.settings.sms', [
+            'salon' => $tenant->isSalon(),
             'connection' => $connection,
             // Nur die Absenderkennung verlässt die Zugangsdaten.
             'senderId' => (string) ($credentials['sender_id'] ?? ''),

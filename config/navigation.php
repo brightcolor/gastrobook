@@ -22,6 +22,9 @@ use App\Support\EnvSetting;
 |   search_examples  zwei Begriffe, die der Hinweis „passt keine Einstellung“
 |                    als Beispiel nennt
 |
+| Eine Gruppe trägt label (Überschrift, null = keine), label_salon (Überschrift
+| für Salon-Betriebe) und items.
+|
 | Felder je Eintrag:
 |   key         eindeutiger Schlüssel (Tests, data-nav-key)
 |   label       Bezeichnung; label_salon ersetzt sie bei Salon-Betrieben
@@ -69,7 +72,7 @@ return [
             ['key' => 'events', 'label' => 'Events', 'route' => 'admin.events.index', 'icon' => 'events', 'can' => ['events.manage'], 'active' => ['admin.events.*']],
             ['key' => 'refunds', 'label' => 'Erstattungen', 'route' => 'admin.refunds.index', 'icon' => 'refunds', 'can' => ['payments.manage']],
         ]],
-        ['label' => 'Gäste', 'items' => [
+        ['label' => 'Gäste', 'label_salon' => 'Kunden', 'items' => [
             ['key' => 'guests', 'label' => 'Gäste', 'label_salon' => 'Kunden', 'route' => 'admin.guests.index', 'icon' => 'guests', 'can' => ['guests.view'], 'mobile_bar' => true, 'active' => ['admin.guests.*']],
             ['key' => 'marketing', 'label' => 'Marketing', 'route' => 'admin.marketing.index', 'icon' => 'marketing', 'can' => ['marketing.manage']],
         ]],
@@ -121,7 +124,7 @@ return [
             ['key' => 'tags', 'label' => 'Tags', 'route' => 'admin.settings.tags.show', 'scope' => 'tenant', 'can' => ['tables.manage'],
                 'keywords' => ['Tags', 'Markierung', 'VIP', 'Allergie', 'Neuer Tag' => 'tag-neu']],
         ]],
-        ['label' => 'Gästekommunikation', 'items' => [
+        ['label' => 'Gästekommunikation', 'label_salon' => 'Kundenkommunikation', 'items' => [
             ['key' => 'notifications', 'label' => 'Benachrichtigungen', 'route' => 'admin.settings.notifications.show', 'scope' => 'location', 'can' => ['tables.manage', 'opening_hours.manage'],
                 'keywords' => ['Erinnerung' => 'erinnerung', 'Bestätigungsmail' => 'bestaetigung', 'Feedback' => 'feedback', 'Benachrichtigung an den Betrieb' => 'betrieb', 'Anrede' => 'anrede', 'du' => 'anrede', 'Sie' => 'anrede']],
             ['key' => 'templates', 'label' => 'Vorlagen', 'route' => 'admin.templates.index', 'scope' => 'tenant', 'can' => ['templates.manage'],

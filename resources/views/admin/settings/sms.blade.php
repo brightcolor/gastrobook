@@ -3,19 +3,21 @@
 
 @section('content')
 @php
+    $guest = $salon ? 'Kunde' : 'Gast';
+    $guests = $salon ? 'Kunden' : 'Gäste';
     $linkClass = 'font-semibold underline underline-offset-2';
     $keyError = $errors->first('api_key');
     $keyHelp = $hasKey ? 'Gespeichert. Leer lassen, um ihn zu behalten.' : 'Zu finden in app.seven.io unter Einstellungen → API.';
     // Eine neue Anbindung startet eingeschaltet; nur ein ausdrücklich ausgeschalteter Versand bleibt es.
     $enabled = $connection === null || $connection->status !== 'disconnected';
 @endphp
-<x-page-header title="SMS-Versand" :crumb="['Einstellungen', 'Gästekommunikation']" scope="tenant"
+<x-page-header title="SMS-Versand" :crumb="['Einstellungen', $salon ? 'Kundenkommunikation' : 'Gästekommunikation']" scope="tenant"
                description="Erinnerungen per SMS über seven.io." />
 
 <x-settings.section id="seven" title="seven.io">
     <x-slot:description>
         <p>Den API-Key findest du nach der Anmeldung bei <a href="https://app.seven.io" target="_blank" rel="noopener" class="{{ $linkClass }}">app.seven.io<span class="sr-only"> (öffnet in einem neuen Tab)</span></a> unter Einstellungen → API. Swayy speichert ihn verschlüsselt.</p>
-        <p>Welche Erinnerungen als SMS an Gäste gehen, schaltest du unter <a href="{{ route('admin.settings.notifications.show') }}#erinnerung" class="{{ $linkClass }}">Benachrichtigungen</a> ein.</p>
+        <p>Welche Erinnerungen als SMS an {{ $guests }} gehen, schaltest du unter <a href="{{ route('admin.settings.notifications.show') }}#erinnerung" class="{{ $linkClass }}">Benachrichtigungen</a> ein.</p>
     </x-slot:description>
 
     <p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">

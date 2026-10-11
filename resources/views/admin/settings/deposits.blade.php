@@ -3,6 +3,7 @@
 
 @section('content')
 @php
+    $guest = $salon ? 'Kunde' : 'Gast';
     $guests = $salon ? 'Kunden' : 'Gäste';
     $refundModeError = $errors->first('refund_mode');
     $refundProcessingError = $errors->first('refund_processing');
@@ -79,7 +80,7 @@
             <div data-show-if="refund_mode:manual,auto" @if($refundOff) hidden @endif class="space-y-5">
                 <x-field name="refund_percent" label="Erstattung in %" type="number" unit="%" required class="max-w-48"
                          :value="$settings->refund_percent" min="0" max="100" inputmode="numeric"
-                         help="So viel Prozent der Anzahlung bekommt der Gast zurück. 100 % ist der volle Betrag, 50 % die Hälfte." />
+                         :help="'So viel Prozent der Anzahlung bekommt der '.$guest.' zurück. 100 % ist der volle Betrag, 50 % die Hälfte.'" />
                 <fieldset id="f-refund_processing" class="grid gap-3 sm:grid-cols-2" @if($refundProcessingError) aria-describedby="f-refund_processing-error" @endif>
                     <legend class="mb-2 text-sm font-semibold text-stone-800">Ausführung</legend>
                     @foreach([

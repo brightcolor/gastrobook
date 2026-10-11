@@ -148,7 +148,8 @@ final class Navigation
                 continue;
             }
 
-            $label = count($items) >= $headingMinItems ? ($group['label'] ?? null) : null;
+            $groupLabel = $tenant->isSalon() && isset($group['label_salon']) ? $group['label_salon'] : ($group['label'] ?? null);
+            $label = count($items) >= $headingMinItems ? $groupLabel : null;
             $result[] = new NavGroup($label, $items);
         }
 
