@@ -20,9 +20,7 @@ use App\Models\SpecialOpeningHour;
 use App\Models\TableBlock;
 use App\Rules\AllowedOutboundUrl;
 use App\Services\AuditLogger;
-use App\Services\Mail\GuestReplyAddress;
 use App\Services\Newsletter\MailwizzProvider;
-use App\Services\Sms\SevenIoProvider;
 use App\Support\BookingSettingRules;
 use App\Support\NotificationSettingRules;
 use App\Support\OutboundUrlBlocked;
@@ -391,66 +389,6 @@ class SettingsController extends Controller
     }
 
     /**
-     * SMS integration via seven.io (tenant-wide). API key stored encrypted;
-     * never displayed again after saving. Verified on save via balance lookup.
-     */
-    public function updateSms(Request $request)
-    {
-        $tenant = $this->context->tenant();
-
-        $validated = $request->validate([
-            'api_key' => ['nullable', 'string', 'max:255'],
-            'sender_id' => ['nullable', 'string', 'max:16'],
-            'enabled' => ['nullable', 'boolean'],
-        ]);
-
-        $connection = IntegrationConnection::firstOrNew([
-            'tenant_id' => $tenant->id,
-            'location_id' => null,
-            'provider' => 'sevenio',
-        ]);
-
-        $credentials = [];
-        if ($connection->credentials_encrypted) {
-            $credentials = json_decode(Crypt::decryptString($connection->credentials_encrypted), true) ?: [];
-        }
-        if (! empty($validated['api_key'])) {
-            $credentials['api_key'] = $validated['api_key'];
-        }
-        $credentials['sender_id'] = $validated['sender_id'] ?? ($credentials['sender_id'] ?? '');
-
-        if (empty($credentials['api_key'])) {
-            return $this->failed($request, 'api_key', __('Der API-Key fehlt. Bitte den API-Key aus seven.io eintragen (app.seven.io → Einstellungen → API).'));
-        }
-
-        $connection->credentials_encrypted = Crypt::encryptString(json_encode($credentials));
-        $connection->status = $request->boolean('enabled', true) ? 'connected' : 'disconnected';
-        $connection->save();
-
-        $this->audit->log('integration.sms_updated', $connection, null, [
-            'sender_id' => $credentials['sender_id'],
-            'status' => $connection->status,
-        ]);
-
-        if ($connection->status === 'connected') {
-            $provider = new SevenIoProvider($credentials['api_key'], $credentials['sender_id']);
-            try {
-                if (! $provider->testConnection()) {
-                    $connection->update(['status' => 'error']);
-
-                    return $this->failed($request, 'api_key', __('Gespeichert, aber seven.io hat den Verbindungstest abgelehnt. Bitte den API-Key unter app.seven.io → Einstellungen → API prüfen und neu eintragen.'));
-                }
-            } catch (\Throwable) {
-                $connection->update(['status' => 'error']);
-
-                return $this->failed($request, 'api_key', __('Gespeichert, aber seven.io war beim Verbindungstest nicht erreichbar. Bitte später noch einmal auf „Speichern“ klicken, um die Verbindung zu testen.'));
-            }
-        }
-
-        return $this->saved($request, __('SMS-Integration (seven.io) gespeichert und Verbindung getestet.'));
-    }
-
-    /**
      * Deposit rule for online reservations (no-show protection).
      */
     public function storeDepositRule(Request $request)
@@ -670,48 +608,6 @@ class SettingsController extends Controller
         $this->audit->log('opening_hours.updated', null, null, ['count' => count($validated['hours'])]);
 
         return $this->saved($request, __('Öffnungszeiten gespeichert.'));
-    }
-
-    /**
-     * Absendername und Antwortadresse fuer Mails an Gaeste. Leer heisst:
-     * Ersatz aus config/swayy.php (guest_mail), siehe GuestMailSender.
-     */
-    public function updateGuestMail(Request $request)
-    {
-        $tenant = $this->context->tenant();
-        abort_if($tenant === null, 404);
-
-        $validated = $request->validate([
-            'mail_from_name' => ['nullable', 'string', 'max:100', 'not_regex:/[<>@\r\n"]/'],
-            'mail_reply_to' => ['nullable', 'email:rfc', 'max:200'],
-            'mail_relay_enabled' => ['sometimes', 'boolean'],
-        ], [
-            'mail_from_name.max' => __('Der Absendername darf höchstens 100 Zeichen haben. Bitte kürzen.'),
-            'mail_from_name.not_regex' => __('Der Absendername darf keine Zeichen wie <, >, @ oder Anführungszeichen enthalten. Bitte nur den Namen des Betriebs eintragen.'),
-            'mail_reply_to.email' => __('Die Antwortadresse ist keine gültige E-Mail-Adresse. Bitte so eintragen: info@dein-betrieb.de'),
-            'mail_reply_to.max' => __('Die Antwortadresse darf höchstens 200 Zeichen haben.'),
-        ]);
-
-        // Die Swayy-Antwortadresse lässt sich nur aktivieren, wenn die Domain
-        // eingerichtet ist – sonst zeigte sie ins Leere.
-        $relayAn = $request->boolean('mail_relay_enabled');
-        if ($relayAn && ! GuestReplyAddress::isConfigured()) {
-            return back()->withErrors([
-                'mail_relay_enabled' => __('Die Antwortadresse über Swayy ist noch nicht eingerichtet (es fehlt die Domain). Bitte wende dich an den Betreiber, bevor du sie aktivierst.'),
-            ]);
-        }
-
-        $neu = [
-            'mail_from_name' => trim((string) ($validated['mail_from_name'] ?? '')) ?: null,
-            'mail_reply_to' => trim((string) ($validated['mail_reply_to'] ?? '')) ?: null,
-            'mail_relay_enabled' => $relayAn,
-        ];
-        $old = ['mail_from_name' => $tenant->mail_from_name, 'mail_reply_to' => $tenant->mail_reply_to, 'mail_relay_enabled' => $tenant->mail_relay_enabled];
-        $tenant->update($neu);
-
-        $this->audit->log('tenant.guest_mail_updated', $tenant, $old, $neu);
-
-        return $this->saved($request, __('E-Mail-Einstellungen gespeichert.'), reload: true);
     }
 
     public function storeSpecialHours(Request $request)

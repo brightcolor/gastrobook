@@ -29,7 +29,9 @@ use App\Http\Controllers\Admin\Settings\DataController;
 use App\Http\Controllers\Admin\Settings\GeneralController;
 use App\Http\Controllers\Admin\Settings\NotificationsController;
 use App\Http\Controllers\Admin\Settings\RoomsController;
+use App\Http\Controllers\Admin\Settings\SenderController;
 use App\Http\Controllers\Admin\Settings\SettingsMenuController;
+use App\Http\Controllers\Admin\Settings\SmsController;
 use App\Http\Controllers\Admin\Settings\TagSettingsController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\StaffCalendarController;
@@ -413,7 +415,7 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
             ->middleware('permission:integrations.manage')->name('settings.stripe');
         Route::put('/settings/paypal', [SettingsController::class, 'updatePaypal'])
             ->middleware('permission:integrations.manage')->name('settings.paypal');
-        Route::put('/settings/sms', [SettingsController::class, 'updateSms'])
+        Route::put('/settings/sms', [SmsController::class, 'update'])
             ->middleware('permission:integrations.manage')->name('settings.sms');
         Route::post('/settings/deposit-rules', [SettingsController::class, 'storeDepositRule'])
             ->middleware('permission:payments.manage')->name('settings.deposit-rules.store');
@@ -447,7 +449,9 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
             ->middleware('permission:tenant.settings.manage')->name('settings.tenant-type');
         Route::put('/settings/branding', [GeneralController::class, 'updateBranding'])
             ->middleware('permission:tenant.settings.manage')->name('settings.branding');
-        Route::put('/settings/guest-mail', [SettingsController::class, 'updateGuestMail'])
+        Route::get('/settings/sender', [SenderController::class, 'show'])
+            ->middleware('permission:tenant.settings.manage')->name('settings.sender.show');
+        Route::put('/settings/guest-mail', [SenderController::class, 'update'])
             ->middleware('permission:tenant.settings.manage')->name('settings.guest-mail');
         Route::get('/settings/capacity', [CapacityController::class, 'show'])
             ->middleware('permission:opening_hours.manage')->name('settings.capacity.show');
@@ -465,8 +469,7 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
             ->middleware('permission:opening_hours.manage')->name('settings.notifications.show');
         Route::put('/settings/notifications', [NotificationsController::class, 'update'])
             ->middleware('permission:opening_hours.manage')->name('settings.notifications');
-        // Vorläufig bis Task 2: Ziel für Links auf den SMS-Versand.
-        Route::get('/settings/sms', fn () => redirect()->to(route('admin.settings.index').'#integrationen'))
+        Route::get('/settings/sms', [SmsController::class, 'show'])
             ->middleware('permission:integrations.manage')->name('settings.sms.show');
     });
 

@@ -111,6 +111,14 @@ class AuditLog extends Model
         'feedback_external_url' => 'Link zum Bewertungsportal',
         'owner_notification_enabled' => 'Info an den Betrieb',
         'owner_notification_email' => 'Adresse für die Info',
+        // Absender & Antworten (SenderController)
+        'mail_from_name' => 'Absendername',
+        'mail_reply_to' => 'Antwortadresse',
+        'mail_relay_enabled' => 'Antworten über Swayy',
+        // SMS-Versand (SmsController)
+        'sender_id' => 'Absenderkennung',
+        // Vorlagen (NotificationTemplateController)
+        'key' => 'Vorlage',
         // 'type' auch bei Marketing-Kampagnen, deshalb allgemein
         'type' => 'Art',
     ];

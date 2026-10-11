@@ -10,6 +10,8 @@ use App\Support\EnvSetting;
 $bookingDurationMin = EnvSetting::integer('SWAYY_BOOKING_DURATION_MIN', default: 30, min: 5, max: 240);
 $bookingRuleDurationMin = EnvSetting::integer('SWAYY_BOOKING_RULE_DURATION_MIN', default: 15, min: 5, max: 240);
 $serviceDurationMin = EnvSetting::integer('SWAYY_SERVICE_DURATION_MIN', default: 5, min: 1, max: 60);
+// Die Kennung aus Buchstaben ist nie länger als die längste Kennung überhaupt.
+$smsSenderIdMax = EnvSetting::integer('SWAYY_SMS_SENDER_ID_MAX', default: 16, min: 3, max: 16);
 
 return [
     /*
@@ -145,11 +147,15 @@ return [
     |
     | Absender bleibt MAIL_FROM_ADDRESS, damit SPF und DKIM passen. Antwortet
     | ein Gast, geht die Mail an die Antwortadresse (Reply-To) des Betriebs.
-    | Trägt der Betrieb unter Einstellungen › Allgemein › „E-Mails an Gäste“
-    | nichts ein, gilt der erste gefüllte Wert aus diesen Listen.
+    | Trägt der Betrieb unter Einstellungen › Gästekommunikation › Absender &
+    | Antworten nichts ein, gilt der erste gefüllte Wert aus diesen Listen.
     |
     | Ein unbekannter Eintrag legt nichts lahm: Es gilt die Vorgabe, und eine
     | Warnung im Log nennt die Variable. „-“ heißt: ohne Ersatz.
+    |
+    | from_name_max, reply_to_max: längster Absendername und längste
+    | Antwortadresse in Zeichen (je 10–255 und 30–255; die Spalten
+    | tenants.mail_from_name und mail_reply_to sind varchar(255)).
     |
     */
     'guest_mail' => [
@@ -175,6 +181,9 @@ return [
         // Benachrichtigung an den Betrieb über eine neue Buchung: Antworten
         // gehen direkt an den Gast. true oder false, Vorgabe true.
         'owner_reply_to_guest' => (bool) env('SWAYY_GUEST_MAIL_OWNER_REPLY_TO_GUEST', true),
+
+        'from_name_max' => EnvSetting::integer('SWAYY_GUEST_MAIL_FROM_NAME_MAX', default: 100, min: 10, max: 255),
+        'reply_to_max' => EnvSetting::integer('SWAYY_GUEST_MAIL_REPLY_TO_MAX', default: 200, min: 30, max: 255),
     ],
 
     /*
@@ -435,6 +444,48 @@ return [
         'feedback_url_max' => EnvSetting::integer('SWAYY_FEEDBACK_URL_MAX', default: 255, min: 30, max: 255),
         'owner_email_max' => EnvSetting::integer('SWAYY_OWNER_EMAIL_MAX', default: 200, min: 50, max: 255),
         'feedback_lookback_grace_days' => EnvSetting::integer('SWAYY_FEEDBACK_LOOKBACK_GRACE_DAYS', default: 7, min: 0, max: 30),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Mailvorlagen
+    |--------------------------------------------------------------------------
+    |
+    | Länge von Betreff und Text einer eigenen Mailvorlage; Spalten subject
+    | varchar(255), body text. Gelesen vom NotificationTemplateController: Die
+    | Seite „Vorlagen“ zeigt sie als Feldgrenzen, die Prüfung beim Speichern
+    | nutzt dieselben Werte.
+    |
+    | subject_max: längster Betreff in Zeichen (20–255).
+    | body_max: längster Text in Zeichen (500–20000).
+    |
+    */
+    'templates' => [
+        'subject_max' => EnvSetting::integer('SWAYY_TEMPLATE_SUBJECT_MAX', default: 200, min: 20, max: 255),
+        'body_max' => EnvSetting::integer('SWAYY_TEMPLATE_BODY_MAX', default: 5000, min: 500, max: 20000),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | SMS-Versand (seven.io)
+    |--------------------------------------------------------------------------
+    |
+    | Grenzen der Seite „SMS-Versand“ (bis Teil 3 auch der alten Sammelseite),
+    | gelesen vom SmsController. Zugangsdaten und Absenderkennung liegen
+    | verschlüsselt in integration_connections.credentials_encrypted (text).
+    |
+    | sender_id_max: längste Absenderkennung in Zeichen (3–16). Eine Rufnummer
+    | als Kennung darf bis zu 16 Ziffern haben.
+    | sender_id_text_max: längste Kennung aus Buchstaben in Zeichen (3–16, nie
+    | über sender_id_max); SMS-Netze erlauben dafür 11. Die Fehlermeldung
+    | nennt den Wert.
+    | api_key_max: längster API-Key in Zeichen (32–1000).
+    |
+    */
+    'sms' => [
+        'sender_id_max' => $smsSenderIdMax,
+        'sender_id_text_max' => min($smsSenderIdMax, EnvSetting::integer('SWAYY_SMS_SENDER_ID_TEXT_MAX', default: 11, min: 3, max: 16)),
+        'api_key_max' => EnvSetting::integer('SWAYY_SMS_API_KEY_MAX', default: 255, min: 32, max: 1000),
     ],
 
     /*

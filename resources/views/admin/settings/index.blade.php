@@ -144,12 +144,12 @@
         <form method="POST" action="{{ route('admin.settings.guest-mail') }}" class="grid gap-3 text-sm sm:grid-cols-2">
             @csrf @method('PUT')
             <label class="block">Absendername
-                <input name="mail_from_name" maxlength="100" value="{{ old('mail_from_name', $tenant->mail_from_name) }}"
+                <input name="mail_from_name" maxlength="{{ config('swayy.guest_mail.from_name_max') }}" value="{{ old('mail_from_name', $tenant->mail_from_name) }}"
                        placeholder="{{ $ersatzName }}" class="mt-1 w-full rounded-lg border-stone-200">
                 <span class="mt-1 block text-xs text-stone-500">Leer: „{{ $ersatzName }}“</span>
             </label>
             <label class="block">Antwortadresse
-                <input type="email" name="mail_reply_to" maxlength="200" value="{{ old('mail_reply_to', $tenant->mail_reply_to) }}"
+                <input type="email" name="mail_reply_to" maxlength="{{ config('swayy.guest_mail.reply_to_max') }}" value="{{ old('mail_reply_to', $tenant->mail_reply_to) }}"
                        placeholder="{{ $ersatzAntwort ?? 'info@dein-betrieb.de' }}" class="mt-1 w-full rounded-lg border-stone-200">
                 <span class="mt-1 block text-xs {{ $ersatzAntwort ? 'text-stone-500' : 'text-amber-700' }}">
                     @if($ersatzAntwort)
@@ -1122,7 +1122,7 @@
             </div>
             <div>
                 <label class="mb-1 block text-xs font-semibold text-stone-500">Absender <span class="tip" tabindex="0" data-tip="Was der Empfänger als Absendernamen sieht. Max. 11 Zeichen für Namen (z. B. &#39;Salon Anna&#39;) oder eine Rufnummer. Kurze, erkennbare Namen kommen am besten an!">?</span></label>
-                <input type="text" name="sender_id" maxlength="16" value="{{ $smsCredentials['sender_id'] ?? '' }}"
+                <input type="text" name="sender_id" maxlength="{{ config('swayy.sms.sender_id_max') }}" value="{{ $smsCredentials['sender_id'] ?? '' }}"
                        placeholder="z. B. Salon Anna" class="w-full rounded-lg border-stone-200">
             </div>
             <label class="flex items-center gap-2"><input type="checkbox" name="enabled" value="1" @checked(($sms->status ?? '') === 'connected')> SMS-Versand aktiv <span class="tip" tabindex="0" data-tip="Schaltet den SMS-Versand über seven.io ein. Die eigentliche Erinnerung aktivierst du zusätzlich unter Buchungsregeln → Erinnerungen.">?</span></label>
