@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Support\SessionSecrets;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\CreatesTenants;
@@ -98,6 +99,22 @@ class SecretsStayOutOfTheSessionTest extends TestCase
             ->assertSessionHasErrors('api_key')
             ->assertSessionMissing('_old_input.list_uid')
             ->assertSessionHas('_old_input.api_url', 'https://news.example.test/api');
+    }
+
+    public function test_an_empty_or_mistyped_setting_keeps_the_credentials_out(): void
+    {
+        foreach ([[], ['bad name!']] as $setting) {
+            $this->app->forgetInstance(ExceptionHandler::class);
+            config(['swayy.security.dont_flash' => $setting]);
+
+            $this->actingAs($this->owner())->from('/admin/settings/newsletter')
+                ->put('/admin/settings/mailwizz', ['api_url' => 'https://news.example.test/api', 'api_key' => str_repeat('m', 1000), 'list_uid' => 'ab12cd', 'enabled' => '1'])
+                ->assertSessionHasErrors('api_key')
+                ->assertSessionMissing('_old_input.api_key')
+                ->assertSessionHas('_old_input.list_uid', 'ab12cd');
+        }
+
+        $this->assertSame(SessionSecrets::ALWAYS, array_slice(SessionSecrets::fields(), 0, count(SessionSecrets::ALWAYS)));
     }
 
     public function test_the_setting_has_defaults_and_is_documented(): void

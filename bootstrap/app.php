@@ -9,6 +9,7 @@ use App\Http\Middleware\ResolveTenantContext;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\VerifyCapToken;
 use App\Support\AdminJsonErrors;
+use App\Support\SessionSecrets;
 use App\Support\TrustedHosts;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -124,13 +125,10 @@ return Application::configure(basePath: dirname(__DIR__))
         );
 
         // Nach einer abgelehnten Eingabe merkt Laravel die Felder fürs Formular in der
-        // Sitzung, und die liegt unverschlüsselt in Redis. Schlüssel und Zugangsdaten
-        // (swayy.security.dont_flash) bleiben draußen; Laravel ergänzt sie zu seinen
-        // eigenen (password, password_confirmation, current_password).
-        $exceptions->dontFlash(array_values(array_filter(
-            app()->bound('config') ? (array) config('swayy.security.dont_flash', []) : [],
-            'is_string',
-        )));
+        // Sitzung, und die liegt unverschlüsselt in Redis. Zugangsdaten bleiben immer
+        // draußen, swayy.security.dont_flash ergänzt weitere Felder (SessionSecrets);
+        // Laravel nimmt seine eigenen dazu (password, password_confirmation, current_password).
+        $exceptions->dontFlash(SessionSecrets::fields());
 
         $exceptions->render(fn (Throwable $e, Request $request) => AdminJsonErrors::render($e, $request));
     })->create();

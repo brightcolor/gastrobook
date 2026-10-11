@@ -135,7 +135,9 @@ return [
     | Sitzung landen (Laravel füllt das Formular sonst aus _old_input wieder
     | auf, und die Sitzung liegt unverschlüsselt in Redis oder der Datenbank).
     | Laravel fügt password, password_confirmation und current_password selbst
-    | hinzu. Komma-Liste in SWAYY_DONT_FLASH; „-“ lässt nur diese drei.
+    | hinzu, die Zugangsdaten der Verbindungsseiten (api_key, secret_key,
+    | webhook_secret, client_id, secret) gelten immer (App\Support\SessionSecrets).
+    | Komma-Liste in SWAYY_DONT_FLASH ergänzt weitere Felder; „-“ lässt nur die festen.
     |
     */
     'security' => [
