@@ -69,10 +69,11 @@ class AccountController extends Controller
         $user = $request->user();
         $password = (string) $request->input('password');
 
-        // Neuer Hash und neues Erinnerungszeichen beenden gespeicherte
-        // Anmeldungen („Angemeldet bleiben“) auf anderen Geräten. Offene
-        // Sitzungen anderer Geräte laufen bis zu ihrem Ablauf weiter, solange
-        // die Middleware AuthenticateSession in der Web-Gruppe fehlt.
+        // Der neue Hash beendet die offenen Sitzungen aller anderen Geräte
+        // (Middleware AuthenticateSession, bootstrap/app.php), das neue
+        // Erinnerungszeichen die gespeicherten Anmeldungen („Angemeldet
+        // bleiben“). Die Sitzung dieser Anfrage merkt sich den neuen Hash am
+        // Ende der Anfrage und bleibt angemeldet.
         $user->forceFill([
             'password' => Hash::make($password),
             'remember_token' => Str::random(60),

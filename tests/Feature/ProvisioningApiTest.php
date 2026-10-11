@@ -498,6 +498,8 @@ final class ProvisioningApiTest extends TestCase
         $mitglied = User::factory()->create();
         TenantUser::create(['tenant_id' => $betrieb->id, 'user_id' => $mitglied->id, 'role' => 'tenant_admin', 'all_locations' => true]);
         $mitglied->forceFill(['current_tenant_id' => $betrieb->id])->save();
+        // Das Mitglied hat eine eigene Sitzung; der Speicher des Tests bliebe sonst die des Inhabers.
+        session()->flush();
         $this->actingAs($mitglied)->get('/admin/tarif')->assertRedirect('https://panel.example.test');
     }
 

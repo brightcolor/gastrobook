@@ -105,6 +105,14 @@ return Application::configure(basePath: dirname(__DIR__))
             // Abmeldung per Klick aus dem Mailprogramm (RFC 8058); geschützt durch die Signatur.
             'marketing/abmelden/*',
         ]);
+
+        // Jede Sitzung merkt sich den Hash des Passworts, mit dem sie angemeldet
+        // wurde (SessionGuard::login schreibt ihn). Ändert sich das Passwort, etwa
+        // unter „Mein Konto“ oder über „Passwort vergessen“, endet jede Sitzung mit
+        // dem alten Hash bei ihrer nächsten Anfrage; das Gerät, das den Wechsel
+        // auslöst, bleibt angemeldet. Eine Sitzung ohne gemerkten Hash lernt ihn
+        // bei der nächsten Anfrage und bleibt angemeldet.
+        $middleware->authenticateSessions();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // api/* antwortet immer mit JSON, die Verwaltung, sobald eine Seite

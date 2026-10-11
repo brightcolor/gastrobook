@@ -23,7 +23,7 @@
 
 <x-settings.section id="passwort" title="Passwort">
     <x-slot:description>
-        <p>Wähle ein Passwort, das nur für Swayy gilt. Nach dem Ändern bleibst du auf diesem Gerät angemeldet. Gespeicherte Anmeldungen („Angemeldet bleiben“) auf anderen Geräten enden.</p>
+        <p>Wähle ein Passwort, das nur für Swayy gilt. Nach dem Ändern bleibst du auf diesem Gerät angemeldet. Auf allen anderen Geräten meldest du dich mit dem neuen Passwort neu an.</p>
     </x-slot:description>
     <form id="form-passwort" method="POST" action="{{ route('admin.account.password') }}" data-ajax data-reset-after-save class="space-y-5">
         @csrf

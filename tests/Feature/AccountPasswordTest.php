@@ -49,6 +49,7 @@ class AccountPasswordTest extends TestCase
         $this->assertStringContainsString('Mindestens 8 Zeichen, mit Buchstaben und Ziffern.', $html);
         $this->assertStringNotContainsString('data-savebar', $html);
         $this->assertStringContainsString('Passwort ändern', $html);
+        $this->assertStringContainsString('Auf allen anderen Geräten meldest du dich mit dem neuen Passwort neu an.', $html);
         // Reihenfolge der Karten: Profil, Passwort, Konto löschen.
         $this->assertTrue(strpos($html, 'id="profil"') < strpos($html, 'id="passwort"'));
         $this->assertTrue(strpos($html, 'id="passwort"') < strpos($html, 'id="konto-loeschen"'));
@@ -280,6 +281,8 @@ class AccountPasswordTest extends TestCase
         }
         $this->actingAs($owner)->putJson('/admin/account/password', $payload)->assertStatus(429);
 
+        // Ein anderes Konto meldet sich auf einem anderen Gerät an: eigene Sitzung.
+        session()->flush();
         $this->actingAs($other)->putJson('/admin/account/password', $payload)->assertStatus(422);
     }
 
