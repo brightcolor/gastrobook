@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Enums\ReservationStatus;
+use App\Models\BlackoutPeriod;
 use App\Models\Guest;
 use App\Models\GuestNote;
 use App\Models\Location;
@@ -14,6 +15,8 @@ use App\Models\Refund;
 use App\Models\Reservation;
 use App\Models\ReservationNote;
 use App\Models\ReservationStatusHistory;
+use App\Models\SpecialOpeningHour;
+use App\Models\TableBlock;
 use App\Models\Tag;
 use App\Models\Tenant;
 use App\Services\AccountExportService;
@@ -34,6 +37,9 @@ use Tests\TestCase;
 class AccountImportTest extends TestCase
 {
     use CreatesTenants, RefreshDatabase;
+
+    /** Gruppe einer Ausnahme (Einstellungen › Ausnahmen) in den Zeilen des Quellkontos. */
+    private const EXCEPTION_GROUP = '4f9c2a1e-7b3d-4c58-8e16-0d2a9b7c5e31';
 
     /** Build a source account with linked data and return its export payload. */
     private function sourceExport(): array
@@ -60,6 +66,21 @@ class AccountImportTest extends TestCase
         ]);
         $reservation->tables()->attach($setup['tables'][1]->id);
         $reservation->tags()->attach($tag->id);
+
+        // Eine Ausnahme: Sondertag, Sperrzeit und Tischsperre mit derselben Gruppe.
+        $day = $start->addDays(10);
+        SpecialOpeningHour::create([
+            'tenant_id' => $setup['tenant']->id, 'location_id' => $setup['location']->id, 'date' => $day->toDateString(),
+            'closed' => true, 'label' => 'Betriebsferien', 'exception_group' => self::EXCEPTION_GROUP,
+        ]);
+        BlackoutPeriod::create([
+            'tenant_id' => $setup['tenant']->id, 'location_id' => $setup['location']->id, 'room_id' => $setup['room']->id,
+            'starts_at' => $day->utc(), 'ends_at' => $day->addHours(4)->utc(), 'reason' => 'Betriebsferien', 'exception_group' => self::EXCEPTION_GROUP,
+        ]);
+        TableBlock::create([
+            'tenant_id' => $setup['tenant']->id, 'location_id' => $setup['location']->id, 'restaurant_table_id' => $setup['tables'][0]->id,
+            'starts_at' => $day->utc(), 'ends_at' => $day->addHours(4)->utc(), 'reason' => 'Betriebsferien', 'exception_group' => self::EXCEPTION_GROUP,
+        ]);
 
         $export = app(AccountExportService::class)->export($setup['tenant']);
 
@@ -98,6 +119,20 @@ class AccountImportTest extends TestCase
 
         // Opening hours came along, so the restored business is bookable.
         $this->assertSame(7, $location->openingHours()->count());
+    }
+
+    public function test_the_group_of_an_exception_survives_the_round_trip(): void
+    {
+        $export = $this->sourceExport();
+        $target = $this->freshTenant();
+
+        $imported = app(AccountImportService::class)->import($target, $export);
+
+        $this->assertSame([1, 1, 1], [$imported['special_opening_hours'], $imported['blackout_periods'], $imported['table_blocks']]);
+        foreach ([SpecialOpeningHour::class, BlackoutPeriod::class, TableBlock::class] as $model) {
+            $row = $model::withoutGlobalScopes()->where('tenant_id', $target->id)->sole();
+            $this->assertSame(self::EXCEPTION_GROUP, $row->exception_group, $model);
+        }
     }
 
     public function test_new_codes_and_tokens_are_generated(): void

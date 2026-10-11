@@ -31,7 +31,7 @@ final class OpeningHoursPreview
     public function forDay(Location $location, int $weekday, array $times): array
     {
         $salon = (bool) $location->tenant?->isSalon();
-        $interval = max(5, (int) $location->effectiveSettings()->slot_interval_minutes);
+        $interval = $this->slots->slotInterval($location);
         $duration = $this->duration($location, $salon);
         $windows = $this->slots->windowsFromTimes($this->nextDate($weekday, $location->timezone), array_values($times));
 

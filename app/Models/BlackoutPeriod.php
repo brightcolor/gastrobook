@@ -6,14 +6,19 @@ use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property Carbon $starts_at
+ * @property Carbon $ends_at
+ */
 class BlackoutPeriod extends Model
 {
     use BelongsToTenant, HasFactory;
 
     protected $fillable = [
         'tenant_id', 'location_id', 'room_id',
-        'starts_at', 'ends_at', 'reduce_covers_to', 'reason', 'staff_note',
+        'starts_at', 'ends_at', 'reduce_covers_to', 'reason', 'staff_note', 'exception_group',
     ];
 
     protected function casts(): array

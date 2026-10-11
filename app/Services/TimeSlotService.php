@@ -51,9 +51,15 @@ class TimeSlotService
      */
     public function slotStarts(Location $location, CarbonImmutable $localDate, int $durationMinutes): array
     {
-        $interval = max(5, (int) $location->effectiveSettings()->slot_interval_minutes);
+        return $this->startsForWindows($this->windowsForDate($location, $localDate), $durationMinutes, $this->slotInterval($location));
+    }
 
-        return $this->startsForWindows($this->windowsForDate($location, $localDate), $durationMinutes, $interval);
+    /**
+     * Takt der Startzeiten in Minuten: das Raster des Standorts, mindestens fünf Minuten.
+     */
+    public function slotInterval(Location $location): int
+    {
+        return max(5, (int) $location->effectiveSettings()->slot_interval_minutes);
     }
 
     /**

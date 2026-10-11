@@ -27,6 +27,7 @@ use App\Http\Controllers\Admin\Settings\BookingRulesController;
 use App\Http\Controllers\Admin\Settings\CapacityController;
 use App\Http\Controllers\Admin\Settings\DataController;
 use App\Http\Controllers\Admin\Settings\DepositsController;
+use App\Http\Controllers\Admin\Settings\ExceptionsController;
 use App\Http\Controllers\Admin\Settings\GeneralController;
 use App\Http\Controllers\Admin\Settings\NewsletterController;
 use App\Http\Controllers\Admin\Settings\NotificationsController;
@@ -452,6 +453,16 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
             ->middleware('permission:blackouts.manage')->name('settings.blackouts.store');
         Route::delete('/settings/blackouts/{blackout}', [SettingsController::class, 'deleteBlackout'])
             ->middleware('permission:blackouts.manage')->name('settings.blackouts.delete');
+        Route::post('/settings/exceptions/preview', [ExceptionsController::class, 'preview'])
+            ->middleware(['permission:special_hours.manage', 'permission:blackouts.manage'])->name('settings.exceptions.preview');
+        Route::post('/settings/exceptions', [ExceptionsController::class, 'store'])
+            ->middleware(['permission:special_hours.manage', 'permission:blackouts.manage'])->name('settings.exceptions.store');
+        Route::put('/settings/exceptions/{key}', [ExceptionsController::class, 'update'])
+            ->where('key', '[gsbt]-[A-Za-z0-9-]+')
+            ->middleware(['permission:special_hours.manage', 'permission:blackouts.manage'])->name('settings.exceptions.update');
+        Route::delete('/settings/exceptions/{key}', [ExceptionsController::class, 'destroy'])
+            ->where('key', '[gsbt]-[A-Za-z0-9-]+')
+            ->middleware(['permission:special_hours.manage', 'permission:blackouts.manage'])->name('settings.exceptions.destroy');
         Route::post('/settings/seasons', [OpeningHoursController::class, 'storeSeason'])
             ->middleware('permission:blackouts.manage')->name('settings.seasons.store');
         Route::delete('/settings/seasons/{season}', [OpeningHoursController::class, 'deleteSeason'])

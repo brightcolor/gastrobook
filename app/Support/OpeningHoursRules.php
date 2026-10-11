@@ -98,11 +98,12 @@ final class OpeningHoursRules
      *
      * @param  array<array-key, mixed>  $rows  Zeilen mit weekday, opens_at, closes_at
      * @param  bool  $sameDay  alle Zeilen gehören zu einem Datum (Vorschau, dort ohne weekday): Die Zeitachse ist eine Gerade ohne Wochenkreis
+     * @param  ?int  $maxWindows  Höchstzahl der Fenster je Tag; ohne Angabe gilt opening_hours.windows_per_day_max. Die Ausnahmen prüfen ihre eigene Grenze selbst und übergeben hier PHP_INT_MAX.
      * @return array<string, string>
      */
-    public static function after(array $rows, string $prefix = 'hours', bool $sameDay = false): array
+    public static function after(array $rows, string $prefix = 'hours', bool $sameDay = false, ?int $maxWindows = null): array
     {
-        $max = (int) config('swayy.opening_hours.windows_per_day_max');
+        $max = $maxWindows ?? (int) config('swayy.opening_hours.windows_per_day_max');
         $errors = [];
 
         /** @var array<int, list<array{key: array-key, day: int, opens: ?int, closes: ?int}>> $days */

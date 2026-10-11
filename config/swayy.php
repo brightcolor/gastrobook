@@ -487,6 +487,36 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Ausnahmen
+    |--------------------------------------------------------------------------
+    |
+    | Grenzen der Ausnahmen (Einstellungen › Platz & Zeiten › Ausnahmen),
+    | gelesen über App\Support\ScheduleExceptionRules und
+    | App\Services\ScheduleExceptions. Eine Ausnahme legt Zeilen in den
+    | Tabellen special_opening_hours, blackout_periods und table_blocks an,
+    | die dieselbe exception_group tragen.
+    |
+    | max_days: längster Zeitraum einer Ausnahme in Tagen (1–366); jeder Tag
+    | erzeugt eigene Zeilen.
+    | windows_max: so viele Zeitfenster hat „Andere Öffnungszeiten“ höchstens
+    | (1–12).
+    | label_max: Länge der Bezeichnung, etwa „Betriebsferien“, in Zeichen
+    | (20–200; die Spalten label und reason fassen 255).
+    | covers_max: Obergrenze für „Weniger Gäste“ (1–32767; die Spalte
+    | reduce_covers_to ist smallint).
+    | past_months: so viele Monate zurück zeigt die Liste „Vergangen“ (1–60).
+    |
+    */
+    'exceptions' => [
+        'max_days' => EnvSetting::integer('SWAYY_EXCEPTIONS_MAX_DAYS', default: 93, min: 1, max: 366),
+        'windows_max' => EnvSetting::integer('SWAYY_EXCEPTIONS_WINDOWS_MAX', default: 6, min: 1, max: 12),
+        'label_max' => EnvSetting::integer('SWAYY_EXCEPTIONS_LABEL_MAX', default: 120, min: 20, max: 200),
+        'covers_max' => EnvSetting::integer('SWAYY_EXCEPTIONS_COVERS_MAX', default: 10000, min: 1, max: 32767),
+        'past_months' => EnvSetting::integer('SWAYY_EXCEPTIONS_PAST_MONTHS', default: 12, min: 1, max: 60),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Benachrichtigungen an Gäste und den Betrieb
     |--------------------------------------------------------------------------
     |

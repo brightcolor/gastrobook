@@ -191,6 +191,10 @@ class AuditLog extends Model
         'start_day' => 'Beginn (Tag)',
         'end_month' => 'Ende (Monat)',
         'end_day' => 'Ende (Tag)',
+        // Ausnahmen (ExceptionsController); 'label' steht oben
+        'from' => 'Von',
+        'until' => 'Bis',
+        'effects' => 'Wirkung',
     ];
 
     /**
@@ -334,6 +338,9 @@ class AuditLog extends Model
         'webhook.deactivated' => 'Webhook pausiert',
         'webhook.ping' => 'Webhook getestet',
         'webhook.secret_rotated' => 'Webhook-Geheimnis erneuert',
+        'exception.created' => 'Ausnahme angelegt',
+        'exception.updated' => 'Ausnahme geändert',
+        'exception.deleted' => 'Ausnahme gelöscht',
     ];
 
     /** @var array<string, string> Praefix der Aktion => Gegenstand */
@@ -349,7 +356,7 @@ class AuditLog extends Model
         'floorplan' => 'Tischplan', 'billing' => 'Abrechnung', 'integration' => 'Integration',
         'waitlist' => 'Warteliste', 'payment' => 'Zahlung', 'saas' => 'Plattform-Benutzer',
         'marketing_campaign' => 'Marketing-Kampagne', 'table_block' => 'Tischsperre',
-        'account' => 'Konto', 'season' => 'Saison',
+        'account' => 'Konto', 'season' => 'Saison', 'exception' => 'Ausnahmen',
         'auth' => 'Anmeldung', 'support' => 'Support', 'provisioning' => 'Kundenpanel',
     ];
 
