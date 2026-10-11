@@ -43,7 +43,7 @@ class SenderController extends Controller
             'fallbackName' => $fallbackName,
             'fallbackReply' => $fallbackReply,
             'relayReady' => GuestReplyAddress::isConfigured(),
-            'relayDomain' => (string) config('swayy.guest_mail_relay.domain'),
+            'relayExample' => GuestReplyAddress::example((string) $tenant->slug),
             'limits' => (array) config('swayy.guest_mail'),
         ]);
     }

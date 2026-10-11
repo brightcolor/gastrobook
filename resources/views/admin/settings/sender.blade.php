@@ -4,7 +4,6 @@
 @section('content')
 @php
     $replyTo = old('mail_reply_to', $tenant->mail_reply_to);
-    $relayExample = $tenant->slug.'+R-ABC123.a1b2c3d4@'.$relayDomain;
     $relayHelp = 'Antworten erscheinen im Buchungsverlauf und gehen zusätzlich an deine Adresse.'
         .($relayReady ? '' : ' Diese Funktion richtet der Betreiber von Swayy ein. Bitte frag dort nach.');
 @endphp

@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Models\AuditLog;
 use App\Models\Tenant;
+use App\Services\Mail\GuestReplyAddress;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\CreatesTenants;
 use Tests\Concerns\ReadsSwayyConfig;
@@ -115,6 +116,43 @@ class SenderPageTest extends TestCase
             ->assertOk()
             ->assertSee('Bitte eintragen. Solange hier und am Standort keine Adresse steht, erreichen Antworten von Gästen niemanden.')
             ->assertSee('data-show-if="mail_reply_to:"', false);
+    }
+
+    /**
+     * Das Beispiel entsteht aus denselben Einstellungen wie die echte Adresse (GuestReplyAddress): Trennzeichen,
+     * Länge des Prüfteils und Domain.
+     */
+    public function test_the_relay_example_follows_the_settings_of_the_real_address(): void
+    {
+        config([
+            'swayy.guest_mail_relay.domain' => 'antwort.example.test',
+            'swayy.guest_mail_relay.separator_tag' => '=',
+            'swayy.guest_mail_relay.separator_hmac' => '_',
+            'swayy.guest_mail_relay.hmac_length' => 12,
+        ]);
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $example = $setup['tenant']->slug.'=R-ABC123_a1b2c3d4a1b2@antwort.example.test';
+        $this->actingAs($owner)->get('/admin/settings/sender')->assertOk()
+            ->assertSee($example)
+            ->assertDontSee('+R-ABC123.');
+
+        $parsed = GuestReplyAddress::parse($example);
+        $this->assertSame(['slug' => $setup['tenant']->slug, 'code' => 'R-ABC123', 'hmac' => 'a1b2c3d4a1b2'], $parsed);
+    }
+
+    public function test_the_relay_example_uses_the_default_separators_and_length(): void
+    {
+        config(['swayy.guest_mail_relay.domain' => 'antwort.example.test']);
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->get('/admin/settings/sender')->assertOk()
+            ->assertSee($setup['tenant']->slug.'+R-ABC123.a1b2c3d4@antwort.example.test');
+        $this->assertSame(32, strlen(explode('.', explode('@', GuestReplyAddress::example('x', 32))[0])[1]));
     }
 
     public function test_the_relay_switch_is_locked_until_the_operator_set_up_the_domain(): void

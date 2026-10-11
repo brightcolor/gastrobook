@@ -29,14 +29,32 @@ final class GuestReplyAddress
 
     public static function forReservation(Reservation $reservation): string
     {
+        return self::compose(
+            (string) $reservation->tenant->slug,
+            (string) $reservation->code,
+            self::hmac((int) $reservation->tenant_id, (string) $reservation->code),
+        );
+    }
+
+    /**
+     * Beispieladresse für die Einstellungsseite: gleicher Aufbau wie die echte
+     * Adresse, mit Trennzeichen, Länge des Prüfteils und Domain aus den
+     * Einstellungen, aber mit Platzhalter statt Buchungscode und HMAC.
+     */
+    public static function example(string $slug, ?int $hmacLength = null): string
+    {
+        $length = $hmacLength ?? (int) config('swayy.guest_mail_relay.hmac_length', 8);
+
+        return self::compose($slug, 'R-ABC123', substr(str_repeat('a1b2c3d4', (int) ceil($length / 8)), 0, $length));
+    }
+
+    private static function compose(string $slug, string $code, string $hmac): string
+    {
         $sepTag = (string) config('swayy.guest_mail_relay.separator_tag', '+');
         $sepHmac = (string) config('swayy.guest_mail_relay.separator_hmac', '.');
         $domain = (string) config('swayy.guest_mail_relay.domain');
 
-        return (string) $reservation->tenant->slug
-            .$sepTag.$reservation->code
-            .$sepHmac.self::hmac((int) $reservation->tenant_id, (string) $reservation->code)
-            .'@'.$domain;
+        return $slug.$sepTag.$code.$sepHmac.$hmac.'@'.$domain;
     }
 
     /**
