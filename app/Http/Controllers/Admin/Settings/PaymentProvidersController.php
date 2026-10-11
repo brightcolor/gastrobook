@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\IntegrationConnection;
 use App\Services\AuditLogger;
+use App\Support\IntegrationStatus;
 use App\Support\TenantContext;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
@@ -270,9 +271,9 @@ class PaymentProvidersController extends Controller
     private function status(?IntegrationConnection $connection, bool $ready): array
     {
         return match (true) {
-            $connection === null || ! $ready => ['state' => 'off', 'label' => __('Nicht eingerichtet')],
-            $connection->status === 'connected' => ['state' => 'ok', 'label' => __('Verbunden')],
-            default => ['state' => 'off', 'label' => __('Ausgeschaltet')],
+            $connection === null || ! $ready => ['state' => 'off', 'label' => IntegrationStatus::NOT_SET_UP],
+            $connection->status === 'connected' => ['state' => 'ok', 'label' => IntegrationStatus::label('connected')],
+            default => ['state' => 'off', 'label' => IntegrationStatus::label('disconnected')],
         };
     }
 }

@@ -2,9 +2,10 @@
 
 namespace App\Models;
 
-use App\Http\Controllers\Admin\ApiTokenController;
-use App\Http\Controllers\Admin\NotificationTemplateController;
-use App\Http\Controllers\Admin\WebhookController;
+use App\Support\ApiScopes;
+use App\Support\IntegrationStatus;
+use App\Support\TemplateLabels;
+use App\Support\WebhookEvents;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -213,8 +214,6 @@ class AuditLog extends Model
         'refund_processing' => ['immediate' => 'Sofort', 'scheduled' => 'Gesammelt nach Zeitplan'],
         'capacity_mode' => ['table' => 'Nach Tischen', 'person' => 'Nach Personen', 'hybrid' => 'Beides'],
         'mode' => ['sandbox' => 'Test (Sandbox)', 'live' => 'Live'],
-        // Zustand einer Anbindung (SMS, Newsletter, Stripe, PayPal); Reservierungsstatus löst formatValue() vorher auf.
-        'status' => ['connected' => 'Verbunden', 'disconnected' => 'Ausgeschaltet', 'error' => 'Fehler beim letzten Test'],
     ];
 
     /**
@@ -492,6 +491,11 @@ class AuditLog extends Model
             return $value ? 'Ja' : 'Nein';
         }
 
+        // Zustand einer Anbindung (SMS, Newsletter, Stripe, PayPal) in den Worten ihrer Seiten.
+        if ($field === 'status' && is_string($value) && str_starts_with($action, 'integration.') && isset(IntegrationStatus::LABELS[$value])) {
+            return IntegrationStatus::LABELS[$value];
+        }
+
         // Field-aware humanisation so staff see meaning, not raw codes.
         // The admin UI is German-only, so translate value codes explicitly in
         // German regardless of the configured APP_LOCALE.
@@ -523,7 +527,7 @@ class AuditLog extends Model
         }
         // Vorlagen, API-Rechte und Webhook-Ereignisse in den Worten ihrer Seiten.
         if ($field === 'key' && is_string($value) && str_starts_with($action, 'template.')) {
-            return NotificationTemplateController::label($value, $salon);
+            return TemplateLabels::label($value, $salon);
         }
         if (is_array($value) && ($words = self::identifierWords($field, $action, $salon)) !== null) {
             return implode(', ', array_map(fn (mixed $code): string => is_scalar($code) ? ($words[(string) $code] ?? (string) $code) : '', $value)) ?: '—';
@@ -557,10 +561,10 @@ class AuditLog extends Model
     private static function identifierWords(string $field, string $action, bool $salon): ?array
     {
         if ($field === 'scopes' && str_starts_with($action, 'api_token.')) {
-            return array_map(fn (array $scope): string => $scope['label'], ApiTokenController::scopes($salon));
+            return ApiScopes::labels($salon);
         }
         if ($field === 'events' && str_starts_with($action, 'webhook.')) {
-            return WebhookController::eventLabels($salon) + ['*' => 'Alle Ereignisse'];
+            return WebhookEvents::labels($salon) + ['*' => WebhookEvents::ALL_LABEL];
         }
 
         return null;

@@ -10,6 +10,7 @@ use App\Models\IntegrationConnection;
 use App\Rules\AllowedOutboundUrl;
 use App\Services\AuditLogger;
 use App\Services\Newsletter\MailwizzProvider;
+use App\Support\IntegrationStatus;
 use App\Support\OutboundUrlBlocked;
 use App\Support\TenantContext;
 use Illuminate\Contracts\Encryption\DecryptException;
@@ -57,7 +58,7 @@ class NewsletterController extends Controller
             'hasKey' => $hasKey,
             // Der gespeicherte Grund gilt nur, solange die Anbindung auf Fehler steht.
             'lastError' => $status === 'error' ? (string) ($connection->settings['last_error'] ?? '') : '',
-            'statusLabel' => $this->statusLabel($status),
+            'statusLabel' => IntegrationStatus::label($status),
             'statusState' => match ($status) {
                 'connected' => 'ok',
                 'error' => 'error',
@@ -215,15 +216,5 @@ class NewsletterController extends Controller
         } catch (DecryptException) {
             return [];
         }
-    }
-
-    private function statusLabel(?string $status): string
-    {
-        return match ($status) {
-            'connected' => __('Verbunden'),
-            'disconnected' => __('Ausgeschaltet'),
-            'error' => __('Fehler beim letzten Test'),
-            default => __('Nicht eingerichtet'),
-        };
     }
 }

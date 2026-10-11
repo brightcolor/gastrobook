@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\IntegrationConnection;
 use App\Services\AuditLogger;
 use App\Services\Sms\SevenIoProvider;
+use App\Support\IntegrationStatus;
 use App\Support\TenantContext;
 use Closure;
 use Illuminate\Contracts\Encryption\DecryptException;
@@ -49,7 +50,7 @@ class SmsController extends Controller
             // Nur die Absenderkennung verlässt die Zugangsdaten.
             'senderId' => (string) ($credentials['sender_id'] ?? ''),
             'hasKey' => $hasKey,
-            'statusLabel' => $this->statusLabel($status),
+            'statusLabel' => IntegrationStatus::label($status),
             'statusState' => match ($status) {
                 'connected' => 'ok',
                 'error' => 'error',
@@ -175,15 +176,5 @@ class SmsController extends Controller
         } catch (DecryptException) {
             return [];
         }
-    }
-
-    private function statusLabel(?string $status): string
-    {
-        return match ($status) {
-            'connected' => __('Verbunden'),
-            'disconnected' => __('Ausgeschaltet'),
-            'error' => __('Fehler beim letzten Test'),
-            default => __('Nicht eingerichtet'),
-        };
     }
 }

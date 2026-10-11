@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\NotificationTemplate;
 use App\Services\AuditLogger;
 use App\Services\NotificationTemplateRenderer;
+use App\Support\TemplateLabels;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -21,26 +22,6 @@ use Illuminate\View\View;
 class NotificationTemplateController extends Controller
 {
     use RespondsToSettingsForms;
-
-    /** Bezeichnungen der Vorlagen, die ein Betrieb ändern kann. */
-    private const LABELS = [
-        'reservation_confirmed' => 'Reservierung bestätigt',
-        'reservation_requested' => 'Anfrage eingegangen',
-        'reservation_cancelled' => 'Reservierung storniert',
-        'reservation_rejected' => 'Anfrage abgelehnt',
-        'reservation_reminder' => 'Erinnerung',
-        'feedback_request' => 'Feedback-Anfrage',
-        'waitlist_offer' => 'Wartelisten-Angebot',
-        'payment_pending' => 'Anzahlung angefordert',
-        'payment_reminder' => 'Anzahlung: Erinnerung',
-        'payment_expired' => 'Anzahlung: Frist abgelaufen',
-    ];
-
-    /** Bezeichnungen, die in einem Salon anders lauten. */
-    private const SALON_LABELS = [
-        'reservation_confirmed' => 'Termin bestätigt',
-        'reservation_cancelled' => 'Termin storniert',
-    ];
 
     /** Platzhalter für Tische und Räume; es gibt sie nur in einem Restaurant. */
     private const RESTAURANT_PLACEHOLDERS = ['table_name', 'room_name'];
@@ -62,13 +43,13 @@ class NotificationTemplateController extends Controller
             ->keyBy('key');
 
         $templates = collect(NotificationTemplateRenderer::defaults())
-            ->only(array_keys(self::LABELS))
+            ->only(array_keys(TemplateLabels::LABELS))
             ->map(function (array $default, string $key) use ($overrides, $salon) {
                 $override = $overrides->get($key);
 
                 return [
                     'key' => $key,
-                    'label' => self::label($key, $salon),
+                    'label' => $this->label($key, $salon),
                     'subject' => $override->subject ?? $default['subject'],
                     'body' => $override->body ?? $default['body'],
                     'customized' => $override !== null,
@@ -91,7 +72,7 @@ class NotificationTemplateController extends Controller
     {
         $tenant = $this->context->tenant();
         abort_if($tenant === null, 404);
-        abort_unless(array_key_exists($key, self::LABELS), 404);
+        abort_unless(array_key_exists($key, TemplateLabels::LABELS), 404);
 
         $validated = $request->validate([
             'subject' => ['required', 'string', 'max:'.(int) config('swayy.templates.subject_max')],
@@ -112,14 +93,14 @@ class NotificationTemplateController extends Controller
 
         $this->audit->log('template.updated', $template, null, ['key' => $key]);
 
-        return $this->saved($request, __('Vorlage „:name“ gespeichert.', ['name' => self::label($key, $tenant->isSalon())]), reload: true);
+        return $this->saved($request, __('Vorlage „:name“ gespeichert.', ['name' => $this->label($key, $tenant->isSalon())]), reload: true);
     }
 
     public function reset(Request $request, string $key): mixed
     {
         $tenant = $this->context->tenant();
         abort_if($tenant === null, 404);
-        abort_unless(array_key_exists($key, self::LABELS), 404);
+        abort_unless(array_key_exists($key, TemplateLabels::LABELS), 404);
 
         NotificationTemplate::where('tenant_id', $tenant->id)
             ->whereNull('location_id')
@@ -129,12 +110,11 @@ class NotificationTemplateController extends Controller
 
         $this->audit->log('template.reset', null, null, ['key' => $key]);
 
-        return $this->saved($request, __('Vorlage „:name“ auf Standard zurückgesetzt.', ['name' => self::label($key, $tenant->isSalon())]), reload: true);
+        return $this->saved($request, __('Vorlage „:name“ auf Standard zurückgesetzt.', ['name' => $this->label($key, $tenant->isSalon())]), reload: true);
     }
 
-    /** Bezeichnung einer Vorlage; Salons lesen „Termin“. */
-    public static function label(string $key, bool $salon): string
+    private function label(string $key, bool $salon): string
     {
-        return ($salon ? (self::SALON_LABELS[$key] ?? null) : null) ?? self::LABELS[$key] ?? $key;
+        return TemplateLabels::label($key, $salon);
     }
 }

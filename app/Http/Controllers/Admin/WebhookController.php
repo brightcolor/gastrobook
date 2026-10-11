@@ -10,6 +10,7 @@ use App\Models\WebhookEndpoint;
 use App\Rules\AllowedOutboundUrl;
 use App\Services\AuditLogger;
 use App\Support\TenantContext;
+use App\Support\WebhookEvents;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -26,53 +27,14 @@ class WebhookController extends Controller
 {
     use RespondsToSettingsForms;
 
-    /** Events the application actually emits (see WebhookDispatchService callers). */
-    public const EVENTS = [
-        'reservation.created',
-        'reservation.confirmed',
-        'reservation.updated',
-        'reservation.cancelled',
-        'reservation.seated',
-        'reservation.completed',
-        'reservation.no_show',
-        'waitlist.created',
-        'waitlist.offered',
-        'waitlist.accepted',
-        'event.booking_created',
-        'payment.succeeded',
-        'feedback.received',
-    ];
+    /** Events the application actually emits (see WebhookDispatchService callers); die Liste führt WebhookEvents. */
+    public const EVENTS = WebhookEvents::EVENTS;
 
     /** Bezeichnungen der Ereignisse für Restaurants; die Seite zeigt den technischen Namen als Code daneben. */
-    public const EVENT_LABELS = [
-        'reservation.created' => 'Neue Reservierung',
-        'reservation.confirmed' => 'Reservierung bestätigt',
-        'reservation.updated' => 'Reservierung geändert',
-        'reservation.cancelled' => 'Reservierung storniert',
-        'reservation.seated' => 'Gast am Tisch',
-        'reservation.completed' => 'Besuch abgeschlossen',
-        'reservation.no_show' => 'Gast nicht erschienen',
-        'waitlist.created' => 'Gast auf der Warteliste',
-        'waitlist.offered' => 'Platz aus der Warteliste angeboten',
-        'waitlist.accepted' => 'Wartelistenplatz angenommen',
-        'event.booking_created' => 'Neue Eventbuchung',
-        'payment.succeeded' => 'Zahlung eingegangen',
-        'feedback.received' => 'Feedback erhalten',
-    ];
+    public const EVENT_LABELS = WebhookEvents::LABELS;
 
     /** Wortlaut für Salons, wo er vom Restaurant abweicht; alle anderen Bezeichnungen gelten für beide. */
-    public const EVENT_LABELS_SALON = [
-        'reservation.created' => 'Neuer Termin',
-        'reservation.confirmed' => 'Termin bestätigt',
-        'reservation.updated' => 'Termin geändert',
-        'reservation.cancelled' => 'Termin storniert',
-        'reservation.seated' => 'Kunde angekommen',
-        'reservation.completed' => 'Termin abgeschlossen',
-        'reservation.no_show' => 'Kunde nicht erschienen',
-        'waitlist.created' => 'Kunde auf der Warteliste',
-        'waitlist.offered' => 'Termin aus der Warteliste angeboten',
-        'waitlist.accepted' => 'Wartelistentermin angenommen',
-    ];
+    public const EVENT_LABELS_SALON = WebhookEvents::SALON_LABELS;
 
     public function __construct(
         private readonly TenantContext $context,
@@ -93,7 +55,7 @@ class WebhookController extends Controller
             'logEntries' => $logEntries,
             'events' => self::EVENTS,
             'salon' => $tenant->isSalon(),
-            'eventLabels' => self::eventLabels($tenant->isSalon()),
+            'eventLabels' => $this->eventLabels($tenant->isSalon()),
             'webhooksEnabled' => $tenant->hasFeature('webhooks_enabled'),
             // Das Geheimnis eines neuen oder erneuerten Endpunkts steht nach dem Neuladen einmal in der Seite (Flash der Sitzung).
             'newSecret' => session('new_secret'),
@@ -226,9 +188,9 @@ class WebhookController extends Controller
      *
      * @return array<string, string>
      */
-    public static function eventLabels(bool $salon): array
+    private function eventLabels(bool $salon): array
     {
-        return $salon ? array_merge(self::EVENT_LABELS, self::EVENT_LABELS_SALON) : self::EVENT_LABELS;
+        return WebhookEvents::labels($salon);
     }
 
     /**

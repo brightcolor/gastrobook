@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\TenantUser;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Support\ApiScopes;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -34,7 +35,7 @@ class ApiTokenController extends Controller
 
         return view('admin.api-tokens.index', [
             'tokens' => $this->tenantTokens(),
-            'scopes' => self::scopes($tenant->isSalon()),
+            'scopes' => $this->scopes($tenant->isSalon()),
             'salon' => $tenant->isSalon(),
             'apiEnabled' => $tenant->hasFeature('api_enabled'),
             'currentUserId' => $request->user()->id,
@@ -45,29 +46,13 @@ class ApiTokenController extends Controller
     }
 
     /**
-     * Die Rechte eines Schlüssels. Die Kennungen sind Teil der Schnittstelle
-     * (resources/api/openapi.yaml); Bezeichnung und Satz sind für Menschen.
-     * Salons lesen „Termine“ und „Kunden“.
+     * Die Rechte eines Schlüssels samt Bezeichnung und Satz (ApiScopes).
      *
      * @return array<string, array{label: string, help: string}>
      */
-    public static function scopes(bool $salon): array
+    private function scopes(bool $salon): array
     {
-        $bookings = $salon ? 'Termine' : 'Reservierungen';
-        $guests = $salon ? 'Kunden' : 'Gäste';
-
-        return [
-            'reservations:read' => ['label' => $bookings.' lesen', 'help' => "Das Programm sieht {$bookings} mit Zeit, Status und Kontaktdaten."],
-            'reservations:write' => ['label' => $bookings.' anlegen und ändern', 'help' => "Das Programm legt neue {$bookings} an und ändert bestehende, etwa durch eine Stornierung."],
-            'guests:read' => ['label' => $guests.' lesen', 'help' => "Das Programm sieht die Profile deiner {$guests}."],
-            'guests:write' => ['label' => $guests.' anlegen und ändern', 'help' => "Das Programm legt {$guests} an und ändert ihre Profile."],
-            'availability:read' => ['label' => 'Freie Zeiten abfragen', 'help' => 'Das Programm fragt ab, wann noch etwas frei ist, etwa für eine Buchungsseite auf deiner Website.'],
-            'waitlist:write' => ['label' => 'Warteliste befüllen', 'help' => "Das Programm trägt {$guests} in die Warteliste ein."],
-            'events:read' => ['label' => 'Events lesen', 'help' => 'Das Programm sieht deine Events und ihre Buchungen.'],
-            'events:write' => ['label' => 'Events anlegen und ändern', 'help' => 'Das Programm legt Events an und ändert sie.'],
-            'webhooks:manage' => ['label' => 'Webhooks verwalten', 'help' => 'Das Programm richtet Webhooks ein und löscht sie wieder.'],
-            'reports:read' => ['label' => 'Berichte lesen', 'help' => 'Das Programm sieht die Zahlen deiner Berichte.'],
-        ];
+        return ApiScopes::all($salon);
     }
 
     /**
@@ -99,12 +84,12 @@ class ApiTokenController extends Controller
 
         $nameMax = (int) config('swayy.api_tokens.name_max');
         // Der Vorschlag nennt das erste Recht mit dem Wortlaut des Betriebs („Reservierungen lesen“, im Salon „Termine lesen“).
-        $suggestion = self::scopes($tenant->isSalon())['reservations:read']['label'];
+        $suggestion = $this->scopes($tenant->isSalon())['reservations:read']['label'];
         $missingScope = __('Bitte mindestens ein Recht anhaken. Für die meisten Programme reicht „:right“.', ['right' => $suggestion]);
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:'.$nameMax],
             'scopes' => ['required', 'array', 'min:1'],
-            'scopes.*' => ['string', Rule::in(array_keys(self::scopes($tenant->isSalon())))],
+            'scopes.*' => ['string', Rule::in(array_keys($this->scopes($tenant->isSalon())))],
         ], [
             'name.required' => __('Bitte einen Namen eintragen, etwa das Programm, das den Schlüssel nutzt.'),
             'name.string' => __('Der Name muss ein Text sein. Bitte ihn neu eintragen.'),

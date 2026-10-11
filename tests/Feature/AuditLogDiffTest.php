@@ -163,6 +163,14 @@ class AuditLogDiffTest extends TestCase
         $campaign = $this->rows('marketing_campaign.updated', ['type' => 'birthday'], ['type' => 'winback']);
         $this->assertSame('birthday', $campaign['type']['from']);
         $this->assertSame('winback', $campaign['type']['to']);
+
+        // Die Zustände einer Anbindung gelten nur in Aktionen der Anbindungen.
+        $elsewhere = $this->rows('guest.updated', ['status' => 'connected'], ['status' => 'error']);
+        $this->assertSame('connected', $elsewhere['status']['from']);
+        $this->assertSame('error', $elsewhere['status']['to']);
+        $integration = $this->rows('integration.mailwizz_updated', ['status' => 'connected'], ['status' => 'error']);
+        $this->assertSame('Verbunden', $integration['status']['from']);
+        $this->assertSame('Fehler beim letzten Test', $integration['status']['to']);
     }
 
     public function test_choices_of_the_settings_pages_read_as_words(): void
