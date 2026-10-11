@@ -75,7 +75,7 @@ class EnsureTrialActive
         }
 
         if ($tenant->status === 'suspended') {
-            abort(402, 'Konto gesperrt. Bitte wenden Sie sich an info@swayy.de.');
+            abort(402, __('Dieser Betrieb ist gesperrt. Schreib uns an :email, dann klären wir den Grund.', ['email' => config('swayy.support.email')]));
         }
 
         return $next($request);

@@ -59,7 +59,7 @@ class ResolveTenantContext
         // Grund und Weg in den Kundenbereich (EnsureTrialActive).
         $hardBlocked = in_array($tenant->status, ['suspended', 'cancelled'], true) && ! $tenant->hasContract();
         if ($hardBlocked && ! $user->isSaasAdmin()) {
-            abort(403, 'Dieser Betrieb ist gesperrt. Schreib uns an info@swayy.de, dann klären wir den Grund.');
+            abort(403, __('Dieser Betrieb ist gesperrt. Schreib uns an :email, dann klären wir den Grund.', ['email' => config('swayy.support.email')]));
         }
 
         $this->context->setTenant($tenant);

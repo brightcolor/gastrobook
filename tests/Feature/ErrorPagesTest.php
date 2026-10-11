@@ -314,6 +314,68 @@ class ErrorPagesTest extends TestCase
         $response->assertDontSee('Berechtigung');
     }
 
+    public function test_the_blocked_business_names_the_support_address_from_the_settings(): void
+    {
+        config(['swayy.support.email' => 'hilfe@example.test']);
+        $setup = $this->createTenantSetup();
+        $setup['tenant']->update(['status' => 'suspended']);
+        $member = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($member)->get('/admin')
+            ->assertForbidden()
+            ->assertSee('Dieser Betrieb ist gesperrt. Schreib uns an hilfe@example.test, dann klären wir den Grund.')
+            ->assertDontSee('info@swayy.de');
+    }
+
+    public function test_a_blocked_account_gets_a_german_402_page_with_cause_and_next_step(): void
+    {
+        config(['swayy.support.email' => 'hilfe@example.test']);
+        $setup = $this->createTenantSetup();
+        $setup['tenant']->update(['status' => 'suspended']);
+        $support = User::factory()->create(['saas_role' => 'super_admin', 'current_tenant_id' => $setup['tenant']->id]);
+        $this->clearTenantContext();
+
+        $response = $this->actingAs($support)->get('/admin')
+            ->assertStatus(402)
+            ->assertSee('<title>Dieser Betrieb ist gesperrt – Swayy</title>', false)
+            ->assertSee('Dieser Betrieb ist gesperrt. Schreib uns an hilfe@example.test, dann klären wir den Grund.')
+            ->assertSee('Frag den Inhaber deines Betriebs oder melde dich mit einem anderen Konto an.')
+            ->assertSee('Fehlercode 402')
+            ->assertSee('href="'.route('logout.confirm').'"', false)
+            ->assertSee('href="'.url('/').'"', false)
+            ->assertDontSee('Payment Required')
+            ->assertDontSee('Wenden Sie')
+            ->assertDontSee('info@swayy.de')
+            ->assertDontSee('Zur Übersicht');
+        $this->assertStringNotContainsString('href="'.route('admin.dashboard').'"', (string) $response->getContent());
+    }
+
+    public function test_a_402_without_a_reason_still_names_the_cause_and_the_support_address(): void
+    {
+        config(['swayy.support.email' => 'hilfe@example.test']);
+        Route::middleware('web')->get('/_test/payment', fn () => abort(402));
+
+        $this->get('/_test/payment')
+            ->assertStatus(402)
+            ->assertSee('Der Zugang dieses Betriebs ist gerade gesperrt. Schreib uns an hilfe@example.test, dann klären wir den Grund.')
+            ->assertSee('Wende dich an den Betrieb.')
+            ->assertDontSee('Payment Required');
+    }
+
+    public function test_the_admin_answers_a_blocked_account_with_json_in_the_du_form(): void
+    {
+        config(['swayy.support.email' => 'hilfe@example.test']);
+        $setup = $this->createTenantSetup();
+        $setup['tenant']->update(['status' => 'suspended']);
+        $support = User::factory()->create(['saas_role' => 'super_admin', 'current_tenant_id' => $setup['tenant']->id]);
+        $this->clearTenantContext();
+
+        $this->actingAs($support)->getJson('/admin')
+            ->assertStatus(402)
+            ->assertExactJson(['message' => 'Dieser Betrieb ist gesperrt. Schreib uns an hilfe@example.test, dann klären wir den Grund.']);
+    }
+
     public function test_the_admin_keeps_answering_fetch_requests_with_json(): void
     {
         $setup = $this->createTenantSetup();
