@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Location;
 use Carbon\CarbonImmutable;
+use Closure;
 
 class TimeSlotService
 {
@@ -11,13 +12,20 @@ class TimeSlotService
      * Opening windows for a local date, considering special opening hours
      * (which fully override regular hours for that date).
      *
+     * $specialScope schränkt die gelesenen Sondertage ein (Aufruf mit der
+     * Abfrage), etwa um beim Bearbeiten einer Ausnahme deren eigene Zeilen
+     * auszulassen. Die Regel, nach der Sondertage die regulären Zeiten
+     * ersetzen, bleibt dieselbe.
+     *
+     * @param  ?Closure(mixed): mixed  $specialScope
      * @return array<int, array{opens: CarbonImmutable, closes: CarbonImmutable, label: ?string}>
      *                                                                                            Times are in the location's timezone.
      */
-    public function windowsForDate(Location $location, CarbonImmutable $localDate): array
+    public function windowsForDate(Location $location, CarbonImmutable $localDate, ?Closure $specialScope = null): array
     {
         $special = $location->specialOpeningHours()
             ->whereDate('date', $localDate->toDateString())
+            ->when($specialScope !== null, $specialScope)
             ->get();
 
         if ($special->isNotEmpty()) {

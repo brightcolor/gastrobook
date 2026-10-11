@@ -63,6 +63,7 @@ use App\Http\Controllers\Public\PublicEventController;
 use App\Http\Controllers\Public\WaitlistResponseController;
 use App\Http\Controllers\Saas\SaasTenantController;
 use App\Http\Controllers\Saas\SaasUserController;
+use App\Support\ScheduleExceptionRules;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -458,10 +459,10 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
         Route::post('/settings/exceptions', [ExceptionsController::class, 'store'])
             ->middleware(['permission:special_hours.manage', 'permission:blackouts.manage'])->name('settings.exceptions.store');
         Route::put('/settings/exceptions/{key}', [ExceptionsController::class, 'update'])
-            ->where('key', '[gsbt]-[A-Za-z0-9-]+')
+            ->where('key', ScheduleExceptionRules::KEY_PATTERN)
             ->middleware(['permission:special_hours.manage', 'permission:blackouts.manage'])->name('settings.exceptions.update');
         Route::delete('/settings/exceptions/{key}', [ExceptionsController::class, 'destroy'])
-            ->where('key', '[gsbt]-[A-Za-z0-9-]+')
+            ->where('key', ScheduleExceptionRules::KEY_PATTERN)
             ->middleware(['permission:special_hours.manage', 'permission:blackouts.manage'])->name('settings.exceptions.destroy');
         Route::post('/settings/seasons', [OpeningHoursController::class, 'storeSeason'])
             ->middleware('permission:blackouts.manage')->name('settings.seasons.store');

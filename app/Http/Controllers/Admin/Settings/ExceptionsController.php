@@ -12,8 +12,10 @@ use App\Services\ScheduleExceptions;
 use App\Support\ScheduleExceptionRules;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Einstellungen › Platz & Zeiten › Ausnahmen: Anlegen, Ändern, Löschen und
@@ -48,11 +50,15 @@ class ExceptionsController extends Controller
     public function update(Request $request, string $key): mixed
     {
         $location = $this->location();
-        $before = $this->exceptions->find($location, $key);
-        abort_if($before === null, 404);
+        $before = $this->exceptions->find($location, $key) ?? $this->gone($request);
         $data = $this->checked($request, $location);
 
-        $result = $this->exceptions->save($location, $data, $key, $request->user()?->id);
+        try {
+            $result = $this->exceptions->save($location, $data, $key, $request->user()?->id);
+        } catch (NotFoundHttpException) {
+            // Ein gleichzeitiges Löschen war schneller.
+            $this->gone($request);
+        }
         $this->audit->log('exception.updated', null, $this->values($before), $this->values($result['entry']));
 
         return $this->saved($request, $this->message($result['overlapping']), true);
@@ -61,10 +67,11 @@ class ExceptionsController extends Controller
     public function destroy(Request $request, string $key): mixed
     {
         $location = $this->location();
-        $before = $this->exceptions->find($location, $key);
-        abort_if($before === null, 404);
+        $before = $this->exceptions->find($location, $key) ?? $this->gone($request);
 
-        abort_unless($this->exceptions->delete($location, $key), 404);
+        if (! $this->exceptions->delete($location, $key)) {
+            $this->gone($request);
+        }
         $this->audit->log('exception.deleted', null, $this->values($before));
 
         return $this->saved($request, __('Ausnahme gelöscht.'), true);
@@ -72,27 +79,71 @@ class ExceptionsController extends Controller
 
     /**
      * Der Satz „So wirkt es“ zu den Feldern des Formulars, auch ungespeichert.
-     * Schreibt nichts.
+     * Schreibt nichts. Beim Bearbeiten nennt das Feld "key" den Eintrag; seine
+     * eigenen Zeilen zählen für die Zeiten des Tages nicht mit. Ein fremder
+     * oder unbekannter Schlüssel ergibt 404.
      */
     public function preview(Request $request): mixed
     {
         $location = $this->location();
+        $key = $this->previewKey($request, $location);
         $data = $this->checked($request, $location);
 
-        return response()->json(['sentence' => $this->exceptions->describe($location, $data)]);
+        $claimed = $this->exceptions->claimedDay($location, $data, $key);
+        if ($claimed !== null) {
+            throw ValidationException::withMessages(['from' => $claimed]);
+        }
+
+        return response()->json(['sentence' => $this->exceptions->describe($location, $data, $key)]);
     }
 
     private function location(): Location
     {
         $location = $this->context->location();
-        abort_if($location === null, 404);
+        abort_if($location === null, 404, __('Es ist kein Standort gewählt. Bitte einen Standort wählen und die Seite neu laden.'));
 
         return $location;
     }
 
     /**
-     * Prüft die Felder einzeln (ScheduleExceptionRules::rules) und danach
-     * gegeneinander und gegen den Standort (ScheduleExceptionRules::after).
+     * 404 mit einer Meldung, die Ursache und nächsten Schritt nennt. Die
+     * Verwaltung ersetzt den Text eines abort(404) durch ihren allgemeinen
+     * Text für fehlende Einträge (AdminJsonErrors); die JSON-Antwort mit der
+     * eigenen Meldung kommt unverändert an.
+     */
+    private function gone(Request $request): never
+    {
+        $message = ScheduleExceptions::gone();
+        if ($request->expectsJson()) {
+            throw new HttpResponseException(response()->json(['message' => $message], 404));
+        }
+
+        abort(404, $message);
+    }
+
+    /**
+     * Der Schlüssel des bearbeiteten Eintrags in der Vorschau: null ohne Angabe,
+     * sonst ein Schlüssel dieses Standorts (404 für alles andere).
+     */
+    private function previewKey(Request $request, Location $location): ?string
+    {
+        $key = $request->input('key');
+        if ($key === null) {
+            return null;
+        }
+        if (! is_string($key) || preg_match('/^'.ScheduleExceptionRules::KEY_PATTERN.'$/', $key) !== 1 || $this->exceptions->find($location, $key) === null) {
+            $this->gone($request);
+        }
+
+        return $key;
+    }
+
+    /**
+     * Prüft die Felder der gewählten Wirkungen einzeln
+     * (ScheduleExceptionRules::rules) und danach gegeneinander und gegen den
+     * Standort (ScheduleExceptionRules::after). Die Felder nicht gewählter
+     * Wirkungen bleiben außen vor: Das Formular sendet auch die Felder
+     * ausgeblendeter Abschnitte.
      *
      * @return array<string, mixed>
      *
@@ -101,7 +152,11 @@ class ExceptionsController extends Controller
     private function checked(Request $request, Location $location): array
     {
         $salon = (bool) $this->context->tenant()?->isSalon();
-        $data = $request->validate(ScheduleExceptionRules::rules($salon), ScheduleExceptionRules::messages($salon));
+        $data = validator(
+            ScheduleExceptionRules::selected($request->all()),
+            ScheduleExceptionRules::rules($salon),
+            ScheduleExceptionRules::messages($salon),
+        )->validate();
 
         $errors = ScheduleExceptionRules::after($location, $data, $salon, CarbonImmutable::now($location->timezone)->startOfDay());
         if ($errors !== []) {

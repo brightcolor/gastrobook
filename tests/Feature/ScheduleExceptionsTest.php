@@ -13,6 +13,7 @@ use App\Models\Room;
 use App\Models\SpecialOpeningHour;
 use App\Models\TableBlock;
 use App\Models\User;
+use App\Services\ReservationAvailabilityService;
 use App\Services\ReservationLifecycleService;
 use App\Services\ScheduleExceptions;
 use App\Services\TimeSlotService;
@@ -21,6 +22,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tests\Concerns\CreatesTenants;
 use Tests\Concerns\ReadsSwayyConfig;
 use Tests\TestCase;
@@ -285,14 +287,14 @@ class ScheduleExceptionsTest extends TestCase
      *
      * @param  array<string, mixed>  $setup
      */
-    private function booking(array $setup, string $start, int $minutes = 90): Reservation
+    private function booking(array $setup, string $start, int $minutes = 90, int $party = 2): Reservation
     {
         $begin = CarbonImmutable::parse($start, 'Europe/Berlin');
 
         return Reservation::factory()->create([
             'tenant_id' => $setup['tenant']->id, 'location_id' => $setup['location']->id,
             'reservation_date' => $begin->toDateString(), 'start_at' => $begin->utc(), 'end_at' => $begin->addMinutes($minutes)->utc(),
-            'guest_name_snapshot' => 'Gast', 'guest_email_snapshot' => null,
+            'party_size' => $party, 'guest_name_snapshot' => 'Gast', 'guest_email_snapshot' => null,
         ]);
     }
 
@@ -409,7 +411,8 @@ class ScheduleExceptionsTest extends TestCase
         [, $owner] = $this->owner();
 
         $response = $this->actingAs($owner)->postJson('/admin/settings/exceptions', [
-            'from' => '24.12.2026', 'until' => 'morgen', 'label' => ['x'], 'effects' => 'closed',
+            'from' => '24.12.2026', 'until' => 'morgen', 'label' => ['x'], 'effects' => ['hours', 'limit', 'lock'],
+            'windows' => [['opens_at' => '6 Uhr', 'closes_at' => null]],
             'limit_covers' => 'viele', 'limit_room_id' => 'a', 'limit_from' => '6 Uhr', 'lock_rooms' => 'a', 'lock_tables' => ['t1'],
         ])->assertStatus(422);
 
@@ -417,13 +420,16 @@ class ScheduleExceptionsTest extends TestCase
         $this->assertSame('Bitte das Datum als TT.MM.JJJJ wählen.', $errors['from'][0]);
         $this->assertSame('Bitte das Datum als TT.MM.JJJJ wählen.', $errors['until'][0]);
         $this->assertSame('Bitte die Bezeichnung als Text eintragen.', $errors['label'][0]);
-        $this->assertSame('Die Auswahl hat ein unbekanntes Format. Bitte die Seite neu laden.', $errors['effects'][0]);
+        $this->assertSame('Bitte die Uhrzeit als HH:MM eintragen, etwa 18:00.', $errors['windows.0.opens_at'][0]);
+        $this->assertSame('Bitte bei jedem Zeitfenster eintragen, wann es endet.', $errors['windows.0.closes_at'][0]);
         $this->assertSame('Bitte die Zahl der Gäste als ganze Zahl eintragen.', $errors['limit_covers'][0]);
         $this->assertSame('Dieser Raum ist unbekannt. Bitte die Seite neu laden und einen Raum aus der Liste wählen.', $errors['limit_room_id'][0]);
         $this->assertSame('Bitte die Uhrzeit als HH:MM eintragen, etwa 18:00.', $errors['limit_from'][0]);
         $this->assertSame('Die Auswahl hat ein unbekanntes Format. Bitte die Seite neu laden.', $errors['lock_rooms'][0]);
         $this->assertSame('Dieser Tisch ist unbekannt. Bitte die Seite neu laden und Tische aus der Liste wählen.', $errors['lock_tables.0'][0]);
 
+        $format = $this->actingAs($owner)->postJson('/admin/settings/exceptions', ['from' => '2026-12-24', 'effects' => 'closed'])->assertStatus(422);
+        $this->assertSame('Die Auswahl hat ein unbekanntes Format. Bitte die Seite neu laden.', $format->json('errors.effects.0'));
         $missing = $this->actingAs($owner)->postJson('/admin/settings/exceptions', ['effects' => ['closed']])->assertStatus(422);
         $this->assertSame('Bitte den ersten Tag eintragen.', $missing->json('errors.from.0'));
         $absent = $this->actingAs($owner)->postJson('/admin/settings/exceptions', ['from' => '2026-12-24'])->assertStatus(422);
@@ -742,8 +748,9 @@ class ScheduleExceptionsTest extends TestCase
 
         $this->actingAs($owner)->postJson('/admin/settings/exceptions', ['from' => '2026-11-05', 'effects' => ['closed']])
             ->assertOk()->assertJsonPath('message', 'Ausnahme gespeichert. In diesem Zeitraum liegt 1 Termin; er bleibt bestehen. Informiere die Kunden bei Bedarf.');
-        $this->booking($setup, '2026-11-05 15:00');
-        $this->actingAs($owner)->postJson('/admin/settings/exceptions', ['from' => '2026-11-05', 'effects' => ['closed']])
+        $this->booking($setup, '2026-11-06 15:00');
+        $this->booking($setup, '2026-11-06 19:00');
+        $this->actingAs($owner)->postJson('/admin/settings/exceptions', ['from' => '2026-11-06', 'effects' => ['closed']])
             ->assertOk()->assertJsonPath('message', 'Ausnahme gespeichert. In diesem Zeitraum liegen 2 Termine; sie bleiben bestehen. Informiere die Kunden bei Bedarf.');
 
         $service = app(ScheduleExceptions::class);
@@ -902,10 +909,10 @@ class ScheduleExceptionsTest extends TestCase
         $this->assertSame(['Bis', 'Bezeichnung', 'Wirkung'], array_column($log[1]->fieldChanges(), 'label'));
     }
 
-    public function test_row_locks_serialize_concurrent_saves_on_postgresql(): void
+    public function test_a_save_issues_for_no_key_update_on_the_location_and_for_update_on_the_rows_on_postgresql(): void
     {
         if (DB::connection()->getDriverName() !== 'pgsql') {
-            $this->markTestSkipped('Zeilensperren lassen sich nur unter PostgreSQL prüfen.');
+            $this->markTestSkipped('Die Sperren "for update" und "for no key update" gibt es nur unter PostgreSQL.');
         }
         [, $owner] = $this->owner();
         $this->actingAs($owner)->postJson('/admin/settings/exceptions', ['from' => '2026-12-24', 'effects' => ['closed']])->assertOk();
@@ -913,9 +920,259 @@ class ScheduleExceptionsTest extends TestCase
 
         DB::enableQueryLog();
         $this->actingAs($owner)->putJson('/admin/settings/exceptions/'.$key, ['from' => '2026-12-24', 'effects' => ['closed']])->assertOk();
-        $locked = array_filter(array_column(DB::getQueryLog(), 'query'), fn (string $sql) => str_contains($sql, 'for update'));
+        $queries = array_column(DB::getQueryLog(), 'query');
+        $count = fn (string $lock) => count(array_filter($queries, fn (string $sql) => str_contains($sql, $lock)));
 
-        // Der Standort und die Zeilen der drei Tabellen werden vor dem Löschen gesperrt.
-        $this->assertGreaterThanOrEqual(4, count($locked));
+        // Der Standort wird schwächer gesperrt als mit "for update", damit neue Reservierungen nicht warten.
+        $this->assertSame(1, $count('for no key update'));
+        // Die Zeilen der Gruppe in allen drei Tabellen werden vor dem Löschen gesperrt.
+        $this->assertGreaterThanOrEqual(3, $count('for update'));
+        $this->assertStringContainsString('"locations"', collect($queries)->first(fn (string $sql) => str_contains($sql, 'for no key update')));
+    }
+
+    // --- Ein Eintrag je Tag, Sätze mit den Zeiten des Tages ---------------------------------------
+
+    public function test_closed_and_other_hours_exclude_each_other_per_day_across_entries(): void
+    {
+        [$setup, $owner] = $this->owner();
+        $post = fn (array $payload) => $this->actingAs($owner)->postJson('/admin/settings/exceptions', $payload);
+        $post(['from' => '2026-12-24', 'until' => '2026-12-26', 'label' => 'Weihnachten', 'effects' => ['closed']])->assertOk();
+        $post(['from' => '2026-12-30', 'effects' => ['hours'], 'windows' => [['opens_at' => '11:00', 'closes_at' => '14:00']]])->assertOk();
+        SpecialOpeningHour::create(['tenant_id' => $setup['tenant']->id, 'location_id' => $setup['location']->id, 'date' => '2026-11-11', 'closed' => true, 'label' => 'Alt']);
+        $rows = SpecialOpeningHour::count();
+        $again = ' Bitte diese Ausnahme bearbeiten oder zuerst löschen.';
+
+        $cases = [
+            [['from' => '2026-12-25', 'effects' => ['hours'], 'windows' => [['opens_at' => '11:00', 'closes_at' => '14:00']]], 'Am 25.12.2026 gilt schon die Ausnahme „Weihnachten“.'],
+            [['from' => '2026-12-23', 'until' => '2026-12-25', 'effects' => ['closed']], 'Vom 24.12.2026 bis 25.12.2026 gilt schon die Ausnahme „Weihnachten“.'],
+            [['from' => '2026-12-30', 'effects' => ['closed']], 'Am 30.12.2026 gilt schon eine Ausnahme (Geöffnet 11:00–14:00).'],
+            [['from' => '2026-12-29', 'until' => '2026-12-31', 'effects' => ['hours'], 'windows' => [['opens_at' => '18:00', 'closes_at' => '22:00']]], 'Am 30.12.2026 gilt schon eine Ausnahme (Geöffnet 11:00–14:00).'],
+            [['from' => '2026-11-11', 'effects' => ['hours'], 'windows' => [['opens_at' => '18:00', 'closes_at' => '22:00']]], 'Am 11.11.2026 gilt schon die Ausnahme „Alt“.'],
+        ];
+        foreach ($cases as [$payload, $message]) {
+            $response = $post($payload)->assertStatus(422);
+            $this->assertSame($message.$again, $response->json('errors.from.0'), json_encode($payload));
+            $this->actingAs($owner)->postJson('/admin/settings/exceptions/preview', $payload)->assertStatus(422)->assertJsonPath('errors.from.0', $message.$again);
+        }
+        $this->assertSame($rows, SpecialOpeningHour::count());
+
+        // Grenze und Sperre überlagern sich frei, auch über einem geschlossenen Tag.
+        $post(['from' => '2026-12-24', 'effects' => ['limit'], 'limit_covers' => 10])->assertOk();
+        $post(['from' => '2026-12-24', 'effects' => ['limit'], 'limit_covers' => 6, 'limit_room_id' => $setup['room']->id])->assertOk();
+        $post(['from' => '2026-12-24', 'effects' => ['lock'], 'lock_rooms' => [$setup['room']->id], 'lock_tables' => [$setup['tables'][0]->id]])->assertOk();
+        $this->assertSame(3, BlackoutPeriod::count());
+    }
+
+    public function test_an_entry_may_keep_and_change_its_own_days(): void
+    {
+        [$setup, $owner] = $this->owner();
+        $post = fn (array $payload) => $this->actingAs($owner)->postJson('/admin/settings/exceptions', $payload);
+        $post(['from' => '2026-12-24', 'until' => '2026-12-26', 'label' => 'Weihnachten', 'effects' => ['closed']])->assertOk();
+        $key = 'g-'.SpecialOpeningHour::first()->exception_group;
+        $post(['from' => '2026-12-28', 'until' => '2026-12-29', 'label' => 'Danach', 'effects' => ['closed']])->assertOk();
+        $other = 'g-'.SpecialOpeningHour::whereDate('date', '2026-12-28')->value('exception_group');
+
+        $put = fn (string $key, array $payload) => $this->actingAs($owner)->putJson('/admin/settings/exceptions/'.$key, $payload);
+        $put($key, ['from' => '2026-12-24', 'until' => '2026-12-26', 'label' => 'Weihnachten', 'effects' => ['hours'], 'windows' => [['opens_at' => '11:00', 'closes_at' => '14:00']]])->assertOk();
+        $put($key, ['from' => '2026-12-24', 'until' => '2026-12-27', 'label' => 'Weihnachten', 'effects' => ['closed']])->assertOk();
+        $put($key, ['from' => '2026-12-25', 'effects' => ['closed']])->assertOk();
+        $this->assertSame(1, SpecialOpeningHour::where('exception_group', substr($key, 2))->count());
+
+        // Der Eintrag der Vorschau zählt nicht mit; ein anderer Eintrag am Tag schon.
+        $preview = fn (array $payload) => $this->actingAs($owner)->postJson('/admin/settings/exceptions/preview', $payload);
+        $preview(['from' => '2026-12-25', 'effects' => ['closed']])->assertStatus(422);
+        $preview(['from' => '2026-12-25', 'effects' => ['closed'], 'key' => $key])->assertOk();
+        $preview(['from' => '2026-12-28', 'effects' => ['closed'], 'key' => $key])->assertStatus(422)
+            ->assertJsonPath('errors.from.0', 'Am 28.12.2026 gilt schon die Ausnahme „Danach“. Bitte diese Ausnahme bearbeiten oder zuerst löschen.');
+
+        // Ein Ausweichen auf Tage eines anderen Eintrags scheitert und lässt die Zeilen des bearbeiteten Eintrags stehen.
+        $put($key, ['from' => '2026-12-26', 'until' => '2026-12-28', 'effects' => ['closed']])->assertStatus(422);
+        $this->assertSame(['2026-12-25'], SpecialOpeningHour::where('exception_group', substr($key, 2))->get()->map(fn ($row) => $row->date->toDateString())->all());
+        $this->assertSame(2, SpecialOpeningHour::where('exception_group', substr($other, 2))->count());
+        $this->assertSame(3, AuditLog::where('action', 'exception.updated')->count());
+    }
+
+    public function test_a_limit_on_a_day_closed_by_another_entry_says_so(): void
+    {
+        [$setup, $owner] = $this->owner();
+        $this->actingAs($owner)->postJson('/admin/settings/exceptions', ['from' => '2026-12-24', 'label' => 'Weihnachten', 'effects' => ['closed']])->assertOk();
+        $this->actingAs($owner)->postJson('/admin/settings/exceptions', ['from' => '2026-12-27', 'effects' => ['closed']])->assertOk();
+        $preview = fn (array $payload) => $this->actingAs($owner)->postJson('/admin/settings/exceptions/preview', $payload)->assertOk()->json('sentence');
+
+        $this->assertSame(
+            'Am 24.12.2026 gelten höchstens 20 Gäste gleichzeitig im ganzen Betrieb; an diesem Tag ist wegen „Weihnachten“ geschlossen.',
+            $preview(['from' => '2026-12-24', 'effects' => ['limit'], 'limit_covers' => 20]),
+        );
+        $this->assertSame(
+            'Vom 24.12.2026 bis 25.12.2026 gelten höchstens 20 Gäste gleichzeitig im ganzen Betrieb; am 24.12.2026 ist wegen „Weihnachten“ geschlossen.',
+            $preview(['from' => '2026-12-24', 'until' => '2026-12-25', 'effects' => ['limit'], 'limit_covers' => 20]),
+        );
+        $this->assertSame(
+            'Am 24.12.2026 ist Tisch T1 gesperrt; an diesem Tag ist wegen „Weihnachten“ geschlossen.',
+            $preview(['from' => '2026-12-24', 'effects' => ['lock'], 'lock_tables' => [$setup['tables'][0]->id]]),
+        );
+        $this->assertSame(
+            'Am 27.12.2026 gelten höchstens 20 Gäste gleichzeitig im ganzen Betrieb; an diesem Tag ist durch eine andere Ausnahme geschlossen.',
+            $preview(['from' => '2026-12-27', 'effects' => ['limit'], 'limit_covers' => 20]),
+        );
+        // Ein Tag nebenan hat reguläre Zeiten.
+        $this->assertSame(
+            'Am 26.12.2026 gelten höchstens 20 Gäste gleichzeitig im ganzen Betrieb; letzte Uhrzeit 21:30.',
+            $preview(['from' => '2026-12-26', 'effects' => ['limit'], 'limit_covers' => 20]),
+        );
+    }
+
+    public function test_a_limit_on_a_day_with_other_hours_uses_those_hours(): void
+    {
+        [, $owner] = $this->owner();
+        $this->actingAs($owner)->postJson('/admin/settings/exceptions', [
+            'from' => '2026-12-24', 'effects' => ['hours'], 'windows' => [['opens_at' => '12:00', 'closes_at' => '15:00']],
+        ])->assertOk();
+
+        $response = $this->actingAs($owner)->postJson('/admin/settings/exceptions/preview', ['from' => '2026-12-24', 'effects' => ['limit'], 'limit_covers' => 20])->assertOk();
+
+        $this->assertSame('Am 24.12.2026 gelten höchstens 20 Gäste gleichzeitig im ganzen Betrieb; letzte Uhrzeit 13:30.', $response->json('sentence'));
+    }
+
+    public function test_the_preview_with_a_key_leaves_out_the_rows_of_that_entry(): void
+    {
+        [$setup, $owner] = $this->owner();
+        $other = $this->createTenantSetup();
+        $foreign = (string) Str::uuid();
+        SpecialOpeningHour::create(['tenant_id' => $other['tenant']->id, 'location_id' => $other['location']->id, 'date' => '2026-12-24', 'closed' => true, 'exception_group' => $foreign]);
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->postJson('/admin/settings/exceptions', [
+            'from' => '2026-12-24', 'effects' => ['hours'], 'windows' => [['opens_at' => '12:00', 'closes_at' => '15:00']],
+        ])->assertOk();
+        $this->actingAs($owner)->postJson('/admin/settings/exceptions', ['from' => '2026-12-25', 'effects' => ['closed']])->assertOk();
+        $hours = 'g-'.SpecialOpeningHour::whereDate('date', '2026-12-24')->value('exception_group');
+        $closed = 'g-'.SpecialOpeningHour::whereDate('date', '2026-12-25')->value('exception_group');
+        $limit = fn (string $day, ?string $key) => $this->actingAs($owner)->postJson('/admin/settings/exceptions/preview', array_filter([
+            'from' => $day, 'effects' => ['limit'], 'limit_covers' => 20, 'key' => $key,
+        ]))->assertOk()->json('sentence');
+
+        // Beim Bearbeiten des Eintrags mit eigenen Zeiten gelten wieder die regulären Zeiten des Tages.
+        $this->assertSame('Am 24.12.2026 gelten höchstens 20 Gäste gleichzeitig im ganzen Betrieb; letzte Uhrzeit 13:30.', $limit('2026-12-24', null));
+        $this->assertSame('Am 24.12.2026 gelten höchstens 20 Gäste gleichzeitig im ganzen Betrieb; letzte Uhrzeit 21:30.', $limit('2026-12-24', $hours));
+        $this->assertSame('Am 24.12.2026 gelten höchstens 20 Gäste gleichzeitig im ganzen Betrieb; letzte Uhrzeit 13:30.', $limit('2026-12-24', $closed));
+        // Der geschlossene Eintrag, bearbeitet, schließt den Tag nicht mehr.
+        $this->assertStringEndsWith('geschlossen.', $limit('2026-12-25', null));
+        $this->assertStringEndsWith('letzte Uhrzeit 21:30.', $limit('2026-12-25', $closed));
+
+        foreach (['g-'.Str::uuid(), 'g-'.$foreign, 's-0', 'x-1', 'g-nicht-gefunden', 'b-999999'] as $key) {
+            $this->actingAs($owner)->postJson('/admin/settings/exceptions/preview', ['from' => '2026-12-24', 'effects' => ['closed'], 'key' => $key])
+                ->assertNotFound()->assertJsonPath('message', 'Diese Ausnahme gibt es nicht mehr. Bitte die Seite neu laden.');
+        }
+        $this->actingAs($owner)->postJson('/admin/settings/exceptions/preview', ['from' => '2026-12-24', 'effects' => ['closed'], 'key' => ['g-1']])->assertNotFound();
+    }
+
+    public function test_a_missing_entry_answers_404_with_a_german_message(): void
+    {
+        [, $owner] = $this->owner();
+        $key = 'g-'.Str::uuid();
+        $message = 'Diese Ausnahme gibt es nicht mehr. Bitte die Seite neu laden.';
+
+        $this->actingAs($owner)->putJson('/admin/settings/exceptions/'.$key, ['from' => '2026-12-24', 'effects' => ['closed']])
+            ->assertNotFound()->assertJsonPath('message', $message);
+        $this->actingAs($owner)->deleteJson('/admin/settings/exceptions/'.$key)
+            ->assertNotFound()->assertJsonPath('message', $message);
+        $this->actingAs($owner)->delete('/admin/settings/exceptions/'.$key)->assertNotFound();
+    }
+
+    public function test_saving_an_entry_that_vanished_in_between_answers_404(): void
+    {
+        [$setup] = $this->owner();
+
+        // Zwischen dem Lesen des Eintrags und dem Speichern hat eine andere Sitzung ihn gelöscht.
+        try {
+            app(ScheduleExceptions::class)->save($setup['location']->fresh(), ['from' => '2026-12-24', 'effects' => ['closed']], 'g-'.Str::uuid(), null);
+            $this->fail('Ein fehlender Eintrag muss 404 ergeben.');
+        } catch (NotFoundHttpException $e) {
+            $this->assertSame(404, $e->getStatusCode());
+            $this->assertSame('Diese Ausnahme gibt es nicht mehr. Bitte die Seite neu laden.', $e->getMessage());
+        }
+        $this->assertSame(0, SpecialOpeningHour::count());
+    }
+
+    public function test_fields_of_hidden_sections_do_not_cause_errors(): void
+    {
+        [$setup, $owner] = $this->owner();
+        $hidden = [
+            'windows' => [['opens_at' => '', 'closes_at' => '']], 'limit_covers' => '', 'limit_room_id' => '', 'limit_from' => '', 'limit_until' => '',
+            'lock_rooms' => [''], 'lock_tables' => [''], 'lock_from' => '', 'lock_until' => '',
+        ];
+
+        $this->actingAs($owner)->postJson('/admin/settings/exceptions/preview', ['from' => '2026-12-24', 'effects' => ['closed']] + $hidden)
+            ->assertOk()->assertJsonPath('sentence', 'Am 24.12.2026 kann niemand online buchen.');
+        $this->actingAs($owner)->postJson('/admin/settings/exceptions', ['from' => '2026-12-24', 'effects' => ['closed']] + $hidden)->assertOk();
+        $this->assertSame([1, 0, 0], [SpecialOpeningHour::count(), BlackoutPeriod::count(), TableBlock::count()]);
+
+        // Gewählt bleibt gewählt: Ein leeres Pflichtfeld einer gewählten Wirkung meldet den Fehler weiter.
+        $this->actingAs($owner)->postJson('/admin/settings/exceptions', ['from' => '2026-12-27', 'effects' => ['limit']] + $hidden)
+            ->assertStatus(422)->assertJsonPath('errors.limit_covers.0', 'Bitte eintragen, wie viele Gäste gleichzeitig kommen dürfen.');
+        $this->actingAs($owner)->postJson('/admin/settings/exceptions', ['from' => '2026-12-27', 'effects' => ['hours']] + $hidden)
+            ->assertStatus(422)->assertJsonValidationErrors(['windows.0.opens_at']);
+        $this->actingAs($owner)->postJson('/admin/settings/exceptions', ['from' => '2026-12-27', 'effects' => ['limit'], 'limit_covers' => 5] + $hidden)->assertOk();
+        $this->assertSame(1, BlackoutPeriod::where('location_id', $setup['location']->id)->where('reduce_covers_to', 5)->count());
+    }
+
+    // --- Dieselben Zeilen wirken in der Buchung --------------------------------------------------------
+
+    public function test_a_room_lock_from_an_exception_takes_the_tables_of_that_room_out_of_the_booking(): void
+    {
+        [$setup, $owner] = $this->owner();
+        $roomB = Room::factory()->create(['location_id' => $setup['location']->id, 'tenant_id' => $setup['tenant']->id, 'name' => 'Saal B']);
+        $tableB = RestaurantTable::factory()->create([
+            'tenant_id' => $setup['tenant']->id, 'location_id' => $setup['location']->id, 'room_id' => $roomB->id,
+            'name' => 'B1', 'min_capacity' => 1, 'max_capacity' => 6,
+        ]);
+        $this->actingAs($owner)->postJson('/admin/settings/exceptions', [
+            'from' => '2026-11-05', 'effects' => ['lock'], 'lock_rooms' => [$setup['room']->id], 'lock_from' => '17:00', 'lock_until' => '20:00',
+        ])->assertOk();
+        $location = $setup['location']->fresh();
+        $availability = app(ReservationAvailabilityService::class);
+        $at = fn (string $time) => CarbonImmutable::parse('2026-11-05 '.$time, 'Europe/Berlin');
+        $roomA = array_map(fn (RestaurantTable $table) => $table->id, $setup['tables']);
+
+        // Im Zeitraum bleibt nur der Tisch des anderen Raums.
+        $inside = $availability->checkExact($location, $at('18:00'), 2);
+        $this->assertTrue($inside['available']);
+        $this->assertSame([$tableB->id], $inside['table_ids']);
+
+        // Ist dieser Tisch belegt, bleibt kein Tisch.
+        $this->booking($setup, '2026-11-05 18:00', 90, 2)->tables()->attach($tableB->id);
+        $full = $availability->checkExact($location, $at('18:30'), 2);
+        $this->assertFalse($full['available']);
+        $this->assertSame('no_table', $full['reason']);
+
+        // Ab Ende der Sperre sind die Tische des Raums wieder frei.
+        $after = $availability->checkExact($location, $at('20:00'), 2);
+        $this->assertTrue($after['available']);
+        $this->assertContains($after['table_ids'][0], $roomA);
+
+        // Am Vortag gibt es die Sperre noch nicht.
+        $this->assertContains($availability->checkExact($location, $at('18:00')->subDay(), 2)['table_ids'][0], $roomA);
+    }
+
+    public function test_a_whole_business_limit_from_an_exception_stops_the_booking_when_it_is_reached(): void
+    {
+        [$setup, $owner] = $this->owner();
+        $this->actingAs($owner)->postJson('/admin/settings/exceptions', [
+            'from' => '2026-11-05', 'effects' => ['limit'], 'limit_covers' => 4, 'limit_from' => '17:00', 'limit_until' => '20:00',
+        ])->assertOk();
+        $this->booking($setup, '2026-11-05 18:00', 90, 3);
+        $location = $setup['location']->fresh();
+        $availability = app(ReservationAvailabilityService::class);
+        $at = fn (string $time) => CarbonImmutable::parse('2026-11-05 '.$time, 'Europe/Berlin');
+
+        // 3 Gäste sind gebucht, die Grenze liegt bei 4.
+        $two = $availability->checkExact($location, $at('18:30'), 2);
+        $this->assertFalse($two['available']);
+        $this->assertSame('covers_full', $two['reason']);
+        $this->assertTrue($availability->checkExact($location, $at('18:30'), 1)['available']);
+
+        // Außerhalb der Spanne gilt die Grenze nicht.
+        $this->assertTrue($availability->checkExact($location, $at('20:00'), 2)['available']);
     }
 }

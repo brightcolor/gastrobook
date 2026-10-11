@@ -6,6 +6,7 @@ namespace App\Support;
 
 use App\Models\Location;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Str;
 
 /**
  * Prüfregeln und Meldungen der Ausnahmen (Einstellungen › Platz & Zeiten ›
@@ -24,6 +25,95 @@ final class ScheduleExceptionRules
 
     /** Wirkungen im Salon: Gästegrenzen und Sperren von Räumen und Tischen gibt es dort nicht. */
     public const SALON_EFFECTS = ['closed', 'hours'];
+
+    /**
+     * Die Felder, die zu einer Wirkung gehören. Das Formular hält die Felder
+     * aller Wirkungen im Seitentext und sendet sie mit; nur die Felder der
+     * gewählten Wirkungen werden geprüft und gespeichert.
+     */
+    public const EFFECT_FIELDS = [
+        'hours' => ['windows'],
+        'limit' => ['limit_covers', 'limit_room_id', 'limit_from', 'limit_until'],
+        'lock' => ['lock_rooms', 'lock_tables', 'lock_from', 'lock_until'],
+    ];
+
+    /** Form des Schlüssels eines Eintrags in Adressen (Routen und Vorschau): g-{uuid}, s-{id}, b-{id}, t-{id}. */
+    public const KEY_PATTERN = '[gsbt]-[A-Za-z0-9-]+';
+
+    /**
+     * Die Eingabe, begrenzt auf die Felder der gewählten Wirkungen. Ein leeres
+     * Fenster oder eine leere Gästezahl in einem ausgeblendeten Abschnitt des
+     * Formulars löst so keinen Fehler an einem Feld aus, das niemand sieht.
+     *
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>
+     */
+    public static function selected(array $input): array
+    {
+        $effects = is_array($input['effects'] ?? null) ? $input['effects'] : [];
+        foreach (self::EFFECT_FIELDS as $effect => $fields) {
+            if (! in_array($effect, $effects, true)) {
+                foreach ($fields as $field) {
+                    unset($input[$field]);
+                }
+            }
+        }
+
+        return $input;
+    }
+
+    /**
+     * Schlüssel eines Eintrags zerlegt: Art (g Gruppe, s Sondertag, b Sperrzeit,
+     * t Tischsperre) und Wert (UUID der Gruppe oder Nummer der Zeile). Null,
+     * wenn der Schlüssel keine dieser Formen hat. Die Prüfung schützt
+     * PostgreSQL vor Werten, die eine UUID- oder Zahlenspalte mit einem
+     * Datenbankfehler beantwortet.
+     *
+     * @return ?array{kind: string, value: string|int}
+     */
+    public static function parseKey(string $key): ?array
+    {
+        if (preg_match('/^([gsbt])-(.+)$/', $key, $match) !== 1) {
+            return null;
+        }
+        [, $kind, $value] = $match;
+
+        if ($kind === 'g') {
+            return Str::isUuid($value) ? ['kind' => 'g', 'value' => strtolower($value)] : null;
+        }
+        $number = filter_var($value, FILTER_VALIDATE_INT);
+
+        return $number === false || $number < 1 ? null : ['kind' => $kind, 'value' => $number];
+    }
+
+    /**
+     * Die Zeitfenster aus den Feldern, nach Beginn sortiert.
+     *
+     * @param  array<string, mixed>  $data
+     * @return list<array{opens_at: string, closes_at: string}>
+     */
+    public static function sortedWindows(array $data): array
+    {
+        $windows = [];
+        foreach ((array) ($data['windows'] ?? []) as $window) {
+            if (is_array($window) && isset($window['opens_at'], $window['closes_at'])) {
+                $windows[] = ['opens_at' => (string) $window['opens_at'], 'closes_at' => (string) $window['closes_at']];
+            }
+        }
+        usort($windows, fn (array $a, array $b) => $a['opens_at'] <=> $b['opens_at']);
+
+        return $windows;
+    }
+
+    /**
+     * Die eindeutigen Nummern aus einer Auswahlliste.
+     *
+     * @return list<int>
+     */
+    public static function ids(mixed $value): array
+    {
+        return array_values(array_unique(array_map('intval', array_filter((array) $value, 'is_scalar'))));
+    }
 
     /**
      * Regeln für die Felder einer Ausnahme.
@@ -266,16 +356,6 @@ final class ScheduleExceptionRules
     private static function foreignRoom(): string
     {
         return __('Dieser Raum gehört nicht zu diesem Standort. Bitte die Seite neu laden und einen Raum aus der Liste wählen.');
-    }
-
-    /**
-     * Die eindeutigen Nummern aus einer Auswahlliste.
-     *
-     * @return list<int>
-     */
-    private static function ids(mixed $value): array
-    {
-        return array_values(array_unique(array_map('intval', array_filter((array) $value, 'is_scalar'))));
     }
 
     /** Ein Tag aus "Y-m-d" (als Datum ohne Zeitzone), sonst null. */

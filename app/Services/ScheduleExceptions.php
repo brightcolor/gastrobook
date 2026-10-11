@@ -11,9 +11,10 @@ use App\Models\Reservation;
 use App\Models\RestaurantTable;
 use App\Models\SpecialOpeningHour;
 use App\Models\TableBlock;
-use App\Support\OpeningHoursPreview;
 use App\Support\ScheduleExceptionRules;
+use App\Support\ScheduleExceptionSentence;
 use Carbon\CarbonImmutable;
+use Closure;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -45,10 +46,7 @@ use Illuminate\Validation\ValidationException;
  */
 final class ScheduleExceptions
 {
-    public function __construct(
-        private readonly TimeSlotService $slots,
-        private readonly OpeningHoursPreview $preview,
-    ) {}
+    public function __construct(private readonly ScheduleExceptionSentence $sentence) {}
 
     /**
      * Die Einträge des Standorts: kommende nach Monat des ersten Tages
@@ -100,10 +98,11 @@ final class ScheduleExceptions
 
     /**
      * Legt eine Ausnahme an ($key null) oder ersetzt alle Zeilen des Eintrags
-     * $key. Die Daten sind geprüft (ScheduleExceptionRules). Eine Tischsperre
-     * über einer aktiven Reservierung dieses Tisches lehnt die Sperre mit
-     * einer ValidationException am Feld lock_tables ab; ein unbekannter
-     * Schlüssel ergibt 404.
+     * $key. Die Daten sind geprüft (ScheduleExceptionRules). Zwei Fälle lehnt
+     * eine ValidationException ab, und die Transaktion macht dann alles
+     * rückgängig: Ein Tag mit Sondertagen eines anderen Eintrags (Feld from,
+     * siehe claimedDay) und eine Tischsperre über einer aktiven Reservierung
+     * dieses Tisches (Feld lock_tables). Ein unbekannter Schlüssel ergibt 404.
      *
      * overlapping zählt die aktiven Reservierungen, die in den Zeitraum fallen
      * und bestehen bleiben.
@@ -121,18 +120,30 @@ final class ScheduleExceptions
             $group = (string) Str::uuid();
             if ($key !== null) {
                 $existing = $this->bundle($location, $key, lock: true);
-                abort_if($existing === null, 404);
+                abort_if($existing === null, 404, self::gone());
                 $group = str_starts_with($key, 'g-') ? strtolower(substr($key, 2)) : $group;
                 $this->deleteBundle($existing);
+            }
+
+            // Die eigenen Zeilen sind gelöscht; was an den Tagen noch steht, gehört anderen Einträgen.
+            $claimed = $this->claimedDay($location, $data);
+            if ($claimed !== null) {
+                throw ValidationException::withMessages(['from' => $claimed]);
             }
 
             $this->write($location, $data, $effects, $group, $userId);
 
             $entry = $this->find($location, 'g-'.$group);
-            abort_if($entry === null, 404);
+            abort_if($entry === null, 404, self::gone());
 
             return ['entry' => $entry, 'overlapping' => $this->overlapping($location, $data, $effects)];
         });
+    }
+
+    /** Meldung für einen Eintrag, den es nicht (mehr) gibt. */
+    public static function gone(): string
+    {
+        return __('Diese Ausnahme gibt es nicht mehr. Bitte die Seite neu laden.');
     }
 
     /**
@@ -155,69 +166,79 @@ final class ScheduleExceptions
 
     /**
      * Ein Satz, der beschreibt, was Gäste erleben, wenn die Ausnahme gilt
-     * (Vorschau über den Knöpfen). Die letzte Uhrzeit rechnet mit Takt und
-     * Dauer des Standorts wie die Buchungsseite; gilt keine Ausnahme mit
-     * eigenen Öffnungszeiten, zählen die regulären Zeiten des ersten Tages.
+     * (Vorschau über den Knöpfen), samt letzter buchbarer Uhrzeit. Beim
+     * Bearbeiten nennt $key den Eintrag; seine eigenen Zeilen zählen für die
+     * Zeiten des Tages nicht mit, denn sie werden beim Speichern ersetzt.
      *
      * @param  array<string, mixed>  $data  geprüfte Felder aus ScheduleExceptionRules::rules()
      */
-    public function describe(Location $location, array $data): string
+    public function describe(Location $location, array $data, ?string $key = null): string
     {
-        $effects = array_values(array_intersect(ScheduleExceptionRules::EFFECTS, (array) ($data['effects'] ?? [])));
-        if ($effects === []) {
-            return '';
+        return $this->sentence->describe($location, $data, $this->otherSpecialRows($key));
+    }
+
+    /**
+     * Prüft, ob an einem Tag des Zeitraums schon ein anderer Eintrag Sondertage
+     * (Geschlossen, Andere Öffnungszeiten) setzt, und liefert dann die Meldung
+     * für das Feld "from". Die Buchungsseite liest die Sondertage eines Datums
+     * als Ganzes: Eine zweite Ausnahme mit Öffnungszeiten würde "Geschlossen"
+     * überstimmen, eine mit anderen Zeiten die ersten ersetzen. Deshalb gilt je
+     * Datum nur ein Eintrag. Grenze und Sperre dürfen sich überlagern.
+     * $key nennt den Eintrag, der gerade bearbeitet wird; seine Zeilen zählen
+     * nicht.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function claimedDay(Location $location, array $data, ?string $key = null): ?string
+    {
+        if (array_intersect(['closed', 'hours'], (array) ($data['effects'] ?? [])) === []) {
+            return null;
         }
 
-        $salon = (bool) $location->tenant?->isSalon();
-        $from = (string) $data['from'];
-        $until = (string) ($data['until'] ?? $from);
-        $when = $from === $until
-            ? __('Am :date', ['date' => $this->date($from)])
-            : __('Vom :from bis :until', ['from' => $this->date($from), 'until' => $this->date($until)]);
-
-        if ($effects === ['closed']) {
-            return __(':when kann niemand online buchen.', ['when' => $when]);
+        $days = $this->dates($data);
+        $others = $this->otherSpecialRows($key);
+        $rows = SpecialOpeningHour::query()->where('location_id', $location->id)
+            ->whereDate('date', '>=', $days[0])->whereDate('date', '<=', $days[array_key_last($days)])
+            ->when($others !== null, $others)
+            ->orderBy('date')->orderBy('id')->get();
+        if ($rows->isEmpty()) {
+            return null;
         }
 
-        $windows = in_array('hours', $effects, true)
-            ? $this->slots->windowsFromTimes(CarbonImmutable::parse($from, $location->timezone), $this->sortedWindows($data))
-            : $this->regularWindows($location, CarbonImmutable::parse($from, $location->timezone));
-        $last = $this->lastStart($location, $windows, $salon);
-        $guests = $salon ? __('Kunden') : __('Gäste');
-        $noTime = $salon
-            ? __('Kein Fenster ist lang genug für einen Termin.')
-            : __('Kein Fenster ist lang genug für einen Besuch.');
+        // Der erste Eintrag mit Zeilen im Zeitraum und die Tage, die er dort belegt.
+        $keyOf = fn (SpecialOpeningHour $row) => $row->exception_group !== null ? 'g-'.$row->exception_group : 's-'.$row->id;
+        $otherKey = $keyOf($rows->first());
+        $taken = $rows->filter(fn (SpecialOpeningHour $row) => $keyOf($row) === $otherKey)
+            ->map(fn (SpecialOpeningHour $row) => $row->date->toDateString())->sort()->values();
+        $when = ScheduleExceptionSentence::when((string) $taken->first(), (string) $taken->last());
 
-        if ($effects === ['hours']) {
-            $opening = __(':when buchen :guests zwischen :open und :close', [
-                'when' => $when, 'guests' => $guests, 'open' => $this->firstOpening($windows), 'close' => $this->lastClosing($windows),
-            ]);
+        $other = $this->find($location, $otherKey);
+        $label = $other['label'] ?? null;
+        if ($label !== null) {
+            return __(':when gilt schon die Ausnahme „:label“. Bitte diese Ausnahme bearbeiten oder zuerst löschen.', ['when' => $when, 'label' => $label]);
+        }
+        $effects = array_column(array_filter($other['effects'] ?? [], fn (array $effect) => in_array($effect['type'], ['closed', 'hours'], true)), 'text');
 
-            return $last === null
-                ? $opening.', '.__('finden aber keine Uhrzeit: :reason', ['reason' => $noTime])
-                : $opening.', '.__('letzte Uhrzeit :last.', ['last' => $last]);
-        }
+        return __(':when gilt schon eine Ausnahme (:effects). Bitte diese Ausnahme bearbeiten oder zuerst löschen.', ['when' => $when, 'effects' => implode(', ', $effects)]);
+    }
 
-        $parts = [];
-        if (in_array('hours', $effects, true)) {
-            $parts[] = __('buchen :guests zwischen :open und :close', ['guests' => $guests, 'open' => $this->firstOpening($windows), 'close' => $this->lastClosing($windows)]);
-        }
-        if (in_array('limit', $effects, true)) {
-            $parts[] = $this->limitPart($location, $data, $salon, first: $parts === []);
-        }
-        if (in_array('lock', $effects, true)) {
-            $parts[] = $this->lockPart($location, $data, first: $parts === []);
-        }
-        $parts = array_values(array_filter($parts));
-        $sentence = $when.' '.implode('; ', $parts);
+    /**
+     * Schränkt eine Abfrage der Sondertage auf die Zeilen anderer Einträge ein:
+     * Die Zeilen des Eintrags $key fallen heraus. Null ohne Schlüssel und für
+     * Sperrzeiten und Tischsperren, die keine Sondertage anlegen.
+     *
+     * @return ?Closure(mixed): mixed
+     */
+    private function otherSpecialRows(?string $key): ?Closure
+    {
+        $parsed = $key === null ? null : ScheduleExceptionRules::parseKey($key);
+        $value = $parsed['value'] ?? null;
 
-        if ($last !== null) {
-            return $sentence.'; '.__('letzte Uhrzeit :last.', ['last' => $last]);
-        }
-
-        return $windows === []
-            ? $sentence.'.'
-            : $sentence.'; '.__(':guests finden keine Uhrzeit: :reason', ['guests' => $guests, 'reason' => $noTime]);
+        return match ($parsed['kind'] ?? null) {
+            'g' => fn ($query) => $query->where(fn ($rows) => $rows->whereNull('exception_group')->orWhere('exception_group', '!=', $value)),
+            's' => fn ($query) => $query->where('id', '!=', $value),
+            default => null,
+        };
     }
 
     // --- Lesen --------------------------------------------------------------
@@ -269,21 +290,12 @@ final class ScheduleExceptions
      */
     private function bundle(Location $location, string $key, bool $lock = false): ?array
     {
-        if (preg_match('/^([gsbt])-(.+)$/', $key, $match) !== 1) {
+        // Ein Schlüssel, den die Regeln nicht zerlegen (keine UUID, keine Zahl), heißt: nichts gefunden.
+        $parsed = ScheduleExceptionRules::parseKey($key);
+        if ($parsed === null) {
             return null;
         }
-        [, $kind, $value] = $match;
-
-        if ($kind === 'g') {
-            // Die Spalte ist ein UUID-Feld; unter PostgreSQL löst jeder andere Wert einen Datenbankfehler aus.
-            // Ein Schlüssel ohne UUID heißt deshalb: nichts gefunden.
-            if (! Str::isUuid($value)) {
-                return null;
-            }
-            $value = strtolower($value);
-        } elseif (filter_var($value, FILTER_VALIDATE_INT) === false || (int) $value < 1) {
-            return null;
-        }
+        ['kind' => $kind, 'value' => $value] = $parsed;
 
         $bundle = $this->emptyBundle();
         foreach ($this->slotsOfRows() as [$slot, $model, $prefix]) {
@@ -294,7 +306,7 @@ final class ScheduleExceptions
             if ($kind === 'g') {
                 $query->where('exception_group', $value);
             } else {
-                $query->whereNull('exception_group')->whereKey((int) $value);
+                $query->whereNull('exception_group')->whereKey($value);
             }
             $bundle[$slot] = $lock ? $query->lockForUpdate()->get() : $query->get();
         }
@@ -392,7 +404,7 @@ final class ScheduleExceptions
             $form['effects'][] = 'closed';
         }
         if ($windows !== []) {
-            $effects[] = ['type' => 'hours', 'text' => __('Geöffnet :windows', ['windows' => $this->joinList(array_map(fn (array $w) => $w['opens_at'].'–'.$w['closes_at'], $windows))])];
+            $effects[] = ['type' => 'hours', 'text' => __('Geöffnet :windows', ['windows' => ScheduleExceptionSentence::joinList(array_map(fn (array $w) => $w['opens_at'].'–'.$w['closes_at'], $windows))])];
             $form['effects'][] = 'hours';
         }
         if ($limits->isNotEmpty()) {
@@ -400,7 +412,7 @@ final class ScheduleExceptions
             $limit = $limits->first();
             $times = $this->times($limit, $tz);
             $covers = (int) $limit->reduce_covers_to;
-            $guests = trans_choice($salon ? '{1} :count Kunde|[0,*] :count Kunden' : '{1} :count Gast|[0,*] :count Gäste', $covers);
+            $guests = ScheduleExceptionSentence::guests($covers, $salon);
             $where = $limit->room_id === null
                 ? __('ganzer Betrieb')
                 : __('Raum „:room“', ['room' => $names['rooms'][(int) $limit->room_id] ?? __('gelöschter Raum')]);
@@ -422,7 +434,7 @@ final class ScheduleExceptions
             } else {
                 $items = [];
                 foreach ($roomIds as $id) {
-                    $items[] = $this->quoted($names['rooms'][$id] ?? __('gelöschter Raum'));
+                    $items[] = ScheduleExceptionSentence::quoted($names['rooms'][$id] ?? __('gelöschter Raum'));
                 }
                 foreach ($tableIds as $id) {
                     $items[] = __('Tisch :table', ['table' => $names['tables'][$id]['name'] ?? '?']);
@@ -597,10 +609,18 @@ final class ScheduleExceptions
      * Die zweite sieht danach die Zeilen der ersten und ersetzt sie.
      * Allein die Sperre auf den Zeilen der Gruppe reicht dafür nicht, denn sie
      * läuft ins Leere, sobald die erste Speicherung diese Zeilen gelöscht hat.
+     *
+     * Unter PostgreSQL ist es eine Sperre "for no key update": Sie schließt
+     * eine zweite Speicherung (auch die der Öffnungszeiten, die "for update"
+     * nimmt) aus, hält aber die Fremdschlüsselprüfung anderer Zeilen des
+     * Standorts nicht auf. "for update" hielte jede neue Reservierung des
+     * Standorts an, bis die Speicherung beendet ist.
      */
     private function lock(Location $location): void
     {
-        Location::query()->whereKey($location->id)->lockForUpdate()->first();
+        Location::query()->whereKey($location->id)
+            ->lock(DB::getDriverName() === 'pgsql' ? 'for no key update' : true)
+            ->first();
     }
 
     /**
@@ -633,7 +653,7 @@ final class ScheduleExceptions
 
         if (in_array('hours', $effects, true)) {
             foreach ($this->dates($data) as $day) {
-                foreach ($this->sortedWindows($data) as $window) {
+                foreach (ScheduleExceptionRules::sortedWindows($data) as $window) {
                     SpecialOpeningHour::create($base + [
                         'date' => $day, 'closed' => false, 'label' => $label,
                         'opens_at' => $window['opens_at'], 'closes_at' => $window['closes_at'],
@@ -654,10 +674,10 @@ final class ScheduleExceptions
 
         if (in_array('lock', $effects, true)) {
             $spans = $this->spans($location, $data, 'lock');
-            $tableIds = $this->ids($data['lock_tables'] ?? null);
+            $tableIds = ScheduleExceptionRules::ids($data['lock_tables'] ?? null);
             $this->assertTablesFree($location, $tableIds, $spans);
 
-            foreach ($this->ids($data['lock_rooms'] ?? null) as $roomId) {
+            foreach (ScheduleExceptionRules::ids($data['lock_rooms'] ?? null) as $roomId) {
                 foreach ($spans as [$start, $end]) {
                     BlackoutPeriod::create($base + [
                         'room_id' => $roomId, 'starts_at' => $start, 'ends_at' => $end,
@@ -773,154 +793,5 @@ final class ScheduleExceptions
         }
 
         return $merged;
-    }
-
-    /**
-     * Die eindeutigen Nummern aus einer Auswahlliste.
-     *
-     * @return list<int>
-     */
-    private function ids(mixed $value): array
-    {
-        return array_values(array_unique(array_map('intval', array_filter((array) $value, 'is_scalar'))));
-    }
-
-    // --- Satz der Vorschau --------------------------------------------------------
-
-    /**
-     * Die Zeitfenster aus den Feldern, nach Beginn sortiert.
-     *
-     * @param  array<string, mixed>  $data
-     * @return list<array{opens_at: string, closes_at: string}>
-     */
-    private function sortedWindows(array $data): array
-    {
-        $windows = [];
-        foreach ((array) ($data['windows'] ?? []) as $window) {
-            if (is_array($window) && isset($window['opens_at'], $window['closes_at'])) {
-                $windows[] = ['opens_at' => (string) $window['opens_at'], 'closes_at' => (string) $window['closes_at']];
-            }
-        }
-        usort($windows, fn (array $a, array $b) => $a['opens_at'] <=> $b['opens_at']);
-
-        return $windows;
-    }
-
-    /**
-     * Die regulären Zeitfenster des Wochentags von $day.
-     *
-     * @return array<int, array{opens: CarbonImmutable, closes: CarbonImmutable, label: ?string}>
-     */
-    private function regularWindows(Location $location, CarbonImmutable $day): array
-    {
-        $times = $location->openingHours()->where('weekday', $day->dayOfWeekIso - 1)->orderBy('opens_at')->get()
-            ->map(fn ($hour) => ['opens_at' => (string) $hour->opens_at, 'closes_at' => (string) $hour->closes_at])->all();
-
-        return $this->slots->windowsFromTimes($day, $times);
-    }
-
-    /**
-     * Die letzte Startzeit der Fenster ("HH:MM"), oder null, wenn keine Uhrzeit bleibt.
-     *
-     * @param  array<int, array{opens: CarbonImmutable, closes: CarbonImmutable, label: ?string}>  $windows
-     */
-    private function lastStart(Location $location, array $windows, bool $salon): ?string
-    {
-        $starts = $this->slots->startsForWindows($windows, $this->preview->duration($location, $salon), $this->slots->slotInterval($location));
-
-        return $starts === [] ? null : $starts[array_key_last($starts)]->format('H:i');
-    }
-
-    /**
-     * @param  array<int, array{opens: CarbonImmutable, closes: CarbonImmutable, label: ?string}>  $windows
-     */
-    private function firstOpening(array $windows): string
-    {
-        return collect($windows)->map(fn (array $window) => $window['opens'])->sortBy(fn (CarbonImmutable $time) => $time->getTimestamp())->first()?->format('H:i') ?? '';
-    }
-
-    /**
-     * @param  array<int, array{opens: CarbonImmutable, closes: CarbonImmutable, label: ?string}>  $windows
-     */
-    private function lastClosing(array $windows): string
-    {
-        return collect($windows)->map(fn (array $window) => $window['closes'])->sortByDesc(fn (CarbonImmutable $time) => $time->getTimestamp())->first()?->format('H:i') ?? '';
-    }
-
-    /** @param array<string, mixed> $data */
-    private function limitPart(Location $location, array $data, bool $salon, bool $first): string
-    {
-        $covers = (int) ($data['limit_covers'] ?? 0);
-        $guests = trans_choice($salon ? '{1} :count Kunde|[0,*] :count Kunden' : '{1} :count Gast|[0,*] :count Gäste', $covers);
-        $roomId = $data['limit_room_id'] ?? null;
-        $room = $roomId === null ? null : $location->rooms()->whereKey((int) $roomId)->value('name');
-        $where = $room === null ? __('im ganzen Betrieb') : __('im Raum „:room“', ['room' => $room]);
-        $range = $this->range($data['limit_from'] ?? null, $data['limit_until'] ?? null);
-        $verb = $first ? __('gelten') : __('es gelten');
-
-        return $range === null
-            ? __(':verb höchstens :guests gleichzeitig :where', ['verb' => $verb, 'guests' => $guests, 'where' => $where])
-            : __(':verb :range höchstens :guests gleichzeitig :where', ['verb' => $verb, 'range' => $range, 'guests' => $guests, 'where' => $where]);
-    }
-
-    /** @param array<string, mixed> $data */
-    private function lockPart(Location $location, array $data, bool $first): string
-    {
-        $items = [];
-        $rooms = $this->ids($data['lock_rooms'] ?? null);
-        if ($rooms !== []) {
-            foreach ($location->rooms()->whereIn('id', $rooms)->orderBy('name')->orderBy('id')->pluck('name') as $name) {
-                $items[] = $this->quoted((string) $name);
-            }
-        }
-        $tables = $this->ids($data['lock_tables'] ?? null);
-        if ($tables !== []) {
-            foreach ($location->tables()->whereIn('id', $tables)->orderBy('name')->orderBy('id')->pluck('name') as $name) {
-                $items[] = __('Tisch :table', ['table' => $name]);
-            }
-        }
-        if ($items === []) {
-            return '';
-        }
-
-        $list = $this->joinList($items);
-        $one = count($items) === 1;
-        $part = $first
-            ? ($one ? __('ist :list gesperrt', ['list' => $list]) : __('sind :list gesperrt', ['list' => $list]))
-            : ($one ? __(':list ist gesperrt', ['list' => $list]) : __(':list sind gesperrt', ['list' => $list]));
-        $range = $this->range($data['lock_from'] ?? null, $data['lock_until'] ?? null);
-
-        return $range === null ? $part : $part.' '.$range;
-    }
-
-    /** "von 18:00 bis 22:00", oder null ohne Uhrzeiten. */
-    private function range(mixed $from, mixed $until): ?string
-    {
-        return is_string($from) && is_string($until) ? __('von :from bis :until', ['from' => $from, 'until' => $until]) : null;
-    }
-
-    /**
-     * Aufzählung: "A", "A und B", "A, B und C".
-     *
-     * @param  list<string>  $items
-     */
-    private function joinList(array $items): string
-    {
-        if (count($items) < 2) {
-            return $items[0] ?? '';
-        }
-        $last = array_pop($items);
-
-        return implode(', ', $items).' '.__('und').' '.$last;
-    }
-
-    private function quoted(string $name): string
-    {
-        return '„'.$name.'“';
-    }
-
-    private function date(string $day): string
-    {
-        return CarbonImmutable::parse($day)->format('d.m.Y');
     }
 }
