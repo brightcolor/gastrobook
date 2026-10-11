@@ -8,8 +8,9 @@
 // Die Leiste nennt, wie viel geändert ist. Jede Zeile mit data-change-item
 // (Wert: fester Schlüssel der Zeile) zählt einmal, jedes Feld außerhalb
 // solcher Zeilen nach seinem Namen; hinzugefügte und entfernte Zeilen zählen
-// mit. Geänderte Zeilen tragen data-changed und zeigen ihren Punkt
-// ([data-change-dot], x-change-dot). Die Wörter stehen an der Leiste:
+// mit. Den Zustand einer Zeile außerhalb ihrer Felder, etwa einen geschlossenen
+// Tag, meldet data-change-state. Geänderte Zeilen tragen data-changed und
+// zeigen ihren Punkt ([data-change-dot], x-change-dot). Die Wörter stehen an der Leiste:
 // data-count-one („1 Tag geändert“) und data-count-many („:count Tage geändert“).
 
 import { keyboardFocused } from './dom.js';
@@ -35,6 +36,8 @@ function partsOf(form) {
         const values = [...item.querySelectorAll('input, select, textarea')]
             .filter((el) => el.name)
             .map((el) => `${el.name}=${valueOf(el)}`);
+        // Zustand der Zeile außerhalb ihrer Felder (etwa ein geschlossener Tag): data-change-state.
+        if (item.dataset.changeState !== undefined) values.push(`state=${item.dataset.changeState}`);
         parts.set(`item:${item.dataset.changeItem}`, values.join('&'));
     });
     for (const el of form.elements) {

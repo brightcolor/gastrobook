@@ -10,10 +10,8 @@ use App\Models\AuditLog;
 use App\Models\BlackoutPeriod;
 use App\Models\DepositRule;
 use App\Models\IntegrationConnection;
-use App\Models\OpeningHour;
 use App\Models\Reservation;
 use App\Models\RestaurantTable;
-use App\Models\SeasonPeriod;
 use App\Models\Service;
 use App\Models\SpecialOpeningHour;
 use App\Models\TableBlock;
@@ -209,36 +207,6 @@ class SettingsController extends Controller
         return back()->with('success', __('Logo entfernt.'));
     }
 
-    public function updateOpeningHours(Request $request)
-    {
-        $location = $this->context->location();
-        abort_if($location === null, 404);
-
-        $validated = $request->validate([
-            'hours' => ['required', 'array'],
-            'hours.*.weekday' => ['required', 'integer', 'min:0', 'max:6'],
-            'hours.*.opens_at' => ['required', 'date_format:H:i'],
-            'hours.*.closes_at' => ['required', 'date_format:H:i'],
-            'hours.*.service_name' => ['nullable', 'string', 'max:60'],
-        ]);
-
-        $location->openingHours()->delete();
-        foreach ($validated['hours'] as $hour) {
-            OpeningHour::create([
-                'tenant_id' => $location->tenant_id,
-                'location_id' => $location->id,
-                'weekday' => (int) $hour['weekday'],
-                'opens_at' => $hour['opens_at'],
-                'closes_at' => $hour['closes_at'],
-                'service_name' => $hour['service_name'] ?? null,
-            ]);
-        }
-
-        $this->audit->log('opening_hours.updated', null, null, ['count' => count($validated['hours'])]);
-
-        return $this->saved($request, __('Öffnungszeiten gespeichert.'));
-    }
-
     public function storeSpecialHours(Request $request)
     {
         $location = $this->context->location();
@@ -332,51 +300,6 @@ class SettingsController extends Controller
         $blackout->delete();
 
         return $this->saved($request, __('Sperrzeit gelöscht.'), true);
-    }
-
-    public function storeSeason(Request $request)
-    {
-        $location = $this->context->location();
-        abort_if($location === null, 404);
-
-        $validated = $request->validate([
-            'label' => ['nullable', 'string', 'max:60'],
-            'start_month' => ['required', 'integer', 'min:1', 'max:12'],
-            'start_day' => ['required', 'integer', 'min:1', 'max:31'],
-            'end_month' => ['required', 'integer', 'min:1', 'max:12'],
-            'end_day' => ['required', 'integer', 'min:1', 'max:31'],
-        ]);
-
-        // Den Tag gegen den Monat prüfen; 2024 ist ein Schaltjahr, damit der
-        // 29. Februar erlaubt bleibt.
-        if (! checkdate((int) $validated['start_month'], (int) $validated['start_day'], 2024)) {
-            return $this->failed($request, 'start_day', __('Diesen Tag gibt es in dem Monat nicht. Bitte einen gültigen Tag wählen.'));
-        }
-        if (! checkdate((int) $validated['end_month'], (int) $validated['end_day'], 2024)) {
-            return $this->failed($request, 'end_day', __('Diesen Tag gibt es in dem Monat nicht. Bitte einen gültigen Tag wählen.'));
-        }
-
-        $season = $location->seasonPeriods()->create([
-            'tenant_id' => $location->tenant_id,
-            'label' => $validated['label'] ?? null,
-            'start_month' => (int) $validated['start_month'],
-            'start_day' => (int) $validated['start_day'],
-            'end_month' => (int) $validated['end_month'],
-            'end_day' => (int) $validated['end_day'],
-        ]);
-
-        $this->audit->log('season.created', $season, null, $validated);
-
-        return $this->saved($request, __('Saison gespeichert.'), true);
-    }
-
-    public function deleteSeason(SeasonPeriod $season, Request $request)
-    {
-        abort_if($season->location_id !== $this->context->locationId(), 404);
-        $this->audit->log('season.deleted', $season, ['label' => $season->label]);
-        $season->delete();
-
-        return $this->saved($request, __('Saison gelöscht.'), true);
     }
 
     /**

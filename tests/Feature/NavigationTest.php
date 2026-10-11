@@ -133,7 +133,7 @@ class NavigationTest extends TestCase
         $staff = $this->createMember($setup['tenant'], 'staff');
         $nav = Navigation::fromConfig();
 
-        $this->assertSame(route('admin.settings.index').'#zeiten', $nav->firstSettingsUrl($manager, $setup['tenant'], $setup['location']));
+        $this->assertSame(route('admin.settings.opening-hours.show'), $nav->firstSettingsUrl($manager, $setup['tenant'], $setup['location']));
         $this->assertSame([], $nav->settings($staff, $setup['tenant'], $setup['location'], null));
         $this->assertNull($nav->firstSettingsUrl($staff, $setup['tenant'], $setup['location']));
     }
@@ -358,7 +358,7 @@ class NavigationTest extends TestCase
 
         $this->assertCount(1, $queries);
         $this->assertSame(['board', 'floorplan', 'walkins', 'waitlist'], array_map(fn (NavItem $item) => $item->key, $main[1]->items));
-        $this->assertSame(route('admin.settings.index').'#zeiten', $url);
+        $this->assertSame(route('admin.settings.opening-hours.show'), $url);
     }
 
     public function test_the_settings_menu_shares_the_layouts_navigation(): void

@@ -2,6 +2,7 @@
 import { initCopyButtons } from './copy.js';
 import { initDrawers } from './drawer.js';
 import { initAjaxForms } from './forms.js';
+import { initHours } from './hours.js';
 import { initInlineConfirms } from './inline-confirm.js';
 import { initMinuteHints } from './minutes.js';
 import { initAutosubmit, initMoreSheet, initRail, initSettingsSearch } from './nav.js';
@@ -17,6 +18,7 @@ export function initAdmin() {
     initSettingsSearch();
     initAjaxForms();
     initRows();
+    initHours();
     initReveals();
     initMinuteHints();
     initSaveBar();

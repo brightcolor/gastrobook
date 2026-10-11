@@ -459,6 +459,34 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Öffnungszeiten und Saison
+    |--------------------------------------------------------------------------
+    |
+    | Grenzen der Seite „Öffnungszeiten“ (Einstellungen › Platz & Zeiten) und
+    | des Einrichtungsassistenten, gelesen über App\Support\OpeningHoursRules
+    | und OpeningHoursPreview. Die Seite zeigt sie als Feldgrenzen, die Prüfung
+    | beim Speichern nutzt dieselben Werte.
+    |
+    | windows_per_day_max: höchstens so viele Zeitfenster je Wochentag (1–12).
+    | name_max: Länge der Bezeichnung eines Zeitfensters, etwa „Mittagstisch“,
+    | in Zeichen (10–120; die Spalte opening_hours.service_name ist
+    | varchar(255)).
+    | season_label_max: Länge der Bezeichnung einer Saison in Zeichen (10–60;
+    | die Spalte season_periods.label ist varchar(60)).
+    | preview_groups_max: so viele Zeilen mit abweichender Dauer zeigt die
+    | Vorschau „So sehen Gäste es“ höchstens (1–30): Tischzeiten je
+    | Gruppengröße im Restaurant, Leistungen im Salon.
+    |
+    */
+    'opening_hours' => [
+        'windows_per_day_max' => EnvSetting::integer('SWAYY_OPENING_HOURS_WINDOWS_PER_DAY_MAX', default: 6, min: 1, max: 12),
+        'name_max' => EnvSetting::integer('SWAYY_OPENING_HOURS_NAME_MAX', default: 60, min: 10, max: 120),
+        'season_label_max' => EnvSetting::integer('SWAYY_OPENING_HOURS_SEASON_LABEL_MAX', default: 60, min: 10, max: 60),
+        'preview_groups_max' => EnvSetting::integer('SWAYY_OPENING_HOURS_PREVIEW_GROUPS_MAX', default: 8, min: 1, max: 30),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Benachrichtigungen an Gäste und den Betrieb
     |--------------------------------------------------------------------------
     |
@@ -803,11 +831,14 @@ return [
     | widget_label_max: längster Text auf dem Buchungsknopf und dem Link, den
     | „Buchungsseite & Widget“ erzeugt, in Zeichen. tag_name_max: längster
     | Name eines Tags in Zeichen (10–255; die Spalte fasst 255).
+    | preview_delay_ms: Wartezeit nach der letzten Eingabe, bevor die Vorschau
+    | der Öffnungszeiten neu rechnet, in Millisekunden (100–3000).
     |
     */
     'ui' => [
         'toast_ms' => EnvSetting::integer('SWAYY_UI_TOAST_MS', default: 3200, min: 1000, max: 20000),
         'reload_delay_ms' => EnvSetting::integer('SWAYY_UI_RELOAD_DELAY_MS', default: 1200, min: 0, max: 10000),
+        'preview_delay_ms' => EnvSetting::integer('SWAYY_UI_PREVIEW_DELAY_MS', default: 400, min: 100, max: 3000),
         'default_brand_color' => EnvSetting::hexColor('SWAYY_UI_DEFAULT_BRAND_COLOR', default: '#0f766e'),
         'default_staff_color' => EnvSetting::hexColor('SWAYY_UI_DEFAULT_STAFF_COLOR', default: '#0f766e'),
         'default_label_color' => EnvSetting::hexColor('SWAYY_UI_DEFAULT_LABEL_COLOR', default: '#6b7280'),

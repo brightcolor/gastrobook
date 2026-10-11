@@ -184,6 +184,13 @@ class AuditLog extends Model
         // Leistungen (ServiceController) und Mitarbeiter (StaffMemberController); weitere Felder stehen oben
         'description' => 'Beschreibung',
         'is_active' => 'Aktiv',
+        // Öffnungszeiten und Saison (OpeningHoursController); 'count' heißt bei den Öffnungszeiten „Zeitfenster in der Woche“ (ACTION_FIELD_LABELS)
+        'count' => 'Anzahl',
+        'label' => 'Bezeichnung',
+        'start_month' => 'Beginn (Monat)',
+        'start_day' => 'Beginn (Tag)',
+        'end_month' => 'Ende (Monat)',
+        'end_day' => 'Ende (Tag)',
     ];
 
     /**
@@ -200,6 +207,7 @@ class AuditLog extends Model
         'service.updated' => ['is_active' => 'Online buchbar'],
         'staff_member.created' => ['is_active' => 'Buchbar', 'color' => 'Farbe im Terminplan'],
         'staff_member.updated' => ['is_active' => 'Buchbar', 'color' => 'Farbe im Terminplan'],
+        'opening_hours.updated' => ['count' => 'Zeitfenster in der Woche'],
     ];
 
     /**

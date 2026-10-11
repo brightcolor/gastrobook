@@ -497,6 +497,8 @@
     {{-- Öffnungszeiten --}}
     <form method="POST" action="{{ route('admin.settings.opening-hours') }}" class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
         @csrf @method('PUT')
+        {{-- Ohne Zeitfenster sendet das Formular keine Zeile; dieses Feld macht daraus eine leere Woche. --}}
+        <input type="hidden" name="hours_sent" value="1">
         <h2 class="mb-3 font-bold">Öffnungszeiten</h2>
         <div id="hoursContainer" class="space-y-2 text-sm">
             @foreach($openingHours as $i => $hour)

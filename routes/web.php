@@ -30,6 +30,7 @@ use App\Http\Controllers\Admin\Settings\DepositsController;
 use App\Http\Controllers\Admin\Settings\GeneralController;
 use App\Http\Controllers\Admin\Settings\NewsletterController;
 use App\Http\Controllers\Admin\Settings\NotificationsController;
+use App\Http\Controllers\Admin\Settings\OpeningHoursController;
 use App\Http\Controllers\Admin\Settings\PaymentProvidersController;
 use App\Http\Controllers\Admin\Settings\RoomsController;
 use App\Http\Controllers\Admin\Settings\SenderController;
@@ -437,8 +438,12 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
             ->middleware('permission:payments.manage')->name('settings.deposit-rules.delete');
         Route::put('/settings/refunds', [DepositsController::class, 'updateRefunds'])
             ->middleware('permission:opening_hours.manage')->name('settings.refunds');
-        Route::put('/settings/opening-hours', [SettingsController::class, 'updateOpeningHours'])
+        Route::get('/settings/opening-hours', [OpeningHoursController::class, 'show'])
+            ->middleware('permission:opening_hours.manage')->name('settings.opening-hours.show');
+        Route::put('/settings/opening-hours', [OpeningHoursController::class, 'update'])
             ->middleware('permission:opening_hours.manage')->name('settings.opening-hours');
+        Route::post('/settings/opening-hours/preview', [OpeningHoursController::class, 'preview'])
+            ->middleware('permission:opening_hours.manage')->name('settings.opening-hours.preview');
         Route::post('/settings/special-hours', [SettingsController::class, 'storeSpecialHours'])
             ->middleware('permission:special_hours.manage')->name('settings.special-hours');
         Route::delete('/settings/special-hours/{special}', [SettingsController::class, 'deleteSpecialHours'])
@@ -447,9 +452,9 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
             ->middleware('permission:blackouts.manage')->name('settings.blackouts.store');
         Route::delete('/settings/blackouts/{blackout}', [SettingsController::class, 'deleteBlackout'])
             ->middleware('permission:blackouts.manage')->name('settings.blackouts.delete');
-        Route::post('/settings/seasons', [SettingsController::class, 'storeSeason'])
+        Route::post('/settings/seasons', [OpeningHoursController::class, 'storeSeason'])
             ->middleware('permission:blackouts.manage')->name('settings.seasons.store');
-        Route::delete('/settings/seasons/{season}', [SettingsController::class, 'deleteSeason'])
+        Route::delete('/settings/seasons/{season}', [OpeningHoursController::class, 'deleteSeason'])
             ->middleware('permission:blackouts.manage')->name('settings.seasons.delete');
         Route::post('/settings/table-blocks', [SettingsController::class, 'storeTableBlock'])
             ->middleware('permission:blackouts.manage')->name('settings.table-blocks.store');

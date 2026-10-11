@@ -97,8 +97,8 @@ return [
                 'keywords' => ['Export' => 'export', 'Sicherung' => 'export', 'Import' => 'import', 'Umzug' => 'import', 'Betrieb löschen' => 'betrieb-loeschen']],
         ]],
         ['label' => 'Platz & Zeiten', 'items' => [
-            ['key' => 'opening-hours', 'label' => 'Öffnungszeiten', 'route' => 'admin.settings.index', 'fragment' => 'zeiten', 'active' => [], 'scope' => 'location', 'can' => ['tables.manage'],
-                'keywords' => ['Öffnungszeiten', 'Ruhetag', 'Saison', 'Zeitfenster']],
+            ['key' => 'opening-hours', 'label' => 'Öffnungszeiten', 'route' => 'admin.settings.opening-hours.show', 'scope' => 'location', 'can' => ['tables.manage', 'opening_hours.manage'],
+                'keywords' => ['Öffnungszeiten' => 'woche', 'Ruhetag' => 'woche', 'Zeitfenster' => 'woche', 'Saison' => 'saison', 'Buchbare Saison' => 'saison']],
             ['key' => 'exceptions', 'label' => 'Ausnahmen', 'route' => 'admin.settings.index', 'fragment' => 'zeiten', 'active' => [], 'scope' => 'location', 'can' => ['tables.manage'],
                 'keywords' => ['Sonderzeiten', 'Feiertag', 'Schließtag', 'Sperrzeit', 'Betriebsferien', 'Tisch sperren', 'Weniger Gäste']],
             ['key' => 'rooms', 'label' => 'Räume & Tische', 'route' => 'admin.settings.rooms.index', 'scope' => 'location', 'can' => ['tables.manage'], 'only' => 'restaurant',

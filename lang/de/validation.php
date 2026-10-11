@@ -155,17 +155,6 @@ return [
         'terms_url' => [
             'url' => 'Die Adresse der AGB ist ungültig. Bitte vollständig eintragen, etwa https://dein-betrieb.de/agb.',
         ],
-        'hours' => [
-            'required' => 'Bitte mindestens ein Zeitfenster eintragen. Einzelne Schließtage stehen unter „Sonderöffnungszeiten“.',
-        ],
-        'hours.*.opens_at' => [
-            'required' => 'Bitte bei jedem Zeitfenster eintragen, wann es beginnt.',
-            'date_format' => 'Bitte jede Öffnungszeit als Uhrzeit eintragen, etwa 12:00.',
-        ],
-        'hours.*.closes_at' => [
-            'required' => 'Bitte bei jedem Zeitfenster eintragen, wann es endet.',
-            'date_format' => 'Bitte jede Schließzeit als Uhrzeit eintragen, etwa 22:00.',
-        ],
         'opens_at' => [
             'required_unless' => 'Bitte eine Öffnungszeit eintragen oder „Geschlossen“ ankreuzen.',
             'date_format' => 'Bitte die Öffnungszeit als Uhrzeit eintragen, etwa 12:00.',

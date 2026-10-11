@@ -110,6 +110,33 @@ describe('Speicherleiste', () => {
         expect(counter()).toBe(' · 2 Einstellungen geändert');
     });
 
+    it('zählt den Zustand einer Zeile außerhalb ihrer Felder (data-change-state)', () => {
+        mount(`${bar}
+            <form id="w" method="POST" action="/admin/settings/opening-hours" data-ajax data-savebar>
+                <fieldset data-change-item="day-0" data-change-state="1">
+                    <input id="d0-opens" name="hours[0][opens_at]" value="11:00">
+                    <span data-change-dot hidden></span>
+                </fieldset>
+            </form>`);
+        initSaveBar();
+        const form = document.getElementById('w');
+        const day = form.querySelector('[data-change-item]');
+
+        // Ein geschlossener Tag sperrt seine Felder (die Leiste erscheint) und meldet seinen Zustand für die Zählung.
+        day.dataset.changeState = '0';
+        document.getElementById('d0-opens').disabled = true;
+        form.dispatchEvent(new Event('input', { bubbles: true }));
+        expect(counter()).toBe(' · 1 Einstellung geändert');
+        expect(day.hasAttribute('data-changed')).toBe(true);
+        expect(day.querySelector('[data-change-dot]').hidden).toBe(false);
+
+        day.dataset.changeState = '1';
+        document.getElementById('d0-opens').disabled = false;
+        form.dispatchEvent(new Event('input', { bubbles: true }));
+        expect(counter()).toBe('');
+        expect(day.hasAttribute('data-changed')).toBe(false);
+    });
+
     it('setzt Zähler und Punkt beim Verwerfen zurück', () => {
         mount(counted);
         initSaveBar();

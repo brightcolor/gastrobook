@@ -126,6 +126,22 @@ class PageComponentsTest extends TestCase
             ->assertSee('<div class="min-w-0 lg:col-span-2">', false);
     }
 
+    public function test_settings_section_places_the_aside_after_the_card_and_under_the_explanation_on_wide_screens(): void
+    {
+        // Ohne Slot "aside" bleibt der Aufbau wie bisher.
+        $this->blade('<x-settings.section id="beispiel" title="Beispiel"> Inhalt</x-settings.section>')
+            ->assertDontSee('lg:row-span-2', false)
+            ->assertDontSee('lg:grid-rows-', false)
+            ->assertDontSee('lg:sticky', false);
+
+        // Der Slot steht im Dokument nach der Karte (Smartphone: darunter), ab 1024 px links unter der Erklärung.
+        $this->blade('<x-settings.section id="woche" title="Woche"><x-slot:description>Erklärung links.</x-slot:description> Karteninhalt <x-slot:aside>Vorschau unten.</x-slot:aside></x-settings.section>')
+            ->assertSeeInOrder(['Erklärung links.', 'Karteninhalt', 'Vorschau unten.'], false)
+            ->assertSee('lg:grid-rows-[auto_1fr]', false)
+            ->assertSee('<div class="min-w-0 lg:col-span-2 lg:row-span-2">', false)
+            ->assertSee('lg:sticky lg:top-20 lg:col-start-1 lg:row-start-2', false);
+    }
+
     public function test_save_bar_starts_hidden(): void
     {
         $this->blade('<x-save-bar />')

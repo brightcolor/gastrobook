@@ -51,23 +51,51 @@ class TimeSlotService
      */
     public function slotStarts(Location $location, CarbonImmutable $localDate, int $durationMinutes): array
     {
-        $settings = $location->effectiveSettings();
-        $interval = max(5, (int) $settings->slot_interval_minutes);
-        $starts = [];
+        $interval = max(5, (int) $location->effectiveSettings()->slot_interval_minutes);
 
-        foreach ($this->windowsForDate($location, $localDate) as $window) {
+        return $this->startsForWindows($this->windowsForDate($location, $localDate), $durationMinutes, $interval);
+    }
+
+    /**
+     * Zeitfenster eines Tages aus Uhrzeiten, etwa aus einem noch nicht
+     * gespeicherten Formular. Gleiche Form wie windowsForDate().
+     *
+     * @param  array<int, array{opens_at: string, closes_at: string, service_name?: ?string}>  $times
+     * @return array<int, array{opens: CarbonImmutable, closes: CarbonImmutable, label: ?string}>
+     */
+    public function windowsFromTimes(CarbonImmutable $localDate, array $times): array
+    {
+        return array_map(
+            fn (array $t) => $this->makeWindow($localDate, $t['opens_at'], $t['closes_at'], $t['service_name'] ?? null),
+            array_values($times),
+        );
+    }
+
+    /**
+     * Startzeiten in den Fenstern: ab Öffnung im Takt, solange die ganze
+     * Dauer vor dem Schließen Platz hat.
+     *
+     * @param  array<int, array{opens: CarbonImmutable, closes: CarbonImmutable, label: ?string}>  $windows
+     * @return array<int, CarbonImmutable>
+     */
+    public function startsForWindows(array $windows, int $durationMinutes, int $intervalMinutes): array
+    {
+        // Ein Takt unter einer Minute käme nie zum Ende der Schleife.
+        $step = max(1, $intervalMinutes);
+        $starts = [];
+        foreach ($windows as $window) {
             $cursor = $window['opens'];
             $lastStart = $window['closes']->subMinutes($durationMinutes);
             while ($cursor->lte($lastStart)) {
                 $starts[] = $cursor;
-                $cursor = $cursor->addMinutes($interval);
+                $cursor = $cursor->addMinutes($step);
             }
         }
 
         $starts = array_unique($starts, SORT_REGULAR);
         usort($starts, fn ($a, $b) => $a->timestamp <=> $b->timestamp);
 
-        return $starts;
+        return array_values($starts);
     }
 
     /**
