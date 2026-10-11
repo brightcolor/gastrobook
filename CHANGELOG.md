@@ -1,5 +1,42 @@
 # Changelog
 
+## [1.134.8] – 2026-10-11
+
+### Sicherheitsfix: Inhaber vor der Administration geschützt
+
+Rolle ändern, Standorte beschneiden, aus dem Betrieb entfernen und Konto
+löschen prüften nur die neue Rolle bzw. ob der letzte Inhaber betroffen ist.
+Gab es zwei Inhaber, konnte die Administration (`users.roles.manage`) einen
+davon zur Servicekraft herabstufen, aus dem Betrieb entfernen oder sein Konto
+löschen und so den Betrieb übernehmen.
+
+- Neue Regel in `App\Support\RoleAssignment::managementRefusal`: Wer eine
+  Rolle nicht vergeben darf, nimmt sie auch niemandem. Sie gilt für alle vier
+  Wege und folgt wie die Vergabe allein den Rollenrechten in
+  `config/permissions.php`.
+- Die Meldung nennt den Weg: „Einen Inhaber ändert oder entfernt nur ein
+  Inhaber des Betriebs. Bitte einen Inhaber darum.“
+- Die Teamseite zeigt für solche Mitglieder keine Rollenauswahl, keine
+  Standortfreigabe und keine Knöpfe zum Entfernen oder Löschen.
+- Inhaber verwalten weiter alle Mitglieder, die Administration weiter alle
+  außer Inhabern.
+- Tests: `tests/Feature/RoleAssignmentTest.php`.
+
+### Sicherheitsfix: Namen von Tags und Kombinationen maskiert
+
+Einige Skripte der Verwaltung setzten Namen, die das Team eingibt, per
+`innerHTML` in die Seite. Wer Tags anlegen darf (`reservations.update`),
+konnte einen Tag-Namen wie `<img src=x onerror=…>` speichern. Das Skript lief
+dann bei allen, die das Reservierungsdetail oder die Einstellungen öffneten,
+auch bei Inhabern. Dasselbe galt für Namen von Tischkombinationen und Tischen
+in der Kombinationsliste des Tischplans (`tables.manage`).
+
+- Betroffen waren die Tag-Auswahl im Reservierungsdetail, die Tag-Liste der
+  Einstellungen und die Kombinationsliste im Tischplan. Diese Stellen setzen
+  Namen und Farben jetzt über `esc()` ein.
+- Board, Tischplan-Kacheln und Popups maskierten Namen schon vorher.
+- Test: `tests/Feature/AdminScriptEscapingTest.php` prüft die drei Ansichten.
+
 ## [1.134.7] – 2026-10-11
 
 ### Sicherheitsfix: Online-Buchungen ordnen Gäste nur über die E-Mail-Adresse zu
