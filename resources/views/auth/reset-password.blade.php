@@ -31,7 +31,7 @@
                 <label for="password" class="mb-1 block text-sm font-semibold">Neues Passwort</label>
                 <input type="password" name="password" id="password" required autocomplete="new-password"
                        class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
-                <p class="mt-1 text-xs text-stone-400">Mind. 8 Zeichen, Groß-/Kleinbuchstaben und eine Zahl</p>
+                <p class="mt-1 text-xs text-stone-600">Mindestens {{ (int) config('swayy.auth.password_min_length') }} Zeichen, mit Buchstaben und Ziffern.</p>
             </div>
             <div>
                 <label for="password_confirmation" class="mb-1 block text-sm font-semibold">Passwort bestätigen</label>

@@ -41,5 +41,14 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(120)->by($request->user()?->id ? 'user:'.$request->user()->id : 'ip:'.$request->ip());
         });
+
+        // „Mein Konto“ › Passwort ändern: je Konto, damit eine gestohlene Sitzung das
+        // aktuelle Passwort auch über mehrere Adressen nur begrenzt oft probieren kann.
+        // Die Grenze steht in swayy.auth.password_change_per_minute und wird bei jeder
+        // Anfrage gelesen.
+        RateLimiter::for('password-change', function (Request $request) {
+            return Limit::perMinute((int) config('swayy.auth.password_change_per_minute'))
+                ->by($request->user()?->id ? 'user:'.$request->user()->id : 'ip:'.$request->ip());
+        });
     }
 }

@@ -747,6 +747,35 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Passwörter
+    |--------------------------------------------------------------------------
+    |
+    | password_min_length: Mindestlänge für neue Passwörter (8–64) beim
+    | Zurücksetzen und unter „Mein Konto“; zusätzlich Buchstaben und Ziffern.
+    | password_change_per_minute: so viele Versuche je Konto und Minute, unter
+    | „Mein Konto“ das Passwort zu ändern (3–30). Jeder Versuch prüft das
+    | aktuelle Passwort; die Grenze bremst das Raten.
+    |
+    */
+    'auth' => [
+        'password_min_length' => EnvSetting::integer('SWAYY_PASSWORD_MIN_LENGTH', default: 8, min: 8, max: 64),
+        'password_change_per_minute' => EnvSetting::integer('SWAYY_PASSWORD_CHANGE_PER_MINUTE', default: 6, min: 3, max: 30),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Support
+    |--------------------------------------------------------------------------
+    |
+    | email: Adresse, die die Fehlerseiten nennen, wenn ein Fehler bleibt.
+    |
+    */
+    'support' => [
+        'email' => EnvSetting::email('SWAYY_SUPPORT_EMAIL', default: 'info@swayy.de'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Oberfläche der Verwaltung
     |--------------------------------------------------------------------------
     |

@@ -73,7 +73,7 @@ class SettingsMenuTest extends TestCase
 
         $this->actingAs($staff)->get('/admin/settings/menu')
             ->assertForbidden()
-            ->assertSee('<title>Keine Berechtigung</title>', false)
+            ->assertSee('<title>Dafür fehlt dir das Recht – Swayy</title>', false)
             ->assertSee('Für die Einstellungen fehlt die Berechtigung.');
     }
 

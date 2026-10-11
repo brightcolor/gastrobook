@@ -239,6 +239,25 @@ final class EnvSetting
     }
 
     /**
+     * E-Mail-Adresse; bei einem ungueltigen Wert gilt die Vorgabe.
+     */
+    public static function email(string $variable, string $default): string
+    {
+        $raw = self::raw($variable);
+        if ($raw === null) {
+            return $default;
+        }
+
+        if (filter_var($raw, FILTER_VALIDATE_EMAIL) === false) {
+            self::warn("{$variable}=„{$raw}“ ist keine E-Mail-Adresse. Es gilt die Vorgabe „{$default}“. Bitte eine Adresse wie hilfe@example.de in der .env eintragen.");
+
+            return $default;
+        }
+
+        return $raw;
+    }
+
+    /**
      * Adresse mit https://, ohne Schraegstrich am Ende; leer, wenn nicht
      * gesetzt oder ungueltig.
      */

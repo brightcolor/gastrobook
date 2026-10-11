@@ -196,6 +196,7 @@ class AuditLog extends Model
         'user.role_changed' => 'Rolle geändert',
         'user.self_deleted' => 'Konto selbst gelöscht',
         'account.exported' => 'Alle Daten exportiert',
+        'account.password_changed' => 'Passwort geändert',
         'billing.directdebit.webhook' => 'Meldung des Lastschriftanbieters',
         'billing.request_created' => 'Abrechnungsdaten übermittelt',
         'event.attendees_exported' => 'Teilnehmerliste exportiert',

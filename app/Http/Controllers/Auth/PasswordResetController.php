@@ -75,7 +75,7 @@ class PasswordResetController extends Controller
         $request->validate([
             'token' => ['required', 'string'],
             'email' => ['required', 'email'],
-            'password' => ['required', 'confirmed', PasswordRule::min(8)->letters()->numbers()],
+            'password' => ['required', 'confirmed', PasswordRule::min((int) config('swayy.auth.password_min_length'))->letters()->numbers()],
         ]);
 
         $status = Password::reset(

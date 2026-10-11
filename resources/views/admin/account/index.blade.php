@@ -21,6 +21,21 @@
     @endif
 </x-settings.section>
 
+<x-settings.section id="passwort" title="Passwort">
+    <x-slot:description>
+        <p>Wähle ein Passwort, das nur für Swayy gilt. Nach dem Ändern bleibst du auf diesem Gerät angemeldet. Gespeicherte Anmeldungen („Angemeldet bleiben“) auf anderen Geräten enden.</p>
+    </x-slot:description>
+    <form id="form-passwort" method="POST" action="{{ route('admin.account.password') }}" data-ajax data-reset-after-save class="space-y-5">
+        @csrf
+        @method('PUT')
+        <x-field name="current_password" label="Aktuelles Passwort" type="password" required autocomplete="current-password" />
+        <x-field name="password" label="Neues Passwort" type="password" required autocomplete="new-password"
+                 :help="'Mindestens '.$passwordMin.' Zeichen, mit Buchstaben und Ziffern.'" />
+        <x-field name="password_confirmation" label="Neues Passwort wiederholen" type="password" required autocomplete="new-password" />
+        <button type="submit" class="btn btn-primary">Passwort ändern</button>
+    </form>
+</x-settings.section>
+
 <x-settings.section id="konto-loeschen" title="Konto löschen">
     <x-slot:description>
         <p>Entfernt deinen Zugang und deine Anmeldedaten. Buchungen und andere Daten des Betriebs bleiben erhalten.</p>

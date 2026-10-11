@@ -375,6 +375,9 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
 
     // Own account / danger zone
     Route::get('/account', [AccountController::class, 'show'])->name('account.show');
+    // Jede Rolle ändert ihr eigenes Passwort, darum ohne permission-Middleware; die Drosselung steht in AppServiceProvider.
+    Route::put('/account/password', [AccountController::class, 'updatePassword'])
+        ->middleware('throttle:password-change')->name('account.password');
     Route::get('/account/export', [AccountController::class, 'export'])->name('account.export');
     Route::post('/account/import', [AccountController::class, 'import'])->name('account.import');
     Route::delete('/account', [AccountController::class, 'destroy'])->name('account.destroy');

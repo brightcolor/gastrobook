@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Exceptions\AccountImportException;
+use App\Http\Controllers\Admin\Settings\Concerns\RespondsToSettingsForms;
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Services\AccountExportService;
@@ -15,11 +16,15 @@ use App\Support\FileSize;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AccountController extends Controller
 {
+    use RespondsToSettingsForms;
+
     public function __construct(
         private readonly TenantContext $context,
         private readonly AuditLogger $audit,
@@ -37,7 +42,49 @@ class AccountController extends Controller
         $isLastOwner = $isOwner
             && $tenant->memberships()->where('role', 'tenant_owner')->count() <= 1;
 
-        return view('admin.account.index', compact('user', 'tenant', 'isOwner', 'isLastOwner'));
+        $passwordMin = $this->passwordMinLength();
+
+        return view('admin.account.index', compact('user', 'tenant', 'isOwner', 'isLastOwner', 'passwordMin'));
+    }
+
+    /**
+     * Neues Passwort für das eigene Konto. Das aktuelle Passwort muss stimmen;
+     * die Mindestlänge steht in swayy.auth.password_min_length.
+     */
+    public function updatePassword(Request $request): mixed
+    {
+        $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'password' => ['required', 'confirmed', PasswordRule::min($this->passwordMinLength())->letters()->numbers()],
+        ], [
+            'current_password.required' => __('Bitte dein aktuelles Passwort eingeben.'),
+            'current_password.current_password' => __('Das aktuelle Passwort stimmt nicht. Bitte erneut eingeben oder „Passwort vergessen“ nutzen.'),
+            'password.required' => __('Bitte ein neues Passwort eingeben.'),
+            'password.confirmed' => __('Die Wiederholung passt nicht zum neuen Passwort. Bitte beide Felder gleich ausfüllen.'),
+            'password.min' => __('Das neue Passwort braucht mindestens :min Zeichen. Bitte ein längeres wählen.'),
+            'password.letters' => __('Das neue Passwort braucht mindestens einen Buchstaben.'),
+            'password.numbers' => __('Das neue Passwort braucht mindestens eine Ziffer.'),
+        ]);
+
+        $user = $request->user();
+        $password = (string) $request->input('password');
+
+        // Neuer Hash und neues Erinnerungszeichen beenden gespeicherte
+        // Anmeldungen („Angemeldet bleiben“) auf anderen Geräten. Offene
+        // Sitzungen anderer Geräte laufen bis zu ihrem Ablauf weiter, solange
+        // die Middleware AuthenticateSession in der Web-Gruppe fehlt.
+        $user->forceFill([
+            'password' => Hash::make($password),
+            'remember_token' => Str::random(60),
+        ])->save();
+        // Hält die gespeicherte Anmeldung dieses Geräts gültig (neuer Cookie).
+        Auth::logoutOtherDevices($password);
+        $request->session()->regenerate();
+
+        // Der Eintrag besteht aus Konto, Zeitpunkt und Betrieb.
+        $this->audit->log('account.password_changed', $user, null, null, null, $user, $this->context->tenantId());
+
+        return $this->saved($request, __('Passwort geändert.'));
     }
 
     /**
@@ -209,5 +256,10 @@ class AccountController extends Controller
         $request->session()->regenerateToken();
 
         return redirect('/')->with('success', __('Der Betrieb wurde vollständig gelöscht.'));
+    }
+
+    private function passwordMinLength(): int
+    {
+        return (int) config('swayy.auth.password_min_length');
     }
 }

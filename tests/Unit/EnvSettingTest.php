@@ -199,6 +199,24 @@ class EnvSettingTest extends TestCase
         $this->assertStringContainsString('keine Zahl', $this->warnings);
     }
 
+    public function test_an_email_address_is_used_and_anything_else_falls_back_to_the_default_with_a_warning(): void
+    {
+        $this->assertSame('info@swayy.de', $this->capture(fn () => EnvSetting::email(self::VARIABLE, default: 'info@swayy.de')));
+        $this->assertSame('', $this->warnings);
+
+        $this->set(' Hilfe@Example.test ');
+        $this->assertSame('Hilfe@Example.test', $this->capture(fn () => EnvSetting::email(self::VARIABLE, default: 'info@swayy.de')));
+        $this->assertSame('', $this->warnings);
+
+        foreach (['keine adresse', 'ohne-at.example.test', 'zwei@@example.test'] as $invalid) {
+            $this->set($invalid);
+            $this->assertSame('info@swayy.de', $this->capture(fn () => EnvSetting::email(self::VARIABLE, default: 'info@swayy.de')), $invalid);
+            $this->assertStringContainsString(self::VARIABLE.'=', $this->warnings);
+            $this->assertStringContainsString('keine E-Mail-Adresse', $this->warnings);
+            $this->assertStringContainsString('Es gilt die Vorgabe „info@swayy.de“', $this->warnings);
+        }
+    }
+
     private function set(string $value): void
     {
         $_SERVER[self::VARIABLE] = $value;
