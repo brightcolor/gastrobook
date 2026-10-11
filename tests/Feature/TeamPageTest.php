@@ -208,18 +208,18 @@ class TeamPageTest extends TestCase
     {
         $setup = $this->createTenantSetup();
         $owner = $this->createMember($setup['tenant'], 'tenant_owner');
-        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
         $membership = TenantUser::where('user_id', $owner->id)->firstOrFail();
         $this->clearTenantContext();
 
-        $this->actingAs($admin)->putJson(route('admin.users.role', $membership), ['role' => 'staff'])
+        // Einen Inhaber ändert nur ein Inhaber; der einzige stuft sich hier selbst herab.
+        $this->actingAs($owner)->putJson(route('admin.users.role', $membership), ['role' => 'staff'])
             ->assertStatus(422)
             ->assertJsonPath('errors.role.0', 'Der Betrieb braucht mindestens einen Inhaber. Mach zuerst eine andere Person zum Inhaber, dann kannst du diese Rolle ändern.');
 
         $this->assertSame('tenant_owner', $membership->fresh()->role);
     }
 
-    public function test_removing_the_last_owner_is_rejected_in_the_row(): void
+    public function test_an_admin_cannot_remove_the_owner_and_learns_why_in_the_row(): void
     {
         $setup = $this->createTenantSetup();
         $owner = $this->createMember($setup['tenant'], 'tenant_owner');
@@ -229,11 +229,11 @@ class TeamPageTest extends TestCase
 
         $this->actingAs($admin)->deleteJson(route('admin.users.remove', $membership))
             ->assertStatus(422)
-            ->assertJsonPath('message', 'Der Betrieb braucht mindestens einen Inhaber. Mach zuerst eine andere Person zum Inhaber, dann kannst du diese Person entfernen.');
+            ->assertJsonPath('message', 'Einen Inhaber ändert oder entfernt nur ein Inhaber des Betriebs. Bitte einen Inhaber darum.');
 
         $this->actingAs($admin)->deleteJson(route('admin.users.delete', $membership))
             ->assertStatus(422)
-            ->assertJsonPath('message', 'Der Betrieb braucht mindestens einen Inhaber. Mach zuerst eine andere Person zum Inhaber, dann kannst du dieses Konto löschen.');
+            ->assertJsonPath('message', 'Einen Inhaber ändert oder entfernt nur ein Inhaber des Betriebs. Bitte einen Inhaber darum.');
 
         $this->assertNotNull($membership->fresh());
     }

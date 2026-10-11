@@ -34,14 +34,19 @@ class UserManagementController extends Controller
     {
         $tenant = $this->context->tenant();
         $locations = $tenant->locations()->orderBy('name')->get();
+        // Die zugeteilten Standorte gleich mitladen: Die Ansicht fragte sie
+        // je Mitglied UND je Standort einzeln ab - bei elf Mitgliedern und
+        // zehn Standorten waren das hundert zusaetzliche Abfragen fuer eine
+        // einzige Seite.
+        $memberships = $tenant->memberships()->with('user.allowedLocations:id,name')->get();
 
         return view('admin.users.index', [
             'tenant' => $tenant,
-            // Die zugeteilten Standorte gleich mitladen: Die Ansicht fragte sie
-            // je Mitglied UND je Standort einzeln ab - bei elf Mitgliedern und
-            // zehn Standorten waren das hundert zusaetzliche Abfragen fuer eine
-            // einzige Seite.
-            'memberships' => $tenant->memberships()->with('user.allowedLocations:id,name')->get(),
+            'memberships' => $memberships,
+            // Welche Mitgliedschaften die angemeldete Person aendern darf (siehe RoleAssignment::managementRefusal).
+            'manageable' => $memberships->mapWithKeys(fn (TenantUser $m) => [
+                $m->id => RoleAssignment::managementRefusal($request->user(), $tenant, $m->role) === null,
+            ]),
             'invitations' => Invitation::whereNull('accepted_at')->where('expires_at', '>', now())->orderBy('expires_at')->get(),
             'roleOptions' => $this->labels($this->assignableRoles($request, $tenant)),
             'allRoles' => array_keys((array) config('permissions.roles')),
@@ -193,6 +198,9 @@ class UserManagementController extends Controller
     {
         $tenant = $this->context->tenant();
         abort_if($membership->tenant_id !== $tenant->id, 404);
+        if ($refusal = RoleAssignment::managementRefusal($request->user(), $tenant, $membership->role)) {
+            return $this->failed($request, 'role', $refusal);
+        }
 
         $validated = $request->validate([
             'role' => ['required', new AssignableRole($request->user(), $tenant)],
@@ -234,6 +242,9 @@ class UserManagementController extends Controller
         abort_if($membership->tenant_id !== $tenant->id, 404);
         // Auch hier nicht die eigene Freigabe.
         abort_if($membership->user_id === $request->user()->id, 403, __('Deine eigene Rolle und deine Standorte ändert eine andere Person mit Rechten für das Team. Bitte sie darum.'));
+        if ($refusal = RoleAssignment::managementRefusal($request->user(), $tenant, $membership->role)) {
+            return $this->failed($request, 'role', $refusal);
+        }
 
         $validated = $request->validate([
             'all_locations' => ['nullable', 'boolean'],
@@ -296,6 +307,9 @@ class UserManagementController extends Controller
         $tenant = $this->context->tenant();
         abort_if($membership->tenant_id !== $tenant->id, 404);
         abort_if($membership->user_id === $request->user()->id, 422, __('Du kannst dich nicht selbst entfernen. Bitte eine andere Person mit Rechten für das Team fragen.'));
+        if ($refusal = RoleAssignment::managementRefusal($request->user(), $tenant, $membership->role)) {
+            return $this->failed($request, 'role', $refusal);
+        }
 
         if ($membership->role === 'tenant_owner'
             && $tenant->memberships()->where('role', 'tenant_owner')->count() <= 1) {
@@ -314,6 +328,9 @@ class UserManagementController extends Controller
         $tenant = $this->context->tenant();
         abort_if($membership->tenant_id !== $tenant->id, 404);
         abort_if($membership->user_id === $request->user()->id, 422, __('Dein eigenes Konto löschst du unter „Mein Konto“.'));
+        if ($refusal = RoleAssignment::managementRefusal($request->user(), $tenant, $membership->role)) {
+            return $this->failed($request, 'role', $refusal);
+        }
 
         if ($membership->role === 'tenant_owner'
             && $tenant->memberships()->where('role', 'tenant_owner')->count() <= 1) {

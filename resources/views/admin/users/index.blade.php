@@ -15,7 +15,7 @@
         @foreach($memberships as $m)
             @php
                 $isSelf = $m->user_id === auth()->id();
-                $canEdit = $canManageRoles && ! $isSelf;
+                $canEdit = $canManageRoles && ! $isSelf && ($manageable[$m->id] ?? false);
                 $access = $m->all_locations
                     ? 'Alle Standorte'
                     : ($m->user?->allowedLocations->pluck('name')->implode(', ') ?: 'Kein Standort freigegeben');
@@ -143,7 +143,7 @@
 
     @if($canManageRoles && $hasSeveralLocations)
         @foreach($memberships as $m)
-            @continue($m->user_id === auth()->id())
+            @continue($m->user_id === auth()->id() || ! ($manageable[$m->id] ?? false))
             <x-drawer id="zugang-{{ $m->id }}" :title="'Standorte für '.$m->user?->name">
                 <form id="form-zugang-{{ $m->id }}" method="POST" action="{{ route('admin.users.locations', $m) }}" data-ajax class="space-y-5">
                     @csrf
