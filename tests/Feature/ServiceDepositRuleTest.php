@@ -131,23 +131,27 @@ class ServiceDepositRuleTest extends TestCase
         ]);
     }
 
-    public function test_a_service_of_another_business_is_not_accepted(): void
+    public function test_a_service_of_another_business_is_refused_with_a_reason(): void
     {
         [$setup] = $this->salonWithServices();
         [, $foreignService] = $this->salonWithServices();
         $admin = $this->createMember($setup['tenant'], 'tenant_admin');
         $this->clearTenantContext();
 
-        $this->actingAs($admin)->post('/admin/settings/deposit-rules', [
+        $payload = [
             'name' => 'Fremde Leistung',
             'service_id' => $foreignService->id,
             'amount_per_person' => 5,
-        ])->assertRedirect();
+        ];
 
-        // Saved, but without the foreign service – never silently attached.
-        $this->assertDatabaseHas('deposit_rules', [
-            'name' => 'Fremde Leistung',
-            'service_id' => null,
-        ]);
+        // Die Antwort nennt den Grund, gespeichert wird nichts.
+        $this->actingAs($admin)->postJson('/admin/settings/deposit-rules', $payload)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('service_id');
+        $this->actingAs($admin)->post('/admin/settings/deposit-rules', $payload)
+            ->assertRedirect()
+            ->assertSessionHasErrors('service_id');
+
+        $this->assertDatabaseMissing('deposit_rules', ['name' => 'Fremde Leistung']);
     }
 }

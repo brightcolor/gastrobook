@@ -11,6 +11,7 @@ use App\Models\Reservation;
 use App\Models\Service;
 use App\Models\StaffMember;
 use App\Services\AuditLogger;
+use App\Support\MoneyInput;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -191,7 +192,7 @@ class ServiceController extends Controller
             'name' => ['required', 'string', 'max:'.(int) $limits['service_name_max']],
             'description' => ['nullable', 'string', 'max:'.(int) $limits['service_description_max']],
             'duration_minutes' => ['required', 'integer', 'min:'.(int) $limits['service_duration_min'], 'max:'.(int) $limits['service_duration_max']],
-            'price' => ['bail', 'nullable', 'required_without:price_minor', 'regex:/^\d+(\.\d{1,2})?$/D', 'numeric', 'max:'.(int) $limits['service_price_max']],
+            'price' => ['bail', 'nullable', 'required_without:price_minor', 'regex:'.MoneyInput::PATTERN.'D', 'numeric', 'max:'.(int) $limits['service_price_max']],
             'price_minor' => ['nullable', 'integer', 'min:0', 'max:'.((int) $limits['service_price_max'] * 100)],
             'color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/D'],
             // Der Einrichtungsassistent teilt sich die Route zum Anlegen und sendet den Schalter nur manchmal mit
@@ -267,7 +268,7 @@ class ServiceController extends Controller
     private function values(Request $request, array $validated): array
     {
         $priceMinor = isset($validated['price'])
-            ? $this->euroToCents((string) $validated['price'])
+            ? MoneyInput::toMinor($validated['price'])
             : (int) ($validated['price_minor'] ?? 0);
 
         return [
@@ -278,16 +279,6 @@ class ServiceController extends Controller
             'color' => $validated['color'] ?? null,
             'is_active' => $request->boolean('is_active', true),
         ];
-    }
-
-    /**
-     * Euro-Betrag in Ziffern („12“, „12.5“, „12.50“) in Cent.
-     */
-    private function euroToCents(string $euros): int
-    {
-        [$whole, $fraction] = array_pad(explode('.', $euros, 2), 2, '');
-
-        return (int) $whole * 100 + (int) str_pad($fraction, 2, '0');
     }
 
     /**

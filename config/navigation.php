@@ -132,10 +132,10 @@ return [
                 'keywords' => ['SMS' => 'seven', 'seven.io' => 'seven', 'Absenderkennung' => 'seven', 'API-Key' => 'seven']],
         ]],
         ['label' => 'Zahlungen', 'items' => [
-            ['key' => 'payment-providers', 'label' => 'Zahlungsanbieter', 'route' => 'admin.settings.index', 'fragment' => 'zahlungen', 'active' => [], 'scope' => 'tenant', 'can' => ['tables.manage', 'integrations.manage'],
-                'keywords' => ['Stripe', 'PayPal']],
-            ['key' => 'deposits', 'label' => 'Anzahlungen', 'route' => 'admin.settings.index', 'fragment' => 'zahlungen', 'active' => [], 'scope' => 'location', 'can' => ['tables.manage', 'payments.manage'],
-                'keywords' => ['Anzahlung', 'No-Show-Schutz', 'Rückerstattung', 'Erstattungsregeln']],
+            ['key' => 'payment-providers', 'label' => 'Zahlungsanbieter', 'route' => 'admin.settings.payment-providers.show', 'scope' => 'tenant', 'can' => ['tables.manage', 'integrations.manage'],
+                'keywords' => ['Stripe' => 'stripe', 'PayPal' => 'paypal']],
+            ['key' => 'deposits', 'label' => 'Anzahlungen', 'route' => 'admin.settings.deposits.show', 'scope' => 'location', 'can' => ['tables.manage', 'payments.manage'],
+                'keywords' => ['Anzahlung' => 'regeln', 'No-Show-Schutz' => 'regeln', 'Rückerstattung' => 'erstattung', 'Erstattungsregeln' => 'erstattung']],
         ]],
         ['label' => 'Verbindungen', 'items' => [
             ['key' => 'newsletter', 'label' => 'Newsletter', 'route' => 'admin.settings.index', 'fragment' => 'integrationen', 'active' => [], 'scope' => 'tenant', 'can' => ['tables.manage', 'integrations.manage'],

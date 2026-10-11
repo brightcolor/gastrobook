@@ -4,16 +4,15 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\ReservationStatus;
 use App\Http\Controllers\Admin\Settings\Concerns\RespondsToSettingsForms;
+use App\Http\Controllers\Admin\Settings\DepositsController;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\BlackoutPeriod;
 use App\Models\DepositRule;
 use App\Models\IntegrationConnection;
-use App\Models\Location;
 use App\Models\OpeningHour;
 use App\Models\Reservation;
 use App\Models\RestaurantTable;
-use App\Models\Room;
 use App\Models\SeasonPeriod;
 use App\Models\Service;
 use App\Models\SpecialOpeningHour;
@@ -139,12 +138,11 @@ class SettingsController extends Controller
                 'require_email_confirmation' => ['nullable', 'boolean'],
                 'gap_optimization_enabled' => ['nullable', 'boolean'],
                 'public_floorplan_enabled' => ['nullable', 'boolean'],
-                'refund_mode' => ['required', 'in:off,manual,auto'],
-                'refund_percent' => ['required', 'integer', 'min:0', 'max:100'],
-                'refund_processing' => ['required', 'in:immediate,scheduled'],
                 'confetti_on_booking' => ['nullable', 'boolean'],
             ],
-        ), array_merge(BookingSettingRules::messages(), NotificationSettingRules::messages()));
+            // Die Erstattung der Anzahlung prüft wie die Karte auf der Seite „Anzahlungen“.
+            DepositsController::refundRules(),
+        ), array_merge(BookingSettingRules::messages(), NotificationSettingRules::messages(), DepositsController::refundMessages()));
 
         $validated['duration_rules'] = BookingSettingRules::durationRules((array) $request->input('duration_rules', []), atField: false);
 
@@ -275,266 +273,6 @@ class SettingsController extends Controller
             $status === 404 => __('MailWizz findet die Liste unter dieser Adresse nicht (Status 404). Bitte API-URL und Listen-UID prüfen.'),
             default => __('Verbindungstest fehlgeschlagen (Status :status). Bitte API-URL, API-Key und Listen-UID prüfen.', ['status' => $status]),
         };
-    }
-
-    /**
-     * Stripe payment integration (tenant-wide). Only API references are
-     * stored (encrypted) — card data never touches this system.
-     */
-    public function updateStripe(Request $request)
-    {
-        $tenant = $this->context->tenant();
-
-        $validated = $request->validate([
-            'secret_key' => ['nullable', 'string', 'max:255'],
-            'webhook_secret' => ['nullable', 'string', 'max:255'],
-            'enabled' => ['nullable', 'boolean'],
-        ]);
-
-        $connection = IntegrationConnection::firstOrNew([
-            'tenant_id' => $tenant->id,
-            'location_id' => null,
-            'provider' => 'stripe',
-        ]);
-
-        $credentials = [];
-        if ($connection->credentials_encrypted) {
-            $credentials = json_decode(Crypt::decryptString($connection->credentials_encrypted), true) ?: [];
-        }
-        if (! empty($validated['secret_key'])) {
-            $credentials['secret_key'] = $validated['secret_key'];
-        }
-        if (! empty($validated['webhook_secret'])) {
-            $credentials['webhook_secret'] = $validated['webhook_secret'];
-        }
-
-        $missing = array_filter([
-            'secret_key' => empty($credentials['secret_key'])
-                ? __('Der Secret Key fehlt. Bitte ihn aus dem Stripe-Dashboard unter Developers → API keys eintragen.')
-                : null,
-            'webhook_secret' => empty($credentials['webhook_secret'])
-                ? __('Das Webhook-Signing-Secret fehlt. Bitte es im Stripe-Dashboard beim Webhook-Endpunkt abrufen und eintragen.')
-                : null,
-        ]);
-        if ($missing !== []) {
-            return $this->rejected($request, $missing);
-        }
-
-        $connection->credentials_encrypted = Crypt::encryptString(json_encode($credentials));
-        $connection->status = $request->boolean('enabled', true) ? 'connected' : 'disconnected';
-        $connection->save();
-
-        $this->audit->log('integration.stripe_updated', $connection, null, ['status' => $connection->status]);
-
-        return $this->saved($request, __('Stripe-Integration gespeichert. Webhook-URL: :url', [
-            'url' => route('webhooks.stripe'),
-        ]));
-    }
-
-    /**
-     * PayPal payment integration (tenant-wide). Only API credentials are
-     * stored (encrypted); funds go to the operator's own PayPal account.
-     */
-    public function updatePaypal(Request $request)
-    {
-        $tenant = $this->context->tenant();
-
-        $validated = $request->validate([
-            'client_id' => ['nullable', 'string', 'max:255'],
-            'secret' => ['nullable', 'string', 'max:255'],
-            'mode' => ['required', 'in:sandbox,live'],
-            'enabled' => ['nullable', 'boolean'],
-        ]);
-
-        $connection = IntegrationConnection::firstOrNew([
-            'tenant_id' => $tenant->id,
-            'location_id' => null,
-            'provider' => 'paypal',
-        ]);
-
-        $credentials = [];
-        if ($connection->credentials_encrypted) {
-            $credentials = json_decode(Crypt::decryptString($connection->credentials_encrypted), true) ?: [];
-        }
-        if (! empty($validated['client_id'])) {
-            $credentials['client_id'] = $validated['client_id'];
-        }
-        if (! empty($validated['secret'])) {
-            $credentials['secret'] = $validated['secret'];
-        }
-        $credentials['mode'] = $validated['mode'];
-
-        $missing = array_filter([
-            'client_id' => empty($credentials['client_id'])
-                ? __('Die Client-ID fehlt. Bitte sie aus dem PayPal Developer Dashboard unter Apps & Credentials eintragen.')
-                : null,
-            'secret' => empty($credentials['secret'])
-                ? __('Das Secret fehlt. Bitte es aus dem PayPal Developer Dashboard unter Apps & Credentials eintragen.')
-                : null,
-        ]);
-        if ($missing !== []) {
-            return $this->rejected($request, $missing);
-        }
-
-        $connection->credentials_encrypted = Crypt::encryptString(json_encode($credentials));
-        $connection->status = $request->boolean('enabled', true) ? 'connected' : 'disconnected';
-        $connection->save();
-
-        $this->audit->log('integration.paypal_updated', $connection, null, [
-            'mode' => $credentials['mode'],
-            'status' => $connection->status,
-        ]);
-
-        return $this->saved($request, __('PayPal-Integration gespeichert.'));
-    }
-
-    /**
-     * Deposit rule for online reservations (no-show protection).
-     */
-    public function storeDepositRule(Request $request)
-    {
-        $location = $this->context->location();
-        abort_if($location === null, 404);
-
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:120'],
-            'min_party_size' => ['nullable', 'integer', 'min:1', 'max:200'],
-            'amount_per_person' => ['required', 'numeric', 'min:0', 'max:10000'],
-            'flat_amount' => ['nullable', 'numeric', 'min:0', 'max:10000'],
-            'from_time' => ['nullable', 'date_format:H:i'],
-            'until_time' => ['nullable', 'date_format:H:i'],
-            'payment_deadline_minutes' => ['nullable', 'integer', 'min:10', 'max:10080'],
-            'cancel_unpaid_automatically' => ['nullable', 'boolean'],
-            'service_id' => ['nullable', 'integer'],
-            'weekdays' => ['nullable', 'array'],
-            'weekdays.*' => ['integer', 'min:0', 'max:6'],
-            'room_id' => ['nullable', 'integer'],
-        ]);
-
-        $rule = DepositRule::create([
-            'tenant_id' => $location->tenant_id,
-            'location_id' => $location->id,
-            'name' => $validated['name'],
-            'type' => 'deposit',
-            'service_id' => $this->serviceIdForRule($location, $validated['service_id'] ?? null),
-            'room_id' => $this->roomIdForRule($location, $validated['room_id'] ?? null),
-            // Leere Auswahl muss null werden, nicht [] - null ist der Wert, den
-            // der Rest des Codes als "alle Tage" erwartet.
-            'weekdays' => ! empty($validated['weekdays'])
-                ? array_values(array_unique(array_map('intval', $validated['weekdays'])))
-                : null,
-            'min_party_size' => $validated['min_party_size'] ?? null,
-            'from_time' => $validated['from_time'] ?? null,
-            'until_time' => $validated['until_time'] ?? null,
-            'amount_per_person_minor' => (int) round($validated['amount_per_person'] * 100),
-            'flat_amount_minor' => (int) round(($validated['flat_amount'] ?? 0) * 100),
-            'currency' => $location->currency,
-            'payment_deadline_minutes' => (int) ($validated['payment_deadline_minutes'] ?? 60),
-            'cancel_unpaid_automatically' => $request->boolean('cancel_unpaid_automatically'),
-        ]);
-
-        $this->audit->log('deposit_rule.created', $rule, null, $validated);
-
-        return $this->saved($request, __('Anzahlungsregel angelegt.'), true);
-    }
-
-    public function updateDepositRule(Request $request, DepositRule $rule)
-    {
-        $location = $this->context->location();
-        abort_if($location === null, 404);
-        abort_if($rule->location_id !== $location->id, 404);
-
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:120'],
-            'min_party_size' => ['nullable', 'integer', 'min:1', 'max:200'],
-            'amount_per_person' => ['required', 'numeric', 'min:0', 'max:10000'],
-            'flat_amount' => ['nullable', 'numeric', 'min:0', 'max:10000'],
-            'from_time' => ['nullable', 'date_format:H:i'],
-            'until_time' => ['nullable', 'date_format:H:i'],
-            'payment_deadline_minutes' => ['nullable', 'integer', 'min:10', 'max:10080'],
-            'cancel_unpaid_automatically' => ['nullable', 'boolean'],
-            'service_id' => ['nullable', 'integer'],
-            'weekdays' => ['nullable', 'array'],
-            'weekdays.*' => ['integer', 'min:0', 'max:6'],
-            'room_id' => ['nullable', 'integer'],
-        ]);
-
-        $rule->update([
-            'name' => $validated['name'],
-            // Nur ueberschreiben, wenn das Feld ueberhaupt mitgeschickt wurde –
-            // im Restaurantbetrieb (oder ohne Leistungen) gibt es das Auswahlfeld
-            // nicht, und die bestehende Bindung darf davon nicht verschwinden.
-            'service_id' => $request->has('service_id')
-                ? $this->serviceIdForRule($location, $validated['service_id'] ?? null)
-                : $rule->service_id,
-            'room_id' => $request->has('room_id')
-                ? $this->roomIdForRule($location, $validated['room_id'] ?? null)
-                : $rule->room_id,
-            'weekdays' => $request->has('weekdays')
-                ? (! empty($validated['weekdays'])
-                    ? array_values(array_unique(array_map('intval', $validated['weekdays'])))
-                    : null)
-                : $rule->weekdays,
-            'min_party_size' => $validated['min_party_size'] ?? null,
-            'from_time' => $validated['from_time'] ?? null,
-            'until_time' => $validated['until_time'] ?? null,
-            'amount_per_person_minor' => (int) round($validated['amount_per_person'] * 100),
-            'flat_amount_minor' => (int) round(($validated['flat_amount'] ?? 0) * 100),
-            'payment_deadline_minutes' => (int) ($validated['payment_deadline_minutes'] ?? 60),
-            'cancel_unpaid_automatically' => $request->boolean('cancel_unpaid_automatically'),
-        ]);
-
-        $this->audit->log('deposit_rule.updated', $rule, null, $validated);
-
-        return $this->saved($request, __('Anzahlungsregel aktualisiert.'), true);
-    }
-
-    /**
-     * A deposit rule may point at one service of this location – or at none,
-     * then it applies to every booking. Anything else is dropped rather than
-     * silently attached to a foreign service.
-     */
-    private function serviceIdForRule(Location $location, mixed $serviceId): ?int
-    {
-        if (empty($serviceId)) {
-            return null;
-        }
-
-        $id = (int) $serviceId;
-
-        if (! Service::where('location_id', $location->id)->where('id', $id)->exists()) {
-            return null;
-        }
-
-        return $id;
-    }
-
-    /**
-     * Wie serviceIdForRule, aber fuer den Raum: Eine fremde ID wird verworfen
-     * statt still uebernommen.
-     */
-    private function roomIdForRule(Location $location, mixed $roomId): ?int
-    {
-        if (empty($roomId)) {
-            return null;
-        }
-
-        $id = (int) $roomId;
-
-        if (! Room::where('location_id', $location->id)->where('id', $id)->exists()) {
-            return null;
-        }
-
-        return $id;
-    }
-
-    public function deleteDepositRule(DepositRule $rule)
-    {
-        abort_if($rule->location_id !== $this->context->locationId(), 404);
-        $this->audit->log('deposit_rule.deleted', $rule, ['name' => $rule->name]);
-        $rule->delete();
-
-        return back()->with('success', __('Anzahlungsregel gelöscht.'));
     }
 
     public function uploadLogo(Request $request)

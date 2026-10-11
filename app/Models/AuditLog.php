@@ -117,6 +117,22 @@ class AuditLog extends Model
         'mail_relay_enabled' => 'Antworten über Swayy',
         // SMS-Versand (SmsController)
         'sender_id' => 'Absenderkennung',
+        // Zahlungsanbieter (PaymentProvidersController)
+        'mode' => 'Modus',
+        // Anzahlungen (DepositsController); 'name' steht oben
+        'min_party_size' => 'Ab Personenzahl',
+        'amount_per_person' => 'Betrag pro Person (€)',
+        'flat_amount' => 'Grundbetrag (€)',
+        'from_time' => 'Nur ab Uhrzeit',
+        'until_time' => 'Nur bis Uhrzeit',
+        'weekdays' => 'Wochentage',
+        'payment_deadline_minutes' => 'Zahlungsfrist (Min.)',
+        'cancel_unpaid_automatically' => 'Unbezahlte Buchungen automatisch stornieren',
+        'service_id' => 'Leistung',
+        'room_id' => 'Raum',
+        'refund_mode' => 'Erstattung: Modus',
+        'refund_percent' => 'Erstattung in %',
+        'refund_processing' => 'Erstattung: Ausführung',
         // Vorlagen (NotificationTemplateController)
         'key' => 'Vorlage',
         // 'type' auch bei Marketing-Kampagnen, deshalb allgemein
@@ -193,6 +209,7 @@ class AuditLog extends Model
         'location.booking_rules_updated' => 'Standort: Buchungsregeln geändert',
         'location.booking_page_updated' => 'Standort: Buchungsseite geändert',
         'location.notifications_updated' => 'Benachrichtigungen geändert',
+        'location.refunds_updated' => 'Erstattung der Anzahlung geändert',
         'reservation.attachment_added' => 'Reservierung: Anhang hinzugefügt',
         'reservation.attachment_deleted' => 'Reservierung: Anhang gelöscht',
         'reservation.deposit_shortfall' => 'Reservierung: Anzahlung zu niedrig',

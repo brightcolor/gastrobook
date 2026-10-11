@@ -12,6 +12,13 @@ $bookingRuleDurationMin = EnvSetting::integer('SWAYY_BOOKING_RULE_DURATION_MIN',
 $serviceDurationMin = EnvSetting::integer('SWAYY_SERVICE_DURATION_MIN', default: 5, min: 1, max: 60);
 // Die Kennung aus Buchstaben ist nie länger als die längste Kennung überhaupt.
 $smsSenderIdMax = EnvSetting::integer('SWAYY_SMS_SENDER_ID_MAX', default: 16, min: 3, max: 16);
+// Anzahlungsregeln. Der Betrag einer Buchung (Grundbetrag plus Betrag pro Person mal Personenzahl, die Buchungswege
+// nehmen bis 100 Personen an) steht in integer-Spalten, die Cent bis 2147483647 fassen. Daraus folgt der höchste
+// Betrag, den eine Regel haben darf.
+$depositAmountCeiling = intdiv(21474836, 100 + 1);
+// Zahlungsfrist: Der größte Wert liegt nie unter dem kleinsten, die Vorgabe liegt dazwischen.
+$depositDeadlineMin = EnvSetting::integer('SWAYY_DEPOSIT_DEADLINE_MIN', default: 10, min: 5, max: 120);
+$depositDeadlineMax = max($depositDeadlineMin, EnvSetting::integer('SWAYY_DEPOSIT_DEADLINE_MAX', default: 10080, min: 60, max: 32767));
 
 return [
     /*
@@ -486,6 +493,59 @@ return [
         'sender_id_max' => $smsSenderIdMax,
         'sender_id_text_max' => min($smsSenderIdMax, EnvSetting::integer('SWAYY_SMS_SENDER_ID_TEXT_MAX', default: 11, min: 3, max: 16)),
         'api_key_max' => EnvSetting::integer('SWAYY_SMS_API_KEY_MAX', default: 255, min: 32, max: 1000),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Zahlungsanbieter (Stripe, PayPal)
+    |--------------------------------------------------------------------------
+    |
+    | Grenzen der Seite „Zahlungsanbieter“ (bis Teil 3 auch der alten
+    | Sammelseite), gelesen vom PaymentProvidersController. Die Zugangsdaten
+    | liegen verschlüsselt in integration_connections.credentials_encrypted
+    | (text).
+    |
+    | secret_max: längster einzelner Schlüssel (Secret Key, Webhook-Secret,
+    | Client-ID, Secret) in Zeichen (32–1000).
+    |
+    */
+    'payments' => [
+        'secret_max' => EnvSetting::integer('SWAYY_PAYMENT_SECRET_MAX', default: 255, min: 32, max: 1000),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Anzahlungsregeln
+    |--------------------------------------------------------------------------
+    |
+    | Grenzen der Seite „Anzahlungen“ (bis Teil 3 auch der alten Sammelseite),
+    | gelesen vom DepositsController. Tabelle deposit_rules.
+    |
+    | amount_max: höchster Betrag pro Person und höchster Grundbetrag in Euro
+    | (10–212622). Der Betrag einer Buchung, Grundbetrag plus Betrag pro Person
+    | mal bis zu 100 Personen, steht in reservations.payment_amount_minor und
+    | payment_intents.amount_minor (integer, Cent bis 2147483647). Die Obergrenze
+    | der Einstellung sorgt dafür, dass auch der größte Betrag mit 100 Personen
+    | in diese Spalten passt.
+    | deadline_min, deadline_max: Zahlungsfrist in Minuten (5–120 und
+    | 60–32767; die Spalte payment_deadline_minutes ist smallint). Liegt der
+    | größte Wert unter dem kleinsten, gilt der kleinste auch als größter.
+    | deadline_default: Frist einer Regel ohne Angabe (5–32767), begrenzt auf
+    | den Bereich von deadline_min bis deadline_max.
+    | party_size_max: größte Personenzahl, ab der eine Regel gilt (2–100). Die
+    | Buchungswege nehmen höchstens 100 Personen an; die Spalte min_party_size
+    | ist smallint.
+    | name_max: längster Name einer Regel in Zeichen (20–255; die Spalte name
+    | fasst 255).
+    |
+    */
+    'deposits' => [
+        'amount_max' => EnvSetting::integer('SWAYY_DEPOSIT_AMOUNT_MAX', default: 10000, min: 10, max: $depositAmountCeiling),
+        'deadline_min' => $depositDeadlineMin,
+        'deadline_max' => $depositDeadlineMax,
+        'deadline_default' => max($depositDeadlineMin, min($depositDeadlineMax, EnvSetting::integer('SWAYY_DEPOSIT_DEADLINE_DEFAULT', default: 60, min: 5, max: 32767))),
+        'party_size_max' => EnvSetting::integer('SWAYY_DEPOSIT_PARTY_SIZE_MAX', default: 100, min: 2, max: 100),
+        'name_max' => EnvSetting::integer('SWAYY_DEPOSIT_NAME_MAX', default: 120, min: 20, max: 255),
     ],
 
     /*

@@ -26,8 +26,10 @@ use App\Http\Controllers\Admin\Settings\BookingPageController;
 use App\Http\Controllers\Admin\Settings\BookingRulesController;
 use App\Http\Controllers\Admin\Settings\CapacityController;
 use App\Http\Controllers\Admin\Settings\DataController;
+use App\Http\Controllers\Admin\Settings\DepositsController;
 use App\Http\Controllers\Admin\Settings\GeneralController;
 use App\Http\Controllers\Admin\Settings\NotificationsController;
+use App\Http\Controllers\Admin\Settings\PaymentProvidersController;
 use App\Http\Controllers\Admin\Settings\RoomsController;
 use App\Http\Controllers\Admin\Settings\SenderController;
 use App\Http\Controllers\Admin\Settings\SettingsMenuController;
@@ -411,18 +413,24 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
             ->middleware('permission:tenant.settings.manage')->name('settings.logo.delete');
         Route::put('/settings/mailwizz', [SettingsController::class, 'updateMailwizz'])
             ->middleware('permission:integrations.manage')->name('settings.mailwizz');
-        Route::put('/settings/stripe', [SettingsController::class, 'updateStripe'])
+        Route::get('/settings/payment-providers', [PaymentProvidersController::class, 'show'])
+            ->middleware('permission:integrations.manage')->name('settings.payment-providers.show');
+        Route::put('/settings/stripe', [PaymentProvidersController::class, 'updateStripe'])
             ->middleware('permission:integrations.manage')->name('settings.stripe');
-        Route::put('/settings/paypal', [SettingsController::class, 'updatePaypal'])
+        Route::put('/settings/paypal', [PaymentProvidersController::class, 'updatePaypal'])
             ->middleware('permission:integrations.manage')->name('settings.paypal');
         Route::put('/settings/sms', [SmsController::class, 'update'])
             ->middleware('permission:integrations.manage')->name('settings.sms');
-        Route::post('/settings/deposit-rules', [SettingsController::class, 'storeDepositRule'])
+        Route::get('/settings/deposits', [DepositsController::class, 'show'])
+            ->middleware('permission:payments.manage')->name('settings.deposits.show');
+        Route::post('/settings/deposit-rules', [DepositsController::class, 'store'])
             ->middleware('permission:payments.manage')->name('settings.deposit-rules.store');
-        Route::put('/settings/deposit-rules/{rule}', [SettingsController::class, 'updateDepositRule'])
+        Route::put('/settings/deposit-rules/{rule}', [DepositsController::class, 'update'])
             ->middleware('permission:payments.manage')->name('settings.deposit-rules.update');
-        Route::delete('/settings/deposit-rules/{rule}', [SettingsController::class, 'deleteDepositRule'])
+        Route::delete('/settings/deposit-rules/{rule}', [DepositsController::class, 'destroy'])
             ->middleware('permission:payments.manage')->name('settings.deposit-rules.delete');
+        Route::put('/settings/refunds', [DepositsController::class, 'updateRefunds'])
+            ->middleware('permission:opening_hours.manage')->name('settings.refunds');
         Route::put('/settings/opening-hours', [SettingsController::class, 'updateOpeningHours'])
             ->middleware('permission:opening_hours.manage')->name('settings.opening-hours');
         Route::post('/settings/special-hours', [SettingsController::class, 'storeSpecialHours'])

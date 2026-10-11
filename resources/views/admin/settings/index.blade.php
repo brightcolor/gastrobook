@@ -885,7 +885,7 @@
                 <label class="mb-1 block text-xs font-semibold text-stone-500">Webhook-Signing-Secret (whsec_…) <span class="tip" tabindex="0" data-tip="Erhältst du im Stripe-Dashboard, wenn du den Webhook-Endpunkt mit der URL unten anlegst. Er stellt sicher, dass nur echte Stripe-Ereignisse verarbeitet werden – wichtiger Sicherheitsmechanismus!">?</span></label>
                 <input type="password" name="webhook_secret" autocomplete="new-password" class="w-full rounded-lg border-stone-200">
             </div>
-            <label class="flex items-center gap-2"><input type="checkbox" name="enabled" value="1" @checked(($stripe->status ?? '') === 'connected')> Online-Zahlung aktiv <span class="tip" tabindex="0" data-tip="Schaltet Stripe-Zahlungen für diesen Betrieb ein. Solange deaktiviert, werden keine Zahlungen verlangt.">?</span></label>
+            <label class="flex items-center gap-2"><input type="hidden" name="enabled" value="0"><input type="checkbox" name="enabled" value="1" @checked(($stripe->status ?? '') === 'connected')> Online-Zahlung aktiv <span class="tip" tabindex="0" data-tip="Schaltet Stripe-Zahlungen für diesen Betrieb ein. Solange deaktiviert, werden keine Zahlungen verlangt.">?</span></label>
         </div>
         <p class="mt-2 rounded-lg bg-stone-50 p-2 text-xs text-stone-600">
             Webhook-URL in Stripe hinterlegen: <code class="break-all">{{ route('webhooks.stripe') }}</code><br>
@@ -939,7 +939,7 @@
                     <option value="sandbox" @selected(($paypalCredentials['mode'] ?? '') === 'sandbox')>Sandbox (Test)</option>
                 </select>
             </div>
-            <label class="flex items-center gap-2"><input type="checkbox" name="enabled" value="1" @checked(($paypal->status ?? '') === 'connected')> PayPal-Zahlung aktiv <span class="tip" tabindex="0" data-tip="Schaltet PayPal als Zahlungsoption ein. Sind Stripe und PayPal beide aktiv, darf der Gast an der Kasse selbst wählen – maximale Flexibilität!">?</span></label>
+            <label class="flex items-center gap-2"><input type="hidden" name="enabled" value="0"><input type="checkbox" name="enabled" value="1" @checked(($paypal->status ?? '') === 'connected')> PayPal-Zahlung aktiv <span class="tip" tabindex="0" data-tip="Schaltet PayPal als Zahlungsoption ein. Sind Stripe und PayPal beide aktiv, darf der Gast an der Kasse selbst wählen – maximale Flexibilität!">?</span></label>
         </div>
         <p class="mt-2 rounded-lg bg-stone-50 p-2 text-xs text-stone-600">Keine Webhook-Konfiguration nötig – Zahlung wird bei Rückkehr des Gastes erfasst (Capture-on-Return).</p>
         <button class="mt-3 rounded-xl bg-stone-900 px-5 py-2.5 text-sm font-bold text-white">Speichern</button>
@@ -955,7 +955,7 @@
         </p>
         <form method="POST" action="{{ route('admin.settings.deposit-rules.store') }}" class="grid grid-cols-2 gap-2 text-sm">
             @csrf
-            <input type="text" name="name" required placeholder="Name (z. B. Gruppen ab 6) *" title="Ein interner Name damit du die Regel wiedererkennst – z. B. &quot;Gruppen ab 6 Personen&quot; oder &quot;Abendtische ab 18 Uhr&quot;." class="col-span-2 rounded-lg border-stone-200">
+            <input type="text" name="name" required maxlength="{{ config('swayy.deposits.name_max') }}" placeholder="Name (z. B. Gruppen ab 6) *" title="Ein interner Name damit du die Regel wiedererkennst – z. B. &quot;Gruppen ab 6 Personen&quot; oder &quot;Abendtische ab 18 Uhr&quot;." class="col-span-2 rounded-lg border-stone-200">
             @if($salonServices->isNotEmpty())
                 <div class="col-span-2"><label class="mb-1 block text-xs text-stone-500">Nur für Leistung <span class="tip" tabindex="0" data-tip="Die Regel greift nur, wenn diese Leistung im Termin enthalten ist – z. B. Anzahlung für Balayage, aber nicht für den Pony-Schnitt. Leer lassen, wenn sie für alle Termine gelten soll.">?</span></label>
                     <select name="service_id" class="w-full rounded-lg border-stone-200">
@@ -967,15 +967,15 @@
                 </div>
             @endif
             <div><label class="mb-1 block text-xs text-stone-500">Ab Personenzahl <span class="tip" tabindex="0" data-tip="Die Regel gilt nur wenn die Gruppe mindestens so groß ist. Leer lassen, wenn sie für jede Buchungsgröße gelten soll.">?</span></label>
-                <input type="number" name="min_party_size" min="1" placeholder="z. B. 6" class="w-full rounded-lg border-stone-200"></div>
+                <input type="number" name="min_party_size" min="1" max="{{ config('swayy.deposits.party_size_max') }}" placeholder="z. B. 6" class="w-full rounded-lg border-stone-200"></div>
             <div><label class="mb-1 block text-xs text-stone-500">Betrag p. P. (€) * <span class="tip" tabindex="0" data-tip="So viel Euro zahlt jede Person als Anzahlung. Beispiel: 10 € × 4 Personen = 40 € Anzahlung. Der Betrag wird beim Besuch mit der Rechnung verrechnet.">?</span></label>
-                <input type="number" name="amount_per_person" required step="0.01" min="0" class="w-full rounded-lg border-stone-200"></div>
+                <input type="number" name="amount_per_person" required step="0.01" min="0" max="{{ config('swayy.deposits.amount_max') }}" class="w-full rounded-lg border-stone-200"></div>
             <div><label class="mb-1 block text-xs text-stone-500">Nur ab Uhrzeit <span class="tip" tabindex="0" data-tip="Die Regel gilt erst ab dieser Uhrzeit – z. B. 18:00 für Abendtische. Leer lassen wenn sie ganztags gelten soll.">?</span></label>
                 <input type="time" name="from_time" class="w-full rounded-lg border-stone-200"></div>
             <div><label class="mb-1 block text-xs text-stone-500">Grundbetrag (€) <span class="tip" tabindex="0" data-tip="Ein fester Betrag, der zusätzlich zum Betrag pro Person fällig wird – unabhängig von der Gruppengröße. Beispiel: 20 € Grundbetrag + 5 € p. P. ergibt bei 4 Personen 40 €. Leer lassen, wenn du nur pro Person abrechnest.">?</span></label>
-                <input type="number" name="flat_amount" step="0.01" min="0" placeholder="0,00" class="w-full rounded-lg border-stone-200"></div>
+                <input type="number" name="flat_amount" step="0.01" min="0" max="{{ config('swayy.deposits.amount_max') }}" placeholder="0,00" class="w-full rounded-lg border-stone-200"></div>
             <div><label class="mb-1 block text-xs text-stone-500">Zahlungsfrist (Min.) <span class="tip" tabindex="0" data-tip="Wie lange hat der Gast nach der Buchung Zeit zu zahlen? Nach Ablauf kann die Buchung automatisch storniert werden – siehe Häkchen darunter.">?</span></label>
-                <input type="number" name="payment_deadline_minutes" min="10" placeholder="60" class="w-full rounded-lg border-stone-200"></div>
+                <input type="number" name="payment_deadline_minutes" min="{{ config('swayy.deposits.deadline_min') }}" max="{{ config('swayy.deposits.deadline_max') }}" placeholder="{{ config('swayy.deposits.deadline_default') }}" class="w-full rounded-lg border-stone-200"></div>
             <div class="col-span-2"><label class="mb-1 block text-xs text-stone-500">Nur an diesen Wochentagen <span class="tip" tabindex="0" data-tip="Nichts angehakt = die Regel gilt an allen Tagen. Typisch: nur Freitag und Samstag, weil dort die Ausfälle wehtun.">?</span></label>
                 <div class="flex flex-wrap gap-2 text-xs">
                     @foreach(['Mo','Di','Mi','Do','Fr','Sa','So'] as $i => $tag)
@@ -1017,15 +1017,15 @@
                         </span>
                         <span class="flex items-center gap-2">
                             <span class="text-xs font-semibold text-teal-700">Bearbeiten</span>
-                            <form method="POST" action="{{ route('admin.settings.deposit-rules.delete', $rule) }}" onsubmit="return confirm('Regel löschen?')">
+                            <form method="POST" action="{{ route('admin.settings.deposit-rules.delete', $rule) }}">
                                 @csrf @method('DELETE')
-                                <button class="text-red-500 hover:text-red-700">✕</button>
+                                <button data-confirm="Regel löschen?" data-confirm-title="Regel löschen" data-confirm-ok="Löschen" data-confirm-style="danger" class="text-red-500 hover:text-red-700">✕</button>
                             </form>
                         </span>
                     </summary>
                     <form method="POST" action="{{ route('admin.settings.deposit-rules.update', $rule) }}" class="mt-3 grid grid-cols-2 gap-2 border-t border-stone-200 pt-3">
                         @csrf @method('PUT')
-                        <input type="text" name="name" required value="{{ $rule->name }}" placeholder="Name *" class="col-span-2 rounded-lg border-stone-200">
+                        <input type="text" name="name" required maxlength="{{ config('swayy.deposits.name_max') }}" value="{{ $rule->name }}" placeholder="Name *" class="col-span-2 rounded-lg border-stone-200">
                         @if($salonServices->isNotEmpty())
                             <div class="col-span-2"><label class="mb-1 block text-xs text-stone-500">Nur für Leistung</label>
                                 <select name="service_id" class="w-full rounded-lg border-stone-200">
@@ -1037,15 +1037,15 @@
                             </div>
                         @endif
                         <div><label class="mb-1 block text-xs text-stone-500">Ab Personenzahl</label>
-                            <input type="number" name="min_party_size" min="1" value="{{ $rule->min_party_size }}" class="w-full rounded-lg border-stone-200"></div>
+                            <input type="number" name="min_party_size" min="1" max="{{ config('swayy.deposits.party_size_max') }}" value="{{ $rule->min_party_size }}" class="w-full rounded-lg border-stone-200"></div>
                         <div><label class="mb-1 block text-xs text-stone-500">Betrag p. P. (€) *</label>
-                            <input type="number" name="amount_per_person" required step="0.01" min="0" value="{{ number_format($rule->amount_per_person_minor / 100, 2, '.', '') }}" class="w-full rounded-lg border-stone-200"></div>
+                            <input type="number" name="amount_per_person" required step="0.01" min="0" max="{{ config('swayy.deposits.amount_max') }}" value="{{ \App\Support\MoneyInput::fromMinor($rule->amount_per_person_minor) }}" class="w-full rounded-lg border-stone-200"></div>
                         <div><label class="mb-1 block text-xs text-stone-500">Nur ab Uhrzeit</label>
                             <input type="time" name="from_time" value="{{ $rule->from_time ? substr($rule->from_time, 0, 5) : '' }}" class="w-full rounded-lg border-stone-200"></div>
                         <div><label class="mb-1 block text-xs text-stone-500">Grundbetrag (€)</label>
-                            <input type="number" name="flat_amount" step="0.01" min="0" value="{{ number_format($rule->flat_amount_minor / 100, 2, '.', '') }}" class="w-full rounded-lg border-stone-200"></div>
+                            <input type="number" name="flat_amount" step="0.01" min="0" max="{{ config('swayy.deposits.amount_max') }}" value="{{ \App\Support\MoneyInput::fromMinor($rule->flat_amount_minor) }}" class="w-full rounded-lg border-stone-200"></div>
                         <div><label class="mb-1 block text-xs text-stone-500">Zahlungsfrist (Min.)</label>
-                            <input type="number" name="payment_deadline_minutes" min="10" value="{{ $rule->payment_deadline_minutes }}" class="w-full rounded-lg border-stone-200"></div>
+                            <input type="number" name="payment_deadline_minutes" min="{{ config('swayy.deposits.deadline_min') }}" max="{{ config('swayy.deposits.deadline_max') }}" value="{{ $rule->payment_deadline_minutes }}" class="w-full rounded-lg border-stone-200"></div>
                         <label class="col-span-2 flex items-center gap-2 text-xs text-stone-600">
                             <input type="checkbox" name="cancel_unpaid_automatically" value="1" @checked($rule->cancel_unpaid_automatically) class="rounded">
                             Unbezahlte Buchungen nach Fristablauf automatisch stornieren
