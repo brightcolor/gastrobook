@@ -99,6 +99,35 @@ final class ErrorPage
         return parse_url($previous, PHP_URL_HOST) === request()->getHost() ? $previous : url('/');
     }
 
+    /**
+     * Die Anfrage gehört zur Verwaltung (Betrieb oder Plattform). Alle übrigen
+     * Adressen sind öffentlich: Buchungsseiten, Links aus Mails, Rückkehr vom
+     * Zahlungsanbieter.
+     */
+    public static function adminArea(): bool
+    {
+        try {
+            return request()->is('admin', 'admin/*', 'saas', 'saas/*');
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * „Zur Übersicht“ führt nur dann weiter, wenn die Verwaltung den Betrieb
+     * des Kontos aufgelöst hat. Fehlt er, etwa bei einem gesperrten Betrieb
+     * oder einem Konto ohne Betrieb, endet auch die Übersicht in derselben
+     * Fehlerseite.
+     */
+    public static function overviewReachable(): bool
+    {
+        try {
+            return self::signedIn() && app(TenantContext::class)->tenant() !== null;
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
     public static function signedIn(): bool
     {
         try {

@@ -50,7 +50,7 @@ class ResolveTenantContext
             if ($user->isSaasAdmin()) {
                 return $next($request); // SaaS admin area works without tenant context
             }
-            abort(403, 'Kein Zugriff auf einen Mandanten.');
+            abort(403, __('Dein Konto gehört zu keinem Betrieb. Frag den Inhaber deines Betriebs nach einer Einladung.'));
         }
 
         // trial_expired and pending_billing are handled by EnsureTrialActive;

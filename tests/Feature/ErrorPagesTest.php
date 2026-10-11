@@ -24,6 +24,8 @@ class ErrorPagesTest extends TestCase
         Route::middleware('web')->get('/_test/forbidden', fn () => abort(403, 'Dieser Betrieb ist gesperrt. Schreib uns an info@swayy.de, dann klären wir den Grund.'));
         Route::middleware('web')->get('/_test/forbidden-plain', fn () => abort(403));
         Route::middleware('web')->get('/_test/forbidden-gate', fn () => throw new AuthorizationException);
+        Route::middleware('web')->get('/admin/_test/forbidden-plain', fn () => abort(403));
+        Route::middleware('web')->get('/admin/_test/forbidden-gate', fn () => throw new AuthorizationException);
         Route::middleware('web')->get('/_test/forbidden-markup', fn () => abort(403, '<script>alert(1)</script> Zugriff verweigert'));
         Route::middleware('web')->get('/_test/missing', fn () => abort(404, 'Tisch 12 mit Zugangscode gibt es nicht'));
         Route::middleware('web')->get('/_test/boom', fn () => throw new RuntimeException('SQLSTATE geheim /var/www/html/app'));
@@ -59,9 +61,9 @@ class ErrorPagesTest extends TestCase
             ->assertSee('Dieser Betrieb ist gesperrt. Schreib uns an info@swayy.de, dann klären wir den Grund.');
     }
 
-    public function test_403_without_a_reason_names_the_next_step(): void
+    public function test_403_in_the_admin_without_a_reason_names_the_missing_right_and_the_next_step(): void
     {
-        $this->get('/_test/forbidden-plain')
+        $this->actingAs(User::factory()->create())->get('/admin/_test/forbidden-plain')
             ->assertForbidden()
             ->assertSee('Dafür fehlt dir das Recht')
             ->assertSee('Diese Seite ist deiner Rolle nicht freigegeben.')
@@ -70,10 +72,71 @@ class ErrorPagesTest extends TestCase
 
     public function test_403_hides_the_english_text_of_the_framework(): void
     {
-        $this->get('/_test/forbidden-gate')
+        $this->actingAs(User::factory()->create())->get('/admin/_test/forbidden-gate')
             ->assertForbidden()
             ->assertDontSee('This action is unauthorized')
             ->assertSee('Diese Seite ist deiner Rolle nicht freigegeben.');
+
+        $this->get('/_test/forbidden-gate')
+            ->assertForbidden()
+            ->assertDontSee('This action is unauthorized');
+    }
+
+    public function test_403_on_a_public_link_speaks_to_guests_without_roles(): void
+    {
+        $this->get('/_test/forbidden-plain')
+            ->assertForbidden()
+            ->assertSee('Dieser Link funktioniert nicht (mehr)')
+            ->assertSee('Öffne den Link noch einmal aus deiner E-Mail oder wende dich an den Betrieb.')
+            ->assertDontSee('Rolle')
+            ->assertDontSee('Recht')
+            ->assertDontSee('Inhaber')
+            ->assertDontSee('Abmelden');
+    }
+
+    public function test_an_invalid_unsubscribe_link_is_a_public_403(): void
+    {
+        $this->get('/marketing/abmelden/1')
+            ->assertForbidden()
+            ->assertSee('Dieser Link funktioniert nicht (mehr)')
+            ->assertSee('href="'.url('/').'"', false)
+            ->assertDontSee('Rolle')
+            ->assertDontSee('Dafür fehlt dir das Recht');
+    }
+
+    public function test_a_blocked_business_gets_a_neutral_title_and_no_link_that_loops(): void
+    {
+        $setup = $this->createTenantSetup();
+        $setup['tenant']->update(['status' => 'suspended']);
+        $member = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $response = $this->actingAs($member)->get('/admin')
+            ->assertForbidden()
+            ->assertSee('<title>Zugriff nicht möglich – Swayy</title>', false)
+            ->assertSee('Dieser Betrieb ist gesperrt.')
+            ->assertSee('Frag den Inhaber deines Betriebs oder melde dich mit einem anderen Konto an.')
+            ->assertDontSee('Dafür fehlt dir das Recht')
+            ->assertDontSee('Rolle')
+            ->assertSee('Zur Startseite')
+            ->assertSee('href="'.url('/').'"', false)
+            ->assertSee('Abmelden')
+            ->assertSee('href="'.route('logout.confirm').'"', false)
+            ->assertDontSee('Zur Übersicht');
+        $this->assertStringNotContainsString('href="'.route('admin.dashboard').'"', (string) $response->getContent());
+    }
+
+    public function test_an_account_without_a_business_gets_the_reason_and_the_way_out(): void
+    {
+        $user = User::factory()->create(['current_tenant_id' => null]);
+
+        $this->actingAs($user)->get('/admin')
+            ->assertForbidden()
+            ->assertSee('Zugriff nicht möglich')
+            ->assertSee('Dein Konto gehört zu keinem Betrieb. Frag den Inhaber deines Betriebs nach einer Einladung.')
+            ->assertDontSee('Zur Übersicht')
+            ->assertSee('href="'.route('logout.confirm').'"', false)
+            ->assertSee('href="'.url('/').'"', false);
     }
 
     public function test_403_escapes_the_reason(): void
@@ -218,7 +281,8 @@ class ErrorPagesTest extends TestCase
 
         $this->actingAs($user)->get('/_test/forbidden-plain')
             ->assertForbidden()
-            ->assertSee('Zur Übersicht');
+            ->assertSee('Dieser Link funktioniert nicht (mehr)')
+            ->assertSee('Abmelden');
     }
 
     public function test_403_sends_a_guest_to_the_start_page(): void
@@ -238,7 +302,11 @@ class ErrorPagesTest extends TestCase
         $response = $this->actingAs($host)->get('/admin/settings/capacity')
             ->assertForbidden()
             ->assertSee('Dafür fehlt dir das Recht')
-            ->assertSee('Diese Seite ist deiner Rolle nicht freigegeben.');
+            ->assertSee('Diese Seite ist deiner Rolle nicht freigegeben.')
+            // Der Betrieb ist in Ordnung: Die Übersicht führt nicht erneut in diese Seite.
+            ->assertSee('href="'.route('admin.dashboard').'"', false)
+            ->assertSee('href="'.url('/').'"', false)
+            ->assertSee('href="'.route('logout.confirm').'"', false);
 
         foreach ((array) config('permissions.permissions') as $permission) {
             $response->assertDontSee($permission);
