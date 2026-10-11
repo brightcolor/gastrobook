@@ -94,7 +94,7 @@ Lokal (127.0.0.1:8010), Demo-Daten mit zwei Standorten; zusätzliches lokales Mi
 
 - Handbuch `docs/handbuch/08-verwaltung/02-umzug-export-import.md` auf Einstellungen › Daten umstellen
 - „Abrechnung“ in `SettingsController.php`, `DirectDebitController.php`, `SettingsFormErrorsTest.php` und `AuditLog::SUBJECTS['billing']` auf „Abo & Rechnungen“
-- `SettingsController::uploadLogo` mit Laravel-Standardmeldungen (entfällt mit der Sammelseite)
+- `SettingsController::uploadLogo` mit Laravel-Standardmeldungen; löscht das alte Logo vor dem Speichern und schreibt bei einem Fehlschlag `false` als Pfad (entfällt mit der Sammelseite; der neue Weg in `LocationLogoController` speichert zuerst, nachgetragen in 2b)
 - Node-Version festlegen (`engines` oder `.nvmrc`; jsdom 30 braucht ^22.22.2 oder ^24.15.0)
 - Eintrag `gastrobook-new-ui` aus `.claude/launch.json` entfernen; Changelog-Hinweis Farbe `#0d9488` → `#0f766e`
 - Zweig enthält die Merge-Commits 42f6c29 (main 1.134.2) und 1f05d2e (main 1.134.3, 09.10.2026); GitHub erlaubt für gastrobook nur Rebase-Merges. Vor dem PR den Weg festlegen (lokal auf `main` rebasen oder zusammenfassen) und Verweise auf Commits in den Protokollen nachziehen
