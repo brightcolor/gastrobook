@@ -73,6 +73,9 @@ class WebhooksPageTest extends TestCase
 
         $endpoint = WebhookEndpoint::withoutGlobalScopes()->firstOrFail();
         $plain = $endpoint->secret;
+        // Ein Flash der Sitzung: Er überlebt genau die nächste Anfrage.
+        $this->assertContains('new_secret', (array) session('_flash.old'));
+        $this->assertContains('new_secret_url', (array) session('_flash.old'));
 
         $first = $this->actingAs($owner)->get('/admin/webhooks')->assertOk();
         $first->assertSee('Jetzt kopieren: Swayy zeigt dieses Geheimnis nur einmal.')
@@ -208,8 +211,10 @@ class WebhooksPageTest extends TestCase
         $this->actingAs($owner)->get('/admin/webhooks')->assertOk()
             ->assertSee('Neuer Termin')
             ->assertSee('Termin bestätigt')
+            ->assertSee('Ein Webhook meldet Ereignisse, etwa einen neuen Termin, automatisch')
             ->assertDontSee('Neue Reservierung')
-            ->assertDontSee('Reservierung bestätigt');
+            ->assertDontSee('Reservierung bestätigt')
+            ->assertDontSee('etwa eine neue Reservierung');
     }
 
     public function test_restaurants_read_reservations(): void
@@ -221,7 +226,9 @@ class WebhooksPageTest extends TestCase
         $this->actingAs($owner)->get('/admin/webhooks')->assertOk()
             ->assertSee('Neue Reservierung')
             ->assertSee('Reservierung bestätigt')
-            ->assertDontSee('Neuer Termin');
+            ->assertSee('Ein Webhook meldet Ereignisse, etwa eine neue Reservierung, automatisch')
+            ->assertDontSee('Neuer Termin')
+            ->assertDontSee('etwa einen neuen Termin');
     }
 
     public function test_the_drawer_offers_all_events_and_one_box_per_event_without_a_zero(): void

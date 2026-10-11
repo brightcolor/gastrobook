@@ -79,8 +79,9 @@ class WebhookController extends Controller
         private readonly AuditLogger $audit,
     ) {}
 
-    public function index(Request $request)
+    public function index()
     {
+        $tenant = $this->context->tenant();
         $logEntries = (int) config('swayy.webhooks.log_entries');
         $disableAfter = (int) config('swayy.webhooks.disable_after');
         $endpoints = WebhookEndpoint::withCount('deliveries')->orderBy('id')->get();
@@ -91,11 +92,12 @@ class WebhookController extends Controller
             'deliveries' => WebhookDelivery::with('endpoint')->latest('id')->limit($logEntries)->get(),
             'logEntries' => $logEntries,
             'events' => self::EVENTS,
-            'eventLabels' => $this->eventLabels($this->context->tenant()->isSalon()),
-            'webhooksEnabled' => $this->context->tenant()->hasFeature('webhooks_enabled'),
-            // Das Geheimnis erscheint einmal: Wer es aus der Sitzung holt, löscht es dort.
-            'newSecret' => $request->session()->pull('new_secret'),
-            'newSecretUrl' => $request->session()->pull('new_secret_url'),
+            'salon' => $tenant->isSalon(),
+            'eventLabels' => $this->eventLabels($tenant->isSalon()),
+            'webhooksEnabled' => $tenant->hasFeature('webhooks_enabled'),
+            // Das Geheimnis eines neuen oder erneuerten Endpunkts steht nach dem Neuladen einmal in der Seite (Flash der Sitzung).
+            'newSecret' => session('new_secret'),
+            'newSecretUrl' => session('new_secret_url'),
             'urlMax' => (int) config('swayy.webhooks.url_max'),
         ]);
     }
@@ -245,13 +247,12 @@ class WebhookController extends Controller
     }
 
     /**
-     * Das Geheimnis signiert jede Nachricht und erscheint einmal, nach dem Neuladen der Seite. Die Antwort ist JSON
-     * (die Seite lädt danach neu) oder eine Weiterleitung; in beiden Fällen holt die nächste Anzeige es aus der Sitzung.
+     * Das Geheimnis signiert jede Nachricht und erscheint einmal, nach dem Neuladen der Seite.
      */
     private function rememberSecret(Request $request, string $secret, WebhookEndpoint $endpoint): void
     {
-        $request->session()->put('new_secret', $secret);
-        $request->session()->put('new_secret_url', $endpoint->url);
+        $request->session()->flash('new_secret', $secret);
+        $request->session()->flash('new_secret_url', $endpoint->url);
     }
 
     private function requireFeature(): void

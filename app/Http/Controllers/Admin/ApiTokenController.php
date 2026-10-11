@@ -38,8 +38,8 @@ class ApiTokenController extends Controller
             'salon' => $tenant->isSalon(),
             'apiEnabled' => $tenant->hasFeature('api_enabled'),
             'currentUserId' => $request->user()->id,
-            // Der Klartext erscheint einmal: Wer ihn aus der Sitzung holt, löscht ihn dort.
-            'newToken' => $request->session()->pull('new_token'),
+            // Der Klartext eines neuen Schlüssels steht nach dem Neuladen einmal in der Seite (Flash der Sitzung).
+            'newToken' => session('new_token'),
             'nameMax' => (int) config('swayy.api_tokens.name_max'),
         ]);
     }
@@ -98,6 +98,9 @@ class ApiTokenController extends Controller
         abort_unless($tenant->hasFeature('api_enabled'), 403, __('Die Schnittstelle ist in deinem Tarif nicht enthalten. Unter „Abo & Rechnungen“ kannst du den Tarif wechseln.'));
 
         $nameMax = (int) config('swayy.api_tokens.name_max');
+        // Der Vorschlag nennt das erste Recht mit dem Wortlaut des Betriebs („Reservierungen lesen“, im Salon „Termine lesen“).
+        $suggestion = $this->scopes($tenant->isSalon())['reservations:read']['label'];
+        $missingScope = __('Bitte mindestens ein Recht anhaken. Für die meisten Programme reicht „:right“.', ['right' => $suggestion]);
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:'.$nameMax],
             'scopes' => ['required', 'array', 'min:1'],
@@ -106,9 +109,9 @@ class ApiTokenController extends Controller
             'name.required' => __('Bitte einen Namen eintragen, etwa das Programm, das den Schlüssel nutzt.'),
             'name.string' => __('Der Name muss ein Text sein. Bitte ihn neu eintragen.'),
             'name.max' => __('Der Name darf höchstens :max Zeichen haben.', ['max' => $nameMax]),
-            'scopes.required' => __('Bitte mindestens ein Recht anhaken. Für die meisten Programme reicht „Reservierungen lesen“.'),
+            'scopes.required' => $missingScope,
             'scopes.array' => __('Die Rechte kamen in einer unerwarteten Form an. Bitte die Seite neu laden und noch einmal versuchen.'),
-            'scopes.min' => __('Bitte mindestens ein Recht anhaken. Für die meisten Programme reicht „Reservierungen lesen“.'),
+            'scopes.min' => $missingScope,
             'scopes.*.string' => __('Dieses Recht gibt es nicht. Bitte die Seite neu laden.'),
             'scopes.*.in' => __('Dieses Recht gibt es nicht. Bitte die Seite neu laden.'),
         ]);
@@ -119,9 +122,7 @@ class ApiTokenController extends Controller
 
         $this->audit->log('api_token.created', null, null, ['name' => $validated['name'], 'scopes' => $validated['scopes']]);
 
-        // Die Antwort ist JSON (die Seite lädt danach neu) oder eine Weiterleitung; in beiden Fällen holt die nächste
-        // Anzeige der Seite den Klartext aus der Sitzung.
-        $request->session()->put('new_token', $token->plainTextToken);
+        $request->session()->flash('new_token', $token->plainTextToken);
 
         return $this->saved($request, __('API-Schlüssel „:name“ angelegt. Kopiere ihn jetzt; Swayy zeigt ihn nur einmal.', ['name' => $validated['name']]), reload: true);
     }

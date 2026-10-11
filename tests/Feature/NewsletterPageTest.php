@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Enums\TenantType;
 use App\Models\AuditLog;
 use App\Models\IntegrationConnection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -84,6 +85,32 @@ class NewsletterPageTest extends TestCase
 
         $connection->update(['status' => 'disconnected']);
         $this->actingAs($owner)->get('/admin/settings/newsletter')->assertSee('Ausgeschaltet');
+    }
+
+    public function test_restaurants_read_guests_and_salons_read_customers(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->get('/admin/settings/newsletter')->assertOk()
+            ->assertSee('Gäste mit Newsletter-Einwilligung gehen an deine Liste in MailWizz.')
+            ->assertSee('Stimmt ein Gast beim Buchen dem Newsletter zu')
+            ->assertSee('Gäste mit Einwilligung übertragen')
+            ->assertSee('es geht aber kein Gast an MailWizz')
+            ->assertDontSee('Kunden mit Newsletter-Einwilligung')
+            ->assertDontSee('Kunden mit Einwilligung übertragen');
+
+        $setup['tenant']->update(['type' => TenantType::Salon]);
+        $this->actingAs($owner)->get('/admin/settings/newsletter')->assertOk()
+            ->assertSee('Kunden mit Newsletter-Einwilligung gehen an deine Liste in MailWizz.')
+            ->assertSee('Stimmt ein Kunde beim Buchen dem Newsletter zu')
+            ->assertSee('Kunden mit Einwilligung übertragen')
+            ->assertSee('es geht aber kein Kunde an MailWizz')
+            ->assertDontSee('Gäste mit Newsletter-Einwilligung')
+            ->assertDontSee('Stimmt ein Gast')
+            ->assertDontSee('Gäste mit Einwilligung übertragen')
+            ->assertDontSee('kein Gast an MailWizz');
     }
 
     public function test_an_old_error_reason_stays_hidden_while_the_connection_works(): void

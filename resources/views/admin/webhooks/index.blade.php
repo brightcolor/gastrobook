@@ -57,7 +57,7 @@
 
 <x-settings.section id="endpunkte" title="Endpunkte">
     <x-slot:description>
-        <p>Ein Webhook meldet Ereignisse, etwa eine neue Reservierung, automatisch an ein anderes Programm, zum Beispiel an deine Website, ein Kassensystem oder einen Automatisierungsdienst.</p>
+        <p>Ein Webhook meldet Ereignisse, etwa {{ $salon ? "einen neuen Termin" : "eine neue Reservierung" }}, automatisch an ein anderes Programm, zum Beispiel an deine Website, ein Kassensystem oder einen Automatisierungsdienst.</p>
         <p>Lege einen Webhook nur an, wenn ein Dienstleister ausdrücklich danach fragt.</p>
     </x-slot:description>
     @if($endpoints->isEmpty())

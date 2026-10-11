@@ -404,6 +404,42 @@ class SmsPageTest extends TestCase
         Http::assertNothingSent();
     }
 
+    /**
+     * Nach einem fehlgeschlagenen Verbindungstest steht der Versand auf „error“, bleibt aber eingeschaltet. Die alte
+     * Seite zeigt das Kästchen dann angehakt; sonst schaltete das Speichern des Formulars mit der 0 davor den Versand aus.
+     */
+    public function test_the_old_combined_page_keeps_sms_on_after_an_error(): void
+    {
+        Http::fake(['*' => Http::response('12.50', 200)]);
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $connection = $this->connect($setup['tenant']->id, 'error');
+        $this->clearTenantContext();
+        $ticked = '/<input type="hidden" name="enabled" value="0">\s*<input type="checkbox" name="enabled" value="1"\s+checked\s*>\s*SMS-Versand aktiv/';
+
+        $html = (string) $this->actingAs($owner)->get('/admin/settings')->assertOk()->getContent();
+        $this->assertMatchesRegularExpression($ticked, $html);
+
+        // Das angehakte Kästchen der alten Seite sendet die 0 und danach die 1.
+        $this->actingAs($owner)->put('/admin/settings/sms', ['api_key' => '', 'sender_id' => 'Trattoria', 'enabled' => '1'])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertNotSame('disconnected', $connection->fresh()->status);
+        $this->assertSame('connected', $connection->fresh()->status);
+    }
+
+    public function test_the_old_combined_page_offers_a_new_connection_switched_on(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $html = (string) $this->actingAs($owner)->get('/admin/settings')->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/<input type="hidden" name="enabled" value="0">\s*<input type="checkbox" name="enabled" value="1"\s+checked\s*>\s*SMS-Versand aktiv/', $html);
+    }
+
     public function test_a_caller_without_the_switch_still_gets_a_connected_connection(): void
     {
         Http::fake(['*' => Http::response('12.50', 200)]);

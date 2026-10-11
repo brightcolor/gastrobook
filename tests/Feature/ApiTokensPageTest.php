@@ -61,6 +61,32 @@ class ApiTokensPageTest extends TestCase
         $this->assertSame('Bitte mindestens ein Recht anhaken. Für die meisten Programme reicht „Reservierungen lesen“.', $response->json('errors.scopes.0'));
     }
 
+    public function test_salons_get_the_suggested_right_in_their_own_wording(): void
+    {
+        $setup = $this->createTenantSetup();
+        $setup['tenant']->update(['type' => TenantType::Salon]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $response = $this->actingAs($owner)->postJson('/admin/api-tokens', ['name' => 'Kasse', 'scopes' => []])->assertStatus(422);
+        $this->assertSame('Bitte mindestens ein Recht anhaken. Für die meisten Programme reicht „Termine lesen“.', $response->json('errors.scopes.0'));
+
+        $this->actingAs($owner)->get('/admin/api-tokens')->assertOk()
+            ->assertSee('Für die meisten Programme reicht „Termine lesen“.')
+            ->assertDontSee('reicht „Reservierungen lesen“');
+    }
+
+    public function test_restaurants_get_the_suggested_right_in_their_own_wording_on_the_page(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->get('/admin/api-tokens')->assertOk()
+            ->assertSee('Für die meisten Programme reicht „Reservierungen lesen“.')
+            ->assertDontSee('reicht „Termine lesen“');
+    }
+
     public function test_a_plan_without_api_explains_where_to_upgrade(): void
     {
         $setup = $this->createTenantSetup();
@@ -111,6 +137,8 @@ class ApiTokensPageTest extends TestCase
         $this->actingAs($owner)->postJson('/admin/api-tokens', ['name' => 'Kasse', 'scopes' => ['reservations:read']])->assertOk();
         $plain = (string) $this->app['session.store']->get('new_token');
         $this->assertNotSame('', $plain);
+        // Ein Flash der Sitzung: Er überlebt genau die nächste Anfrage.
+        $this->assertContains('new_token', (array) session('_flash.old'));
 
         $first = $this->actingAs($owner)->get('/admin/api-tokens')->assertOk();
         $first->assertSee('Jetzt kopieren: Swayy zeigt diesen Schlüssel nur einmal.')

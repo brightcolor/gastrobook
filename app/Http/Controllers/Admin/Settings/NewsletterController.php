@@ -40,7 +40,8 @@ class NewsletterController extends Controller
 
     public function show(): View
     {
-        abort_if($this->context->tenant() === null, 404);
+        $tenant = $this->context->tenant();
+        abort_if($tenant === null, 404);
 
         $connection = $this->connection();
         $credentials = $this->credentials($connection);
@@ -49,6 +50,7 @@ class NewsletterController extends Controller
         $status = $hasKey ? $connection?->status : null;
 
         return view('admin.settings.newsletter', [
+            'salon' => $tenant->isSalon(),
             // Nur Adresse und Liste verlassen die Zugangsdaten; der Key bleibt als Ja/Nein.
             'apiUrl' => (string) ($credentials['api_url'] ?? ''),
             'listUid' => (string) ($credentials['list_uid'] ?? ''),

@@ -1125,7 +1125,7 @@
                 <input type="text" name="sender_id" maxlength="{{ config('swayy.sms.sender_id_max') }}" value="{{ $smsCredentials['sender_id'] ?? '' }}"
                        placeholder="z. B. Salon Anna" class="w-full rounded-lg border-stone-200">
             </div>
-            <label class="flex items-center gap-2"><input type="hidden" name="enabled" value="0"><input type="checkbox" name="enabled" value="1" @checked(($sms->status ?? '') === 'connected')> SMS-Versand aktiv <span class="tip" tabindex="0" data-tip="Schaltet den SMS-Versand über seven.io ein. Die eigentliche Erinnerung aktivierst du zusätzlich unter Buchungsregeln → Erinnerungen.">?</span></label>
+            <label class="flex items-center gap-2"><input type="hidden" name="enabled" value="0"><input type="checkbox" name="enabled" value="1" @checked(($sms->status ?? '') !== 'disconnected')> SMS-Versand aktiv <span class="tip" tabindex="0" data-tip="Schaltet den SMS-Versand über seven.io ein. Die eigentliche Erinnerung aktivierst du zusätzlich unter Buchungsregeln → Erinnerungen.">?</span></label>
         </div>
         <p class="mt-2 rounded-lg bg-stone-50 p-2 text-xs text-stone-600">
             SMS-Erinnerung muss zusätzlich pro Standort unter „Buchungsregeln → Erinnerungen" aktiviert werden.

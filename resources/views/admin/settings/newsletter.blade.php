@@ -5,13 +5,15 @@
 @php
     $keyError = $errors->first('api_key');
     $keyHelp = $hasKey ? 'Gespeichert. Leer lassen, um ihn zu behalten.' : 'Zu finden in MailWizz unter Account → API.';
+    $guest = $salon ? 'Kunde' : 'Gast';
+    $guests = $salon ? 'Kunden' : 'Gäste';
 @endphp
 <x-page-header title="Newsletter" :crumb="['Einstellungen', 'Verbindungen']" scope="tenant"
-               description="Gäste mit Newsletter-Einwilligung gehen an deine Liste in MailWizz." />
+               :description="$guests.' mit Newsletter-Einwilligung gehen an deine Liste in MailWizz.'" />
 
 <x-settings.section id="mailwizz" title="MailWizz">
     <x-slot:description>
-        <p>Stimmt ein Gast beim Buchen dem Newsletter zu, trägt Swayy ihn in deine Liste in MailWizz ein. Ob MailWizz zuerst eine Bestätigungsmail schickt (Double-Opt-in), stellst du in den Einstellungen der Liste ein.</p>
+        <p>Stimmt ein {{ $guest }} beim Buchen dem Newsletter zu, trägt Swayy ihn in deine Liste in MailWizz ein. Ob MailWizz zuerst eine Bestätigungsmail schickt (Double-Opt-in), stellst du in den Einstellungen der Liste ein.</p>
         <p>Die API-URL steht in deinem MailWizz-Adminbereich unter API-Einstellungen. Swayy ruft sie direkt auf, deshalb beginnt sie mit https:// und ist aus dem Internet erreichbar.</p>
         <p>Den API-Key legst du in MailWizz unter Account → API an. Swayy speichert ihn verschlüsselt und zeigt ihn nie wieder an. Die Listen-UID steht in der Listenübersicht unter „Unique ID“.</p>
     </x-slot:description>
@@ -44,8 +46,8 @@
         <x-field name="list_uid" label="Listen-UID" :value="$listUid" required :maxlength="$limits['list_uid_max']" autocomplete="off" autocapitalize="off" spellcheck="false"
                  placeholder="z. B. ab12cd34ef567"
                  help="Die ID deiner Newsletter-Liste. Sie steht in der Listenübersicht von MailWizz unter „Unique ID“." />
-        <x-checkbox name="enabled" label="Gäste mit Einwilligung übertragen" :checked="$enabled"
-                    help="Ausgeschaltet bleiben die Zugangsdaten gespeichert, es geht aber kein Gast an MailWizz." />
+        <x-checkbox name="enabled" :label="$guests.' mit Einwilligung übertragen'" :checked="$enabled"
+                    :help="'Ausgeschaltet bleiben die Zugangsdaten gespeichert, es geht aber kein '.$guest.' an MailWizz.'" />
         <button type="submit" class="btn btn-primary">Speichern und Verbindung testen</button>
     </form>
 </x-settings.section>
