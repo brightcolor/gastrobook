@@ -15,8 +15,11 @@ namespace App\Support;
  */
 final class OpeningHoursRules
 {
-    /** Minuten eines Tages: Fenster über Mitternacht zählen bis hierher und ab 0 weiter. */
+    /** Minuten eines Tages; ein Fenster über Mitternacht endet am nächsten Tag. */
     private const DAY_MINUTES = 1440;
+
+    /** Minuten einer Woche: Die Woche läuft im Kreis, ein Fenster am Sonntagabend reicht in den Montag. */
+    private const WEEK_MINUTES = 10080;
 
     /**
      * Regeln für die Woche beim Speichern.
@@ -79,19 +82,22 @@ final class OpeningHoursRules
     }
 
     /**
-     * Prüft die Fenster eines Tages gegeneinander und liefert die Fehler nach
-     * Feld ("hours.3.opens_at"). Der Schlüssel der Zeile bleibt, wie das
-     * Formular ihn sendet (0, n1, c4). Zeilen mit unlesbarem Wochentag oder
-     * unlesbarer Uhrzeit meldet schon die Prüfung der einzelnen Felder.
+     * Prüft die Fenster gegeneinander und liefert die Fehler nach Feld
+     * ("hours.3.opens_at"). Der Schlüssel der Zeile bleibt, wie das Formular
+     * ihn sendet (0, n1, c4). Zeilen mit unlesbarem Wochentag oder unlesbarer
+     * Uhrzeit meldet schon die Prüfung der einzelnen Felder.
      *
      * - Öffnen und Schließen zur selben Uhrzeit: Fehler am Schließen.
      * - Mehr Fenster als opening_hours.windows_per_day_max an einem Tag:
      *   Fehler am ersten überzähligen Fenster.
-     * - Überschneidung (ein Fenster über Mitternacht reicht bis 24:00 und ab
-     *   0:00 weiter): Fehler am Fenster mit dem späteren Beginn.
+     * - Überschneidung auf der Zeitachse: Ein Fenster über Mitternacht endet am
+     *   nächsten Tag und kann sich mit dessen Fenstern überschneiden, der
+     *   Sonntag mit dem Montag. Fenster am frühen Morgen und am späten Abend
+     *   desselben Wochentags liegen dagegen weit auseinander. Der Fehler steht
+     *   am Fenster, das auf der Zeitachse später beginnt.
      *
      * @param  array<array-key, mixed>  $rows  Zeilen mit weekday, opens_at, closes_at
-     * @param  bool  $sameDay  alle Zeilen gehören zu einem Tag (Vorschau, dort ohne weekday)
+     * @param  bool  $sameDay  alle Zeilen gehören zu einem Datum (Vorschau, dort ohne weekday): Die Zeitachse ist eine Gerade ohne Wochenkreis
      * @return array<string, string>
      */
     public static function after(array $rows, string $prefix = 'hours', bool $sameDay = false): array
@@ -99,7 +105,7 @@ final class OpeningHoursRules
         $max = (int) config('swayy.opening_hours.windows_per_day_max');
         $errors = [];
 
-        /** @var array<int, list<array{key: array-key, opens: ?int, closes: ?int}>> $days */
+        /** @var array<int, list<array{key: array-key, day: int, opens: ?int, closes: ?int}>> $days */
         $days = [];
         foreach ($rows as $key => $row) {
             if (! is_array($row)) {
@@ -111,6 +117,7 @@ final class OpeningHoursRules
             }
             $days[$day][] = [
                 'key' => $key,
+                'day' => $day,
                 'opens' => self::minutes($row['opens_at'] ?? null),
                 'closes' => self::minutes($row['closes_at'] ?? null),
             ];
@@ -126,10 +133,12 @@ final class OpeningHoursRules
             if (count($windows) > $max) {
                 $errors["{$prefix}.{$windows[$max]['key']}.opens_at"] = __('An einem Tag gehen höchstens :max Zeitfenster. Bitte Fenster zusammenlegen.', ['max' => $max]);
             }
+        }
 
-            foreach (self::overlaps($windows) as $key => $other) {
-                $errors["{$prefix}.{$key}.opens_at"] ??= __('Dieses Zeitfenster überschneidet sich mit :window am selben Tag. Bitte die Zeiten anpassen oder die Fenster zusammenlegen.', ['window' => $other]);
-            }
+        foreach (self::overlaps(array_merge(...array_values($days)), weekly: ! $sameDay) as $key => $other) {
+            $errors["{$prefix}.{$key}.opens_at"] ??= $other['day'] === null
+                ? __('Dieses Zeitfenster überschneidet sich mit :window am selben Tag. Bitte die Zeiten anpassen oder die Fenster zusammenlegen.', ['window' => $other['window']])
+                : __('Dieses Zeitfenster überschneidet sich mit :day :window. Bitte die Zeiten anpassen oder die Fenster zusammenlegen.', ['day' => $other['day'], 'window' => $other['window']]);
         }
 
         return $errors;
@@ -192,57 +201,54 @@ final class OpeningHoursRules
     }
 
     /**
-     * Fenster, die sich mit einem Fenster davor überschneiden: Schlüssel der
-     * Zeile => Zeitraum des früheren Fensters ("11:00–15:00"). Je Fenster
-     * zählt der erste Treffer; Fenster mit gleicher Uhrzeit zum Öffnen und
-     * Schließen bleiben außen vor (eigener Fehler).
+     * Fenster, die sich mit einem anderen Fenster überschneiden, auf der
+     * Zeitachse der Woche (Montag 0:00 bis Sonntag 24:00, im Kreis) oder, bei
+     * $weekly = false, auf einer Geraden für ein einzelnes Datum. Ein Fenster
+     * beginnt zur Öffnungszeit seines Tages und dauert bis zur Schließzeit,
+     * über Mitternacht bis zum nächsten Tag. Ergebnis: Schlüssel der Zeile, die
+     * später beginnt => das andere Fenster mit Zeitraum ("11:00–15:00") und,
+     * wenn es an einem anderen Wochentag beginnt, dessen Name. Je Fenster zählt
+     * der erste Treffer; Fenster mit gleicher Uhrzeit zum Öffnen und Schließen
+     * bleiben außen vor (eigener Fehler).
      *
-     * @param  list<array{key: array-key, opens: ?int, closes: ?int}>  $windows
-     * @return array<array-key, string>
+     * @param  list<array{key: array-key, day: int, opens: ?int, closes: ?int}>  $windows
+     * @return array<array-key, array{window: string, day: ?string}>
      */
-    private static function overlaps(array $windows): array
+    private static function overlaps(array $windows, bool $weekly): array
     {
-        $valid = array_values(array_filter($windows, fn (array $w) => $w['opens'] !== null && $w['closes'] !== null && $w['opens'] !== $w['closes']));
-        usort($valid, fn (array $a, array $b) => $a['opens'] <=> $b['opens']);
+        $line = [];
+        foreach ($windows as $order => $window) {
+            if ($window['opens'] === null || $window['closes'] === null || $window['opens'] === $window['closes']) {
+                continue;
+            }
+            $start = ($weekly ? $window['day'] * self::DAY_MINUTES : 0) + $window['opens'];
+            $length = $window['closes'] > $window['opens'] ? $window['closes'] - $window['opens'] : $window['closes'] - $window['opens'] + self::DAY_MINUTES;
+            $line[] = $window + ['order' => $order, 'start' => $start, 'end' => $start + $length];
+        }
+        usort($line, fn (array $a, array $b) => [$a['start'], $a['order']] <=> [$b['start'], $b['order']]);
+
+        // Im Kreis der Woche liegt jedes Fenster auch eine Woche früher und eine Woche später.
+        $shifts = $weekly ? [0, self::WEEK_MINUTES, -self::WEEK_MINUTES] : [0];
 
         $found = [];
-        foreach ($valid as $i => $window) {
-            for ($j = 0; $j < $i; $j++) {
-                if (self::intersect(self::segments($valid[$j]['opens'], $valid[$j]['closes']), self::segments($window['opens'], $window['closes']))) {
-                    $found[$window['key']] = self::clock($valid[$j]['opens']).'–'.self::clock($valid[$j]['closes']);
+        foreach ($line as $i => $a) {
+            foreach (array_slice($line, $i + 1) as $b) {
+                foreach ($shifts as $shift) {
+                    if ($a['start'] >= $b['end'] + $shift || $a['end'] <= $b['start'] + $shift) {
+                        continue;
+                    }
+                    // Das Fenster, das auf der Zeitachse später beginnt, trägt den Fehler und nennt das andere.
+                    [$later, $earlier] = [$b['start'] + $shift, $b['order']] > [$a['start'], $a['order']] ? [$b, $a] : [$a, $b];
+                    $found[$later['key']] ??= [
+                        'window' => self::clock($earlier['opens']).'–'.self::clock($earlier['closes']),
+                        'day' => $weekly && $earlier['day'] !== $later['day'] ? OpeningHoursPreview::WEEKDAYS[$earlier['day']] : null,
+                    ];
                     break;
                 }
             }
         }
 
         return $found;
-    }
-
-    /**
-     * Ein Fenster als Minutenbereiche des Tages; über Mitternacht sind es zwei.
-     *
-     * @return list<array{0: int, 1: int}>
-     */
-    private static function segments(int $opens, int $closes): array
-    {
-        return $closes > $opens ? [[$opens, $closes]] : [[$opens, self::DAY_MINUTES], [0, $closes]];
-    }
-
-    /**
-     * @param  list<array{0: int, 1: int}>  $a
-     * @param  list<array{0: int, 1: int}>  $b
-     */
-    private static function intersect(array $a, array $b): bool
-    {
-        foreach ($a as [$aStart, $aEnd]) {
-            foreach ($b as [$bStart, $bEnd]) {
-                if ($aStart < $bEnd && $bStart < $aEnd) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 
     private static function weekday(mixed $value): ?int

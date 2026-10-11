@@ -8,6 +8,7 @@ use App\Enums\TenantType;
 use App\Models\OpeningHour;
 use App\Models\Service;
 use App\Services\TimeSlotService;
+use App\Support\OpeningHoursRules;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -284,6 +285,46 @@ class OpeningHoursPreviewTest extends TestCase
             'Dieses Zeitfenster überschneidet sich mit 11:00–15:00 am selben Tag. Bitte die Zeiten anpassen oder die Fenster zusammenlegen.',
             $response->json('errors')['windows.1.opens_at'][0],
         );
+    }
+
+    public function test_the_preview_checks_windows_of_one_date_on_a_straight_timeline(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        // 22:00 bis 02:00 endet am nächsten Tag; 01:00 bis 03:00 liegt am Morgen desselben Datums davor.
+        $this->actingAs($owner)->postJson('/admin/settings/opening-hours/preview', [
+            'weekday' => 4,
+            'windows' => [['opens_at' => '22:00', 'closes_at' => '02:00'], ['opens_at' => '01:00', 'closes_at' => '03:00']],
+        ])->assertOk();
+
+        $response = $this->actingAs($owner)->postJson('/admin/settings/opening-hours/preview', [
+            'weekday' => 4,
+            'windows' => [['opens_at' => '22:00', 'closes_at' => '02:00'], ['opens_at' => '23:00', 'closes_at' => '03:00']],
+        ])->assertStatus(422);
+        $this->assertSame(
+            'Dieses Zeitfenster überschneidet sich mit 22:00–02:00 am selben Tag. Bitte die Zeiten anpassen oder die Fenster zusammenlegen.',
+            $response->json('errors')['windows.1.opens_at'][0],
+        );
+    }
+
+    public function test_windows_of_a_single_date_never_wrap_around_a_week(): void
+    {
+        $day = fn (string $opens, string $closes) => ['opens_at' => $opens, 'closes_at' => $closes];
+
+        // Gerade Zeitachse: kein Wochenkreis, kein Weekday in den Zeilen.
+        $this->assertSame([], OpeningHoursRules::after([$day('22:00', '02:00'), $day('01:00', '03:00')], 'windows', sameDay: true));
+        $this->assertSame([], OpeningHoursRules::after([$day('11:00', '14:00'), $day('14:00', '18:00')], 'windows', sameDay: true));
+        $this->assertSame(
+            ['windows.n1.opens_at' => 'Dieses Zeitfenster überschneidet sich mit 11:00–15:00 am selben Tag. Bitte die Zeiten anpassen oder die Fenster zusammenlegen.'],
+            OpeningHoursRules::after(['a' => $day('11:00', '15:00'), 'n1' => $day('14:00', '22:00')], 'windows', sameDay: true),
+        );
+
+        // Dieselben Zeilen mit Wochentagen laufen über die Zeitachse der Woche.
+        $week = fn (int $weekday, string $opens, string $closes) => ['weekday' => $weekday] + $day($opens, $closes);
+        $this->assertArrayHasKey('hours.1.opens_at', OpeningHoursRules::after([$week(4, '22:00', '03:00'), $week(5, '02:00', '05:00')]));
+        $this->assertSame([], OpeningHoursRules::after([$week(4, '22:00', '02:00'), $week(4, '01:00', '03:00')]));
     }
 
     public function test_a_missing_weekday_names_the_next_step(): void

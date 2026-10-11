@@ -289,23 +289,87 @@ class OpeningHoursPageTest extends TestCase
         $this->assertSame(5, OpeningHour::where('location_id', $setup['location']->id)->count());
     }
 
-    public function test_a_window_over_midnight_overlaps_with_the_early_hours_of_the_same_day(): void
+    public function test_early_morning_and_late_evening_of_one_weekday_are_both_accepted_even_when_the_evening_goes_past_midnight(): void
     {
         $setup = $this->createTenantSetup();
         $owner = $this->createMember($setup['tenant'], 'tenant_owner');
         $this->clearTenantContext();
 
-        $response = $this->actingAs($owner)->putJson('/admin/settings/opening-hours', ['hours' => [
+        // Das Abendfenster endet am Samstag um 04:00; das Morgenfenster liegt am Freitag davor.
+        $this->actingAs($owner)->putJson('/admin/settings/opening-hours', ['hours' => [
+            ['weekday' => 4, 'opens_at' => '03:00', 'closes_at' => '10:00'],
+            ['weekday' => 4, 'opens_at' => '22:00', 'closes_at' => '04:00'],
+        ]])->assertOk();
+        $this->assertSame(2, OpeningHour::where('location_id', $setup['location']->id)->count());
+
+        $this->actingAs($owner)->putJson('/admin/settings/opening-hours', ['hours' => [
             ['weekday' => 4, 'opens_at' => '22:00', 'closes_at' => '02:00'],
             ['weekday' => 4, 'opens_at' => '01:00', 'closes_at' => '03:00'],
+        ]])->assertOk();
+    }
+
+    public function test_a_window_past_midnight_overlaps_with_a_window_of_the_next_day(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        // Freitag 22:00 bis Samstag 03:00 und Samstag ab 02:00 teilen eine Stunde.
+        $response = $this->actingAs($owner)->putJson('/admin/settings/opening-hours', ['hours' => [
+            ['weekday' => 5, 'opens_at' => '02:00', 'closes_at' => '05:00'],
+            ['weekday' => 4, 'opens_at' => '22:00', 'closes_at' => '03:00'],
         ]])->assertStatus(422);
 
-        // Das spätere Fenster (nach Beginn) trägt den Hinweis und nennt das frühere.
+        // Das Fenster, das auf der Zeitachse später beginnt, trägt den Hinweis und nennt Tag und Zeiten des anderen.
         $this->assertSame(
-            'Dieses Zeitfenster überschneidet sich mit 01:00–03:00 am selben Tag. Bitte die Zeiten anpassen oder die Fenster zusammenlegen.',
+            'Dieses Zeitfenster überschneidet sich mit Freitag 22:00–03:00. Bitte die Zeiten anpassen oder die Fenster zusammenlegen.',
             $response->json('errors')['hours.0.opens_at'][0],
         );
         $this->assertArrayNotHasKey('hours.1.opens_at', $response->json('errors'));
+        $this->assertSame(7, OpeningHour::where('location_id', $setup['location']->id)->count());
+
+        // Beginnt das Fenster am Samstag erst, wenn das vom Freitag endet, sind beide in Ordnung.
+        $this->actingAs($owner)->putJson('/admin/settings/opening-hours', ['hours' => [
+            ['weekday' => 4, 'opens_at' => '22:00', 'closes_at' => '03:00'],
+            ['weekday' => 5, 'opens_at' => '03:00', 'closes_at' => '05:00'],
+        ]])->assertOk();
+    }
+
+    public function test_sunday_evening_past_midnight_overlaps_with_monday_morning(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        // Die Woche läuft im Kreis: Sonntag 23:00 bis Montag 02:00 und Montag ab 01:00 teilen eine Stunde.
+        $response = $this->actingAs($owner)->putJson('/admin/settings/opening-hours', ['hours' => [
+            ['weekday' => 6, 'opens_at' => '23:00', 'closes_at' => '02:00'],
+            ['weekday' => 0, 'opens_at' => '01:00', 'closes_at' => '04:00'],
+        ]])->assertStatus(422);
+
+        $this->assertSame(
+            'Dieses Zeitfenster überschneidet sich mit Sonntag 23:00–02:00. Bitte die Zeiten anpassen oder die Fenster zusammenlegen.',
+            $response->json('errors')['hours.1.opens_at'][0],
+        );
+        $this->assertArrayNotHasKey('hours.0.opens_at', $response->json('errors'));
+
+        $this->actingAs($owner)->putJson('/admin/settings/opening-hours', ['hours' => [
+            ['weekday' => 6, 'opens_at' => '23:00', 'closes_at' => '02:00'],
+            ['weekday' => 0, 'opens_at' => '02:00', 'closes_at' => '04:00'],
+        ]])->assertOk();
+    }
+
+    public function test_windows_of_days_further_apart_do_not_overlap(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->putJson('/admin/settings/opening-hours', ['hours' => [
+            ['weekday' => 0, 'opens_at' => '22:00', 'closes_at' => '04:00'],
+            ['weekday' => 2, 'opens_at' => '01:00', 'closes_at' => '03:00'],
+            ['weekday' => 6, 'opens_at' => '03:00', 'closes_at' => '12:00'],
+        ]])->assertOk();
     }
 
     public function test_the_keys_of_new_rows_come_back_in_the_errors(): void
