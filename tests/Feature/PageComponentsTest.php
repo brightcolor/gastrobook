@@ -116,6 +116,16 @@ class PageComponentsTest extends TestCase
             ->assertDontSee('@endslot', false);
     }
 
+    public function test_settings_section_columns_never_grow_wider_than_the_screen(): void
+    {
+        // Ohne feste Spaltenbreite wächst die Spalte auf die Breite der
+        // längsten Zeile, etwa eines Codebeispiels, und die Seite scrollt
+        // auf dem Smartphone seitlich.
+        $this->blade('<x-settings.section id="beispiel" title="Beispiel"> Inhalt</x-settings.section>')
+            ->assertSee('class="grid grid-cols-1 ', false)
+            ->assertSee('<div class="min-w-0 lg:col-span-2">', false);
+    }
+
     public function test_save_bar_starts_hidden(): void
     {
         $this->blade('<x-save-bar />')
