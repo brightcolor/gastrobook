@@ -465,7 +465,7 @@ class PaymentProvidersPageTest extends TestCase
         $this->assertMatchesRegularExpression('/<input type="hidden" name="enabled" value="0">\s*<input type="checkbox" name="enabled" value="1"\s+checked\s*>\s*Online-Zahlung aktiv/', $html);
     }
 
-    public function test_a_caller_without_the_switch_still_gets_a_connected_connection(): void
+    public function test_a_caller_without_the_switch_gets_a_connected_new_connection(): void
     {
         $setup = $this->createTenantSetup();
         $owner = $this->createMember($setup['tenant'], 'tenant_owner');
@@ -473,6 +473,68 @@ class PaymentProvidersPageTest extends TestCase
 
         $this->actingAs($owner)->putJson('/admin/settings/stripe', ['secret_key' => 'sk_ohne_schalter', 'webhook_secret' => 'wh_ohne_schalter'])->assertOk();
         $this->actingAs($owner)->putJson('/admin/settings/paypal', ['client_id' => 'cid', 'secret' => 'sec', 'mode' => 'live'])->assertOk();
+
+        $this->assertSame('connected', IntegrationConnection::where('provider', 'stripe')->value('status'));
+        $this->assertSame('connected', IntegrationConnection::where('provider', 'paypal')->value('status'));
+    }
+
+    /**
+     * Ohne Angabe zum Schalter bleibt der Zustand einer bestehenden Anbindung, wie er ist: ausgeschaltet bleibt
+     * ausgeschaltet (dieselbe Regel wie bei MailWizz und SMS).
+     */
+    public function test_a_caller_without_the_switch_keeps_switched_off_providers_off(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->connect($setup['tenant']->id, 'stripe', ['secret_key' => 'sk', 'webhook_secret' => 'wh'], 'disconnected');
+        $this->connect($setup['tenant']->id, 'paypal', ['client_id' => 'cid', 'secret' => 'sec', 'mode' => 'live'], 'disconnected');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->putJson('/admin/settings/stripe', ['secret_key' => '', 'webhook_secret' => ''])
+            ->assertOk()->assertJsonPath('message', 'Stripe ausgeschaltet. Die Schlüssel bleiben gespeichert.');
+        $this->actingAs($owner)->putJson('/admin/settings/paypal', ['client_id' => '', 'secret' => '', 'mode' => 'live'])
+            ->assertOk()->assertJsonPath('message', 'PayPal ausgeschaltet. Die Zugangsdaten bleiben gespeichert.');
+
+        $this->assertSame('disconnected', IntegrationConnection::where('provider', 'stripe')->value('status'));
+        $this->assertSame('disconnected', IntegrationConnection::where('provider', 'paypal')->value('status'));
+    }
+
+    public function test_a_caller_without_the_switch_keeps_switched_on_providers_on(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->connect($setup['tenant']->id, 'stripe', ['secret_key' => 'sk', 'webhook_secret' => 'wh']);
+        $this->connect($setup['tenant']->id, 'paypal', ['client_id' => 'cid', 'secret' => 'sec', 'mode' => 'live']);
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->putJson('/admin/settings/stripe', ['secret_key' => '', 'webhook_secret' => ''])->assertOk();
+        $this->actingAs($owner)->putJson('/admin/settings/paypal', ['client_id' => '', 'secret' => '', 'mode' => 'sandbox'])->assertOk();
+
+        $this->assertSame('connected', IntegrationConnection::where('provider', 'stripe')->value('status'));
+        $this->assertSame('connected', IntegrationConnection::where('provider', 'paypal')->value('status'));
+    }
+
+    /**
+     * Ein Betrieb ohne Anbindung speichert Stripe oder PayPal zum ersten Mal auf der alten Sammelseite. Der Browser
+     * sendet, was das Kästchen zeigt: Steht es angehakt da, folgt auf die 0 die 1. Die Anbindung ist danach verbunden.
+     */
+    public function test_a_first_connection_saved_from_the_old_page_stays_connected(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $html = (string) $this->actingAs($owner)->get('/admin/settings')->assertOk()->getContent();
+        $submitted = [];
+        foreach (['Online-Zahlung aktiv' => 'stripe', 'PayPal-Zahlung aktiv' => 'paypal'] as $label => $provider) {
+            $this->assertSame(1, preg_match('/<input type="hidden" name="enabled" value="0">\s*<input type="checkbox" name="enabled" value="1"([^>]*)>\s*'.preg_quote($label, '/').'/', $html, $match), $label);
+            $submitted[$provider] = str_contains($match[1], 'checked') ? '1' : '0';
+        }
+
+        $this->actingAs($owner)->put('/admin/settings/stripe', ['secret_key' => 'sk_erste_anbindung', 'webhook_secret' => 'wh_erste_anbindung', 'enabled' => $submitted['stripe']])
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($owner)->put('/admin/settings/paypal', ['client_id' => 'cid_erste_anbindung', 'secret' => 'sec_erste_anbindung', 'mode' => 'live', 'enabled' => $submitted['paypal']])
+            ->assertRedirect()->assertSessionHasNoErrors();
 
         $this->assertSame('connected', IntegrationConnection::where('provider', 'stripe')->value('status'));
         $this->assertSame('connected', IntegrationConnection::where('provider', 'paypal')->value('status'));

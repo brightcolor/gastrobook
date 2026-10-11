@@ -885,7 +885,7 @@
                 <label class="mb-1 block text-xs font-semibold text-stone-500">Webhook-Signing-Secret (whsec_…) <span class="tip" tabindex="0" data-tip="Erhältst du im Stripe-Dashboard, wenn du den Webhook-Endpunkt mit der URL unten anlegst. Er stellt sicher, dass nur echte Stripe-Ereignisse verarbeitet werden – wichtiger Sicherheitsmechanismus!">?</span></label>
                 <input type="password" name="webhook_secret" autocomplete="new-password" class="w-full rounded-lg border-stone-200">
             </div>
-            <label class="flex items-center gap-2"><input type="hidden" name="enabled" value="0"><input type="checkbox" name="enabled" value="1" @checked(($stripe->status ?? '') === 'connected')> Online-Zahlung aktiv <span class="tip" tabindex="0" data-tip="Schaltet Stripe-Zahlungen für diesen Betrieb ein. Solange deaktiviert, werden keine Zahlungen verlangt.">?</span></label>
+            <label class="flex items-center gap-2"><input type="hidden" name="enabled" value="0"><input type="checkbox" name="enabled" value="1" @checked(($stripe->status ?? '') !== 'disconnected')> Online-Zahlung aktiv <span class="tip" tabindex="0" data-tip="Schaltet Stripe-Zahlungen für diesen Betrieb ein. Solange deaktiviert, werden keine Zahlungen verlangt.">?</span></label>
         </div>
         <p class="mt-2 rounded-lg bg-stone-50 p-2 text-xs text-stone-600">
             Webhook-URL in Stripe hinterlegen: <code class="break-all">{{ route('webhooks.stripe') }}</code><br>
@@ -939,7 +939,7 @@
                     <option value="sandbox" @selected(($paypalCredentials['mode'] ?? '') === 'sandbox')>Sandbox (Test)</option>
                 </select>
             </div>
-            <label class="flex items-center gap-2"><input type="hidden" name="enabled" value="0"><input type="checkbox" name="enabled" value="1" @checked(($paypal->status ?? '') === 'connected')> PayPal-Zahlung aktiv <span class="tip" tabindex="0" data-tip="Schaltet PayPal als Zahlungsoption ein. Sind Stripe und PayPal beide aktiv, darf der Gast an der Kasse selbst wählen – maximale Flexibilität!">?</span></label>
+            <label class="flex items-center gap-2"><input type="hidden" name="enabled" value="0"><input type="checkbox" name="enabled" value="1" @checked(($paypal->status ?? '') !== 'disconnected')> PayPal-Zahlung aktiv <span class="tip" tabindex="0" data-tip="Schaltet PayPal als Zahlungsoption ein. Sind Stripe und PayPal beide aktiv, darf der Gast an der Kasse selbst wählen – maximale Flexibilität!">?</span></label>
         </div>
         <p class="mt-2 rounded-lg bg-stone-50 p-2 text-xs text-stone-600">Keine Webhook-Konfiguration nötig – Zahlung wird bei Rückkehr des Gastes erfasst (Capture-on-Return).</p>
         <button class="mt-3 rounded-xl bg-stone-900 px-5 py-2.5 text-sm font-bold text-white">Speichern</button>

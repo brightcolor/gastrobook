@@ -68,7 +68,7 @@ class SmsController extends Controller
         $validated = $request->validate([
             'api_key' => ['nullable', 'string', 'max:'.(int) config('swayy.sms.api_key_max')],
             'sender_id' => ['nullable', 'bail', 'string', $this->senderIdLength(...)],
-            // Beide Formulare senden eine 0 vor dem Kästchen; Aufrufer ohne Angabe lassen den Versand eingeschaltet.
+            // Beide Formulare senden eine 0 vor dem Kästchen. Fehlt der Schalter, bleibt der Zustand einer bestehenden Anbindung (IntegrationStatus::afterSave).
             'enabled' => ['nullable', 'boolean'],
         ], [
             'api_key.string' => __('Der API-Key muss ein Text sein. Bitte ihn aus app.seven.io kopieren und neu einfügen.'),
@@ -98,7 +98,7 @@ class SmsController extends Controller
         }
 
         $connection->credentials_encrypted = Crypt::encryptString((string) json_encode($credentials));
-        $connection->status = $request->boolean('enabled', true) ? 'connected' : 'disconnected';
+        $connection->status = IntegrationStatus::afterSave($request, $connection);
         $connection->save();
 
         $this->audit->log('integration.sms_updated', $connection, null, [

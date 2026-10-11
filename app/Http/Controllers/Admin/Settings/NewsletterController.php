@@ -122,14 +122,8 @@ class NewsletterController extends Controller
             return $this->failed($request, 'api_key', __('Der API-Key fehlt. Bitte den API-Key aus MailWizz eintragen (in MailWizz unter Account → API).'));
         }
 
-        // Ohne Angabe zum Schalter bleibt der Zustand einer bestehenden Anbindung: ausgeschaltet bleibt ausgeschaltet.
-        // Eine neue Anbindung startet eingeschaltet.
-        $enabled = $request->filled('enabled')
-            ? $request->boolean('enabled')
-            : ! $connection->exists || $connection->status !== 'disconnected';
-
         $connection->credentials_encrypted = Crypt::encryptString((string) json_encode($credentials));
-        $connection->status = $enabled ? 'connected' : 'disconnected';
+        $connection->status = IntegrationStatus::afterSave($request, $connection);
         // Ein alter Fehlergrund gehört zur alten Eingabe.
         $settings = Arr::except($connection->settings ?? [], 'last_error');
         $connection->settings = $settings === [] ? null : $settings;

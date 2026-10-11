@@ -440,7 +440,7 @@ class SmsPageTest extends TestCase
         $this->assertMatchesRegularExpression('/<input type="hidden" name="enabled" value="0">\s*<input type="checkbox" name="enabled" value="1"\s+checked\s*>\s*SMS-Versand aktiv/', $html);
     }
 
-    public function test_a_caller_without_the_switch_still_gets_a_connected_connection(): void
+    public function test_a_caller_without_the_switch_gets_a_connected_new_connection(): void
     {
         Http::fake(['*' => Http::response('12.50', 200)]);
         $setup = $this->createTenantSetup();
@@ -450,6 +450,39 @@ class SmsPageTest extends TestCase
         $this->actingAs($owner)->putJson('/admin/settings/sms', ['api_key' => 'ohne-schalter'])->assertOk();
 
         $this->assertSame('connected', IntegrationConnection::where('provider', 'sevenio')->firstOrFail()->status);
+    }
+
+    /**
+     * Eine Anbindung, die der Betrieb ausgeschaltet hat, bleibt aus, wenn ein Aufrufer den Schalter nicht sendet
+     * (dieselbe Regel wie bei MailWizz, Stripe und PayPal).
+     */
+    public function test_a_caller_without_the_switch_keeps_a_switched_off_connection_off(): void
+    {
+        Http::fake();
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $connection = $this->connect($setup['tenant']->id, 'disconnected');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->putJson('/admin/settings/sms', ['api_key' => '', 'sender_id' => 'Trattoria'])
+            ->assertOk()
+            ->assertJsonPath('message', 'SMS-Versand ausgeschaltet. Der API-Key bleibt gespeichert.');
+
+        $this->assertSame('disconnected', $connection->fresh()->status);
+        Http::assertNothingSent();
+    }
+
+    public function test_a_caller_without_the_switch_keeps_a_connection_after_an_error_on(): void
+    {
+        Http::fake(['*' => Http::response('12.50', 200)]);
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $connection = $this->connect($setup['tenant']->id, 'error');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->putJson('/admin/settings/sms', ['api_key' => '', 'sender_id' => 'Trattoria'])->assertOk();
+
+        $this->assertSame('connected', $connection->fresh()->status);
     }
 
     public function test_the_old_combined_page_offers_the_configured_length(): void

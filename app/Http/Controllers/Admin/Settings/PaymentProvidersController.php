@@ -82,7 +82,7 @@ class PaymentProvidersController extends Controller
         abort_if($tenant === null, 404);
 
         $validated = $request->validate($this->secretRules(['secret_key', 'webhook_secret']) + [
-            // Die neue Seite und die alte Sammelseite senden eine 0 vor dem Kästchen; Aufrufer ohne Angabe lassen die Anbindung eingeschaltet.
+            // Die neue Seite und die alte Sammelseite senden eine 0 vor dem Kästchen. Fehlt der Schalter, bleibt der Zustand einer bestehenden Anbindung (IntegrationStatus::afterSave).
             'enabled' => ['nullable', 'boolean'],
         ], $this->secretMessages([
             'secret_key' => [__('Der Secret Key'), __('Bitte ihn im Stripe-Dashboard unter Developers → API keys kopieren und ohne Leerzeichen einfügen.')],
@@ -115,7 +115,7 @@ class PaymentProvidersController extends Controller
         }
 
         $connection->credentials_encrypted = Crypt::encryptString((string) json_encode($credentials));
-        $connection->status = $request->boolean('enabled', true) ? 'connected' : 'disconnected';
+        $connection->status = IntegrationStatus::afterSave($request, $connection);
         $connection->save();
 
         $this->audit->log('integration.stripe_updated', $connection, null, ['status' => $connection->status]);
@@ -140,7 +140,7 @@ class PaymentProvidersController extends Controller
 
         $validated = $request->validate($this->secretRules(['client_id', 'secret']) + [
             'mode' => ['required', 'in:sandbox,live'],
-            // Wie bei Stripe: Beide Formulare senden eine 0 vor dem Kästchen, Aufrufer ohne Angabe lassen die Anbindung eingeschaltet.
+            // Wie bei Stripe: Beide Formulare senden eine 0 vor dem Kästchen; fehlt der Schalter, bleibt der Zustand einer bestehenden Anbindung.
             'enabled' => ['nullable', 'boolean'],
         ], $this->secretMessages([
             'client_id' => [__('Die Client-ID'), __('Bitte sie im PayPal Developer Dashboard unter Apps & Credentials kopieren und ohne Leerzeichen einfügen.')],
@@ -177,7 +177,7 @@ class PaymentProvidersController extends Controller
         }
 
         $connection->credentials_encrypted = Crypt::encryptString((string) json_encode($credentials));
-        $connection->status = $request->boolean('enabled', true) ? 'connected' : 'disconnected';
+        $connection->status = IntegrationStatus::afterSave($request, $connection);
         $connection->save();
 
         $this->audit->log('integration.paypal_updated', $connection, null, [
