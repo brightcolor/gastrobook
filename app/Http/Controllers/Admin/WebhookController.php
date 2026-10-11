@@ -93,7 +93,7 @@ class WebhookController extends Controller
             'logEntries' => $logEntries,
             'events' => self::EVENTS,
             'salon' => $tenant->isSalon(),
-            'eventLabels' => $this->eventLabels($tenant->isSalon()),
+            'eventLabels' => self::eventLabels($tenant->isSalon()),
             'webhooksEnabled' => $tenant->hasFeature('webhooks_enabled'),
             // Das Geheimnis eines neuen oder erneuerten Endpunkts steht nach dem Neuladen einmal in der Seite (Flash der Sitzung).
             'newSecret' => session('new_secret'),
@@ -226,7 +226,7 @@ class WebhookController extends Controller
      *
      * @return array<string, string>
      */
-    private function eventLabels(bool $salon): array
+    public static function eventLabels(bool $salon): array
     {
         return $salon ? array_merge(self::EVENT_LABELS, self::EVENT_LABELS_SALON) : self::EVENT_LABELS;
     }

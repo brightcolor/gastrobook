@@ -34,7 +34,7 @@ class ApiTokenController extends Controller
 
         return view('admin.api-tokens.index', [
             'tokens' => $this->tenantTokens(),
-            'scopes' => $this->scopes($tenant->isSalon()),
+            'scopes' => self::scopes($tenant->isSalon()),
             'salon' => $tenant->isSalon(),
             'apiEnabled' => $tenant->hasFeature('api_enabled'),
             'currentUserId' => $request->user()->id,
@@ -51,7 +51,7 @@ class ApiTokenController extends Controller
      *
      * @return array<string, array{label: string, help: string}>
      */
-    private function scopes(bool $salon): array
+    public static function scopes(bool $salon): array
     {
         $bookings = $salon ? 'Termine' : 'Reservierungen';
         $guests = $salon ? 'Kunden' : 'Gäste';
@@ -99,12 +99,12 @@ class ApiTokenController extends Controller
 
         $nameMax = (int) config('swayy.api_tokens.name_max');
         // Der Vorschlag nennt das erste Recht mit dem Wortlaut des Betriebs („Reservierungen lesen“, im Salon „Termine lesen“).
-        $suggestion = $this->scopes($tenant->isSalon())['reservations:read']['label'];
+        $suggestion = self::scopes($tenant->isSalon())['reservations:read']['label'];
         $missingScope = __('Bitte mindestens ein Recht anhaken. Für die meisten Programme reicht „:right“.', ['right' => $suggestion]);
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:'.$nameMax],
             'scopes' => ['required', 'array', 'min:1'],
-            'scopes.*' => ['string', Rule::in(array_keys($this->scopes($tenant->isSalon())))],
+            'scopes.*' => ['string', Rule::in(array_keys(self::scopes($tenant->isSalon())))],
         ], [
             'name.required' => __('Bitte einen Namen eintragen, etwa das Programm, das den Schlüssel nutzt.'),
             'name.string' => __('Der Name muss ein Text sein. Bitte ihn neu eintragen.'),

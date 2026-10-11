@@ -397,7 +397,7 @@ class NotificationsPageTest extends TestCase
         $this->assertSame('6', $changes['reminder_hours_before']['to']);
         $this->assertSame('Link zum Bewertungsportal', $changes['feedback_external_url']['label']);
         $this->assertSame('Anrede', $changes['guest_address']['label']);
-        $this->assertSame('Du', $changes['guest_address']['to']);
+        $this->assertSame('du', $changes['guest_address']['to']);
     }
 
     public function test_every_field_of_the_page_has_its_own_label_in_the_log(): void

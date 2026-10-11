@@ -345,7 +345,7 @@ class PaymentProvidersPageTest extends TestCase
         $this->assertSame('PayPal-Anbindung geändert', $paypal->actionLabel());
         $changes = collect($paypal->fieldChanges())->keyBy('field');
         $this->assertSame('Modus', $changes['mode']['label']);
-        $this->assertSame('sandbox', $changes['mode']['to']);
+        $this->assertSame('Test (Sandbox)', $changes['mode']['to']);
     }
 
     public function test_the_limits_come_from_the_settings_and_name_the_next_step(): void

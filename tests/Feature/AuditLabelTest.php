@@ -5,15 +5,16 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Models\AuditLog;
+use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
 /**
  * Jede protokollierte Aktion braucht eine deutsche Bezeichnung.
  *
- * Ohne sie setzt die Anzeige aus dem technischen Namen etwas zusammen, und der
- * ist englisch: "Zahlung Amount Mismatch", "Plattform-Benutzer User Role
- * Changed". Das Protokoll liest jemand, der wissen will, was passiert ist -
- * meistens dann, wenn etwas schiefgegangen ist.
+ * Ohne sie zeigt die Anzeige Bereich und technischen Namen: "Zahlung: Aktion
+ * payment.amount_mismatch". Das Protokoll liest jemand, der wissen will, was
+ * passiert ist - meistens dann, wenn etwas schiefgegangen ist, und dafür
+ * braucht er einen Satz.
  *
  * Dreimal einzeln nachgebessert, darum jetzt ueber ALLE Stellen auf einmal:
  * Der Test sucht die geloggten Aktionen im Quelltext und laesst keine neue
@@ -49,6 +50,87 @@ class AuditLabelTest extends TestCase
         }
 
         return array_keys($actions);
+    }
+
+    /**
+     * Präfixe aller Aktionen, die der Code protokolliert. Gezählt werden nur
+     * Aufrufe des Protokollierers ($audit->log, $this->audit->log) und die
+     * log()-Hilfe eines Dienstes ($this->log, die an den Protokollierer
+     * weitergibt). Andere log()-Aufrufe, etwa auf einem Logkanal, gehören
+     * nicht zu den Aktionen. Das erste Argument darf ein Ausdruck sein
+     * ('location.'.($aktiv ? …) oder ein Wenn-Dann-Paar); jede Zeichenkette
+     * darin mit Punkt nennt ein Präfix.
+     *
+     * @return array<int, string>
+     */
+    private function loggedPrefixes(): array
+    {
+        $prefixes = [];
+
+        foreach (File::allFiles(app_path()) as $file) {
+            if ($file->getExtension() !== 'php') {
+                continue;
+            }
+
+            if (! preg_match_all('/(?:\$audit|\$this->audit|\$this)->log\(\s*([^,)]+)/', $file->getContents(), $calls)) {
+                continue;
+            }
+
+            foreach ($calls[1] as $argument) {
+                if (preg_match_all("/'([a-z0-9_]+)\\./", $argument, $found)) {
+                    foreach ($found[1] as $prefix) {
+                        $prefixes[$prefix] = true;
+                    }
+                }
+            }
+        }
+
+        ksort($prefixes);
+
+        return array_keys($prefixes);
+    }
+
+    public function test_every_logged_action_prefix_has_an_area(): void
+    {
+        $prefixes = $this->loggedPrefixes();
+
+        // Der Fund selbst muss belastbar sein: Findet das Muster kaum noch
+        // etwas, wäre der Test lautlos wertlos.
+        $this->assertGreaterThan(30, count($prefixes), 'Die Suche nach Präfixen findet fast nichts mehr - stimmt das Muster noch?');
+        // Ein Wenn-Dann-Paar im ersten Argument zählt mit, ebenso die log()-Hilfe eines Dienstes.
+        $this->assertContains('marketing_campaign', $prefixes);
+        $this->assertContains('provisioning', $prefixes);
+        $this->assertContains('support', $prefixes);
+        $this->assertContains('auth', $prefixes);
+
+        $ohne = array_values(array_filter($prefixes, fn (string $prefix) => ! array_key_exists($prefix, AuditLog::SUBJECTS)));
+
+        $this->assertSame([], $ohne, 'Für diese Präfixe fehlt ein Bereich in AuditLog::SUBJECTS: '.implode(', ', $ohne));
+    }
+
+    public function test_the_areas_of_login_support_and_customer_panel_have_german_names(): void
+    {
+        $this->assertSame('Anmeldung', AuditLog::SUBJECTS['auth']);
+        $this->assertSame('Support', AuditLog::SUBJECTS['support']);
+        $this->assertSame('Kundenpanel', AuditLog::SUBJECTS['provisioning']);
+    }
+
+    public function test_a_missing_label_names_the_area_and_the_technical_action(): void
+    {
+        // Bereich bekannt, Endung unbekannt: deutscher Bereich und technischer Name als Rückfall.
+        $this->assertSame('Standort: Aktion location.brand_new_thing', AuditLog::labelFor('location.brand_new_thing'));
+        $this->assertSame('Zahlung: Aktion payment.foo_bar', AuditLog::labelFor('payment.foo_bar'));
+        $this->assertFalse(AuditLog::hasGermanLabel('location.brand_new_thing'));
+
+        // Bereich unbekannt: nur der technische Name.
+        $this->assertSame('Aktion zzz.brand_new_thing', AuditLog::labelFor('zzz.brand_new_thing'));
+        $this->assertSame('Aktion ohnepunkt', AuditLog::labelFor('ohnepunkt'));
+        $this->assertFalse(AuditLog::hasGermanLabel('zzz.brand_new_thing'));
+
+        // Bereich und Endung bekannt: zusammengesetzter Satz wie bisher.
+        $this->assertSame('Tisch gelöscht', AuditLog::labelFor('table.deleted'));
+        $this->assertTrue(AuditLog::hasGermanLabel('table.deleted'));
+        $this->assertSame('Standort: Kapazität und Dauer geändert', AuditLog::labelFor('location.capacity_updated'));
     }
 
     public function test_every_logged_action_has_a_german_label(): void

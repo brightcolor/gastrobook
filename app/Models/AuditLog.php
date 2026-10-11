@@ -2,6 +2,10 @@
 
 namespace App\Models;
 
+use App\Http\Controllers\Admin\ApiTokenController;
+use App\Http\Controllers\Admin\NotificationTemplateController;
+use App\Http\Controllers\Admin\WebhookController;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
@@ -145,7 +149,85 @@ class AuditLog extends Model
         'key' => 'Vorlage',
         // 'type' auch bei Marketing-Kampagnen, deshalb allgemein
         'type' => 'Art',
+        // Allgemein (GeneralController), alte Sammelseite mit Standortdaten
+        'business_name' => 'Name des Betriebs',
+        'location_name' => 'Name des Standorts',
+        // Kapazität & Dauer (CapacityController)
+        'slot_interval_minutes' => 'Takt der Uhrzeiten (Min.)',
+        'default_duration_minutes' => 'Standarddauer (Min.)',
+        'buffer_minutes' => 'Puffer nach jeder Buchung (Min.)',
+        'capacity_mode' => 'Zählweise',
+        'max_covers_per_slot' => 'Höchstens gleichzeitig (Gäste)',
+        'gap_optimization_enabled' => 'Lückenoptimierung',
+        'duration_rules' => 'Tischzeiten',
+        // Buchungsregeln (BookingRulesController)
+        'min_lead_minutes' => 'Mindestvorlauf (Min.)',
+        'max_advance_days' => 'Vorausbuchung (Tage)',
+        'min_party_online' => 'Kleinste Gruppe',
+        'max_party_online' => 'Größte Gruppe',
+        'large_group_email' => 'Adresse für größere Gruppen',
+        'cancellation_deadline_minutes' => 'Stornofrist (Min.)',
+        'modification_deadline_minutes' => 'Umbuchungsfrist (Min.)',
+        'auto_confirm' => 'Online-Buchungen',
+        'request_only' => 'Buchungen nur als Anfrage',
+        'require_email_confirmation' => 'E-Mail-Adresse bestätigen lassen',
+        'waitlist_enabled' => 'Warteliste anbieten',
+        'walkins_enabled' => 'Walk-ins erfassen',
+        // Räume & Tische (RoomsController); 'name', 'min_capacity', 'max_capacity', 'room_id' und 'table_ids' stehen oben
+        'is_outdoor' => 'Draußen',
+        'outdoor' => 'Draußen',
+        'online_bookable' => 'Online buchbar',
+        'joinable' => 'Kombinierbar',
+        'accessible' => 'Barrierefrei',
+        'high_chair_possible' => 'Kinderstuhl möglich',
+        // Leistungen (ServiceController) und Mitarbeiter (StaffMemberController); weitere Felder stehen oben
+        'description' => 'Beschreibung',
+        'is_active' => 'Aktiv',
     ];
+
+    /**
+     * Bezeichnungen, die nur für eine Aktion gelten und die allgemeine
+     * Bezeichnung aus FIELD_LABELS ersetzen: Das Formular nennt das Feld dort
+     * anders als der Spaltenname.
+     *
+     * @var array<string, array<string, string>>
+     */
+    public const ACTION_FIELD_LABELS = [
+        'location.field_rules_updated' => ['note' => 'Anmerkung', 'occasion' => 'Anlass', 'allergies' => 'Allergien', 'email' => 'E-Mail', 'phone' => 'Telefon'],
+        'tenant.type_changed' => ['type' => 'Betriebstyp'],
+        'service.created' => ['is_active' => 'Online buchbar'],
+        'service.updated' => ['is_active' => 'Online buchbar'],
+        'staff_member.created' => ['is_active' => 'Buchbar', 'color' => 'Farbe im Terminplan'],
+        'staff_member.updated' => ['is_active' => 'Buchbar', 'color' => 'Farbe im Terminplan'],
+    ];
+
+    /**
+     * Auswahlwerte in den Worten der Einstellungsseiten: Feld => Wert => Wort.
+     * Die Seiten nennen jede Option so, Protokoll und Seite sagen dasselbe.
+     *
+     * @var array<string, array<string, string>>
+     */
+    private const VALUE_LABELS = [
+        'type' => ['restaurant' => 'Restaurant', 'salon' => 'Salon'],
+        'refund_mode' => ['off' => 'Aus', 'manual' => 'Von Hand freigeben', 'auto' => 'Automatisch'],
+        'refund_processing' => ['immediate' => 'Sofort', 'scheduled' => 'Gesammelt nach Zeitplan'],
+        'capacity_mode' => ['table' => 'Nach Tischen', 'person' => 'Nach Personen', 'hybrid' => 'Beides'],
+        'mode' => ['sandbox' => 'Test (Sandbox)', 'live' => 'Live'],
+        // Zustand einer Anbindung (SMS, Newsletter, Stripe, PayPal); Reservierungsstatus löst formatValue() vorher auf.
+        'status' => ['connected' => 'Verbunden', 'disconnected' => 'Ausgeschaltet', 'error' => 'Fehler beim letzten Test'],
+    ];
+
+    /**
+     * Auswahlwerte, die in einer Aktion für jedes Feld gelten: Aktion => Wert => Wort.
+     *
+     * @var array<string, array<string, string>>
+     */
+    private const ACTION_VALUE_LABELS = [
+        'location.field_rules_updated' => ['hidden' => 'Ausgeblendet', 'optional' => 'Freiwillig', 'required' => 'Pflichtfeld'],
+    ];
+
+    /** Wörter der Wahl „Online-Buchungen“ (auto_confirm) auf der Seite Buchungsregeln. */
+    private const CONFIRMATION_WORDS = ['auto' => 'Sofort bestätigen', 'manual' => 'Von Hand freigeben'];
 
     /**
      * Aktionen mit eigener Formulierung.
@@ -154,9 +236,10 @@ class AuditLog extends Model
      * den Gegenstand.
      *
      * Alles, was hier nicht steht, wird aus SUBJECTS und VERBS
-     * zusammengesetzt. Faellt beides aus, entsteht eine englische Kruecke aus
-     * dem Aktionsnamen ("Zahlung Amount Mismatch") - AuditLabelTest laesst das
-     * nicht mehr durch.
+     * zusammengesetzt. Faellt beides aus, zeigt die Zeile den Bereich und den
+     * technischen Namen der Aktion ("Zahlung: Aktion payment.amount_mismatch").
+     * Das liest sich fuer Betreiber holprig, deshalb laesst AuditLabelTest
+     * keine geloggte Aktion ohne Bezeichnung durch.
      *
      * @var array<string, string>
      */
@@ -260,6 +343,7 @@ class AuditLog extends Model
         'waitlist' => 'Warteliste', 'payment' => 'Zahlung', 'saas' => 'Plattform-Benutzer',
         'marketing_campaign' => 'Marketing-Kampagne', 'table_block' => 'Tischsperre',
         'account' => 'Konto', 'season' => 'Saison',
+        'auth' => 'Anmeldung', 'support' => 'Support', 'provisioning' => 'Kundenpanel',
     ];
 
     /** @var array<string, string> Endung der Aktion => Taetigkeit */
@@ -272,14 +356,46 @@ class AuditLog extends Model
         'signed_up' => 'registriert', 'imported' => 'importiert',
     ];
 
+    /** Zeichen, mit dem die Suche %, _ und das Zeichen selbst im Suchtext als gewöhnliche Zeichen kennzeichnet (LIKE … ESCAPE). */
+    private const LIKE_ESCAPE = '!';
+
     public function actionLabel(): string
     {
         return self::labelFor($this->action);
     }
 
     /**
+     * Hat die Aktion dieses Eintrags eine eigene deutsche Bezeichnung? Sonst
+     * zeigt die Ansicht Bereich und technischen Namen (area(), action).
+     */
+    public function hasActionLabel(): bool
+    {
+        return self::hasGermanLabel($this->action);
+    }
+
+    public function area(): ?string
+    {
+        return self::areaLabel($this->action);
+    }
+
+    /**
+     * Der Bereich einer Aktion in Deutsch (Anfang des Namens, SUBJECTS), oder
+     * null, wenn der Anfang in keinem Bereich steht.
+     */
+    public static function areaLabel(string $action): ?string
+    {
+        return self::SUBJECTS[Str::before($action, '.')] ?? null;
+    }
+
+    /**
      * Dieselbe Aufloesung ohne Datensatz - damit ein Test sie fuer jede
      * geloggte Aktion durchspielen kann.
+     *
+     * Ohne eigene Bezeichnung entsteht der Satz aus Bereich und Taetigkeit
+     * ("Tisch gelöscht"). Fehlt auch die Taetigkeit, nennt die Zeile den
+     * Bereich und den technischen Namen ("Standort: Aktion location.xyz"),
+     * damit ein Betreiber die Aktion findet. Die Ansicht setzt den Namen in
+     * <code>.
      */
     public static function labelFor(string $action): string
     {
@@ -287,53 +403,74 @@ class AuditLog extends Model
             return self::ACTION_LABELS[$action];
         }
 
-        [$prefix, $rest] = array_pad(explode('.', $action, 2), 2, '');
-        $subject = self::SUBJECTS[$prefix] ?? Str::headline($prefix);
-        $verbKey = $rest ? (string) Str::afterLast($rest, '.') : '';
-        $verb = self::VERBS[$verbKey] ?? null;
+        $area = self::areaLabel($action);
+        $verb = self::verbOf($action);
 
-        return $verb ? "{$subject} {$verb}" : trim($subject.' '.Str::headline(str_replace('.', ' ', (string) $rest)));
+        if ($area !== null && $verb !== null) {
+            return "{$area} {$verb}";
+        }
+
+        return $area !== null ? "{$area}: Aktion {$action}" : "Aktion {$action}";
+    }
+
+    /**
+     * Die Taetigkeit aus der Endung des Aktionsnamens ("…deleted" => "gelöscht"), oder null.
+     */
+    private static function verbOf(string $action): ?string
+    {
+        $rest = array_pad(explode('.', $action, 2), 2, '')[1];
+
+        return self::VERBS[$rest !== '' ? Str::afterLast($rest, '.') : ''] ?? null;
     }
 
     /**
      * Ergibt diese Aktion eine deutsche Bezeichnung - oder faellt sie auf die
-     * englische Kruecke aus dem Aktionsnamen zurueck?
+     * Zeile mit Bereich und technischem Namen zurueck?
      */
     public static function hasGermanLabel(string $action): bool
     {
-        if (isset(self::ACTION_LABELS[$action])) {
-            return true;
-        }
+        return isset(self::ACTION_LABELS[$action])
+            || (self::areaLabel($action) !== null && self::verbOf($action) !== null);
+    }
 
-        [$prefix, $rest] = array_pad(explode('.', $action, 2), 2, '');
-
-        return isset(self::SUBJECTS[$prefix])
-            && isset(self::VERBS[$rest ? (string) Str::afterLast($rest, '.') : '']);
+    /**
+     * Hat dieses Feld eine deutsche Bezeichnung, allgemein oder (mit $action)
+     * für diese Aktion?
+     */
+    public static function hasFieldLabel(string $field, ?string $action = null): bool
+    {
+        return ($action !== null && isset(self::ACTION_FIELD_LABELS[$action][$field]))
+            || isset(self::FIELD_LABELS[$field]);
     }
 
     /**
      * Resolve old/new values into readable per-field diff rows with a plain
      * label and humanised values:
      * [['field' => 'status', 'label' => 'Status', 'from' => 'Bestätigt', 'to' => 'Am Tisch'], …].
+     * Bezeichnung und Werte hängen bei manchen Feldern von der Aktion ab
+     * (ACTION_FIELD_LABELS, ACTION_VALUE_LABELS). Die Wörter für Vorlagen,
+     * API-Rechte und Webhook-Ereignisse nennen die Seiten je nach Betriebstyp
+     * (Reservierung oder Termin); $salon wählt den Wortlaut.
      *
      * @return array<int, array{field: string, label: string, from: ?string, to: ?string}>
      */
-    public function fieldChanges(): array
+    public function fieldChanges(bool $salon = false): array
     {
+        $action = (string) $this->action;
         $old = $this->old_values ?? [];
         $new = $this->new_values ?? [];
         $rows = [];
 
         foreach (array_unique(array_merge(array_keys($old), array_keys($new))) as $field) {
             $field = (string) $field;
-            $from = array_key_exists($field, $old) ? self::formatValue($field, $old[$field]) : null;
-            $to = array_key_exists($field, $new) ? self::formatValue($field, $new[$field]) : null;
+            $from = array_key_exists($field, $old) ? self::formatValue($field, $old[$field], $action, $salon) : null;
+            $to = array_key_exists($field, $new) ? self::formatValue($field, $new[$field], $action, $salon) : null;
             if ($from === $to) {
                 continue;
             }
             $rows[] = [
                 'field' => $field,
-                'label' => self::FIELD_LABELS[$field] ?? Str::headline($field),
+                'label' => self::ACTION_FIELD_LABELS[$action][$field] ?? self::FIELD_LABELS[$field] ?? Str::headline($field),
                 'from' => $from,
                 'to' => $to,
             ];
@@ -342,10 +479,14 @@ class AuditLog extends Model
         return $rows;
     }
 
-    private static function formatValue(string $field, mixed $value): ?string
+    private static function formatValue(string $field, mixed $value, string $action, bool $salon): ?string
     {
         if ($value === null || $value === '') {
             return null;
+        }
+        // Online-Buchungen: Die Seite „Buchungsregeln“ nennt die Wahl „Sofort bestätigen“ oder „Von Hand freigeben“.
+        if ($field === 'auto_confirm' && is_bool($value)) {
+            return self::CONFIRMATION_WORDS[$value ? 'auto' : 'manual'];
         }
         if (is_bool($value)) {
             return $value ? 'Ja' : 'Nein';
@@ -366,8 +507,26 @@ class AuditLog extends Model
         if ($field === 'role' && is_string($value) && trans()->has('roles.'.$value.'.label', 'de')) {
             return __('roles.'.$value.'.label', [], 'de');
         }
+        // Die Anrede nennt die Seite „Benachrichtigungen“ „du“ und „Sie“.
         if ($field === 'guest_address' && is_string($value)) {
-            return $value === 'du' ? 'Du' : 'Sie';
+            return strtolower($value) === 'du' ? 'du' : 'Sie';
+        }
+        // Auswahlwerte in den Worten der Einstellungsseite; was dort nicht vorkommt, bleibt wie gespeichert.
+        if (is_string($value)) {
+            $word = self::ACTION_VALUE_LABELS[$action][$value] ?? self::VALUE_LABELS[$field][$value] ?? null;
+            if ($word !== null) {
+                return $word;
+            }
+        }
+        if ($field === 'duration_rules' && is_array($value)) {
+            return self::formatDurationRules($value);
+        }
+        // Vorlagen, API-Rechte und Webhook-Ereignisse in den Worten ihrer Seiten.
+        if ($field === 'key' && is_string($value) && str_starts_with($action, 'template.')) {
+            return NotificationTemplateController::label($value, $salon);
+        }
+        if (is_array($value) && ($words = self::identifierWords($field, $action, $salon)) !== null) {
+            return implode(', ', array_map(fn (mixed $code): string => is_scalar($code) ? ($words[(string) $code] ?? (string) $code) : '', $value)) ?: '—';
         }
         if (is_array($value)) {
             // Lists of ids/tables etc. — show a compact, comma-joined form.
@@ -386,5 +545,126 @@ class AuditLog extends Model
         }
 
         return Str::limit((string) $value, 80);
+    }
+
+    /**
+     * Die Wörter, die eine Seite für die Kennungen in einem Feld nennt: die
+     * Rechte eines API-Schlüssels und die Ereignisse eines Webhooks. Andere
+     * Felder haben keine solche Liste.
+     *
+     * @return array<string, string>|null
+     */
+    private static function identifierWords(string $field, string $action, bool $salon): ?array
+    {
+        if ($field === 'scopes' && str_starts_with($action, 'api_token.')) {
+            return array_map(fn (array $scope): string => $scope['label'], ApiTokenController::scopes($salon));
+        }
+        if ($field === 'events' && str_starts_with($action, 'webhook.')) {
+            return WebhookController::eventLabels($salon) + ['*' => 'Alle Ereignisse'];
+        }
+
+        return null;
+    }
+
+    /**
+     * Tischzeiten je Gruppengröße wie auf der Seite „Kapazität & Dauer“:
+     * "1–2 Personen: 75 Min.; 3–6 Personen: 120 Min.". Zeilen in anderer
+     * Form erscheinen als Liste wie jeder andere Wert.
+     *
+     * @param  array<int|string, mixed>  $rules
+     */
+    private static function formatDurationRules(array $rules): string
+    {
+        $rows = [];
+        foreach ($rules as $rule) {
+            if (! is_array($rule) || ! isset($rule['min_party'], $rule['max_party'], $rule['duration'])) {
+                $flat = array_map(fn ($v) => is_scalar($v) ? (string) $v : json_encode($v, JSON_UNESCAPED_UNICODE), $rules);
+
+                return Str::limit(implode(', ', $flat), 80) ?: '—';
+            }
+            $rows[] = "{$rule['min_party']}–{$rule['max_party']} Personen: {$rule['duration']} Min.";
+        }
+
+        return implode('; ', $rows) ?: '—';
+    }
+
+    /**
+     * Schränkt die Abfrage auf Einträge ein, die den Text enthalten: im Namen
+     * der Aktion, in der deutschen Bezeichnung der Aktion oder in den alten
+     * und neuen Werten. Groß- und Kleinschreibung zählt nicht; %, _ und das
+     * Fluchtzeichen im Text suchen sich selbst. Die Abfrage ist vorher auf den
+     * Betrieb eingegrenzt: Die Bezeichnungen kommen aus den Aktionen genau
+     * dieser Einträge.
+     *
+     * Die Werte stehen als JSON-Text in der Spalte; Umlaute erscheinen dort
+     * als \uXXXX, Schrägstriche als \/ und Anführungszeichen als \".
+     * Die Suche vergleicht deshalb mit der maskierten Form des Textes
+     * (jsonNeedles). CAST(… AS TEXT) gilt unter SQLite (Text) und PostgreSQL
+     * (Spalte vom Typ json) gleichermaßen.
+     *
+     * @param  Builder<AuditLog>  $query
+     */
+    public function scopeMatchingText(Builder $query, string $text): void
+    {
+        $text = trim($text);
+        if ($text === '') {
+            return;
+        }
+
+        $labelled = $query->clone()->reorder()->distinct()->pluck('action')
+            ->filter(fn (mixed $action): bool => mb_stripos(self::labelFor((string) $action), $text) !== false)
+            ->values()
+            ->all();
+
+        $grammar = $query->getQuery()->getGrammar();
+        $escape = self::LIKE_ESCAPE;
+        $pattern = fn (string $needle): string => '%'.str_replace(
+            [$escape, '%', '_'],
+            [$escape.$escape, $escape.'%', $escape.'_'],
+            $needle,
+        ).'%';
+
+        $query->where(function (Builder $match) use ($text, $labelled, $grammar, $escape, $pattern): void {
+            $match->whereRaw('LOWER('.$grammar->wrap('action').") LIKE LOWER(?) ESCAPE '{$escape}'", [$pattern($text)]);
+            foreach (['old_values', 'new_values'] as $column) {
+                foreach (self::jsonNeedles($text) as $needle) {
+                    $match->orWhereRaw('LOWER(CAST('.$grammar->wrap($column)." AS TEXT)) LIKE LOWER(?) ESCAPE '{$escape}'", [$pattern($needle)]);
+                }
+            }
+            if ($labelled !== []) {
+                $match->orWhereIn('action', $labelled);
+            }
+        });
+    }
+
+    /**
+     * Der Suchtext in der Form, in der eine JSON-Spalte ihn hält: Umlaute als
+     * \uXXXX, Schrägstriche als \/, Anführungszeichen als \". Der Vergleich
+     * in der Datenbank setzt beide Seiten auf Kleinbuchstaben; das gelingt
+     * dort für ASCII-Zeichen. Die Maskierung eines Umlauts hängt von seiner
+     * Schreibweise ab (großes und kleines Ü haben verschiedene Kennungen).
+     * Deshalb entstehen die Formen für den Text wie eingegeben, ganz in
+     * Kleinbuchstaben und mit großen Umlauten.
+     *
+     * @return list<string>
+     */
+    private static function jsonNeedles(string $text): array
+    {
+        $upperUmlauts = (string) preg_replace_callback(
+            '/[^\x00-\x7F]/u',
+            fn (array $match): string => mb_convert_case($match[0], MB_CASE_UPPER_SIMPLE),
+            $text,
+        );
+
+        $needles = [];
+        foreach ([$text, mb_strtolower($text), $upperUmlauts] as $variant) {
+            $encoded = json_encode($variant);
+            if (is_string($encoded)) {
+                // Gleiche Formen nach dem Kleinschreiben fallen zusammen; die Datenbank setzt sie ohnehin gleich.
+                $needles[strtolower($encoded)] = substr($encoded, 1, -1);
+            }
+        }
+
+        return array_values($needles);
     }
 }

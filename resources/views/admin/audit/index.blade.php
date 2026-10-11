@@ -8,7 +8,8 @@
 <x-active-filters :reset="route('admin.audit.index')" :filters="[
     'Bereich' => $area !== '' ? $areas[$area] : null,
     'Eintrag' => $entityLabel,
-    'Suche' => $filters['action'],
+    'Suche' => $filters['q'],
+    'Aktion' => $filters['action'],
     'Von' => $filters['from'],
     'Bis' => $filters['until'],
 ]" />
@@ -18,6 +19,8 @@
         <input type="hidden" name="entity" value="{{ $filters['entity'] }}">
         <input type="hidden" name="entity_id" value="{{ $filters['entity_id'] }}">
     @endif
+    <x-field name="q" id="audit-q" label="Suchen" type="search" :value="$filters['q']" :maxlength="$searchMax" autocomplete="off"
+             placeholder="Name, Wert oder Aktion" class="min-w-56 grow sm:max-w-sm" />
     <div class="space-y-1.5">
         <label for="audit-area" class="block font-semibold text-stone-800">Bereich</label>
         <select id="audit-area" name="area" class="min-w-48">
@@ -40,11 +43,15 @@
 
 <div class="space-y-2.5">
     @forelse($logs as $log)
-        @php($changes = $log->fieldChanges())
+        @php($changes = $log->fieldChanges($salon))
         <article class="rounded-xl border border-stone-200 bg-white p-4">
             <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                 <div class="flex flex-wrap items-baseline gap-x-2">
-                    <h2 class="font-semibold text-stone-900">{{ $log->actionLabel() }}</h2>
+                    @if($log->hasActionLabel())
+                        <h2 class="font-semibold text-stone-900">{{ $log->actionLabel() }}</h2>
+                    @else
+                        <h2 class="font-semibold text-stone-900">{{ $log->area() !== null ? $log->area().': ' : '' }}Aktion <code class="rounded bg-stone-100 px-1.5 py-0.5 text-[0.8125rem] font-medium text-stone-800 [overflow-wrap:anywhere]">{{ $log->action }}</code></h2>
+                    @endif
                     @if($log->entity_id)
                         <span class="text-sm text-stone-600">Nr. {{ $log->entity_id }}</span>
                     @endif
@@ -98,9 +105,13 @@
     @empty
         @if($filtered)
             <x-empty-state title="Keine passenden Einträge">
-                Zu diesen Filtern gibt es im Protokoll nichts.
+                @if($filters['q'] !== '')
+                    Zu „{{ $filters['q'] }}“ gibt es im Protokoll keinen Eintrag. Prüfe die Schreibweise oder setze die Filter zurück.
+                @else
+                    Zu diesen Filtern gibt es im Protokoll keinen Eintrag. Lockere die Filter oder setze sie zurück.
+                @endif
                 <x-slot:action>
-                    <a href="{{ route('admin.audit.index') }}" class="btn btn-secondary">Alle Einträge zeigen</a>
+                    <a href="{{ route('admin.audit.index') }}" class="btn btn-secondary">Filter zurücksetzen</a>
                 </x-slot:action>
             </x-empty-state>
         @else

@@ -68,7 +68,7 @@ class NotificationTemplateController extends Controller
 
                 return [
                     'key' => $key,
-                    'label' => $this->label($key, $salon),
+                    'label' => self::label($key, $salon),
                     'subject' => $override->subject ?? $default['subject'],
                     'body' => $override->body ?? $default['body'],
                     'customized' => $override !== null,
@@ -112,7 +112,7 @@ class NotificationTemplateController extends Controller
 
         $this->audit->log('template.updated', $template, null, ['key' => $key]);
 
-        return $this->saved($request, __('Vorlage „:name“ gespeichert.', ['name' => $this->label($key, $tenant->isSalon())]), reload: true);
+        return $this->saved($request, __('Vorlage „:name“ gespeichert.', ['name' => self::label($key, $tenant->isSalon())]), reload: true);
     }
 
     public function reset(Request $request, string $key): mixed
@@ -129,10 +129,11 @@ class NotificationTemplateController extends Controller
 
         $this->audit->log('template.reset', null, null, ['key' => $key]);
 
-        return $this->saved($request, __('Vorlage „:name“ auf Standard zurückgesetzt.', ['name' => $this->label($key, $tenant->isSalon())]), reload: true);
+        return $this->saved($request, __('Vorlage „:name“ auf Standard zurückgesetzt.', ['name' => self::label($key, $tenant->isSalon())]), reload: true);
     }
 
-    private function label(string $key, bool $salon): string
+    /** Bezeichnung einer Vorlage; Salons lesen „Termin“. */
+    public static function label(string $key, bool $salon): string
     {
         return ($salon ? (self::SALON_LABELS[$key] ?? null) : null) ?? self::LABELS[$key] ?? $key;
     }

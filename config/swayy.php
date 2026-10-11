@@ -366,6 +366,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | per_page: Einträge je Seite im Protokoll (10–500).
+    | search_max: Längster Suchtext im Protokoll in Zeichen (20–200).
     | entities: Kürzel in der Adresse (?entity=…&entity_id=…) und das Modell,
     | dessen Änderungen der Filter „nur dieser Eintrag“ zeigt. Die
     | Reservierungsdetails verlinken mit dem Kürzel „reservation“.
@@ -373,6 +374,7 @@ return [
     */
     'audit' => [
         'per_page' => EnvSetting::integer('SWAYY_AUDIT_PER_PAGE', default: 100, min: 10, max: 500),
+        'search_max' => EnvSetting::integer('SWAYY_AUDIT_SEARCH_MAX', default: 100, min: 20, max: 200),
         'entities' => [
             'reservation' => Reservation::class,
             'guest' => Guest::class,
