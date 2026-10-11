@@ -12,7 +12,8 @@
 {{-- Feld mit Beschriftung darüber, Hilfesatz und Fehler am Feld. Der Standard-Slot ersetzt das Eingabefeld (Auswahl, Textfeld).
      Ein Steuerelement im Slot setzt id="{id}", aria-describedby ("{id}-help", "{id}-error") und den alten Wert selbst;
      die Komponente liefert Beschriftung, Hilfesatz und Fehler mit diesen IDs.
-     :minutes="true" zeigt unter einem Minutenfeld, was die Zahl bedeutet („entspricht 2 Std.“, resources/js/admin/minutes.js). --}}
+     :minutes="true" zeigt unter einem Minutenfeld, was die Zahl bedeutet („entspricht 2 Std.“, resources/js/admin/minutes.js).
+     minutes="hours" tut das für ein Stundenfeld („entspricht 1 Tag 12 Std.“, ab 24 Stunden). --}}
 @php
     $id = $id ?? 'f-'.trim((string) preg_replace('/[^A-Za-z0-9_]+/', '-', $name), '-');
     $dotted = str_replace(['[', ']'], ['.', ''], $name);
@@ -38,6 +39,7 @@
             <input id="{{ $id }}" name="{{ $name }}" type="{{ $type }}" value="{{ old($dotted, $value) }}"
                    @if($required) required aria-required="true" @endif
                    @if($minutes) data-minutes-hint @endif
+                   @if($minutes === 'hours') data-minutes-unit="hours" @endif
                    @if($describedBy) aria-describedby="{{ $describedBy }}" @endif
                    @if($error) aria-invalid="true" @endif
                    {{ $attributes->except(['class'])->merge(['class' => 'w-full min-w-0'.($unit ? ' rounded-r-none' : '')]) }}>

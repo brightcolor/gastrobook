@@ -431,7 +431,7 @@
             <div class="flex flex-wrap items-end gap-4 text-sm">
                 <label class="flex items-center gap-2"><input type="checkbox" name="reminder_enabled" value="1" @checked($settings->reminder_enabled)> E-Mail-Erinnerung aktiv <span class="tip" tabindex="0" data-tip="Schickt deinen Gästen automatisch eine freundliche Erinnerungsmail – das reduziert No-Shows erfahrungsgemäß um 20–30 %!">?</span></label>
                 <div><label class="mb-1 block text-xs font-semibold text-stone-500">Stunden vorher <span class="tip" tabindex="0" data-tip="Wann soll die Erinnerungsmail ankommen? 24 Stunden vorher ist ein bewährter Wert – der Gast hat noch Zeit umzuplanen, vergisst seinen Termin aber nicht.">?</span></label>
-                    <input type="number" name="reminder_hours_before" min="1" max="168" value="{{ $settings->reminder_hours_before }}" class="w-24 rounded-lg border-stone-200"></div>
+                    <input type="number" name="reminder_hours_before" min="{{ config('swayy.notifications.reminder_hours_min') }}" max="{{ config('swayy.notifications.reminder_hours_max') }}" value="{{ $settings->reminder_hours_before }}" class="w-24 rounded-lg border-stone-200"></div>
                 <label class="flex items-center gap-2"><input type="checkbox" name="sms_reminder_enabled" value="1" @checked($settings->sms_reminder_enabled)> SMS-Erinnerung aktiv <span class="tip" tabindex="0" data-tip="SMS werden noch häufiger gelesen als E-Mails – und das in Sekunden! Erfordert eine seven.io-Integration (Tab &#39;Integrationen&#39;).">?</span></label>
             </div>
             <p class="mt-1 text-xs text-stone-400">SMS-Erinnerungen erfordern eine konfigurierte seven.io-Integration (Tab „Integrationen") und eine Telefonnummer beim Gast.</p>
@@ -453,7 +453,7 @@
                 <label class="flex items-center gap-2"><input type="checkbox" name="feedback_enabled" value="1" @checked($settings->feedback_enabled)> Feedback-Mail aktiv <span class="tip" tabindex="0" data-tip="Schickt Gästen nach dem Besuch automatisch eine kurze Bewertungsanfrage (1–5 Sterne). Zufriedene Gäste leitest du danach gezielt zu deinem öffentlichen Bewertungsportal weiter.">?</span></label>
                 <div class="flex flex-wrap items-end gap-4">
                     <div><label class="mb-1 block text-xs font-semibold text-stone-500">Stunden nach Besuch</label>
-                        <input type="number" name="feedback_hours_after" min="1" max="336" value="{{ $settings->feedback_hours_after }}" class="w-24 rounded-lg border-stone-200"></div>
+                        <input type="number" name="feedback_hours_after" min="{{ config('swayy.notifications.feedback_hours_min') }}" max="{{ config('swayy.notifications.feedback_hours_max') }}" value="{{ $settings->feedback_hours_after }}" class="w-24 rounded-lg border-stone-200"></div>
                     <div><label class="mb-1 block text-xs font-semibold text-stone-500">Ab Sterne → Portal <span class="tip" tabindex="0" data-tip="Ab dieser Bewertung wird der Gast zu deinem externen Bewertungsportal weitergeleitet (z. B. Google). Niedrigere Bewertungen bleiben intern – so landet Kritik bei dir statt öffentlich.">?</span></label>
                         <input type="number" name="feedback_redirect_min_score" min="1" max="5" value="{{ $settings->feedback_redirect_min_score }}" class="w-24 rounded-lg border-stone-200"></div>
                 </div>

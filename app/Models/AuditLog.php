@@ -101,6 +101,16 @@ class AuditLog extends Model
         // Buchungsseite & Widget (BookingPageController)
         'confetti_on_booking' => 'Konfetti nach dem Buchen',
         'public_floorplan_enabled' => 'Tischplan zeigen',
+        // Benachrichtigungen (NotificationsController); 'guest_address' steht oben
+        'reminder_enabled' => 'E-Mail-Erinnerung',
+        'reminder_hours_before' => 'Erinnerung: Stunden vorher',
+        'sms_reminder_enabled' => 'SMS-Erinnerung',
+        'feedback_enabled' => 'Feedback-Anfrage',
+        'feedback_hours_after' => 'Feedback: Stunden nach dem Besuch',
+        'feedback_redirect_min_score' => 'Ab Sternen zum Portal',
+        'feedback_external_url' => 'Link zum Bewertungsportal',
+        'owner_notification_enabled' => 'Info an den Betrieb',
+        'owner_notification_email' => 'Adresse für die Info',
         // 'type' auch bei Marketing-Kampagnen, deshalb allgemein
         'type' => 'Art',
     ];
@@ -174,6 +184,7 @@ class AuditLog extends Model
         'location.capacity_updated' => 'Standort: Kapazität und Dauer geändert',
         'location.booking_rules_updated' => 'Standort: Buchungsregeln geändert',
         'location.booking_page_updated' => 'Standort: Buchungsseite geändert',
+        'location.notifications_updated' => 'Benachrichtigungen geändert',
         'reservation.attachment_added' => 'Reservierung: Anhang hinzugefügt',
         'reservation.attachment_deleted' => 'Reservierung: Anhang gelöscht',
         'reservation.deposit_shortfall' => 'Reservierung: Anzahlung zu niedrig',

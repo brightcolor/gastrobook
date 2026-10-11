@@ -17,14 +17,12 @@ class SendFeedbackRequests implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable;
 
-    /** Nur Besuche der letzten drei Wochen kommen ueberhaupt in Frage. */
-    private const LOOKBACK_DAYS = 21;
-
     /** Notbremse je Lauf, damit ein Stau nicht in einem Schwung rausgeht. */
     private const MAX_PER_RUN = 1000;
 
     public function handle(ReservationLifecycleService $lifecycle): void
     {
+        $lookbackDays = $this->lookbackDays();
         $reservations = Reservation::withoutGlobalScopes()
             ->where('status', ReservationStatus::Completed->value)
             ->whereNull('feedback_requested_at')
@@ -32,10 +30,9 @@ class SendFeedbackRequests implements ShouldQueue
             // Nur der frische Nachlauf. Ohne diese Grenze verschickt das erste
             // Wiedereinschalten der Funktion den kompletten Altbestand an echte
             // Gaeste - und die stuendliche Abfrage laedt bis dahin jedes Mal
-            // alles. 21 Tage: feedback_hours_after darf bis 336 Stunden gehen,
-            // dazu eine Woche Luft fuer Ausfaelle von Scheduler oder Queue.
-            ->where(fn ($q) => $q->where('departed_at', '>=', now()->subDays(self::LOOKBACK_DAYS))
-                ->orWhere('end_at', '>=', now()->subDays(self::LOOKBACK_DAYS)))
+            // alles. Siehe lookbackDays().
+            ->where(fn ($q) => $q->where('departed_at', '>=', now()->subDays($lookbackDays))
+                ->orWhere('end_at', '>=', now()->subDays($lookbackDays)))
             // Standorte ohne Feedback gehoeren GAR NICHT in die Ergebnismenge.
             // In PHP herausgefiltert bekommen sie kein feedback_requested_at,
             // bleiben also im Rueckschaufenster stehen - und weil sie die
@@ -82,6 +79,20 @@ class SendFeedbackRequests implements ShouldQueue
                 'feedback_link' => route('feedback.show', ['token' => $request->token]),
             ]);
         }
+    }
+
+    /**
+     * So viele Tage zurück kommen Besuche in Frage: die größte Wartezeit, die
+     * feedback_hours_after haben darf (notifications.feedback_hours_max), auf
+     * ganze Tage aufgerundet, dazu die Tage Luft für Ausfälle von Scheduler
+     * oder Queue (notifications.feedback_lookback_grace_days). Mit den Vorgaben
+     * 14 + 7 = 21 Tage.
+     */
+    private function lookbackDays(): int
+    {
+        $maxHours = (int) config('swayy.notifications.feedback_hours_max');
+
+        return intdiv($maxHours + 23, 24) + (int) config('swayy.notifications.feedback_lookback_grace_days');
     }
 
     /**

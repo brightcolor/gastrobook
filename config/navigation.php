@@ -122,8 +122,8 @@ return [
                 'keywords' => ['Tags', 'Markierung', 'VIP', 'Allergie', 'Neuer Tag' => 'tag-neu']],
         ]],
         ['label' => 'Gästekommunikation', 'items' => [
-            ['key' => 'notifications', 'label' => 'Benachrichtigungen', 'route' => 'admin.settings.index', 'fragment' => 'buchungsregeln', 'active' => [], 'scope' => 'location', 'can' => ['tables.manage'],
-                'keywords' => ['Erinnerung', 'Bestätigungsmail', 'Feedback', 'Benachrichtigung an den Betrieb', 'Anrede', 'du', 'Sie']],
+            ['key' => 'notifications', 'label' => 'Benachrichtigungen', 'route' => 'admin.settings.notifications.show', 'scope' => 'location', 'can' => ['tables.manage', 'opening_hours.manage'],
+                'keywords' => ['Erinnerung' => 'erinnerung', 'Bestätigungsmail' => 'bestaetigung', 'Feedback' => 'feedback', 'Benachrichtigung an den Betrieb' => 'betrieb', 'Anrede' => 'anrede', 'du' => 'anrede', 'Sie' => 'anrede']],
             ['key' => 'templates', 'label' => 'Vorlagen', 'route' => 'admin.templates.index', 'scope' => 'tenant', 'can' => ['templates.manage'],
                 'keywords' => ['Vorlagen', 'Mailtext', 'Nachrichtentext']],
             ['key' => 'sender', 'label' => 'Absender & Antworten', 'route' => 'admin.settings.index', 'fragment' => 'allgemein', 'active' => [], 'scope' => 'tenant', 'can' => ['tables.manage', 'tenant.settings.manage'],

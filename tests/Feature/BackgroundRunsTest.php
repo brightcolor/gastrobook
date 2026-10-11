@@ -152,7 +152,82 @@ class BackgroundRunsTest extends TestCase
             ->count());
     }
 
+    /**
+     * Die Eingabe erlaubt so viele Stunden vorher, wie config/swayy.php
+     * (notifications.reminder_hours_max) vorgibt. Der Lauf lädt Buchungen bis
+     * zur selben Grenze, sonst käme eine Erinnerung mit mehr Vorlauf nie an.
+     */
+    public function test_a_reminder_follows_the_configured_maximum_lead(): void
+    {
+        Mail::fake();
+        $setup = $this->createTenantSetup();
+        $setup['location']->settings()->update(['reminder_enabled' => true, 'reminder_hours_before' => 200]);
+        $start = CarbonImmutable::now($setup['location']->timezone)->addHours(199);
+        $reservation = $this->reservation($setup, [
+            'reservation_date' => $start->toDateString(),
+            'start_at' => $start->utc(),
+            'end_at' => $start->addHours(2)->utc(),
+        ]);
+        $reservation->forceFill(['created_at' => now()->subDays(2)])->saveQuietly();
+
+        $lauf = fn () => (new SendReservationReminders)->handle(
+            app(ReservationLifecycleService::class),
+            app(SmsManager::class),
+        );
+
+        config(['swayy.notifications.reminder_hours_max' => 168]);
+        $lauf();
+        $this->assertNull($reservation->fresh()->reminder_sent_at);
+
+        config(['swayy.notifications.reminder_hours_max' => 240]);
+        $lauf();
+        $this->assertNotNull($reservation->fresh()->reminder_sent_at);
+    }
+
     // ── Feedback ──────────────────────────────────────────────────────────
+
+    /**
+     * Wie weit zurück Besuche eine Feedback-Anfrage bekommen, folgt aus
+     * notifications.feedback_hours_max und den Tagen Luft
+     * (notifications.feedback_lookback_grace_days).
+     */
+    public function test_the_feedback_window_follows_the_configured_limits(): void
+    {
+        Mail::fake();
+        $setup = $this->createTenantSetup();
+        $setup['location']->settings()->update(['feedback_enabled' => true, 'feedback_hours_after' => 24]);
+        $besuch = fn (int $tageHer) => $this->reservation($setup, [
+            'status' => ReservationStatus::Completed,
+            'start_at' => now()->subDays($tageHer),
+            'end_at' => now()->subDays($tageHer)->addHours(2),
+            'departed_at' => now()->subDays($tageHer)->addHours(2),
+        ]);
+        $lauf = fn () => (new SendFeedbackRequests)->handle(app(ReservationLifecycleService::class));
+
+        // Vorgaben: 336 Stunden = 14 Tage, dazu 7 Tage Luft = 21 Tage.
+        $vor20 = $besuch(20);
+        $vor24 = $besuch(24);
+        $lauf();
+        $this->assertNotNull($vor20->fresh()->feedback_requested_at);
+        $this->assertNull($vor24->fresh()->feedback_requested_at);
+
+        // Mit 0 Tagen Luft bleiben 14 Tage.
+        $vor16 = $besuch(16);
+        config(['swayy.notifications.feedback_lookback_grace_days' => 0]);
+        $lauf();
+        $this->assertNull($vor16->fresh()->feedback_requested_at);
+
+        // 500 Stunden werden auf 21 Tage aufgerundet, dazu 2 Tage Luft = 23 Tage.
+        config(['swayy.notifications.feedback_hours_max' => 500, 'swayy.notifications.feedback_lookback_grace_days' => 2]);
+        $lauf();
+        $this->assertNotNull($vor16->fresh()->feedback_requested_at);
+        $this->assertNull($vor24->fresh()->feedback_requested_at);
+
+        // Mit 3 Tagen Luft reichen 24 Tage zurück.
+        config(['swayy.notifications.feedback_lookback_grace_days' => 3]);
+        $lauf();
+        $this->assertNotNull($vor24->fresh()->feedback_requested_at);
+    }
 
     /**
      * Standorte mit abgeschaltetem Feedback bekamen kein

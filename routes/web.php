@@ -27,6 +27,7 @@ use App\Http\Controllers\Admin\Settings\BookingRulesController;
 use App\Http\Controllers\Admin\Settings\CapacityController;
 use App\Http\Controllers\Admin\Settings\DataController;
 use App\Http\Controllers\Admin\Settings\GeneralController;
+use App\Http\Controllers\Admin\Settings\NotificationsController;
 use App\Http\Controllers\Admin\Settings\RoomsController;
 use App\Http\Controllers\Admin\Settings\SettingsMenuController;
 use App\Http\Controllers\Admin\Settings\TagSettingsController;
@@ -460,6 +461,13 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
         Route::put('/settings/booking-page', [BookingPageController::class, 'update'])
             ->middleware('permission:opening_hours.manage')->name('settings.booking-page');
         Route::get('/settings/tags', TagSettingsController::class)->name('settings.tags.show');
+        Route::get('/settings/notifications', [NotificationsController::class, 'show'])
+            ->middleware('permission:opening_hours.manage')->name('settings.notifications.show');
+        Route::put('/settings/notifications', [NotificationsController::class, 'update'])
+            ->middleware('permission:opening_hours.manage')->name('settings.notifications');
+        // Vorläufig bis Task 2: Ziel für Links auf den SMS-Versand.
+        Route::get('/settings/sms', fn () => redirect()->to(route('admin.settings.index').'#integrationen'))
+            ->middleware('permission:integrations.manage')->name('settings.sms.show');
     });
 
     // Salon: Leistungen

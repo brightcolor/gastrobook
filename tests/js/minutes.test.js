@@ -51,4 +51,26 @@ describe('Minuten in Worten', () => {
 
         expect(hint()).toBe('entspricht 2 Std.');
     });
+
+    it('rechnet bei einem Stundenfeld ab einem Tag in Worte um', () => {
+        mount(`
+            <form id="f">
+                <input id="f-lead" name="reminder_hours_before" value="36" data-minutes-hint data-minutes-unit="hours">
+                <p data-minutes-hint-for="f-lead"></p>
+            </form>`);
+        initMinuteHints();
+        expect(hint()).toBe('entspricht 1 Tag 12 Std.');
+
+        type('6');
+        expect(hint()).toBe('');
+
+        type('24');
+        expect(hint()).toBe('entspricht 1 Tag');
+
+        type('168');
+        expect(hint()).toBe('entspricht 7 Tage');
+
+        type('');
+        expect(hint()).toBe('');
+    });
 });

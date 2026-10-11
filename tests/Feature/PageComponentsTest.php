@@ -149,7 +149,16 @@ class PageComponentsTest extends TestCase
         $this->blade('<x-field name="buffer_minutes" label="Puffer" type="number" unit="Min." :minutes="true" value="90" />')
             ->assertSee('data-minutes-hint', false)
             ->assertSee('<p id="f-buffer_minutes-minutes" data-minutes-hint-for="f-buffer_minutes"', false)
-            ->assertSee('aria-describedby="f-buffer_minutes-unit f-buffer_minutes-minutes"', false);
+            ->assertSee('aria-describedby="f-buffer_minutes-unit f-buffer_minutes-minutes"', false)
+            ->assertDontSee('data-minutes-unit', false);
+    }
+
+    public function test_field_can_explain_hours_in_days(): void
+    {
+        $this->blade('<x-field name="reminder_hours_before" label="Stunden vorher" type="number" unit="Std." minutes="hours" value="36" />')
+            ->assertSee('data-minutes-hint', false)
+            ->assertSee('data-minutes-unit="hours"', false)
+            ->assertSee('<p id="f-reminder_hours_before-minutes" data-minutes-hint-for="f-reminder_hours_before"', false);
     }
 
     public function test_checkbox_sends_zero_without_a_tick_and_links_its_help(): void

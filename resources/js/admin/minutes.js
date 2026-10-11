@@ -2,8 +2,13 @@
 // („entspricht 2 Std. 30 Min.“), im Element mit
 // data-minutes-hint-for="{ID des Feldes}" (x-field mit :minutes="true").
 // Unter einer Stunde bleibt der Hinweis leer; die Einheit steht am Feld.
+// Stundenfelder (data-minutes-unit="hours", x-field mit minutes="hours")
+// rechnen die Eingabe in Minuten um; der Hinweis erscheint ab einem Tag.
 
 let installed = false;
+
+const MINUTES_PER_HOUR = 60;
+const MINUTES_PER_DAY = 1440;
 
 export function describeMinutes(value) {
     const total = Number.parseInt(String(value), 10);
@@ -21,7 +26,9 @@ export function describeMinutes(value) {
 function update(input) {
     const hint = document.querySelector(`[data-minutes-hint-for="${CSS.escape(input.id)}"]`);
     if (!hint) return;
-    hint.textContent = Number.parseInt(input.value, 10) >= 60 ? `entspricht ${describeMinutes(input.value)}` : '';
+    const hours = input.dataset.minutesUnit === 'hours';
+    const total = Number.parseInt(input.value, 10) * (hours ? MINUTES_PER_HOUR : 1);
+    hint.textContent = total >= (hours ? MINUTES_PER_DAY : MINUTES_PER_HOUR) ? `entspricht ${describeMinutes(total)}` : '';
 }
 
 export function initMinuteHints() {

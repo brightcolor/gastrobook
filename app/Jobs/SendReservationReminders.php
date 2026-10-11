@@ -18,9 +18,6 @@ class SendReservationReminders implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable;
 
-    /** Obergrenze aus SettingsController: reminder_hours_before => max:168. */
-    private const MAX_LEAD_HOURS = 168;
-
     /**
      * Mindestabstand zwischen Buchung und Erinnerung.
      */
@@ -35,7 +32,9 @@ class SendReservationReminders implements ShouldQueue
             // Weiter als die groesste erlaubte Vorwarnzeit kann nie erinnert
             // werden - solche Datensaetze alle 15 Minuten mitzuladen, kostet auf
             // einem Host ohne Swap echten Speicher.
-            ->where('start_at', '<=', now()->addHours(self::MAX_LEAD_HOURS))
+            // Die Grenze steht in config/swayy.php (notifications.reminder_hours_max),
+            // dieselbe wie bei der Eingabe von reminder_hours_before.
+            ->where('start_at', '<=', now()->addHours((int) config('swayy.notifications.reminder_hours_max')))
             ->with('location.settings', 'location.tenant')
             ->lazyById(200)
             ->filter(function (Reservation $r) {

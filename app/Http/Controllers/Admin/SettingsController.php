@@ -24,6 +24,7 @@ use App\Services\Mail\GuestReplyAddress;
 use App\Services\Newsletter\MailwizzProvider;
 use App\Services\Sms\SevenIoProvider;
 use App\Support\BookingSettingRules;
+use App\Support\NotificationSettingRules;
 use App\Support\OutboundUrlBlocked;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
@@ -129,29 +130,23 @@ class SettingsController extends Controller
         $validated = $request->validate(array_merge(
             BookingSettingRules::capacity($location->effectiveSettings(), salon: false),
             BookingSettingRules::booking(),
+            // Erinnerung, Feedback, Anrede und Info an den Betrieb prüfen wie auf der Seite „Benachrichtigungen“,
+            // mit denselben Grenzen aus config/swayy.php. Die alte Sammelseite sendet nur angehakte Kästchen;
+            // ein fehlendes Kästchen gilt als „aus“.
+            NotificationSettingRules::rules(switchesRequired: false),
             [
-                // Die alte Sammelseite sendet nur angehakte Kästchen; ein fehlendes Kästchen gilt als „aus“.
+                // Auch hier sendet nur ein angehaktes Kästchen etwas.
                 'waitlist_enabled' => ['nullable', 'boolean'],
                 'walkins_enabled' => ['nullable', 'boolean'],
                 'require_email_confirmation' => ['nullable', 'boolean'],
                 'gap_optimization_enabled' => ['nullable', 'boolean'],
-                'reminder_enabled' => ['nullable', 'boolean'],
-                'reminder_hours_before' => ['required', 'integer', 'min:1', 'max:168'],
-                'sms_reminder_enabled' => ['nullable', 'boolean'],
                 'public_floorplan_enabled' => ['nullable', 'boolean'],
                 'refund_mode' => ['required', 'in:off,manual,auto'],
                 'refund_percent' => ['required', 'integer', 'min:0', 'max:100'],
                 'refund_processing' => ['required', 'in:immediate,scheduled'],
                 'confetti_on_booking' => ['nullable', 'boolean'],
-                'owner_notification_enabled' => ['nullable', 'boolean'],
-                'owner_notification_email' => ['nullable', 'email:rfc', 'max:200'],
-                'guest_address' => ['required', 'in:du,Sie'],
-                'feedback_enabled' => ['nullable', 'boolean'],
-                'feedback_hours_after' => ['required', 'integer', 'min:1', 'max:336'],
-                'feedback_redirect_min_score' => ['required', 'integer', 'min:1', 'max:5'],
-                'feedback_external_url' => ['nullable', 'url:https', 'max:300'],
             ],
-        ), BookingSettingRules::messages());
+        ), array_merge(BookingSettingRules::messages(), NotificationSettingRules::messages()));
 
         $validated['duration_rules'] = BookingSettingRules::durationRules((array) $request->input('duration_rules', []), atField: false);
 

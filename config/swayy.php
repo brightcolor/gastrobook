@@ -398,6 +398,47 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Benachrichtigungen an Gäste und den Betrieb
+    |--------------------------------------------------------------------------
+    |
+    | Grenzen der Seite „Benachrichtigungen“ (bis Teil 3 auch der alten
+    | Sammelseite), gelesen über App\Support\NotificationSettingRules. Die
+    | Seite zeigt sie als Feldgrenzen, die Prüfung beim Speichern nutzt
+    | dieselben Werte.
+    |
+    | reminder_hours_min, reminder_hours_max: Erinnerung so viele Stunden vor
+    | dem Besuch (1–24 und 24–720; die Spalte ist smallint).
+    | feedback_hours_min, feedback_hours_max: Feedback-Anfrage so viele Stunden
+    | nach dem Besuch (1–24 und 24–720; die Spalte ist smallint).
+    | feedback_url_max: Länge des Links zum Bewertungsportal in Zeichen (30–255;
+    | die Spalte feedback_external_url ist varchar(255)).
+    | owner_email_max: Länge der Adresse für die Info an den Betrieb in Zeichen
+    | (50–255; die Spalte owner_notification_email ist varchar(255)).
+    | feedback_lookback_grace_days: Tage Luft für Ausfälle von Scheduler oder
+    | Queue (0–30). Die Feedback-Anfragen (App\Jobs\SendFeedbackRequests)
+    | gehen an Besuche der letzten feedback_hours_max Stunden, auf ganze Tage
+    | aufgerundet, plus diese Tage. Das Fenster hält ein Wiedereinschalten von
+    | Feedback bei frischen Besuchen und schützt alte Gäste vor einem Schwung
+    | Anfragen.
+    | Die Erinnerungen (App\Jobs\SendReservationReminders) laden Buchungen bis
+    | reminder_hours_max Stunden im Voraus.
+    |
+    | Der kleinste Wert eines Paares liegt höchstens bei 24, der größte
+    | mindestens bei 24: Das Feld bleibt für jede Einstellung ausfüllbar.
+    |
+    */
+    'notifications' => [
+        'reminder_hours_min' => EnvSetting::integer('SWAYY_REMINDER_HOURS_MIN', default: 1, min: 1, max: 24),
+        'reminder_hours_max' => EnvSetting::integer('SWAYY_REMINDER_HOURS_MAX', default: 168, min: 24, max: 720),
+        'feedback_hours_min' => EnvSetting::integer('SWAYY_FEEDBACK_HOURS_MIN', default: 1, min: 1, max: 24),
+        'feedback_hours_max' => EnvSetting::integer('SWAYY_FEEDBACK_HOURS_MAX', default: 336, min: 24, max: 720),
+        'feedback_url_max' => EnvSetting::integer('SWAYY_FEEDBACK_URL_MAX', default: 255, min: 30, max: 255),
+        'owner_email_max' => EnvSetting::integer('SWAYY_OWNER_EMAIL_MAX', default: 200, min: 50, max: 255),
+        'feedback_lookback_grace_days' => EnvSetting::integer('SWAYY_FEEDBACK_LOOKBACK_GRACE_DAYS', default: 7, min: 0, max: 30),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Tische
     |--------------------------------------------------------------------------
     |
