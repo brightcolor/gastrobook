@@ -61,6 +61,8 @@ class WebhookController extends Controller
             'newSecret' => session('new_secret'),
             'newSecretUrl' => session('new_secret_url'),
             'urlMax' => (int) config('swayy.webhooks.url_max'),
+            // Die Datenbank hält UTC; die Seite zeigt die Ortszeit des Standorts, wie das Protokoll.
+            'tz' => $this->context->location()?->timezone ?? config('swayy.locations.default_timezone'),
         ]);
     }
 

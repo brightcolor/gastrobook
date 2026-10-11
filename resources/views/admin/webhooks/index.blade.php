@@ -79,7 +79,7 @@
                         $subscribed,
                         trans_choice('1 Zustellung|:count Zustellungen', $endpoint->deliveries_count, ['count' => $endpoint->deliveries_count]),
                         $endpoint->failure_count > 0 ? trans_choice('1 Fehler in Folge|:count Fehler in Folge', $endpoint->failure_count, ['count' => $endpoint->failure_count]) : null,
-                        ! $endpoint->is_active && $endpoint->disabled_at ? 'inaktiv seit '.$endpoint->disabled_at->format('d.m.Y H:i') : null,
+                        ! $endpoint->is_active && $endpoint->disabled_at ? 'inaktiv seit '.$endpoint->disabled_at->copy()->setTimezone($tz)->format('d.m.Y H:i').' Uhr' : null,
                     ]);
                 @endphp
                 <li class="py-4">
@@ -139,7 +139,7 @@
             <tbody class="divide-y divide-stone-100">
                 @forelse($deliveries as $delivery)
                     <tr>
-                        <td class="py-2 pr-3 whitespace-nowrap">{{ $delivery->created_at->format('d.m.Y H:i') }}</td>
+                        <td class="py-2 pr-3 whitespace-nowrap">{{ $delivery->created_at->copy()->setTimezone($tz)->format('d.m.Y H:i') }} Uhr</td>
                         <td class="pr-3"><code class="text-xs">{{ $delivery->event }}</code></td>
                         <td class="max-w-xs truncate text-xs text-stone-500">{{ $delivery->endpoint?->url }}</td>
                         <td class="px-3 text-xs">{{ $delivery->attempt }}</td>

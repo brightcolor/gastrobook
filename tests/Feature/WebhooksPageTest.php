@@ -47,6 +47,48 @@ class WebhooksPageTest extends TestCase
         $this->assertMatchesRegularExpression('/data-nav-key="webhooks"[^>]*aria-current="page"/', (string) $response->getContent());
     }
 
+    /**
+     * Die Datenbank hält UTC. Die Seite zeigt die Ortszeit des Standorts und sagt es mit „Uhr“, wie das Protokoll.
+     */
+    public function test_times_appear_in_the_location_timezone_with_uhr(): void
+    {
+        $setup = $this->createTenantSetup();
+        $setup['tenant']->update(['feature_overrides' => ['webhooks_enabled' => true]]);
+        $setup['location']->update(['timezone' => 'Asia/Tokyo']);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $endpoint = $this->endpoint($setup['tenant']->id, ['is_active' => false, 'failure_count' => 5, 'disabled_at' => '2026-03-10 20:15:00']);
+        $delivery = WebhookDelivery::create([
+            'tenant_id' => $setup['tenant']->id, 'webhook_endpoint_id' => $endpoint->id, 'event' => 'ping',
+            'payload' => [], 'attempt' => 1, 'status' => 'success', 'response_code' => 200,
+        ]);
+        $delivery->forceFill(['created_at' => '2026-03-10 15:30:00'])->save();
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->get('/admin/webhooks')->assertOk()
+            ->assertSee('inaktiv seit 11.03.2026 05:15 Uhr')
+            ->assertSee('11.03.2026 00:30 Uhr')
+            ->assertDontSee('10.03.2026 20:15')
+            ->assertDontSee('10.03.2026 15:30');
+    }
+
+    public function test_times_without_an_active_location_use_the_default_zone_of_the_settings(): void
+    {
+        config(['swayy.locations.default_timezone' => 'Asia/Tokyo']);
+        $setup = $this->createTenantSetup();
+        $setup['tenant']->update(['feature_overrides' => ['webhooks_enabled' => true]]);
+        $setup['location']->update(['is_active' => false]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $endpoint = $this->endpoint($setup['tenant']->id);
+        $delivery = WebhookDelivery::create([
+            'tenant_id' => $setup['tenant']->id, 'webhook_endpoint_id' => $endpoint->id, 'event' => 'ping',
+            'payload' => [], 'attempt' => 1, 'status' => 'success', 'response_code' => 200,
+        ]);
+        $delivery->forceFill(['created_at' => '2026-03-10 15:30:00'])->save();
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->get('/admin/webhooks')->assertOk()->assertSee('11.03.2026 00:30 Uhr');
+    }
+
     public function test_actions_answer_with_json(): void
     {
         $setup = $this->createTenantSetup();
