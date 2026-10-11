@@ -138,12 +138,12 @@ return [
                 'keywords' => ['Anzahlung' => 'regeln', 'No-Show-Schutz' => 'regeln', 'Rückerstattung' => 'erstattung', 'Erstattungsregeln' => 'erstattung']],
         ]],
         ['label' => 'Verbindungen', 'items' => [
-            ['key' => 'newsletter', 'label' => 'Newsletter', 'route' => 'admin.settings.index', 'fragment' => 'integrationen', 'active' => [], 'scope' => 'tenant', 'can' => ['tables.manage', 'integrations.manage'],
-                'keywords' => ['Newsletter', 'MailWizz']],
+            ['key' => 'newsletter', 'label' => 'Newsletter', 'route' => 'admin.settings.newsletter.show', 'scope' => 'tenant', 'can' => ['tables.manage', 'integrations.manage'],
+                'keywords' => ['Newsletter' => 'mailwizz', 'MailWizz' => 'mailwizz', 'Listen-UID' => 'mailwizz', 'API-URL' => 'mailwizz', 'Einwilligung' => 'mailwizz']],
             ['key' => 'api', 'label' => 'API-Schlüssel', 'route' => 'admin.api-tokens.index', 'scope' => 'tenant', 'can' => ['api_tokens.manage'],
-                'keywords' => ['API', 'Schlüssel', 'Token']],
+                'keywords' => ['API', 'Schlüssel', 'Token', 'Neuer Schlüssel' => 'schluessel-neu', 'Rechte' => 'schluessel-neu', 'Zugriff für Programme' => 'schluessel-neu']],
             ['key' => 'webhooks', 'label' => 'Webhooks', 'route' => 'admin.webhooks.index', 'scope' => 'tenant', 'can' => ['webhooks.manage'],
-                'keywords' => ['Webhook', 'Ereignisse']],
+                'keywords' => ['Webhook', 'Neuer Webhook' => 'webhook-neu', 'Ereignisse' => 'webhook-neu', 'Signatur' => 'webhook-neu', 'Zustellprotokoll' => 'zustellprotokoll', 'Wiederholungen' => 'wiederholungen']],
         ]],
     ],
 ];

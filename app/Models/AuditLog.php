@@ -133,6 +133,14 @@ class AuditLog extends Model
         'refund_mode' => 'Erstattung: Modus',
         'refund_percent' => 'Erstattung in %',
         'refund_processing' => 'Erstattung: Ausführung',
+        // Newsletter (NewsletterController)
+        'api_url' => 'API-URL',
+        'list_uid' => 'Listen-UID',
+        // API-Schlüssel (ApiTokenController) und Webhooks (WebhookController); 'name' steht oben
+        'scopes' => 'Rechte',
+        'owner_id' => 'Besitzer-Nr.',
+        'url' => 'Adresse',
+        'events' => 'Ereignisse',
         // Vorlagen (NotificationTemplateController)
         'key' => 'Vorlage',
         // 'type' auch bei Marketing-Kampagnen, deshalb allgemein
@@ -231,8 +239,10 @@ class AuditLog extends Model
         'staff_member.working_hours_updated' => 'Arbeitszeiten geändert',
         'tenant.branding_updated' => 'Erscheinungsbild geändert',
         'tenant.guest_mail_updated' => 'Absender für Gästemails geändert',
+        'api_token.deleted' => 'API-Schlüssel widerrufen',
+        'webhook.deactivated' => 'Webhook pausiert',
         'webhook.ping' => 'Webhook getestet',
-        'webhook.secret_rotated' => 'Webhook-Schlüssel erneuert',
+        'webhook.secret_rotated' => 'Webhook-Geheimnis erneuert',
     ];
 
     /** @var array<string, string> Praefix der Aktion => Gegenstand */
@@ -244,7 +254,7 @@ class AuditLog extends Model
         'user' => 'Benutzer', 'refund' => 'Erstattung', 'deposit_rule' => 'Anzahlungsregel',
         'blackout' => 'Sperrzeit', 'special_hours' => 'Sonderöffnungszeit',
         'opening_hours' => 'Öffnungszeiten', 'template' => 'E-Mail-Vorlage',
-        'api_token' => 'API-Token', 'webhook' => 'Webhook', 'tenant' => 'Betrieb',
+        'api_token' => 'API-Schlüssel', 'webhook' => 'Webhook', 'tenant' => 'Betrieb',
         'floorplan' => 'Tischplan', 'billing' => 'Abrechnung', 'integration' => 'Integration',
         'waitlist' => 'Warteliste', 'payment' => 'Zahlung', 'saas' => 'Plattform-Benutzer',
         'marketing_campaign' => 'Marketing-Kampagne', 'table_block' => 'Tischsperre',

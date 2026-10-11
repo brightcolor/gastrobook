@@ -1094,7 +1094,7 @@
                 <label class="mb-1 block text-xs font-semibold text-stone-500">Listen-UID <span class="tip" tabindex="0" data-tip="Die eindeutige ID deiner Newsletter-Liste in MailWizz – sieht aus wie &#39;abc123def&#39;. Findest du in der Listenübersicht unter &#39;Unique ID&#39;.">?</span></label>
                 <input type="text" name="list_uid" required value="{{ $mailwizzCredentials['list_uid'] ?? '' }}" class="w-full rounded-lg border-stone-200">
             </div>
-            <label class="flex items-center gap-2"><input type="checkbox" name="enabled" value="1" @checked(($mailwizz->status ?? '') === 'connected')> Synchronisierung aktiv <span class="tip" tabindex="0" data-tip="Wenn aktiv, werden Gäste mit Newsletter-Einwilligung automatisch in diese Liste übertragen. Dein Verteiler wächst ganz nebenbei!">?</span></label>
+            <label class="flex items-center gap-2"><input type="hidden" name="enabled" value="0"><input type="checkbox" name="enabled" value="1" @checked(($mailwizz->status ?? '') !== 'disconnected')> Synchronisierung aktiv <span class="tip" tabindex="0" data-tip="Wenn aktiv, werden Gäste mit Newsletter-Einwilligung automatisch in diese Liste übertragen. Dein Verteiler wächst ganz nebenbei!">?</span></label>
         </div>
         <button class="mt-3 rounded-xl bg-stone-900 px-5 py-2.5 text-sm font-bold text-white">Speichern & Verbindung testen</button>
     </form>

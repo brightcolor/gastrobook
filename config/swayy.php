@@ -263,6 +263,26 @@ return [
         // Einträge, die das Zustellprotokoll auf der Webhook-Seite zeigt.
         // 1 bis 500, Vorgabe 25.
         'log_entries' => EnvSetting::integer('SWAYY_WEBHOOK_LOG_ENTRIES', default: 25, min: 1, max: 500),
+
+        // Längste Adresse eines Endpunkts in Zeichen. 30 bis 255, Vorgabe 255:
+        // Die Spalte webhook_endpoints.url ist ein varchar(255).
+        'url_max' => EnvSetting::integer('SWAYY_WEBHOOK_URL_MAX', default: 255, min: 30, max: 255),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | API-Schlüssel
+    |--------------------------------------------------------------------------
+    |
+    | Grenzen der Seite „API-Schlüssel“, gelesen vom ApiTokenController. Die
+    | Schlüssel liegen in personal_access_tokens; die Spalte name ist text.
+    |
+    | name_max: längster Name eines Schlüssels in Zeichen (10–255; die Liste
+    | der Seite bleibt damit lesbar).
+    |
+    */
+    'api_tokens' => [
+        'name_max' => EnvSetting::integer('SWAYY_API_TOKEN_NAME_MAX', default: 80, min: 10, max: 255),
     ],
 
     /*
@@ -324,6 +344,20 @@ return [
         // letzte Wert gilt für alle weiteren Versuche. Je Wert 1 bis 86400,
         // Vorgabe 60,600.
         'backoff' => EnvSetting::integerList('SWAYY_NEWSLETTER_BACKOFF', default: [60, 600], min: 1, max: 86400),
+
+        // Grenzen der Seite „Newsletter“ (bis Teil 3 auch der alten Sammelseite),
+        // gelesen vom NewsletterController. API-URL, API-Key und Listen-UID
+        // liegen verschlüsselt in integration_connections.credentials_encrypted
+        // (text); die Höchstwerte aller drei passen zusammen in die Spalte.
+
+        // Längste API-URL in Zeichen. 30 bis 2000, Vorgabe 255.
+        'api_url_max' => EnvSetting::integer('SWAYY_NEWSLETTER_API_URL_MAX', default: 255, min: 30, max: 2000),
+
+        // Längster API-Key in Zeichen. 32 bis 1000, Vorgabe 255.
+        'api_key_max' => EnvSetting::integer('SWAYY_NEWSLETTER_API_KEY_MAX', default: 255, min: 32, max: 1000),
+
+        // Längste Listen-UID in Zeichen. 8 bis 255, Vorgabe 64.
+        'list_uid_max' => EnvSetting::integer('SWAYY_NEWSLETTER_LIST_UID_MAX', default: 64, min: 8, max: 255),
     ],
 
     /*

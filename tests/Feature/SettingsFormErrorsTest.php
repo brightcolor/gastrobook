@@ -113,7 +113,7 @@ class SettingsFormErrorsTest extends TestCase
                 'amount_per_person', 'Bitte den Betrag in Euro mit Punkt und höchstens zwei Nachkommastellen eintragen, etwa 12.50.'],
             'MailWizz' => ['PUT', '/admin/settings/mailwizz',
                 ['api_url' => '', 'list_uid' => 'ab12cd34'],
-                'api_url', 'API-URL ist ein Pflichtfeld.'],
+                'api_url', 'Die API-URL fehlt. Bitte die Adresse deiner MailWizz-API eintragen, etwa https://news.example.com/api (in MailWizz unter Account → API).'],
             'SMS' => ['PUT', '/admin/settings/sms',
                 ['enabled' => '1'],
                 'api_key', 'Der API-Key fehlt. Bitte den API-Key aus seven.io eintragen (app.seven.io → Einstellungen → API).'],

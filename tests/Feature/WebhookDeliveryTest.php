@@ -232,6 +232,7 @@ class WebhookDeliveryTest extends TestCase
             'disable_after' => 9,
             'response_limit' => 300,
             'log_entries' => 40,
+            'url_max' => 255,
         ], $config['webhooks']);
     }
 

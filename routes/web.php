@@ -28,6 +28,7 @@ use App\Http\Controllers\Admin\Settings\CapacityController;
 use App\Http\Controllers\Admin\Settings\DataController;
 use App\Http\Controllers\Admin\Settings\DepositsController;
 use App\Http\Controllers\Admin\Settings\GeneralController;
+use App\Http\Controllers\Admin\Settings\NewsletterController;
 use App\Http\Controllers\Admin\Settings\NotificationsController;
 use App\Http\Controllers\Admin\Settings\PaymentProvidersController;
 use App\Http\Controllers\Admin\Settings\RoomsController;
@@ -411,7 +412,9 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
             ->middleware('permission:tenant.settings.manage')->name('settings.logo.upload');
         Route::delete('/settings/logo', [SettingsController::class, 'deleteLogo'])
             ->middleware('permission:tenant.settings.manage')->name('settings.logo.delete');
-        Route::put('/settings/mailwizz', [SettingsController::class, 'updateMailwizz'])
+        Route::get('/settings/newsletter', [NewsletterController::class, 'show'])
+            ->middleware('permission:integrations.manage')->name('settings.newsletter.show');
+        Route::put('/settings/mailwizz', [NewsletterController::class, 'update'])
             ->middleware('permission:integrations.manage')->name('settings.mailwizz');
         Route::get('/settings/payment-providers', [PaymentProvidersController::class, 'show'])
             ->middleware('permission:integrations.manage')->name('settings.payment-providers.show');

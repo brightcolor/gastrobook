@@ -17,15 +17,11 @@ use App\Models\SeasonPeriod;
 use App\Models\Service;
 use App\Models\SpecialOpeningHour;
 use App\Models\TableBlock;
-use App\Rules\AllowedOutboundUrl;
 use App\Services\AuditLogger;
-use App\Services\Newsletter\MailwizzProvider;
 use App\Support\BookingSettingRules;
 use App\Support\NotificationSettingRules;
-use App\Support\OutboundUrlBlocked;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Storage;
@@ -168,111 +164,6 @@ class SettingsController extends Controller
         $this->audit->log('location.settings_updated', $settings, $old, $validated);
 
         return $this->saved($request, __('Buchungsregeln gespeichert.'));
-    }
-
-    /**
-     * MailWizz newsletter integration (tenant-wide). Credentials are stored
-     * encrypted; the API key is never displayed again after saving.
-     */
-    public function updateMailwizz(Request $request)
-    {
-        $tenant = $this->context->tenant();
-
-        $validated = $request->validate([
-            // Der Server ruft diese Adresse selbst auf - also dieselbe
-            // Zielpruefung wie bei Webhook-Endpunkten. Jede Anfrage prueft
-            // spaeter noch einmal (MailwizzProvider).
-            'api_url' => ['required', 'string', 'bail', 'url', new AllowedOutboundUrl],
-            'api_key' => ['nullable', 'string', 'max:255'],
-            'list_uid' => ['required', 'string', 'max:64'],
-            'enabled' => ['nullable', 'boolean'],
-        ]);
-
-        $connection = IntegrationConnection::firstOrNew([
-            'tenant_id' => $tenant->id,
-            'location_id' => null,
-            'provider' => 'mailwizz',
-        ]);
-
-        $credentials = [];
-        if ($connection->credentials_encrypted) {
-            $credentials = json_decode(Crypt::decryptString($connection->credentials_encrypted), true) ?: [];
-        }
-        $credentials['api_url'] = $validated['api_url'];
-        $credentials['list_uid'] = $validated['list_uid'];
-        if (! empty($validated['api_key'])) {
-            $credentials['api_key'] = $validated['api_key'];
-        }
-
-        if (empty($credentials['api_key'])) {
-            return $this->failed($request, 'api_key', __('Der API-Key fehlt. Bitte den API-Key aus MailWizz eintragen (in MailWizz unter Account → API).'));
-        }
-
-        $connection->credentials_encrypted = Crypt::encryptString(json_encode($credentials));
-        $connection->status = $request->boolean('enabled', true) ? 'connected' : 'disconnected';
-        // Ein alter Fehlergrund gehoert zur alten Eingabe.
-        $settings = Arr::except($connection->settings ?? [], 'last_error');
-        $connection->settings = $settings === [] ? null : $settings;
-        $connection->save();
-
-        $this->audit->log('integration.mailwizz_updated', $connection, null, [
-            'api_url' => $validated['api_url'],
-            'list_uid' => $validated['list_uid'],
-            'status' => $connection->status,
-        ]);
-
-        if ($connection->status !== 'connected') {
-            return $this->saved($request, __('MailWizz-Integration gespeichert. Die Synchronisierung ist ausgeschaltet.'));
-        }
-
-        // Verify the connection right away so misconfiguration is visible immediately
-        $provider = new MailwizzProvider(
-            $credentials['api_url'], $credentials['api_key'], $credentials['list_uid']
-        );
-        try {
-            $response = $provider->testConnection();
-        } catch (OutboundUrlBlocked $e) {
-            // Zwischen Pruefung beim Speichern und Verbindungstest kann der
-            // Name auf eine andere Adresse zeigen - der Test prueft selbst.
-            return $this->mailwizzFailed($request, $connection, $e->getMessage());
-        } catch (\Throwable) {
-            return $this->mailwizzFailed($request, $connection, __('MailWizz ist unter dieser Adresse nicht erreichbar. Bitte die API-URL prüfen oder es später erneut versuchen.'));
-        }
-
-        if (! $response->successful()) {
-            return $this->mailwizzFailed($request, $connection, $this->mailwizzTestFailure($response->status()));
-        }
-
-        return $this->saved($request, __('MailWizz-Integration gespeichert und Verbindung getestet.'));
-    }
-
-    /**
-     * Anbindung auf "Fehler" setzen und den Grund behalten: Die Meldung zum
-     * Speichern verschwindet, der Grund steht danach weiter an der Anbindung.
-     */
-    private function mailwizzFailed(Request $request, IntegrationConnection $connection, string $message): mixed
-    {
-        $connection->update([
-            'status' => 'error',
-            'settings' => array_merge($connection->settings ?? [], ['last_error' => $message]),
-        ]);
-
-        return $this->failed($request, 'api_url', $message);
-    }
-
-    /**
-     * Was eine Antwort ausserhalb von 2xx beim Verbindungstest bedeutet.
-     * Weiterleitungen folgt der Test bewusst nicht: Ihr Ziel hat niemand
-     * geprueft.
-     */
-    private function mailwizzTestFailure(int $status): string
-    {
-        return match (true) {
-            $status >= 300 && $status < 400 => __('MailWizz leitet die Anfrage an eine andere Adresse weiter (Status :status). Bitte die Adresse eintragen, auf die MailWizz weiterleitet.', ['status' => $status]),
-            $status === 401, $status === 403 => __('MailWizz lehnt den API-Key ab (Status :status). Bitte den API-Key in MailWizz prüfen und neu eintragen.', ['status' => $status]),
-            $status === 404 => __('MailWizz findet die Liste unter dieser Adresse nicht (Status 404). Bitte API-URL und Listen-UID prüfen.'),
-            default => __('Verbindungstest fehlgeschlagen (Status :status). Bitte API-URL, API-Key und Listen-UID prüfen.', ['status' => $status]),
-        };
     }
 
     public function uploadLogo(Request $request)
