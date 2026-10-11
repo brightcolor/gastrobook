@@ -10,6 +10,7 @@ use App\Models\IntegrationConnection;
 use App\Services\AuditLogger;
 use App\Services\Sms\SevenIoProvider;
 use App\Support\TenantContext;
+use Closure;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -63,17 +64,15 @@ class SmsController extends Controller
         $tenant = $this->context->tenant();
         abort_if($tenant === null, 404);
 
-        $senderMax = (int) config('swayy.sms.sender_id_max');
         $validated = $request->validate([
             'api_key' => ['nullable', 'string', 'max:'.(int) config('swayy.sms.api_key_max')],
-            'sender_id' => ['nullable', 'string', 'max:'.$senderMax],
-            // Die alte Sammelseite sendet das Kästchen nur angehakt; ohne Angabe bleibt der Versand eingeschaltet.
+            'sender_id' => ['nullable', 'bail', 'string', $this->senderIdLength(...)],
+            // Beide Formulare senden eine 0 vor dem Kästchen; Aufrufer ohne Angabe lassen den Versand eingeschaltet.
             'enabled' => ['nullable', 'boolean'],
         ], [
             'api_key.string' => __('Der API-Key muss ein Text sein. Bitte ihn aus app.seven.io kopieren und neu einfügen.'),
             'api_key.max' => __('Der API-Key ist zu lang. Bitte ihn aus app.seven.io kopieren und ohne Leerzeichen einfügen.'),
             'sender_id.string' => __('Die Absenderkennung muss ein Text sein. Bitte neu eintragen.'),
-            'sender_id.max' => __('Die Absenderkennung darf höchstens :max Zeichen haben (:text bei Buchstaben). Bitte kürzen.', ['text' => (int) config('swayy.sms.sender_id_text_max')]),
             'enabled.boolean' => __('Der Schalter für den SMS-Versand hat einen ungültigen Wert. Bitte die Seite neu laden und noch einmal speichern.'),
         ]);
 
@@ -124,6 +123,32 @@ class SmsController extends Controller
         }
 
         return $this->saved($request, __('SMS-Versand gespeichert. Die Verbindung zu seven.io funktioniert.'), reload: true);
+    }
+
+    /**
+     * Länge der Absenderkennung je Art: Eine Rufnummer (nur Ziffern, auf Wunsch
+     * mit führendem +) darf bis zu sender_id_max Ziffern haben, jede andere
+     * Kennung höchstens sender_id_text_max Zeichen.
+     *
+     * @param  Closure(string): mixed  $fail
+     */
+    private function senderIdLength(string $attribute, mixed $value, Closure $fail): void
+    {
+        $value = (string) $value;
+        $numberMax = (int) config('swayy.sms.sender_id_max');
+        $textMax = (int) config('swayy.sms.sender_id_text_max');
+
+        if (preg_match('/^\+?\d+$/', $value) === 1) {
+            if (strlen(ltrim($value, '+')) > $numberMax) {
+                $fail(__('Die Rufnummer als Absenderkennung darf höchstens :max Ziffern haben. Bitte kürzen.', ['max' => $numberMax]));
+            }
+
+            return;
+        }
+
+        if (mb_strlen($value) > $textMax) {
+            $fail(__('Die Absenderkennung mit Buchstaben darf höchstens :text Zeichen haben. Bitte kürzen oder eine Rufnummer mit bis zu :max Ziffern eintragen.', ['text' => $textMax, 'max' => $numberMax]));
+        }
     }
 
     private function connection(): ?IntegrationConnection

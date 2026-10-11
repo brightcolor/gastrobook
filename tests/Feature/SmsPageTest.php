@@ -110,7 +110,7 @@ class SmsPageTest extends TestCase
 
         $response = $this->actingAs($owner)->putJson('/admin/settings/sms', ['api_key' => str_repeat('k', 41), 'sender_id' => str_repeat('A', 9), 'enabled' => '1'])
             ->assertStatus(422);
-        $this->assertSame('Die Absenderkennung darf höchstens 8 Zeichen haben (6 bei Buchstaben). Bitte kürzen.', $response->json('errors.sender_id.0'));
+        $this->assertSame('Die Absenderkennung mit Buchstaben darf höchstens 6 Zeichen haben. Bitte kürzen oder eine Rufnummer mit bis zu 8 Ziffern eintragen.', $response->json('errors.sender_id.0'));
         $this->assertSame('Der API-Key ist zu lang. Bitte ihn aus app.seven.io kopieren und ohne Leerzeichen einfügen.', $response->json('errors.api_key.0'));
         $this->assertSame(0, IntegrationConnection::withoutGlobalScopes()->count());
     }
@@ -123,7 +123,45 @@ class SmsPageTest extends TestCase
 
         $response = $this->actingAs($owner)->putJson('/admin/settings/sms', ['api_key' => 'k', 'sender_id' => str_repeat('A', 17), 'enabled' => '1'])->assertStatus(422);
 
-        $this->assertSame('Die Absenderkennung darf höchstens 16 Zeichen haben (11 bei Buchstaben). Bitte kürzen.', $response->json('errors.sender_id.0'));
+        $this->assertSame('Die Absenderkennung mit Buchstaben darf höchstens 11 Zeichen haben. Bitte kürzen oder eine Rufnummer mit bis zu 16 Ziffern eintragen.', $response->json('errors.sender_id.0'));
+    }
+
+    public function test_a_sender_id_with_letters_follows_the_text_limit_and_a_phone_number_the_longer_one(): void
+    {
+        Http::fake(['*' => Http::response('12.50', 200)]);
+        config(['swayy.sms.sender_id_max' => 12, 'swayy.sms.sender_id_text_max' => 6]);
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+        $save = fn (string $senderId) => $this->actingAs($owner)->putJson('/admin/settings/sms', ['api_key' => 'k', 'sender_id' => $senderId, 'enabled' => '1']);
+
+        $rejected = $save('Salonxx')->assertStatus(422);
+        $this->assertSame('Die Absenderkennung mit Buchstaben darf höchstens 6 Zeichen haben. Bitte kürzen oder eine Rufnummer mit bis zu 12 Ziffern eintragen.', $rejected->json('errors.sender_id.0'));
+        $this->assertSame(0, IntegrationConnection::withoutGlobalScopes()->count());
+
+        $save('Salonx')->assertOk();
+        $save('123456789012')->assertOk();
+        $save('+123456789012')->assertOk();
+        $save('Sal0n12')->assertStatus(422)->assertJsonValidationErrors('sender_id');
+        $save('1234567890123')->assertStatus(422)->assertJsonPath(
+            'errors.sender_id.0',
+            'Die Rufnummer als Absenderkennung darf höchstens 12 Ziffern haben. Bitte kürzen.',
+        );
+        $save('+1234567890123')->assertStatus(422)->assertJsonValidationErrors('sender_id');
+    }
+
+    public function test_the_default_sender_id_limits_accept_a_name_of_eleven_letters_and_a_number_of_sixteen_digits(): void
+    {
+        Http::fake(['*' => Http::response('12.50', 200)]);
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+        $save = fn (string $senderId) => $this->actingAs($owner)->putJson('/admin/settings/sms', ['api_key' => 'k', 'sender_id' => $senderId, 'enabled' => '1']);
+
+        $save(str_repeat('A', 11))->assertOk();
+        $save(str_repeat('A', 12))->assertStatus(422);
+        $save(str_repeat('4', 16))->assertOk();
+        $save(str_repeat('4', 17))->assertStatus(422);
     }
 
     public function test_the_key_never_comes_back_into_the_page_even_after_a_rejected_classic_save(): void
@@ -338,6 +376,44 @@ class SmsPageTest extends TestCase
         $connection = IntegrationConnection::where('provider', 'sevenio')->firstOrFail();
         $this->assertSame('connected', $connection->status);
         $this->assertSame('alter-weg', $this->credentialsOf($connection)['api_key']);
+    }
+
+    /**
+     * Die neue Seite kann den Versand ausschalten. Speichert jemand danach das
+     * Formular der alten Sammelseite, darf es ihn nicht wieder einschalten:
+     * Das Kästchen steht dort unmarkiert, und eine 0 davor sorgt dafür, dass
+     * der Schalter in der Anfrage ankommt.
+     */
+    public function test_the_old_combined_page_keeps_a_switched_off_connection_off(): void
+    {
+        Http::fake();
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $connection = $this->connect($setup['tenant']->id, 'disconnected');
+        $this->clearTenantContext();
+
+        $html = (string) $this->actingAs($owner)->get('/admin/settings')->assertOk()->getContent();
+        $this->assertMatchesRegularExpression('/<input type="hidden" name="enabled" value="0">\s*<input type="checkbox" name="enabled" value="1"\s*>\s*SMS-Versand aktiv/', $html);
+
+        // Das Formular der alten Seite mit unmarkiertem Kästchen sendet nur die 0.
+        $this->actingAs($owner)->put('/admin/settings/sms', ['api_key' => '', 'sender_id' => 'Trattoria', 'enabled' => '0'])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('disconnected', $connection->fresh()->status);
+        Http::assertNothingSent();
+    }
+
+    public function test_a_caller_without_the_switch_still_gets_a_connected_connection(): void
+    {
+        Http::fake(['*' => Http::response('12.50', 200)]);
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->putJson('/admin/settings/sms', ['api_key' => 'ohne-schalter'])->assertOk();
+
+        $this->assertSame('connected', IntegrationConnection::where('provider', 'sevenio')->firstOrFail()->status);
     }
 
     public function test_the_old_combined_page_offers_the_configured_length(): void

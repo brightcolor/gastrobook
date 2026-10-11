@@ -474,11 +474,11 @@ return [
     | gelesen vom SmsController. Zugangsdaten und Absenderkennung liegen
     | verschlüsselt in integration_connections.credentials_encrypted (text).
     |
-    | sender_id_max: längste Absenderkennung in Zeichen (3–16). Eine Rufnummer
-    | als Kennung darf bis zu 16 Ziffern haben.
-    | sender_id_text_max: längste Kennung aus Buchstaben in Zeichen (3–16, nie
-    | über sender_id_max); SMS-Netze erlauben dafür 11. Die Fehlermeldung
-    | nennt den Wert.
+    | sender_id_max: längste Absenderkennung aus Ziffern, auf Wunsch mit
+    | führendem + (Rufnummer), in Ziffern (3–16).
+    | sender_id_text_max: längste Absenderkennung mit Buchstaben oder anderen
+    | Zeichen in Zeichen (3–16, nie über sender_id_max); SMS-Netze erlauben
+    | dafür 11. Beide Grenzen prüft das Speichern, jede mit eigener Meldung.
     | api_key_max: längster API-Key in Zeichen (32–1000).
     |
     */
