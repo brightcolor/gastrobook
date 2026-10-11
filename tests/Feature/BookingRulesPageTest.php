@@ -200,7 +200,7 @@ class BookingRulesPageTest extends TestCase
 
         $this->actingAs($owner)->putJson('/admin/settings/rules', $payload)
             ->assertStatus(422)
-            ->assertJsonPath('errors.waitlist_enabled.0', 'Die Einstellung „Warteliste anbieten“ fehlt im gesendeten Formular. Bitte die Seite neu laden und erneut speichern.');
+            ->assertJsonPath('errors.waitlist_enabled.0', 'Bei „Warteliste anbieten“ fehlt ein Wert. Bitte einen Wert eintragen oder wählen; steht das Feld nicht auf der Seite, die Seite neu laden.');
     }
 
     public function test_an_unclear_switch_and_an_unknown_choice_name_the_next_step(): void

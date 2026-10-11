@@ -136,7 +136,7 @@ class BookingSettingRulesTest extends TestCase
     {
         $messages = BookingSettingRules::messages();
 
-        $this->assertSame('Die Einstellung „:attribute“ fehlt im gesendeten Formular. Bitte die Seite neu laden und erneut speichern.', $messages['capacity_mode.required']);
+        $this->assertSame('Bei „:attribute“ fehlt ein Wert. Bitte einen Wert eintragen oder wählen; steht das Feld nicht auf der Seite, die Seite neu laden.', $messages['capacity_mode.required']);
         $this->assertSame('Bitte „:attribute“ ein- oder ausschalten.', $messages['waitlist_enabled.boolean']);
         $this->assertSame('Der Wert bei „:attribute“ steht nicht zur Auswahl. Bitte einen Wert aus der Liste wählen oder die Seite neu laden.', $messages['slot_interval_minutes.in']);
         $this->assertSame('Bei „:attribute“ bitte eine ganze Zahl eintragen.', $messages['buffer_minutes.integer']);
@@ -184,7 +184,7 @@ class BookingSettingRulesTest extends TestCase
 
         $errors = Validator::make([], BookingSettingRules::capacity(null, salon: true), BookingSettingRules::messages(), BookingSettingRules::attributes())->errors();
 
-        $this->assertSame(['Die Einstellung „Lückenoptimierung“ fehlt im gesendeten Formular. Bitte die Seite neu laden und erneut speichern.'], $errors->get('gap_optimization_enabled'));
+        $this->assertSame(['Bei „Lückenoptimierung“ fehlt ein Wert. Bitte einen Wert eintragen oder wählen; steht das Feld nicht auf der Seite, die Seite neu laden.'], $errors->get('gap_optimization_enabled'));
     }
 
     public function test_party_limits_end_at_the_limit_of_the_booking_paths(): void

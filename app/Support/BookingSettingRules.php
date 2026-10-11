@@ -100,9 +100,9 @@ final class BookingSettingRules
 
     /**
      * Meldungen der Prüfung. Sie nennen die Einstellung und den nächsten
-     * Schritt. Ein Pflichtfeld, ein Schalter oder eine Auswahl ist nur dann
-     * falsch, wenn die Seite älter ist als die Einstellung oder jemand das
-     * Formular von Hand sendet; die Meldung schickt deshalb zum Neuladen.
+     * Schritt. Ein leeres Pflichtfeld kommt auf der alten Sammelseite vor
+     * (Zahlenfelder ohne required) oder wenn die Seite älter ist als die
+     * Einstellung; die Meldung nennt deshalb beide Wege.
      * Die Texte für required, boolean, in und integer entstehen für jedes Feld
      * der Regeln, damit kein Feld die allgemeine Meldung von Laravel zeigt.
      *
@@ -114,6 +114,9 @@ final class BookingSettingRules
             'duration_rules.max' => __('Die Zahl der Tischzeiten ist auf :max begrenzt. Bitte Gruppengrößen zusammenfassen.'),
             'duration_rules.*.duration.min' => __('Eine Tischzeit muss mindestens :min Minuten betragen.'),
             'duration_rules.*.duration.max' => __('Eine Tischzeit darf höchstens :max Minuten betragen.'),
+            // Gespeicherte Regeln aus der Zeit vor der Grenze von 100 Personen landen hier.
+            'duration_rules.*.min_party.max' => __('Die Buchungswege nehmen Gruppen bis :max Personen an. Bitte bei „:attribute“ höchstens :max eintragen oder die Zeile entfernen.'),
+            'duration_rules.*.max_party.max' => __('Die Buchungswege nehmen Gruppen bis :max Personen an. Bitte bei „:attribute“ höchstens :max eintragen oder die Zeile entfernen.'),
             'max_party_online.gte' => __('Die größte Gruppe ist kleiner als die kleinste. Bitte bei „Größte Gruppe“ mindestens :value eintragen.'),
         ];
 
@@ -122,7 +125,7 @@ final class BookingSettingRules
             foreach ($rules as $rule) {
                 $name = $rule instanceof In ? 'in' : (is_string($rule) ? strtok($rule, ':') : null);
                 $text = match ($name) {
-                    'required' => __('Die Einstellung „:attribute“ fehlt im gesendeten Formular. Bitte die Seite neu laden und erneut speichern.'),
+                    'required' => __('Bei „:attribute“ fehlt ein Wert. Bitte einen Wert eintragen oder wählen; steht das Feld nicht auf der Seite, die Seite neu laden.'),
                     'boolean' => __('Bitte „:attribute“ ein- oder ausschalten.'),
                     'in' => __('Der Wert bei „:attribute“ steht nicht zur Auswahl. Bitte einen Wert aus der Liste wählen oder die Seite neu laden.'),
                     'integer' => __('Bei „:attribute“ bitte eine ganze Zahl eintragen.'),

@@ -161,7 +161,7 @@ class CapacityPageTest extends TestCase
 
         $this->actingAs($owner)->putJson('/admin/settings/capacity', $payload)
             ->assertStatus(422)
-            ->assertJsonPath('errors.capacity_mode.0', 'Die Einstellung „Zählweise“ fehlt im gesendeten Formular. Bitte die Seite neu laden und erneut speichern.');
+            ->assertJsonPath('errors.capacity_mode.0', 'Bei „Zählweise“ fehlt ein Wert. Bitte einen Wert eintragen oder wählen; steht das Feld nicht auf der Seite, die Seite neu laden.');
     }
 
     public function test_an_unknown_choice_names_the_next_step(): void
@@ -200,7 +200,7 @@ class CapacityPageTest extends TestCase
 
         $this->actingAs($owner)->putJson('/admin/settings/capacity', ['slot_interval_minutes' => 30, 'buffer_minutes' => 15])
             ->assertStatus(422)
-            ->assertJsonPath('errors.gap_optimization_enabled.0', 'Die Einstellung „Lückenoptimierung“ fehlt im gesendeten Formular. Bitte die Seite neu laden und erneut speichern.');
+            ->assertJsonPath('errors.gap_optimization_enabled.0', 'Bei „Lückenoptimierung“ fehlt ein Wert. Bitte einen Wert eintragen oder wählen; steht das Feld nicht auf der Seite, die Seite neu laden.');
 
         $this->actingAs($owner)->putJson('/admin/settings/capacity', ['slot_interval_minutes' => 30, 'buffer_minutes' => 15, 'gap_optimization_enabled' => 'vielleicht'])
             ->assertStatus(422)
@@ -223,6 +223,23 @@ class CapacityPageTest extends TestCase
         $this->assertSame(
             'Die Gruppengrößen überschneiden sich: „1–4“ und „3–6“. Jede Gruppengröße darf nur in einer Regel vorkommen.',
             $response->json('errors')['duration_rules.n1.min_party'][0] ?? null,
+        );
+    }
+
+    public function test_a_rule_above_the_group_limit_names_the_limit_and_the_next_step(): void
+    {
+        config(['swayy.booking.rule_party_max' => 60]);
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $response = $this->actingAs($owner)->putJson('/admin/settings/capacity', $this->restaurant([
+            'duration_rules' => [0 => ['min_party' => 20, 'max_party' => 80, 'duration' => 180]],
+        ]))->assertStatus(422);
+
+        $this->assertSame(
+            'Die Buchungswege nehmen Gruppen bis 60 Personen an. Bitte bei „Bis Personen“ höchstens 60 eintragen oder die Zeile entfernen.',
+            $response->json('errors')['duration_rules.0.max_party'][0] ?? null,
         );
     }
 

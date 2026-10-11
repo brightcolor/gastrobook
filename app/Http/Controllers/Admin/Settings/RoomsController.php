@@ -59,7 +59,7 @@ class RoomsController extends Controller
             return $room->tables->each(fn (RestaurantTable $table) => $table->setRelation('room', $room));
         });
         // Die Mitglieder einer Kombination mit Raum, Größe und "Kombinierbar", auch wenn ein Tisch nicht mehr kombinierbar ist.
-        $combinations = $this->inOrder($location->tableCombinations()->with('tables:id,name,room_id,min_capacity,max_capacity,joinable')->get());
+        $combinations = $this->inOrder($location->tableCombinations()->with(['tables:id,name,room_id,min_capacity,max_capacity,joinable', 'tables.room:id,name'])->get());
         $byId = $tables->keyBy('id');
         $combinations->each(fn (TableCombination $combination) => $combination->setRelation('tables', $this->inOrder(
             $combination->tables->map(fn (RestaurantTable $member) => $byId->get($member->id) ?? $member),

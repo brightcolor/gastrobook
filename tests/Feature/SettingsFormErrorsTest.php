@@ -62,7 +62,7 @@ class SettingsFormErrorsTest extends TestCase
                 'waitlist_enabled', 'Bitte „Warteliste aktiv“ ein- oder ausschalten.'],
             'Buchungsregeln ohne Zählweise' => ['PUT', '/admin/settings/booking-rules',
                 self::bookingRules(['capacity_mode' => '']),
-                'capacity_mode', 'Die Einstellung „Kapazitätsmodus“ fehlt im gesendeten Formular. Bitte die Seite neu laden und erneut speichern.'],
+                'capacity_mode', 'Bei „Kapazitätsmodus“ fehlt ein Wert. Bitte einen Wert eintragen oder wählen; steht das Feld nicht auf der Seite, die Seite neu laden.'],
             'Öffnungszeiten' => ['PUT', '/admin/settings/opening-hours',
                 ['hours' => [['weekday' => 1, 'opens_at' => '25:00', 'closes_at' => '22:00']]],
                 'hours.0.opens_at', 'Bitte jede Öffnungszeit als Uhrzeit eintragen, etwa 12:00.'],
