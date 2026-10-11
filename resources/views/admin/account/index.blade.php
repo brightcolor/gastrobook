@@ -30,7 +30,7 @@
         @method('PUT')
         <x-field name="current_password" label="Aktuelles Passwort" type="password" required autocomplete="current-password" />
         <x-field name="password" label="Neues Passwort" type="password" required autocomplete="new-password"
-                 :help="'Mindestens '.$passwordMin.' Zeichen, mit Buchstaben und Ziffern.'" />
+                 :help="\App\Support\PasswordPolicy::hint()" />
         <x-field name="password_confirmation" label="Neues Passwort wiederholen" type="password" required autocomplete="new-password" />
         <button type="submit" class="btn btn-primary">Passwort ändern</button>
     </form>

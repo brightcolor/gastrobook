@@ -24,8 +24,8 @@ class OnboardingTest extends TestCase
             'restaurant_name' => 'Trattoria Bella',
             'name' => 'Maria Rossi',
             'email' => 'maria@bella.test',
-            'password' => 'super-secret-pw',
-            'password_confirmation' => 'super-secret-pw',
+            'password' => 'super-secret-pw-1',
+            'password_confirmation' => 'super-secret-pw-1',
             'privacy_accepted' => '1',
         ]);
 
@@ -92,8 +92,8 @@ class OnboardingTest extends TestCase
             'restaurant_name' => 'Test Bistro',
             'name' => 'Owner',
             'email' => 'owner@bistro.test',
-            'password' => 'super-secret-pw',
-            'password_confirmation' => 'super-secret-pw',
+            'password' => 'super-secret-pw-1',
+            'password_confirmation' => 'super-secret-pw-1',
             'privacy_accepted' => '1',
         ]);
         auth()->logout();

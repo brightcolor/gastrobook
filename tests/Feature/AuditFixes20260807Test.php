@@ -131,8 +131,8 @@ class AuditFixes20260807Test extends TestCase
 
         $this->post('/invitation/'.$invitation->token, [
             'name' => 'Neue Kollegin',
-            'password' => 'ein-langes-passwort',
-            'password_confirmation' => 'ein-langes-passwort',
+            'password' => 'ein-langes-passwort-1',
+            'password_confirmation' => 'ein-langes-passwort-1',
         ])->assertRedirect(route('admin.dashboard'));
 
         $this->assertAuthenticated();
@@ -154,8 +154,8 @@ class AuditFixes20260807Test extends TestCase
 
         $this->post('/invitation/'.$invitation->token, [
             'name' => 'Neue Kollegin',
-            'password' => 'ein-langes-passwort',
-            'password_confirmation' => 'ein-langes-passwort',
+            'password' => 'ein-langes-passwort-1',
+            'password_confirmation' => 'ein-langes-passwort-1',
         ])->assertRedirect();
 
         $this->assertDatabaseHas('location_user', ['location_id' => $setup['location']->id]);

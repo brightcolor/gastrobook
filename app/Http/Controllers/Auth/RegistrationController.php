@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Services\TenantSignupService;
+use App\Support\PasswordPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rules\Password;
 
 class RegistrationController extends Controller
 {
@@ -38,7 +38,7 @@ class RegistrationController extends Controller
             'restaurant_name' => ['required', 'string', 'max:120'],
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email:rfc', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'confirmed', Password::min(10)],
+            'password' => ['required', 'confirmed', PasswordPolicy::rule()],
             'privacy_accepted' => ['accepted'],
         ], [
             'email.unique' => __('Diese E-Mail-Adresse ist bereits registriert. Bitte melden Sie sich an.'),

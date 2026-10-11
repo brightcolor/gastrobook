@@ -27,8 +27,9 @@
                 <input type="text" name="name" id="name" required class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
             </div>
             <div>
-                <label for="password" class="mb-1 block text-sm font-semibold">Passwort (min. 10 Zeichen)</label>
-                <input type="password" name="password" id="password" required minlength="10" class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                <label for="password" class="mb-1 block text-sm font-semibold">Passwort</label>
+                <input type="password" name="password" id="password" required minlength="{{ \App\Support\PasswordPolicy::minLength() }}" aria-describedby="password-hint" class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                <p id="password-hint" class="mt-1 text-xs text-stone-600">{{ \App\Support\PasswordPolicy::hint() }}</p>
             </div>
             <div>
                 <label for="password_confirmation" class="mb-1 block text-sm font-semibold">Passwort wiederholen</label>

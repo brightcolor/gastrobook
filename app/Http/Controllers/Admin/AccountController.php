@@ -13,12 +13,12 @@ use App\Services\AccountImportService;
 use App\Services\AuditLogger;
 use App\Services\TenantDeletionService;
 use App\Support\FileSize;
+use App\Support\PasswordPolicy;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rules\Password as PasswordRule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AccountController extends Controller
@@ -42,20 +42,18 @@ class AccountController extends Controller
         $isLastOwner = $isOwner
             && $tenant->memberships()->where('role', 'tenant_owner')->count() <= 1;
 
-        $passwordMin = $this->passwordMinLength();
-
-        return view('admin.account.index', compact('user', 'tenant', 'isOwner', 'isLastOwner', 'passwordMin'));
+        return view('admin.account.index', compact('user', 'tenant', 'isOwner', 'isLastOwner'));
     }
 
     /**
      * Neues Passwort für das eigene Konto. Das aktuelle Passwort muss stimmen;
-     * die Mindestlänge steht in swayy.auth.password_min_length.
+     * für das neue gilt PasswordPolicy.
      */
     public function updatePassword(Request $request): mixed
     {
         $request->validate([
             'current_password' => ['required', 'current_password'],
-            'password' => ['required', 'confirmed', PasswordRule::min($this->passwordMinLength())->letters()->numbers()],
+            'password' => ['required', 'confirmed', PasswordPolicy::rule()],
         ], [
             'current_password.required' => __('Bitte dein aktuelles Passwort eingeben.'),
             'current_password.current_password' => __('Das aktuelle Passwort stimmt nicht. Bitte erneut eingeben oder „Passwort vergessen“ nutzen.'),
@@ -257,10 +255,5 @@ class AccountController extends Controller
         $request->session()->regenerateToken();
 
         return redirect('/')->with('success', __('Der Betrieb wurde vollständig gelöscht.'));
-    }
-
-    private function passwordMinLength(): int
-    {
-        return (int) config('swayy.auth.password_min_length');
     }
 }

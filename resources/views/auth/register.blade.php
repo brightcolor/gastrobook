@@ -38,13 +38,14 @@
                        class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
             </div>
             <div>
-                <label for="password" class="mb-1 block text-sm font-semibold">Passwort <span class="font-normal text-stone-400">(mind. 10 Zeichen)</span></label>
-                <input type="password" name="password" id="password" required minlength="10"
+                <label for="password" class="mb-1 block text-sm font-semibold">Passwort</label>
+                <input type="password" name="password" id="password" required minlength="{{ \App\Support\PasswordPolicy::minLength() }}" aria-describedby="password-hint"
                        class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
+                <p id="password-hint" class="mt-1 text-xs text-stone-600">{{ \App\Support\PasswordPolicy::hint() }}</p>
             </div>
             <div>
                 <label for="password_confirmation" class="mb-1 block text-sm font-semibold">Passwort wiederholen</label>
-                <input type="password" name="password_confirmation" id="password_confirmation" required minlength="10"
+                <input type="password" name="password_confirmation" id="password_confirmation" required minlength="{{ \App\Support\PasswordPolicy::minLength() }}"
                        class="w-full rounded-xl border-2 border-stone-200 px-4 py-3">
             </div>
             <label class="flex items-start gap-2 text-sm">

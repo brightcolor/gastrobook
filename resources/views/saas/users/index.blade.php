@@ -25,8 +25,9 @@
         <label class="block">E-Mail *
             <input type="email" name="email" required value="{{ old('email') }}" class="mt-1 w-full rounded-lg border-stone-200">
         </label>
-        <label class="block">Passwort * <span class="text-xs text-stone-400">(min. 10 Zeichen)</span>
-            <input type="text" name="password" required minlength="10" autocomplete="new-password" class="mt-1 w-full rounded-lg border-stone-200">
+        <label class="block">Passwort *
+            <input type="text" name="password" required minlength="{{ \App\Support\PasswordPolicy::minLength() }}" autocomplete="new-password" aria-describedby="createUserPasswordHint" class="mt-1 w-full rounded-lg border-stone-200">
+            <span id="createUserPasswordHint" class="mt-1 block text-xs text-stone-600">{{ \App\Support\PasswordPolicy::hint() }}</span>
         </label>
         <label class="block">Plattform-Rolle
             <select name="saas_role" class="mt-1 w-full rounded-lg border-stone-200">

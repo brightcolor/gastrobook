@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Models\User;
+use App\Support\PasswordPolicy;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
 
@@ -12,7 +13,7 @@ class CreateSuperAdmin extends Command
 {
     protected $signature = 'swayy:create-admin
         {--email= : E-Mail des Oberadmins}
-        {--password= : Passwort (min. 10 Zeichen)}
+        {--password= : Passwort (Mindestlänge laut SWAYY_PASSWORD_MIN_LENGTH, mit Buchstaben und Ziffern)}
         {--name= : Anzeigename}
         {--force : Bestehenden Account auf Oberadmin setzen / Passwort zurücksetzen}
         {--if-missing : Nur anlegen, wenn noch KEIN Oberadmin existiert (für ersten Start)}';
@@ -42,7 +43,7 @@ class CreateSuperAdmin extends Command
             $email = $this->ask('E-Mail des Oberadmins');
         }
         if (! $password && $this->input->isInteractive()) {
-            $password = $this->secret('Passwort (min. 10 Zeichen)');
+            $password = $this->secret('Passwort ('.PasswordPolicy::hint().')');
         }
 
         $existing = $email ? User::where('email', $email)->first() : null;
@@ -51,7 +52,7 @@ class CreateSuperAdmin extends Command
             ['email' => $email, 'password' => $password, 'name' => $name],
             [
                 'email' => ['required', 'email', $existing && $this->option('force') ? 'string' : 'unique:users,email'],
-                'password' => ['required', 'string', 'min:10'],
+                'password' => ['required', 'string', PasswordPolicy::rule()],
                 'name' => ['required', 'string', 'max:120'],
             ]
         );

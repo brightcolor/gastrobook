@@ -198,8 +198,8 @@ class AuthenticatedSessionsTest extends TestCase
             'restaurant_name' => 'Trattoria Bella',
             'name' => 'Maria Rossi',
             'email' => 'maria@bella.test',
-            'password' => 'super-secret-pw',
-            'password_confirmation' => 'super-secret-pw',
+            'password' => 'super-secret-pw-1',
+            'password_confirmation' => 'super-secret-pw-1',
             'privacy_accepted' => '1',
         ])->assertRedirect(route('admin.onboarding.show'));
 
@@ -219,8 +219,8 @@ class AuthenticatedSessionsTest extends TestCase
 
         $this->post('/invitation/'.$invitation->token, [
             'name' => 'Neue Kollegin',
-            'password' => 'ein-langes-passwort',
-            'password_confirmation' => 'ein-langes-passwort',
+            'password' => 'ein-langes-passwort-1',
+            'password_confirmation' => 'ein-langes-passwort-1',
         ])->assertRedirect(route('admin.dashboard'));
 
         $this->assertSessionStaysSignedIn();

@@ -46,7 +46,7 @@ class AccountPasswordTest extends TestCase
         $this->assertStringContainsString('name="password_confirmation"', $html);
         $this->assertStringContainsString('data-ajax data-reset-after-save', $html);
         $this->assertStringContainsString('action="'.route('admin.account.password').'"', $html);
-        $this->assertStringContainsString('Mindestens 8 Zeichen, mit Buchstaben und Ziffern.', $html);
+        $this->assertStringContainsString('Mindestens 10 Zeichen, mit Buchstaben und Ziffern.', $html);
         $this->assertStringNotContainsString('data-savebar', $html);
         $this->assertStringContainsString('Passwort ändern', $html);
         $this->assertStringContainsString('Auf allen anderen Geräten meldest du dich mit dem neuen Passwort neu an.', $html);
@@ -315,7 +315,7 @@ class AccountPasswordTest extends TestCase
     public function test_the_password_settings_have_bounds_defaults_and_documentation(): void
     {
         [$config, $warnings] = $this->swayyConfig([]);
-        $this->assertSame(8, $config['auth']['password_min_length']);
+        $this->assertSame(10, $config['auth']['password_min_length']);
         $this->assertSame(6, $config['auth']['password_change_per_minute']);
         $this->assertSame('', $warnings);
 

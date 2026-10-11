@@ -24,8 +24,8 @@ class RegistrationTest extends TestCase
             'restaurant_name' => 'Trattoria Bella',
             'name' => 'Maria Rossi',
             'email' => 'maria@bella.test',
-            'password' => 'super-secret-pw',
-            'password_confirmation' => 'super-secret-pw',
+            'password' => 'super-secret-pw-1',
+            'password_confirmation' => 'super-secret-pw-1',
             'privacy_accepted' => '1',
         ]);
 
@@ -59,8 +59,8 @@ class RegistrationTest extends TestCase
             'restaurant_name' => 'Zweites Restaurant',
             'name' => 'Neuer Nutzer',
             'email' => 'taken@example.com',
-            'password' => 'super-secret-pw',
-            'password_confirmation' => 'super-secret-pw',
+            'password' => 'super-secret-pw-1',
+            'password_confirmation' => 'super-secret-pw-1',
             'privacy_accepted' => '1',
         ]);
 
@@ -75,8 +75,8 @@ class RegistrationTest extends TestCase
             'restaurant_name' => 'Ohne Consent',
             'name' => 'Test',
             'email' => 'consent@example.com',
-            'password' => 'super-secret-pw',
-            'password_confirmation' => 'super-secret-pw',
+            'password' => 'super-secret-pw-1',
+            'password_confirmation' => 'super-secret-pw-1',
         ]);
 
         $response->assertSessionHasErrors('privacy_accepted');
@@ -90,8 +90,8 @@ class RegistrationTest extends TestCase
                 'restaurant_name' => 'Gasthaus Sonne',
                 'name' => 'Wirt',
                 'email' => $email,
-                'password' => 'super-secret-pw',
-                'password_confirmation' => 'super-secret-pw',
+                'password' => 'super-secret-pw-1',
+                'password_confirmation' => 'super-secret-pw-1',
                 'privacy_accepted' => '1',
             ]);
             auth()->logout();
@@ -109,8 +109,8 @@ class RegistrationTest extends TestCase
             'restaurant_name' => 'Bot Bistro',
             'name' => 'Bot',
             'email' => 'bot@example.com',
-            'password' => 'super-secret-pw',
-            'password_confirmation' => 'super-secret-pw',
+            'password' => 'super-secret-pw-1',
+            'password_confirmation' => 'super-secret-pw-1',
             'privacy_accepted' => '1',
             'website' => 'http://spam.example',
         ])->assertStatus(422);

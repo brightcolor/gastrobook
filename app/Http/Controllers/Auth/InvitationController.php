@@ -7,6 +7,7 @@ use App\Models\Invitation;
 use App\Models\Location;
 use App\Models\TenantUser;
 use App\Models\User;
+use App\Support\PasswordPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -35,7 +36,7 @@ class InvitationController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:120'],
-            'password' => ['required', 'string', 'min:10', 'confirmed'],
+            'password' => ['required', 'string', PasswordPolicy::rule(), 'confirmed'],
         ]);
 
         // Wichtig: Existiert zu dieser Adresse bereits ein Konto, darf dieser
