@@ -199,6 +199,24 @@ class EnvSettingTest extends TestCase
         $this->assertStringContainsString('keine Zahl', $this->warnings);
     }
 
+    public function test_a_name_list_keeps_valid_names_drops_the_rest_with_a_warning_and_reads_a_dash_as_empty(): void
+    {
+        $this->assertSame(['api_key', 'secret'], $this->capture(fn () => EnvSetting::nameList(self::VARIABLE, default: ['api_key', 'secret'])));
+        $this->assertSame('', $this->warnings);
+
+        $this->set(' token ,cap-token,token, user.secret_2 ');
+        $this->assertSame(['token', 'cap-token', 'user.secret_2'], $this->capture(fn () => EnvSetting::nameList(self::VARIABLE, default: ['api_key'])));
+        $this->assertSame('', $this->warnings);
+
+        $this->set('api_key, kein name, iban');
+        $this->assertSame(['api_key', 'iban'], $this->capture(fn () => EnvSetting::nameList(self::VARIABLE, default: ['x'])));
+        $this->assertStringContainsString(self::VARIABLE.': Der Eintrag „kein name“', $this->warnings);
+
+        $this->set('-');
+        $this->assertSame([], $this->capture(fn () => EnvSetting::nameList(self::VARIABLE, default: ['x'])));
+        $this->assertSame('', $this->warnings);
+    }
+
     public function test_an_email_address_is_used_and_anything_else_falls_back_to_the_default_with_a_warning(): void
     {
         $this->assertSame('info@swayy.de', $this->capture(fn () => EnvSetting::email(self::VARIABLE, default: 'info@swayy.de')));

@@ -131,6 +131,12 @@ return [
     | `SWAYY_CSP_BASE`, etwa um einen Zahlungsanbieter als `frame-src` zu
     | ergänzen.
     |
+    | dont_flash: Felder, die nach einer abgelehnten Eingabe nie in der
+    | Sitzung landen (Laravel füllt das Formular sonst aus _old_input wieder
+    | auf, und die Sitzung liegt unverschlüsselt in Redis oder der Datenbank).
+    | Laravel fügt password, password_confirmation und current_password selbst
+    | hinzu. Komma-Liste in SWAYY_DONT_FLASH; „-“ lässt nur diese drei.
+    |
     */
     'security' => [
         'csp_base' => env('SWAYY_CSP_BASE', implode('; ', [
@@ -145,6 +151,7 @@ return [
             "connect-src 'self'",
             "frame-src 'self'",
         ])),
+        'dont_flash' => EnvSetting::nameList('SWAYY_DONT_FLASH', default: ['api_key', 'secret_key', 'webhook_secret', 'client_id', 'secret', 'token', 'cap-token']),
     ],
 
     /*

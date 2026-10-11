@@ -123,5 +123,14 @@ return Application::configure(basePath: dirname(__DIR__))
             fn (Request $request) => $request->is('api/*') || AdminJsonErrors::applies($request),
         );
 
+        // Nach einer abgelehnten Eingabe merkt Laravel die Felder fürs Formular in der
+        // Sitzung, und die liegt unverschlüsselt in Redis. Schlüssel und Zugangsdaten
+        // (swayy.security.dont_flash) bleiben draußen; Laravel ergänzt sie zu seinen
+        // eigenen (password, password_confirmation, current_password).
+        $exceptions->dontFlash(array_values(array_filter(
+            app()->bound('config') ? (array) config('swayy.security.dont_flash', []) : [],
+            'is_string',
+        )));
+
         $exceptions->render(fn (Throwable $e, Request $request) => AdminJsonErrors::render($e, $request));
     })->create();

@@ -141,6 +141,40 @@ final class EnvSetting
     }
 
     /**
+     * Komma-Liste von Namen aus Buchstaben, Ziffern, _ . und -, etwa Feldnamen
+     * von Formularen. Ein ungueltiger Eintrag entfaellt mit Warnung, die
+     * uebrigen gelten; "-" ergibt eine leere Liste.
+     *
+     * @param  list<string>  $default
+     * @return list<string>
+     */
+    public static function nameList(string $variable, array $default): array
+    {
+        $raw = self::raw($variable);
+        if ($raw === null) {
+            return $default;
+        }
+        if ($raw === '-') {
+            return [];
+        }
+
+        $names = [];
+        foreach (self::items($raw) as $item) {
+            if (preg_match('/^[A-Za-z0-9_.-]+$/', $item) !== 1) {
+                self::warn("{$variable}: Der Eintrag „{$item}“ ist kein Name aus Buchstaben, Ziffern, _ . und - und bleibt unberücksichtigt. Bitte den Eintrag korrigieren, etwa api_key.");
+
+                continue;
+            }
+
+            if (! in_array($item, $names, true)) {
+                $names[] = $item;
+            }
+        }
+
+        return $names;
+    }
+
+    /**
      * Farbe in der Schreibweise #rrggbb, kleingeschrieben.
      */
     public static function hexColor(string $variable, string $default): string
