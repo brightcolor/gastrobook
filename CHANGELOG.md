@@ -1,5 +1,50 @@
 # Changelog
 
+## [1.134.7] – 2026-10-11
+
+### Sicherheitsfix: Online-Buchungen ordnen Gäste nur über die E-Mail-Adresse zu
+
+Eine Online-Buchung fiel dem Gastprofil mit derselben Telefonnummer zu, wenn
+keine Adresse passte. Zwei Folgen:
+
+- Wer mit bekannter Nummer und neuer Adresse buchte, bekam den
+  Bestätigungslink an die alte Adresse aus dem Profil. Alle anderen
+  Buchungsmails und die Bestätigungsseite nannten die neue. Die Buchung blieb
+  unbestätigt und verfiel; ein Klick auf den Link hätte eine Adresse
+  bestätigt, die der Buchende nie angegeben hatte.
+- Hatte das Profil keine Adresse, etwa nach einer telefonischen Buchung,
+  rückte die eingegebene hinein. Ein Fremder mit der Nummer eines Gastes
+  bekam so den Anmeldelink für dessen Kundenkonto und sah alle Buchungen des
+  Gastes. Seine Buchung schrieb außerdem die Einwilligungen ins fremde Profil
+  und widerrief damit die Newsletter-Einwilligung des Gastes.
+
+Neu:
+
+- Online-Buchungen, Salontermine, angenommene Wartelisten-Angebote und
+  Veranstaltungen ordnen nur über die E-Mail-Adresse zu. Passt nur die
+  Nummer, entsteht ein neues Profil. Das Personal sieht es im Gästeprofil
+  unter „Mögliche Dublette“ und führt beide bei Bedarf zusammen.
+- Reservierungsbuch, Telefon, Walk-in und Schnittstelle ordnen weiter auch
+  über die Telefonnummer zu. Welche Wege das dürfen, steht in
+  `SWAYY_GUEST_PHONE_MATCH_SOURCES` (Vorgabe
+  `manual,phone,walk_in,api,phone_assistant`, „-“ für nur über die Adresse).
+  Die Online-Buchung lässt sich dort nicht eintragen.
+- Der Bestätigungslink geht an die Adresse aus der Buchung
+  (`guest_email_snapshot`), wie alle anderen Buchungsmails.
+- Der Klick bestätigt die Adresse im Profil nur, wenn sie mit der Adresse aus
+  der Buchung übereinstimmt (Groß- und Kleinschreibung zählen nicht). Die
+  Buchung selbst gilt in jedem Fall als bestätigt.
+- Datenschutzerklärung Abschnitt 6, README und `.env.example` beschreiben die
+  Zuordnung.
+- Tests: `tests/Feature/OnlineGuestMatchingTest.php`,
+  `tests/Unit/GuestProfileConfigTest.php`, auch mit anderen Quellenlisten als
+  der Vorgabe.
+
+**Beim Zusammenführen mit `new-ui`:** `GuestAuthService::sendVerification`
+ist dort umgebaut. Nach dem Merge muss gelten: Die Methode bricht ab, wenn
+`$reservation->guest_email_snapshot` leer ist, und versendet mit
+`Mail::to($reservation->guest_email_snapshot, $name)`.
+
 ## [1.134.6] – 2026-10-10
 
 ### Sicherheitsfix: Rollenvergabe beim Einladen begrenzt
