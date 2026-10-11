@@ -79,11 +79,13 @@ widerrufen.
 
 ## 6. Gästeprofil, Besuchshistorie und No-Show-Schutz
 
-Zur Wiedererkennung und Verwaltung führen wir ein Gäste-/Kundenprofil
-(Zusammenführung über E-Mail bzw. Telefonnummer). Darin können enthalten sein:
-Name, Kontaktdaten, bevorzugte Angaben, Anzahl der Besuche, Stornierungen und
-Nichterscheinen (No-Shows), letzter Besuch sowie eine interne Kennzeichnung als
-Stammgast.
+Zur Wiedererkennung und Verwaltung führen wir ein Gäste-/Kundenprofil. Eine
+Online-Buchung ordnen wir einem bestehenden Profil nur über die E-Mail-Adresse
+zu. Nimmt unser Personal die Buchung an, etwa telefonisch oder vor Ort, kann
+die Zuordnung auch über die Telefonnummer erfolgen. Im Profil können enthalten
+sein: Name, Kontaktdaten, bevorzugte Angaben, Anzahl der Besuche, Stornierungen
+und Nichterscheinen (No-Shows), letzter Besuch sowie eine interne Kennzeichnung
+als Stammgast.
 
 Entstehen für dieselbe Person dennoch zwei Profile (z. B. eine Buchung online,
 eine telefonisch), können unsere Mitarbeiter diese **manuell zusammenführen**.

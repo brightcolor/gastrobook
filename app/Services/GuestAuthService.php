@@ -101,10 +101,14 @@ class GuestAuthService
 
     /**
      * Send an email-confirmation link tied to a specific reservation.
+     *
+     * Empfaenger ist die Adresse, die der Buchende eingegeben hat: Die
+     * Bestaetigungsseite nennt sie, und alle weiteren Buchungsmails gehen
+     * dorthin. Die Adresse im Profil kann eine andere sein.
      */
     public function sendVerification(Guest $guest, Reservation $reservation): void
     {
-        if (! $guest->email) {
+        if (! $reservation->guest_email_snapshot) {
             return;
         }
 
@@ -119,7 +123,7 @@ class GuestAuthService
 
         // Synchronous: the guest is waiting on this link to finish booking.
         $name = GuestText::inline($guest->first_name ?: $guest->last_name);
-        Mail::to($guest->email, $name)->send(new GuestLinkMail(
+        Mail::to($reservation->guest_email_snapshot, $name)->send(new GuestLinkMail(
             $du ? __('Bitte bestätige deine E-Mail-Adresse')
                 : __('Bitte bestätigen Sie Ihre E-Mail-Adresse'),
             $du ? __("Hallo :guest,\n\nein Klick noch, dann ist deine Buchung :code bei uns.", ['guest' => $name, 'code' => $reservation->code])
