@@ -13,12 +13,19 @@ class GuestProfileService
      * Find an existing guest by email/phone or create a new profile.
      * Dedupe order: exact email match, then normalized phone match.
      *
+     * Die Telefonnummer zaehlt nur fuer die Buchungswege aus
+     * swayy.guest_profiles.phone_match_sources. Im oeffentlichen Formular kann
+     * jeder die Nummer eines Gastes eintippen: Seine Adresse rueckte dann in
+     * eine leere Luecke des fremden Profils, und der Anmeldelink fuers
+     * Kundenkonto ginge an ihn.
+     *
      * @param  array{name: string, email?: ?string, phone?: ?string, source?: string, allergies?: ?string, locale?: ?string}  $data
      */
     public function findOrCreate(Tenant $tenant, array $data): Guest
     {
         $email = isset($data['email']) ? strtolower(trim($data['email'])) : null;
         $phoneNormalized = isset($data['phone']) ? preg_replace('/\D+/', '', $data['phone']) : null;
+        $source = $data['source'] ?? 'manual';
 
         $query = Guest::withoutGlobalScope('tenant')
             ->where('tenant_id', $tenant->id)
@@ -28,7 +35,8 @@ class GuestProfileService
         if ($email) {
             $guest = (clone $query)->whereRaw('lower(email) = ?', [$email])->first();
         }
-        if ($guest === null && $phoneNormalized) {
+        if ($guest === null && $phoneNormalized
+            && in_array($source, (array) config('swayy.guest_profiles.phone_match_sources', []), true)) {
             $guest = (clone $query)->where('phone_normalized', $phoneNormalized)->first();
         }
 
@@ -43,7 +51,7 @@ class GuestProfileService
                 'phone' => $data['phone'] ?? null,
                 'allergies' => $data['allergies'] ?? null,
                 'locale' => $data['locale'] ?? null,
-                'source' => $data['source'] ?? 'manual',
+                'source' => $source,
             ]);
         } else {
             // Fill gaps without overwriting curated data

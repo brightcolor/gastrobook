@@ -170,6 +170,37 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Gästeprofile: Zuordnung neuer Buchungen
+    |--------------------------------------------------------------------------
+    |
+    | Eine Buchung fällt dem Profil mit derselben E-Mail-Adresse zu. Die hier
+    | eingetragenen Buchungswege dürfen ein Profil zusätzlich über die
+    | Telefonnummer finden, wenn keine Adresse passt. Online-Buchungen,
+    | Wartelisten-Angebote und Veranstaltungen ordnen immer nur über die
+    | Adresse zu: Die Nummer im öffentlichen Formular kann jeder eintippen,
+    | und mit ihr bekäme ein Fremder das Profil samt Kundenkonto eines Gastes.
+    | Passt dort nur die Nummer, entsteht ein neues Profil. Das Personal sieht
+    | es im Gästeprofil unter „Mögliche Dublette“ und führt beide bei Bedarf
+    | zusammen.
+    |
+    | Ein unbekannter Eintrag legt nichts lahm: Es gilt die Vorgabe, und eine
+    | Warnung im Log nennt die Variable. „-“ heißt: nur über die Adresse.
+    |
+    */
+    'guest_profiles' => [
+        // Erlaubt: manual (Buchung im Reservierungsbuch), phone (telefonisch
+        // angenommen), walk_in (Laufkundschaft), api (Schnittstelle),
+        // phone_assistant (Telefonassistent über die Schnittstelle).
+        // Vorgabe: manual,phone,walk_in,api,phone_assistant
+        'phone_match_sources' => EnvSetting::choiceList(
+            'SWAYY_GUEST_PHONE_MATCH_SOURCES',
+            default: ['manual', 'phone', 'walk_in', 'api', 'phone_assistant'],
+            allowed: ['manual', 'phone', 'walk_in', 'api', 'phone_assistant'],
+        ),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Webhooks
     |--------------------------------------------------------------------------
     |

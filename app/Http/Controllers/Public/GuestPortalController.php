@@ -104,14 +104,18 @@ class GuestPortalController extends Controller
             return view('public.portal.link-invalid', ['tenant' => null]);
         }
 
-        $guest = $row->guest;
-        if ($guest->email_verified_at === null) {
-            $guest->update(['email_verified_at' => now()]);
-        }
-
         $reservation = $row->reservation_id
             ? Reservation::withoutGlobalScope('tenant')->find($row->reservation_id)
             : null;
+
+        // Der Link ging an die Adresse aus der Buchung, und nur die ist mit dem
+        // Klick bestaetigt. Steht im Profil eine andere, bleibt sie offen.
+        $guest = $row->guest;
+        if ($guest->email_verified_at === null
+            && $reservation !== null
+            && $this->sameAddress($guest->email, $reservation->guest_email_snapshot)) {
+            $guest->update(['email_verified_at' => now()]);
+        }
 
         if ($reservation !== null && $reservation->status === ReservationStatus::Requested) {
             $settings = $reservation->location()->withoutGlobalScope('tenant')->first()?->effectiveSettings();
@@ -162,6 +166,13 @@ class GuestPortalController extends Controller
         }
 
         return view('public.portal.verified', ['reservation' => $reservation]);
+    }
+
+    private function sameAddress(?string $a, ?string $b): bool
+    {
+        $a = mb_strtolower(trim((string) $a));
+
+        return $a !== '' && $a === mb_strtolower(trim((string) $b));
     }
 
     private function authedGuest(Tenant $tenant): ?Guest

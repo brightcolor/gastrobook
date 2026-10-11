@@ -219,6 +219,12 @@ app/
 
 **Snapshots:** Reservierungen speichern `guest_name/email/phone_snapshot`, damit sie auch nach Gaständerung oder Anonymisierung historisch nachvollziehbar bleiben.
 
+**Zuordnung zum Gästeprofil:** Eine Buchung fällt dem Profil mit derselben E-Mail-Adresse zu. Buchungen des Personals und der Schnittstelle dürfen ein Profil zusätzlich über die Telefonnummer finden. Online-Buchungen, Wartelisten-Angebote und Veranstaltungen ordnen nur über die Adresse zu, denn die Nummer im öffentlichen Formular kann jeder eintippen. Passt dort nur die Nummer, entsteht ein neues Profil, das im Gästeprofil unter „Mögliche Dublette“ erscheint. Alle Mails zu einer Buchung, auch der Bestätigungslink, gehen an die Adresse aus der Buchung; der Klick bestätigt die Adresse im Profil nur, wenn sie dieselbe ist.
+
+| Variable | Voreinstellung | Wirkung |
+|---|---|---|
+| `SWAYY_GUEST_PHONE_MATCH_SOURCES` | `manual,phone,walk_in,api,phone_assistant` | Buchungswege, die über die Telefonnummer zuordnen; `-` heißt nur über die Adresse. Erlaubt sind nur diese fünf Werte |
+
 ---
 
 ## Multi-Tenancy-Konzept
