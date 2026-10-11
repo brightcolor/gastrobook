@@ -24,8 +24,8 @@ Freigabe Mathias (10.10.2026, „abgleich ja agenten ja“): je Aufgabe ein Umse
 | 11 Mitarbeiter | c714716, 85839a0, e83fbc4 | 1 Runde (Seitenleiste mit mehreren Formularen, Hinweis bei Abwesenheit) |
 | 12 Reservierungsliste, Anhänge | e8d43ef, 0e9ab75 | freigegeben, kleine Punkte nachgezogen |
 | 13 Restpunkte aus 2a | 8c848ca, b41e6c1 | 1 Runde (Rollenbeschreibung passend zur Rollenvergabe aus 1.134.6) |
-| Sicherheitsfix aus main | 9be3fff | Cherry-Pick von dafd80b (Namen maskiert ins HTML) |
-| Sicherheitsfix aus main | 6f81db5 | Cherry-Pick von 9d6145f (Administration ändert oder entfernt keinen weiteren Inhaber); Teamseite und zwei Tests an die neue Regel angepasst |
+| Sicherheitsfix aus main | 9be3fff | Cherry-Pick von dafd80b (Namen maskiert ins HTML); auf main als ad90d9d in 1.134.8 |
+| Sicherheitsfix aus main | 6f81db5 | Cherry-Pick von 9d6145f (Administration ändert oder entfernt keinen weiteren Inhaber); Teamseite und zwei Tests an die neue Regel angepasst; auf main als 6789fbd in 1.134.8 |
 | Gesamtprüfung | e6b2a16 … d424445 | „With fixes“ → sechs Korrekturpakete, Nachprüfung: alle Funde behoben |
 
 ## Ergebnis Step 1 und 2
