@@ -25,6 +25,7 @@ Freigabe Mathias (10.10.2026, „abgleich ja agenten ja“): je Aufgabe ein Umse
 | 12 Reservierungsliste, Anhänge | e8d43ef, 0e9ab75 | freigegeben, kleine Punkte nachgezogen |
 | 13 Restpunkte aus 2a | 8c848ca, b41e6c1 | 1 Runde (Rollenbeschreibung passend zur Rollenvergabe aus 1.134.6) |
 | Sicherheitsfix aus main | 9be3fff | Cherry-Pick von dafd80b (Namen maskiert ins HTML) |
+| Sicherheitsfix aus main | 6f81db5 | Cherry-Pick von 9d6145f (Administration ändert oder entfernt keinen weiteren Inhaber); Teamseite und zwei Tests an die neue Regel angepasst |
 | Gesamtprüfung | e6b2a16 … d424445 | „With fixes“ → sechs Korrekturpakete, Nachprüfung: alle Funde behoben |
 
 ## Ergebnis Step 1 und 2
@@ -95,7 +96,6 @@ Nachprüfung: kein neuer Sperrkreis (Buchung: Tag → Person → Leistungen; Lö
 
 | Punkt | Wo |
 |---|---|
-| Rollen: `updateRole()` prüft nur die neue Rolle; `remove()` und `deleteUser()` schützen nur den letzten Inhaber. Eine Administration kann einen weiteren Inhaber herabstufen oder entfernen. Sicherheitsfrage | main, `UserManagementController` |
 | E-Mail-Felder ohne Längengrenze gegen `varchar(255)` (öffentliche Buchung, Events, Gäste, Warteliste, API, Kundenportal, SaaS) → Datenbankfehler bei sehr langen Adressen; Grenzen 200/255 uneinheitlich | main, eine Einstellung für alle E-Mail-Felder |
 | `popup.js` setzt Knopftext und Titel per `innerHTML`; die öffentlichen Skripte nennen den iframe auch für Salons „Tisch reservieren“ | main |
 | Restaurant-Buchungsweg sperrt die gewählten Tische nicht; eine Buchung kann in ein schmales Fenster auf einen gerade gelöschten Tisch fallen | Folgeaufgabe |
