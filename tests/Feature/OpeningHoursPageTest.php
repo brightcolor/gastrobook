@@ -211,6 +211,29 @@ class OpeningHoursPageTest extends TestCase
             ->assertSessionHasErrors(['hours.0.closes_at']);
     }
 
+    public function test_the_setup_wizard_sends_text_values_and_reads_errors_as_json(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+        $this->actingAs($owner);
+        $json = ['HTTP_ACCEPT' => 'application/json'];
+
+        // Der Assistent sendet alle Werte als Text, über POST mit _method=PUT, und liest 422 als JSON.
+        $this->call('POST', '/admin/settings/opening-hours', ['_method' => 'PUT', 'hours' => [
+            ['weekday' => '0', 'opens_at' => '11:00', 'closes_at' => '22:00', 'service_name' => ''],
+            ['weekday' => '1', 'opens_at' => '11:00', 'closes_at' => '22:00', 'service_name' => 'Abend'],
+        ]], [], [], $json)->assertOk()->assertJsonPath('message', 'Öffnungszeiten gespeichert.');
+        $this->assertSame(2, OpeningHour::where('location_id', $setup['location']->id)->count());
+
+        $response = $this->call('POST', '/admin/settings/opening-hours', ['_method' => 'PUT', 'hours' => [
+            ['weekday' => '0', 'opens_at' => '11:00', 'closes_at' => '22:00', 'service_name' => ''],
+            ['weekday' => '0', 'opens_at' => '21:00', 'closes_at' => '23:00', 'service_name' => ''],
+        ]], [], [], $json)->assertStatus(422);
+        $this->assertStringContainsString('überschneidet sich mit 11:00–22:00', $response->json('errors')['hours.1.opens_at'][0]);
+        $this->assertSame(2, OpeningHour::where('location_id', $setup['location']->id)->count());
+    }
+
     public function test_unknown_weekdays_and_times_name_the_next_step(): void
     {
         $setup = $this->createTenantSetup();
