@@ -68,6 +68,28 @@ final class RoleAssignment
     }
 
     /**
+     * Warum $user eine Mitgliedschaft mit der Rolle $role nicht aendern,
+     * beschneiden oder entfernen darf. Null, wenn er es darf.
+     *
+     * Wer eine Rolle nicht vergeben darf, nimmt sie auch niemandem. Sonst
+     * stuft die Administration einen zweiten Inhaber herab, entfernt ihn oder
+     * loescht sein Konto - die Regel "letzter Inhaber" schuetzt nur den
+     * letzten. Eine Rolle, die es in config/permissions.php nicht mehr gibt,
+     * bleibt fuer alle mit Rollenverwaltung bearbeitbar, damit sie sich
+     * aufraeumen laesst.
+     */
+    public static function managementRefusal(User $user, Tenant $tenant, string $role): ?string
+    {
+        if (! array_key_exists($role, self::roles()) || self::refusal($user, $tenant, $role) === null) {
+            return null;
+        }
+
+        return $role === 'tenant_owner'
+            ? __('Einen Inhaber ändert oder entfernt nur ein Inhaber des Betriebs. Bitte einen Inhaber darum.')
+            : __('Diese Person hat eine Rolle mit Rechten, die deine eigene Rolle nicht hat. Ändern oder entfernen kann sie nur, wer diese Rolle vergeben darf. Bitte einen Inhaber oder die Administration darum.');
+    }
+
+    /**
      * Hat $own jedes Recht aus $target? '*' steht fuer alle Rechte.
      *
      * @param  array<int, string>  $own

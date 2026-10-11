@@ -26,14 +26,19 @@ class UserManagementController extends Controller
     public function index()
     {
         $tenant = $this->context->tenant();
+        // Die zugeteilten Standorte gleich mitladen: Die Ansicht fragte sie
+        // je Mitglied UND je Standort einzeln ab - bei elf Mitgliedern und
+        // zehn Standorten waren das hundert zusaetzliche Abfragen fuer eine
+        // einzige Seite.
+        $memberships = $tenant->memberships()->with('user.allowedLocations:id')->get();
 
         return view('admin.users.index', [
             'tenant' => $tenant,
-            // Die zugeteilten Standorte gleich mitladen: Die Ansicht fragte sie
-            // je Mitglied UND je Standort einzeln ab - bei elf Mitgliedern und
-            // zehn Standorten waren das hundert zusaetzliche Abfragen fuer eine
-            // einzige Seite.
-            'memberships' => $tenant->memberships()->with('user.allowedLocations:id')->get(),
+            'memberships' => $memberships,
+            // Welche Mitgliedschaften die angemeldete Person aendern darf (siehe RoleAssignment::managementRefusal).
+            'manageable' => $memberships->mapWithKeys(fn (TenantUser $m) => [
+                $m->id => RoleAssignment::managementRefusal(request()->user(), $tenant, $m->role) === null,
+            ]),
             'invitations' => Invitation::whereNull('accepted_at')->where('expires_at', '>', now())->get(),
             'roles' => $this->assignableRoles(request(), $tenant),
             'locations' => $tenant->locations()->get(),
@@ -133,6 +138,9 @@ class UserManagementController extends Controller
     {
         $tenant = $this->context->tenant();
         abort_if($membership->tenant_id !== $tenant->id, 404);
+        if ($refusal = RoleAssignment::managementRefusal($request->user(), $tenant, $membership->role)) {
+            return back()->withErrors(['role' => $refusal]);
+        }
 
         $validated = $request->validate([
             'role' => ['required', new AssignableRole($request->user(), $tenant)],
@@ -171,6 +179,9 @@ class UserManagementController extends Controller
         abort_if($membership->tenant_id !== $tenant->id, 404);
         // Auch hier nicht die eigene Freigabe.
         abort_if($membership->user_id === $request->user()->id, 403);
+        if ($refusal = RoleAssignment::managementRefusal($request->user(), $tenant, $membership->role)) {
+            return back()->withErrors(['role' => $refusal]);
+        }
 
         $validated = $request->validate([
             'all_locations' => ['nullable', 'boolean'],
@@ -233,6 +244,9 @@ class UserManagementController extends Controller
         $tenant = $this->context->tenant();
         abort_if($membership->tenant_id !== $tenant->id, 404);
         abort_if($membership->user_id === $request->user()->id, 422, 'Sie können sich nicht selbst entfernen.');
+        if ($refusal = RoleAssignment::managementRefusal($request->user(), $tenant, $membership->role)) {
+            return back()->withErrors(['role' => $refusal]);
+        }
 
         if ($membership->role === 'tenant_owner'
             && $tenant->memberships()->where('role', 'tenant_owner')->count() <= 1) {
@@ -250,6 +264,9 @@ class UserManagementController extends Controller
         $tenant = $this->context->tenant();
         abort_if($membership->tenant_id !== $tenant->id, 404);
         abort_if($membership->user_id === $request->user()->id, 422);
+        if ($refusal = RoleAssignment::managementRefusal($request->user(), $tenant, $membership->role)) {
+            return back()->withErrors(['role' => $refusal]);
+        }
 
         if ($membership->role === 'tenant_owner'
             && $tenant->memberships()->where('role', 'tenant_owner')->count() <= 1) {

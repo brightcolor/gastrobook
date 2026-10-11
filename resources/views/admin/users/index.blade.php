@@ -16,7 +16,7 @@
                             <td class="px-4 py-3 font-semibold">{{ $m->user->name }}</td>
                             <td class="px-4 py-3 text-stone-500">{{ $m->user->email }}</td>
                             <td class="px-4 py-3">
-                                @if(auth()->user()->canInTenant('users.roles.manage', $tenant))
+                                @if(auth()->user()->canInTenant('users.roles.manage', $tenant) && ($manageable[$m->id] ?? false))
                                     <form method="POST" action="{{ route('admin.users.role', $m) }}">
                                         @csrf @method('PUT')
                                         <select name="role" onchange="this.form.submit()" class="rounded-lg border-stone-200 text-sm">
@@ -28,7 +28,7 @@
                                 @endif
                             </td>
                             <td class="px-4 py-3 text-stone-500">
-                                @if(auth()->user()->canInTenant('users.roles.manage', $tenant) && $m->user_id !== auth()->id())
+                                @if(auth()->user()->canInTenant('users.roles.manage', $tenant) && $m->user_id !== auth()->id() && ($manageable[$m->id] ?? false))
                                     <details>
                                         <summary class="cursor-pointer select-none">{{ $m->all_locations ? 'Alle' : 'Eingeschränkt' }}</summary>
                                         <form method="POST" action="{{ route('admin.users.locations', $m) }}" class="mt-2 space-y-1.5 text-xs">
@@ -53,7 +53,7 @@
                                 @endif
                             </td>
                             <td class="px-4 py-3 text-right">
-                                @if(auth()->user()->canInTenant('users.roles.manage', $tenant) && $m->user_id !== auth()->id())
+                                @if(auth()->user()->canInTenant('users.roles.manage', $tenant) && $m->user_id !== auth()->id() && ($manageable[$m->id] ?? false))
                                     <div class="flex justify-end gap-4">
                                         <form method="POST" action="{{ route('admin.users.remove', $m) }}"
                                               onsubmit="return confirm('Benutzer aus diesem Betrieb entfernen?')">
