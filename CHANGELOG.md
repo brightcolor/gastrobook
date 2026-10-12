@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.136.0] – 2026-10-12
+
+### Newsletter: Leerer Haken bei einer weiteren Buchung lässt die Einwilligung stehen
+
+Bisher zählte jede Buchung ohne Newsletter-Haken als Widerruf. Wer zum zweiten
+Mal buchte und den Haken nicht noch einmal setzte, verlor seine Einwilligung und
+wurde aus der MailWizz-Liste ausgetragen. Auf swayy.de betraf das drei Gäste
+eines Betriebs.
+
+- Ein leerer Haken lässt eine erteilte Einwilligung bestehen; abgemeldet wird
+  über den Abmeldelink. Gilt für Tischbuchungen, Salontermine und
+  Veranstaltungen (`GuestProfileService::recordBookingConsents`).
+- Neue Einstellung je Betrieb unter Einstellungen › Betrieb › Allgemein ›
+  Newsletter-Einwilligung: „Leerer Haken zählt als Abmeldung“
+  (`tenants.newsletter_unticked_revokes`, Vorgabe aus, Recht
+  `tenant.settings.manage`, Protokoll „Newsletter-Einwilligung eingestellt“).
+  Fehlt das Feld in einer Anfrage, bleibt der gespeicherte Zustand.
+- `php artisan swayy:newsletter-consent-restore` stellt Einwilligungen wieder
+  her, die nur eine solche Buchung widerrufen hatte (ohne `--apply` nur
+  Anzeige). Der Eintrag in der Einwilligungshistorie trägt den Kanal
+  `correction`, das Protokoll „Newsletter-Einwilligung wiederhergestellt“.
+- Seite „Allgemein“ spricht bei Salons von „Kunden“.
+- Datenschutzerklärung (Abschnitt 10), Handbuch (Marketing) und README
+  beschreiben die Einstellung.
+- Neue Spalte `newsletter_unticked_revokes` in `tenants`; die Migration lässt
+  sich mehrfach ausführen.
+
 ## [1.135.0] – 2026-10-12
 
 ### Neue Verwaltungsoberfläche
