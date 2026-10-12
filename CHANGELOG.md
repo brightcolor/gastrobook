@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.135.0] – 2026-10-12
 
 ### Neue Verwaltungsoberfläche
 
