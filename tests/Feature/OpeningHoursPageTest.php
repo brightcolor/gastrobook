@@ -580,7 +580,7 @@ class OpeningHoursPageTest extends TestCase
         $this->assertSame('admin.settings.opening-hours.show', $item['route']);
         $this->assertArrayNotHasKey('active', $item);
         $this->assertArrayNotHasKey('fragment', $item);
-        $this->assertSame(['tables.manage', 'opening_hours.manage'], $item['can']);
+        $this->assertSame(['opening_hours.manage'], $item['can']);
         $this->assertSame(
             ['Öffnungszeiten' => 'woche', 'Ruhetag' => 'woche', 'Zeitfenster' => 'woche', 'Saison' => 'saison', 'Buchbare Saison' => 'saison'],
             $item['keywords'],
@@ -610,21 +610,36 @@ class OpeningHoursPageTest extends TestCase
         $this->assertStringNotContainsString('Besuch', $main);
     }
 
-    public function test_the_old_combined_page_still_saves_through_the_same_routes(): void
+    public function test_classic_form_posts_go_back_to_the_page(): void
     {
         $setup = $this->createTenantSetup();
         $owner = $this->createMember($setup['tenant'], 'tenant_owner');
         $this->clearTenantContext();
 
-        $this->actingAs($owner)->from('/admin/settings')
+        $this->actingAs($owner)->from('/admin/settings/opening-hours')
             ->put(route('admin.settings.opening-hours'), ['hours' => [['weekday' => 2, 'opens_at' => '09:00', 'closes_at' => '13:00', 'service_name' => 'Frühstück']]])
-            ->assertRedirect('/admin/settings');
-        $this->actingAs($owner)->from('/admin/settings')
+            ->assertRedirect('/admin/settings/opening-hours');
+        $this->actingAs($owner)->from('/admin/settings/opening-hours')
             ->post(route('admin.settings.seasons.store'), ['label' => 'Sommer', 'start_month' => 4, 'start_day' => 1, 'end_month' => 10, 'end_day' => 31])
-            ->assertRedirect('/admin/settings');
+            ->assertRedirect('/admin/settings/opening-hours');
 
         $this->assertSame(1, OpeningHour::where('location_id', $setup['location']->id)->count());
         $this->assertSame(1, SeasonPeriod::withoutGlobalScopes()->count());
-        $this->actingAs($owner)->get('/admin/settings')->assertOk()->assertSee('name="hours_sent"', false);
+        $this->actingAs($owner)->get('/admin/settings/opening-hours')->assertOk()->assertSee('name="hours_sent"', false);
+    }
+
+    public function test_the_setup_wizard_empties_the_week_with_the_flag_of_the_page(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+        $this->assertSame(7, OpeningHour::where('location_id', $setup['location']->id)->count());
+
+        // Der Assistent sendet hours_sent wie die Seite: Ohne Zeilen wird die Woche leer, ohne das Kennzeichen bleibt sie stehen.
+        $this->actingAs($owner)->call('POST', '/admin/settings/opening-hours', ['_method' => 'PUT'], [], [], ['HTTP_ACCEPT' => 'application/json'])->assertStatus(422);
+        $this->assertSame(7, OpeningHour::where('location_id', $setup['location']->id)->count());
+
+        $this->actingAs($owner)->call('POST', '/admin/settings/opening-hours', ['_method' => 'PUT', 'hours_sent' => '1'], [], [], ['HTTP_ACCEPT' => 'application/json'])->assertOk();
+        $this->assertSame(0, OpeningHour::where('location_id', $setup['location']->id)->count());
     }
 }

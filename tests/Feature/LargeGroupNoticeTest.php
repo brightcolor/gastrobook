@@ -102,11 +102,11 @@ class LargeGroupNoticeTest extends TestCase
         $this->clearTenantContext();
 
         $this->actingAs($admin)
-            ->from('/admin/settings')
-            ->put('/admin/settings/booking-rules', $this->bookingRules([
+            ->from('/admin/settings/rules')
+            ->put('/admin/settings/rules', $this->bookingRules([
                 'large_group_email' => 'gruppen@example.test',
             ]))
-            ->assertRedirect('/admin/settings')
+            ->assertRedirect('/admin/settings/rules')
             ->assertSessionHasNoErrors();
 
         $this->assertSame(
@@ -122,13 +122,13 @@ class LargeGroupNoticeTest extends TestCase
         $this->clearTenantContext();
 
         $this->actingAs($admin)
-            ->putJson('/admin/settings/booking-rules', $this->bookingRules([
+            ->putJson('/admin/settings/rules', $this->bookingRules([
                 'large_group_email' => 'keine-adresse',
             ]))
             ->assertStatus(422)
             ->assertJsonPath(
                 'errors.large_group_email.0',
-                'E-Mail für große Gruppen muss eine gültige E-Mail-Adresse sein (z. B. name@beispiel.de).'
+                'Adresse für größere Gruppen muss eine gültige E-Mail-Adresse sein (z. B. name@beispiel.de).'
             );
     }
 
@@ -141,24 +141,16 @@ class LargeGroupNoticeTest extends TestCase
     private function bookingRules(array $overrides = []): array
     {
         return array_merge([
-            'slot_interval_minutes' => 30,
-            'default_duration_minutes' => 120,
-            'buffer_minutes' => 0,
             'min_lead_minutes' => 0,
             'max_advance_days' => 90,
             'min_party_online' => 1,
             'max_party_online' => 10,
-            'booking_confirmation_mode' => 'auto',
-            'capacity_mode' => 'table',
             'cancellation_deadline_minutes' => 120,
             'modification_deadline_minutes' => 120,
-            'reminder_hours_before' => 24,
-            'refund_mode' => 'off',
-            'refund_percent' => 0,
-            'refund_processing' => 'immediate',
-            'guest_address' => 'Sie',
-            'feedback_hours_after' => 18,
-            'feedback_redirect_min_score' => 4,
+            'booking_confirmation_mode' => 'auto',
+            'require_email_confirmation' => '0',
+            'waitlist_enabled' => '1',
+            'walkins_enabled' => '1',
         ], $overrides);
     }
 }

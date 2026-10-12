@@ -309,10 +309,11 @@ class BookingPageSettingsTest extends TestCase
 
         $this->assertNotNull($show);
         $this->assertNotNull($update);
-        $this->assertContains('permission:tables.manage', $show->gatherMiddleware());
-        $this->assertNotContains('permission:opening_hours.manage', $show->gatherMiddleware());
-        $this->assertContains('permission:tables.manage', $update->gatherMiddleware());
+        // Seite und Speicherweg verlangen dasselbe Recht; tables.manage gehört den Seiten für Räume, Tische und Tags.
+        $this->assertContains('permission:opening_hours.manage', $show->gatherMiddleware());
+        $this->assertNotContains('permission:tables.manage', $show->gatherMiddleware());
         $this->assertContains('permission:opening_hours.manage', $update->gatherMiddleware());
+        $this->assertNotContains('permission:tables.manage', $update->gatherMiddleware());
     }
 
     public function test_saving_writes_only_the_two_switches(): void
@@ -466,6 +467,5 @@ class BookingPageSettingsTest extends TestCase
         $source = (string) file_get_contents(resource_path('views/admin/onboarding/index.blade.php'));
 
         $this->assertStringContainsString("route('admin.settings.booking-page.show') }}#popup", $source);
-        $this->assertStringNotContainsString("route('admin.settings.index') }}#widget", $source);
     }
 }

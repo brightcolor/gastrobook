@@ -277,15 +277,4 @@ class GuestMailReplyToTest extends TestCase
             'mail_reply_to' => 'umleitung@example.test',
         ])->assertForbidden();
     }
-
-    public function test_the_settings_page_shows_what_applies_without_own_address(): void
-    {
-        $setup = $this->setupWith(location: ['email' => 'info@waldhaus.test']);
-        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
-
-        $this->actingAs($admin)->get('/admin/settings')
-            ->assertOk()
-            ->assertSee('E-Mails an Gäste')
-            ->assertSee('Leer: info@waldhaus.test', false);
-    }
 }

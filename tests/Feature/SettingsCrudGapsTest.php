@@ -60,7 +60,7 @@ class SettingsCrudGapsTest extends TestCase
         $this->assertSame(6, $fresh->max_capacity);
     }
 
-    // ── Sonderöffnungszeiten ─────────────────────────────────────────────
+    // ── Sondertage (Ausnahmen) ───────────────────────────────────────────
     public function test_special_hours_can_be_deleted(): void
     {
         $setup = $this->createTenantSetup([['min' => 1, 'max' => 4]]);
@@ -71,28 +71,30 @@ class SettingsCrudGapsTest extends TestCase
         ]);
         $this->clearTenantContext();
 
-        $this->actingAs($admin)->delete("/admin/settings/special-hours/{$sh->id}")->assertRedirect();
+        $this->actingAs($admin)->delete("/admin/settings/exceptions/s-{$sh->id}")->assertRedirect();
         $this->assertNull(SpecialOpeningHour::find($sh->id));
     }
 
-    // ── Sperrzeiten (Blackouts) ──────────────────────────────────────────
+    // ── Sperrzeiten und Gästegrenzen (Ausnahmen) ─────────────────────────
     public function test_blackout_can_be_created_and_deleted(): void
     {
         $setup = $this->createTenantSetup([['min' => 1, 'max' => 4]]);
         $admin = $this->createMember($setup['tenant'], 'tenant_admin');
         $this->clearTenantContext();
 
-        $this->actingAs($admin)->post('/admin/settings/blackouts', [
-            'starts_at' => now()->addDay()->format('Y-m-d\TH:i'),
-            'ends_at' => now()->addDays(2)->format('Y-m-d\TH:i'),
-            'reason' => 'Betriebsfeier',
+        $this->actingAs($admin)->post('/admin/settings/exceptions', [
+            'from' => now()->addDay()->toDateString(),
+            'until' => now()->addDays(2)->toDateString(),
+            'effects' => ['limit'],
+            'limit_covers' => 10,
+            'label' => 'Betriebsfeier',
         ])->assertRedirect();
 
         $bo = BlackoutPeriod::withoutGlobalScopes()->where('tenant_id', $setup['tenant']->id)->first();
         $this->assertNotNull($bo);
         $this->assertSame('Betriebsfeier', $bo->reason);
 
-        $this->actingAs($admin)->delete("/admin/settings/blackouts/{$bo->id}")->assertRedirect();
+        $this->actingAs($admin)->delete('/admin/settings/exceptions/g-'.$bo->exception_group)->assertRedirect();
         $this->assertNull(BlackoutPeriod::withoutGlobalScopes()->find($bo->id));
     }
 
@@ -102,9 +104,11 @@ class SettingsCrudGapsTest extends TestCase
         $staff = $this->createMember($setup['tenant'], 'staff');
         $this->clearTenantContext();
 
-        $this->actingAs($staff)->post('/admin/settings/blackouts', [
-            'starts_at' => now()->addDay()->format('Y-m-d\TH:i'),
-            'ends_at' => now()->addDays(2)->format('Y-m-d\TH:i'),
+        $this->actingAs($staff)->post('/admin/settings/exceptions', [
+            'from' => now()->addDay()->toDateString(),
+            'until' => now()->addDays(2)->toDateString(),
+            'effects' => ['limit'],
+            'limit_covers' => 10,
         ])->assertForbidden();
     }
 }

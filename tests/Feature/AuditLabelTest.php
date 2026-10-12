@@ -163,8 +163,11 @@ class AuditLabelTest extends TestCase
         $gelogged = $this->loggedActions();
 
         // Diese werden nicht ueber AuditLogger geschrieben, sondern an anderer
-        // Stelle - sie gehoeren trotzdem in die Liste.
-        $ausnahmen = ['auth.login'];
+        // Stelle - sie gehoeren trotzdem in die Liste. Dazu kommen Aktionen,
+        // die kein Code mehr schreibt, deren Eintraege aber im Protokoll
+        // stehen: location.settings_updated schrieb die fruehere
+        // Sammelseite der Einstellungen.
+        $ausnahmen = ['auth.login', 'location.settings_updated'];
 
         $tot = array_values(array_diff(array_keys(AuditLog::ACTION_LABELS), $gelogged, $ausnahmen));
         sort($tot);

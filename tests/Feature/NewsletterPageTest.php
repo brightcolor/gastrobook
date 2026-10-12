@@ -288,56 +288,6 @@ class NewsletterPageTest extends TestCase
         $this->assertStringContainsString('Speichern und Verbindung testen', $html);
     }
 
-    public function test_the_old_collection_page_sends_a_zero_before_the_checkbox_and_hides_the_key(): void
-    {
-        $setup = $this->createTenantSetup();
-        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
-        $this->connect($setup['tenant']->id, 'disconnected');
-        $this->clearTenantContext();
-
-        $html = (string) $this->actingAs($owner)->get('/admin/settings')->assertOk()->getContent();
-
-        $this->assertMatchesRegularExpression('/<input type="hidden" name="enabled" value="0">\s*<input type="checkbox" name="enabled" value="1"\s*>\s*Synchronisierung aktiv/', $html);
-        $this->assertStringNotContainsString('alter-mailwizz-schluessel', $html);
-    }
-
-    /**
-     * Die alte Seite zeigt das Kästchen angehakt, solange die Übertragung nicht ausdrücklich ausgeschaltet ist. Sonst
-     * schaltete ein Speichern nach einem Fehler oder bei einer neuen Anbindung sie mit der 0 vor dem Kästchen aus.
-     */
-    public function test_the_old_collection_page_ticks_the_box_unless_the_sync_was_switched_off(): void
-    {
-        $setup = $this->createTenantSetup();
-        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
-        $this->clearTenantContext();
-        $ticked = '/<input type="hidden" name="enabled" value="0"><input type="checkbox" name="enabled" value="1"\s+checked\s*> Synchronisierung aktiv/';
-        $unticked = '/<input type="hidden" name="enabled" value="0"><input type="checkbox" name="enabled" value="1"\s*> Synchronisierung aktiv/';
-
-        $this->assertMatchesRegularExpression($ticked, (string) $this->actingAs($owner)->get('/admin/settings')->getContent());
-
-        $connection = $this->connect($setup['tenant']->id, 'error');
-        $this->assertMatchesRegularExpression($ticked, (string) $this->actingAs($owner)->get('/admin/settings')->getContent());
-
-        $connection->update(['status' => 'connected']);
-        $this->assertMatchesRegularExpression($ticked, (string) $this->actingAs($owner)->get('/admin/settings')->getContent());
-
-        $connection->update(['status' => 'disconnected']);
-        $this->assertMatchesRegularExpression($unticked, (string) $this->actingAs($owner)->get('/admin/settings')->getContent());
-    }
-
-    public function test_the_old_collection_page_still_saves_through_the_same_route(): void
-    {
-        Http::fake(['*' => Http::response(['status' => 'success'], 200)]);
-        $setup = $this->createTenantSetup();
-        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
-        $this->clearTenantContext();
-
-        $this->actingAs($owner)->put('/admin/settings/mailwizz', ['api_url' => self::URL, 'api_key' => 'k', 'list_uid' => 'ab12cd', 'enabled' => '1'])
-            ->assertRedirect()->assertSessionHas('success', 'MailWizz-Integration gespeichert und Verbindung getestet.');
-
-        $this->assertSame('connected', IntegrationConnection::withoutGlobalScopes()->where('provider', 'mailwizz')->firstOrFail()->status);
-    }
-
     public function test_the_change_is_logged_with_readable_field_names(): void
     {
         Http::fake(['*' => Http::response(['status' => 'success'], 200)]);

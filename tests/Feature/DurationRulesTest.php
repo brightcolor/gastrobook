@@ -11,8 +11,8 @@ use Tests\TestCase;
 
 /**
  * Table time per party size: a six-person table is blocked longer than a table
- * for two. The rules already drove durationFor(); this covers the editor that
- * finally lets a business set them.
+ * for two. The rules already drove durationFor(); this covers the editor on
+ * the page Kapazität & Dauer that lets a business set them.
  */
 class DurationRulesTest extends TestCase
 {
@@ -24,21 +24,8 @@ class DurationRulesTest extends TestCase
             'slot_interval_minutes' => 30,
             'default_duration_minutes' => 120,
             'buffer_minutes' => 0,
-            'min_lead_minutes' => 0,
-            'max_advance_days' => 90,
-            'min_party_online' => 1,
-            'max_party_online' => 10,
-            'booking_confirmation_mode' => 'auto',
             'capacity_mode' => 'table',
-            'cancellation_deadline_minutes' => 120,
-            'modification_deadline_minutes' => 120,
-            'reminder_hours_before' => 24,
-            'refund_mode' => 'off',
-            'refund_percent' => 0,
-            'refund_processing' => 'immediate',
-            'guest_address' => 'Sie',
-            'feedback_hours_after' => 18,
-            'feedback_redirect_min_score' => 4,
+            'max_covers_per_slot' => '',
         ], $overrides);
     }
 
@@ -49,7 +36,7 @@ class DurationRulesTest extends TestCase
         $this->clearTenantContext();
 
         $response = $this->actingAs($admin)
-            ->put('/admin/settings/booking-rules', $this->payload(['duration_rules' => $rules]));
+            ->put('/admin/settings/capacity', $this->payload(['duration_rules' => $rules]));
 
         return [$response, $setup['location']];
     }
@@ -94,7 +81,8 @@ class DurationRulesTest extends TestCase
             ['min_party' => 4, 'max_party' => 8, 'duration' => 150],
         ]);
 
-        $response->assertSessionHasErrors('duration_rules');
+        // Der Fehler steht an der Zeile, die sich überschneidet.
+        $response->assertSessionHasErrors('duration_rules.1.min_party');
         // Nothing was written, so the old behaviour stays intact.
         $this->assertEmpty($location->settings()->first()?->duration_rules ?? []);
     }
@@ -105,7 +93,7 @@ class DurationRulesTest extends TestCase
             ['min_party' => 6, 'max_party' => 2, 'duration' => 90],
         ]);
 
-        $response->assertSessionHasErrors('duration_rules');
+        $response->assertSessionHasErrors('duration_rules.0.max_party');
     }
 
     public function test_half_filled_row_is_rejected(): void
@@ -114,7 +102,7 @@ class DurationRulesTest extends TestCase
             ['min_party' => 2, 'max_party' => '', 'duration' => 90],
         ]);
 
-        $response->assertSessionHasErrors('duration_rules');
+        $response->assertSessionHasErrors('duration_rules.0.max_party');
     }
 
     public function test_empty_rows_are_dropped_and_rules_can_be_cleared(): void
@@ -129,7 +117,7 @@ class DurationRulesTest extends TestCase
 
         // Submitting the form with only blank rows removes them again.
         $this->actingAs($admin)
-            ->put('/admin/settings/booking-rules', $this->payload([
+            ->put('/admin/settings/capacity', $this->payload([
                 'duration_rules' => [['min_party' => '', 'max_party' => '', 'duration' => '']],
             ]))
             ->assertRedirect()
@@ -173,19 +161,29 @@ class DurationRulesTest extends TestCase
         $this->clearTenantContext();
 
         $this->actingAs($admin)
-            ->put('/admin/settings/booking-rules', $this->payload([
+            ->put('/admin/settings/capacity', $this->payload([
                 'slot_interval_minutes' => 240,
                 'default_duration_minutes' => 1440,
                 'buffer_minutes' => 480,
                 'capacity_mode' => 'person',
                 'max_covers_per_slot' => 32767,
+            ]))
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+        $this->actingAs($admin)
+            ->put('/admin/settings/rules', [
                 'min_lead_minutes' => 32767,
                 'max_advance_days' => 1825,
                 'min_party_online' => 100,
                 'max_party_online' => 100,
+                'large_group_email' => '',
                 'cancellation_deadline_minutes' => 32767,
                 'modification_deadline_minutes' => 32767,
-            ]))
+                'booking_confirmation_mode' => 'auto',
+                'require_email_confirmation' => '0',
+                'waitlist_enabled' => '1',
+                'walkins_enabled' => '1',
+            ])
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
@@ -201,16 +199,16 @@ class DurationRulesTest extends TestCase
         );
     }
 
-    public function test_editor_is_visible_in_the_booking_rules_tab(): void
+    public function test_editor_is_visible_on_the_capacity_page(): void
     {
         $setup = $this->createTenantSetup();
         $admin = $this->createMember($setup['tenant'], 'tenant_admin');
         $this->clearTenantContext();
 
         $this->actingAs($admin)
-            ->get('/admin/settings')
+            ->get('/admin/settings/capacity')
             ->assertOk()
-            ->assertSee('Tischzeit je Gruppengröße')
-            ->assertSee('+ Tischzeit hinzufügen');
+            ->assertSee('Tischzeiten je Gruppengröße')
+            ->assertSee('Tischzeit hinzufügen');
     }
 }

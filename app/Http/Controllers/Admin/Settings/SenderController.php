@@ -60,7 +60,7 @@ class SenderController extends Controller
         $validated = $request->validate([
             'mail_from_name' => ['nullable', 'string', 'max:'.$nameMax, 'not_regex:/[<>@\r\n"]/'],
             'mail_reply_to' => ['nullable', 'email:rfc', 'max:'.$replyMax],
-            // Die alte Sammelseite sendet das Kästchen nur angehakt.
+            // Ein fehlender Schalter gilt als „aus“.
             'mail_relay_enabled' => ['nullable', 'boolean'],
         ], [
             'mail_from_name.string' => __('Der Absendername muss ein Text sein. Bitte neu eintragen.'),

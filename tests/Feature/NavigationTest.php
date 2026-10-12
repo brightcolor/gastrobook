@@ -204,6 +204,38 @@ class NavigationTest extends TestCase
         $this->assertFalse($nav->isSettingsRoute('admin.settings.index'));
     }
 
+    public function test_legacy_anchors_take_the_first_allowed_target_and_keep_its_fragment(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $manager = $this->createMember($setup['tenant'], 'location_manager');
+        $nav = new Navigation([
+            'legacy_anchors' => [
+                'alt' => 'general|opening-hours#woche',
+                'allein' => 'general',
+                'fremd' => 'gibt-es-nicht|rooms',
+                'salon' => 'services|staff',
+            ],
+            'settings' => (array) config('navigation.settings'),
+        ]);
+
+        // Der Inhaber darf die Seite Allgemein: Das erste Ziel gilt, ohne Sprungziel.
+        $this->assertSame([
+            'alt' => route('admin.settings.general.show'),
+            'allein' => route('admin.settings.general.show'),
+            'fremd' => route('admin.settings.rooms.index'),
+        ], $nav->legacyAnchors($owner, $setup['tenant'], $setup['location']));
+
+        // Der Standortleiter darf sie nicht: Das zweite Ziel gilt, mit Sprungziel; „allein“ entfällt.
+        $this->assertSame([
+            'alt' => route('admin.settings.opening-hours.show').'#woche',
+            'fremd' => route('admin.settings.rooms.index'),
+        ], $nav->legacyAnchors($manager, $setup['tenant'], $setup['location']));
+
+        // Ohne Eintrag in der Konfiguration gibt es keine Marken.
+        $this->assertSame([], (new Navigation(['settings' => (array) config('navigation.settings')]))->legacyAnchors($owner, $setup['tenant'], $setup['location']));
+    }
+
     public function test_every_configured_route_exists_and_keys_are_unique(): void
     {
         $keys = [];
@@ -218,6 +250,25 @@ class NavigationTest extends TestCase
 
         $duplicates = array_keys(array_filter(array_count_values($keys), fn (int $count) => $count > 1));
         $this->assertSame([], $duplicates, 'Navigation keys must be unique: '.implode(', ', $duplicates));
+    }
+
+    public function test_every_legacy_anchor_points_at_a_configured_settings_page_with_a_section_that_exists(): void
+    {
+        $pages = collect((array) config('navigation.settings'))->pluck('items')->flatten(1)->keyBy('key');
+        $anchors = (array) config('navigation.legacy_anchors');
+        $this->assertNotEmpty($anchors);
+
+        foreach ($anchors as $anchor => $targets) {
+            $this->assertMatchesRegularExpression('/^[a-z]+$/', (string) $anchor, 'Eine alte Marke besteht aus Kleinbuchstaben.');
+            foreach (explode('|', (string) $targets) as $target) {
+                [$key, $fragment] = array_pad(explode('#', $target, 2), 2, null);
+                $this->assertTrue($pages->has($key), "Marke {$anchor}: Die Seite {$key} steht nicht in config('navigation.settings').");
+                if ($fragment !== null) {
+                    // Das Sprungziel kommt als Stichwort derselben Seite vor ('Suchbegriff' => 'ziel').
+                    $this->assertContains($fragment, array_values(array_filter((array) $pages[$key]['keywords'], 'is_string')), "Marke {$anchor}: Das Sprungziel {$fragment} fehlt bei den Suchbegriffen von {$key}.");
+                }
+            }
+        }
     }
 
     public function test_keywords_can_point_to_a_section(): void

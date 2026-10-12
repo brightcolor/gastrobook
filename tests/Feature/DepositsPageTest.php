@@ -66,23 +66,6 @@ class DepositsPageTest extends TestCase
         return $setup;
     }
 
-    /**
-     * Der Aufbau, den die alte Sammelseite an die Buchungsregeln sendet.
-     *
-     * @param  array<string, mixed>  $override
-     * @return array<string, mixed>
-     */
-    private function legacyBookingRules(array $override = []): array
-    {
-        return array_merge([
-            'slot_interval_minutes' => 30, 'default_duration_minutes' => 120, 'buffer_minutes' => 0, 'capacity_mode' => 'table',
-            'min_lead_minutes' => 60, 'max_advance_days' => 90, 'cancellation_deadline_minutes' => 120, 'modification_deadline_minutes' => 120,
-            'min_party_online' => 1, 'max_party_online' => 8, 'booking_confirmation_mode' => 'auto',
-            'reminder_hours_before' => 24, 'guest_address' => 'Sie', 'feedback_hours_after' => 18, 'feedback_redirect_min_score' => 4,
-            'refund_mode' => 'off', 'refund_percent' => 100, 'refund_processing' => 'immediate',
-        ], $override);
-    }
-
     public function test_the_page_lists_rules_and_the_refund_card(): void
     {
         $setup = $this->createTenantSetup();
@@ -406,8 +389,8 @@ class DepositsPageTest extends TestCase
         $rule = $this->storedRule($setup, ['name' => 'Klassisch']);
         $this->clearTenantContext();
 
-        $this->actingAs($owner)->from('/admin/settings')->delete('/admin/settings/deposit-rules/'.$rule->id)
-            ->assertRedirect('/admin/settings')
+        $this->actingAs($owner)->from('/admin/settings/deposits')->delete('/admin/settings/deposit-rules/'.$rule->id)
+            ->assertRedirect('/admin/settings/deposits')
             ->assertSessionHas('success', 'Anzahlungsregel „Klassisch“ gelöscht.');
         $this->assertSame(0, DepositRule::withoutGlobalScopes()->count());
     }
@@ -831,74 +814,6 @@ class DepositsPageTest extends TestCase
         $this->assertSame(4, $rule->fresh()->min_party_size);
     }
 
-    public function test_the_old_combined_page_keeps_saving_rules_through_the_same_routes(): void
-    {
-        $setup = $this->createTenantSetup();
-        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
-        $this->clearTenantContext();
-
-        $page = $this->actingAs($owner)->get('/admin/settings')->assertOk();
-        $page->assertSee('action="'.route('admin.settings.deposit-rules.store').'"', false);
-
-        $this->actingAs($owner)->post('/admin/settings/deposit-rules', ['name' => 'Alte Seite', 'amount_per_person' => '10', 'min_party_size' => '', 'flat_amount' => '', 'from_time' => '', 'payment_deadline_minutes' => ''])
-            ->assertRedirect()->assertSessionHas('success', 'Anzahlungsregel „Alte Seite“ angelegt.');
-        $rule = DepositRule::firstOrFail();
-        $this->assertSame(1000, $rule->amount_per_person_minor);
-        $this->assertSame(60, $rule->payment_deadline_minutes);
-
-        $this->actingAs($owner)->put('/admin/settings/deposit-rules/'.$rule->id, ['name' => 'Alte Seite 2', 'amount_per_person' => '12.50', 'cancel_unpaid_automatically' => '1'])
-            ->assertRedirect()->assertSessionHas('success', 'Anzahlungsregel „Alte Seite 2“ gespeichert.');
-        $this->assertSame(1250, $rule->fresh()->amount_per_person_minor);
-        $this->assertTrue($rule->fresh()->cancel_unpaid_automatically);
-    }
-
-    public function test_the_old_combined_page_offers_the_configured_limits_and_asks_without_inline_handlers(): void
-    {
-        config(['swayy.deposits.amount_max' => 77, 'swayy.deposits.deadline_min' => 15, 'swayy.deposits.deadline_max' => 99, 'swayy.deposits.party_size_max' => 33]);
-        $setup = $this->createTenantSetup();
-        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
-        $this->storedRule($setup);
-        $this->clearTenantContext();
-
-        $html = (string) $this->actingAs($owner)->get('/admin/settings')->assertOk()->getContent();
-
-        $this->assertMatchesRegularExpression('/name="min_party_size"[^>]*max="33"/', $html);
-        $this->assertMatchesRegularExpression('/name="amount_per_person"[^>]*max="77"/', $html);
-        $this->assertMatchesRegularExpression('/name="flat_amount"[^>]*max="77"/', $html);
-        $this->assertMatchesRegularExpression('/name="payment_deadline_minutes"[^>]*min="15"[^>]*max="99"/', $html);
-        $this->assertDoesNotMatchRegularExpression('/<form[^>]*deposit-rules[^>]*onsubmit/', $html);
-        $this->assertMatchesRegularExpression('/<button[^>]*data-confirm="Regel löschen\?"/', $html);
-    }
-
-    public function test_the_old_combined_page_still_writes_the_refund_rules_with_the_booking_rules(): void
-    {
-        $setup = $this->createTenantSetup();
-        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
-        $this->clearTenantContext();
-
-        $this->actingAs($owner)->putJson('/admin/settings/booking-rules', $this->legacyBookingRules(['refund_mode' => 'manual', 'refund_percent' => 30, 'refund_processing' => 'scheduled']))
-            ->assertOk()->assertJsonPath('message', 'Buchungsregeln gespeichert.');
-
-        $settings = $setup['location']->settings()->first();
-        $this->assertSame('manual', $settings->refund_mode);
-        $this->assertSame(30, $settings->refund_percent);
-        $this->assertSame('scheduled', $settings->refund_processing);
-    }
-
-    public function test_the_old_combined_page_uses_the_same_refund_messages(): void
-    {
-        $setup = $this->createTenantSetup();
-        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
-        $this->clearTenantContext();
-
-        $response = $this->actingAs($owner)->putJson('/admin/settings/booking-rules', $this->legacyBookingRules(['refund_mode' => 'immer', 'refund_percent' => 120, 'refund_processing' => 'jetzt']))
-            ->assertStatus(422);
-
-        $this->assertSame('Bitte „Aus“, „Von Hand freigeben“ oder „Automatisch“ wählen.', $response->json('errors.refund_mode.0'));
-        $this->assertSame('Bitte einen Prozentwert von 0 bis 100 eintragen.', $response->json('errors.refund_percent.0'));
-        $this->assertSame('Bitte „Sofort“ oder „Gesammelt nach Zeitplan“ wählen.', $response->json('errors.refund_processing.0'));
-    }
-
     public function test_the_refund_card_leaves_the_booking_rules_untouched(): void
     {
         $setup = $this->createTenantSetup();
@@ -923,7 +838,7 @@ class DepositsPageTest extends TestCase
         $this->assertSame('admin.settings.deposits.show', $item['route']);
         $this->assertArrayNotHasKey('active', $item);
         $this->assertArrayNotHasKey('fragment', $item);
-        $this->assertSame(['tables.manage', 'payments.manage'], $item['can']);
+        $this->assertSame(['payments.manage'], $item['can']);
         $targets = collect($item['keywords'])->filter(fn ($value, $key) => is_string($key))->unique()->values();
         $this->assertSame(['regeln', 'erstattung'], $targets->all());
 

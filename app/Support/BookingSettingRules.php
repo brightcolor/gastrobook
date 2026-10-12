@@ -12,8 +12,9 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Prüfregeln der Buchungseinstellungen eines Standorts, gemeinsam für die
- * Seiten „Kapazität & Dauer“ und „Buchungsregeln“ und bis Teil 3 für die
- * alte Sammelseite. Die Grenzen stehen in config/swayy.php (booking.*).
+ * Seiten „Kapazität & Dauer“ und „Buchungsregeln“ und für den Schritt
+ * „Buchungsregeln“ des Einrichtungsassistenten. Die Grenzen stehen in
+ * config/swayy.php (booking.*).
  */
 final class BookingSettingRules
 {
@@ -100,9 +101,9 @@ final class BookingSettingRules
 
     /**
      * Meldungen der Prüfung. Sie nennen die Einstellung und den nächsten
-     * Schritt. Ein leeres Pflichtfeld kommt auf der alten Sammelseite vor
-     * (Zahlenfelder ohne required) oder wenn die Seite älter ist als die
-     * Einstellung; die Meldung nennt deshalb beide Wege.
+     * Schritt. Ein leeres Pflichtfeld kommt vor, wenn ein Zahlenfeld
+     * leer bleibt oder die Seite älter ist als die Einstellung; die Meldung
+     * nennt deshalb beide Wege.
      * Die Texte für required, boolean, in und integer entstehen für jedes Feld
      * der Regeln, damit kein Feld die allgemeine Meldung von Laravel zeigt.
      *
@@ -179,7 +180,7 @@ final class BookingSettingRules
      * eine Regel weiter unten still nie. Leere Zeilen fallen weg.
      *
      * $atField: Der Fehler nennt das Feld der Zeile („duration_rules.n2.min_party“),
-     * sonst steht er unter „duration_rules“ (alte Sammelseite).
+     * sonst steht er unter „duration_rules“.
      *
      * @param  array<int|string, mixed>  $rows
      * @return list<array{min_party: int, max_party: int, duration: int}>

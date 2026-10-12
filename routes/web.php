@@ -39,7 +39,6 @@ use App\Http\Controllers\Admin\Settings\SettingsEntryController;
 use App\Http\Controllers\Admin\Settings\SettingsMenuController;
 use App\Http\Controllers\Admin\Settings\SmsController;
 use App\Http\Controllers\Admin\Settings\TagSettingsController;
-use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\StaffCalendarController;
 use App\Http\Controllers\Admin\StaffMemberController;
 use App\Http\Controllers\Admin\TagController;
@@ -400,8 +399,6 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
 
     // Jede Seite und jeder Speicherweg trägt die Rechte selbst; config/navigation.php („can“) nennt dieselben.
     // Räume & Tische und Tags hängen an tables.manage, ihrem eigenen Recht.
-    Route::put('/settings/booking-rules', [SettingsController::class, 'updateBookingRules'])
-        ->middleware('permission:opening_hours.manage')->name('settings.booking-rules');
     Route::get('/settings/rooms', [RoomsController::class, 'index'])
         ->middleware('permission:tables.manage')->name('settings.rooms.index');
     Route::post('/settings/rooms', [RoomsController::class, 'storeRoom'])
@@ -426,10 +423,6 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
         ->middleware('permission:tenant.settings.manage')->name('settings.booking-form.show');
     Route::put('/settings/field-rules', [BookingFormController::class, 'update'])
         ->middleware('permission:tenant.settings.manage')->name('settings.field-rules');
-    Route::post('/settings/logo', [SettingsController::class, 'uploadLogo'])
-        ->middleware('permission:tenant.settings.manage')->name('settings.logo.upload');
-    Route::delete('/settings/logo', [SettingsController::class, 'deleteLogo'])
-        ->middleware('permission:tenant.settings.manage')->name('settings.logo.delete');
     Route::get('/settings/newsletter', [NewsletterController::class, 'show'])
         ->middleware('permission:integrations.manage')->name('settings.newsletter.show');
     Route::put('/settings/mailwizz', [NewsletterController::class, 'update'])
@@ -458,14 +451,6 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
         ->middleware('permission:opening_hours.manage')->name('settings.opening-hours');
     Route::post('/settings/opening-hours/preview', [OpeningHoursController::class, 'preview'])
         ->middleware('permission:opening_hours.manage')->name('settings.opening-hours.preview');
-    Route::post('/settings/special-hours', [SettingsController::class, 'storeSpecialHours'])
-        ->middleware('permission:special_hours.manage')->name('settings.special-hours');
-    Route::delete('/settings/special-hours/{special}', [SettingsController::class, 'deleteSpecialHours'])
-        ->middleware('permission:special_hours.manage')->name('settings.special-hours.delete');
-    Route::post('/settings/blackouts', [SettingsController::class, 'storeBlackout'])
-        ->middleware('permission:blackouts.manage')->name('settings.blackouts.store');
-    Route::delete('/settings/blackouts/{blackout}', [SettingsController::class, 'deleteBlackout'])
-        ->middleware('permission:blackouts.manage')->name('settings.blackouts.delete');
     Route::get('/settings/exceptions', [ExceptionsController::class, 'show'])
         ->middleware(['permission:special_hours.manage', 'permission:blackouts.manage'])->name('settings.exceptions.show');
     Route::post('/settings/exceptions/preview', [ExceptionsController::class, 'preview'])
@@ -482,10 +467,6 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
         ->middleware('permission:blackouts.manage')->name('settings.seasons.store');
     Route::delete('/settings/seasons/{season}', [OpeningHoursController::class, 'deleteSeason'])
         ->middleware('permission:blackouts.manage')->name('settings.seasons.delete');
-    Route::post('/settings/table-blocks', [SettingsController::class, 'storeTableBlock'])
-        ->middleware('permission:blackouts.manage')->name('settings.table-blocks.store');
-    Route::delete('/settings/table-blocks/{block}', [SettingsController::class, 'deleteTableBlock'])
-        ->middleware('permission:blackouts.manage')->name('settings.table-blocks.delete');
     Route::get('/settings/general', [GeneralController::class, 'show'])
         ->middleware('permission:tenant.settings.manage')->name('settings.general.show');
     Route::put('/settings/general', [GeneralController::class, 'update'])

@@ -26,8 +26,8 @@ use Illuminate\View\View;
  * Einstellungen › Platz & Zeiten › Räume & Tische: Räume, Tische und
  * Tischkombinationen des gewählten Standorts; wo die Tische stehen, legt der
  * Tischplan fest. Die Speicherwege (admin.settings.rooms.*, tables.*,
- * combinations.*) nutzen auch Einrichtungsassistent, Tischplan und bis Teil 3
- * die alte Sammelseite; ihre Antworten behalten deshalb ihre Felder.
+ * combinations.*) nutzen auch Einrichtungsassistent und Tischplan; ihre
+ * Antworten behalten deshalb ihre Felder.
  */
 class RoomsController extends Controller
 {

@@ -354,8 +354,7 @@ return [
         // Vorgabe 60,600.
         'backoff' => EnvSetting::integerList('SWAYY_NEWSLETTER_BACKOFF', default: [60, 600], min: 1, max: 86400),
 
-        // Grenzen der Seite „Newsletter“ (bis Teil 3 auch der alten Sammelseite),
-        // gelesen vom NewsletterController. API-URL, API-Key und Listen-UID
+        // Grenzen der Seite „Newsletter“, gelesen vom NewsletterController. API-URL, API-Key und Listen-UID
         // liegen verschlüsselt in integration_connections.credentials_encrypted
         // (text); die Höchstwerte aller drei passen zusammen in die Spalte.
 
@@ -411,8 +410,9 @@ return [
     | Buchungseinstellungen eines Standorts
     |--------------------------------------------------------------------------
     |
-    | Grenzen der Seiten „Kapazität & Dauer“ und „Buchungsregeln“ (bis Teil 3
-    | auch der alten Sammelseite), gelesen über App\Support\BookingSettingRules.
+    | Grenzen der Seiten „Kapazität & Dauer“ und „Buchungsregeln“ sowie des
+    | Schritts „Buchungsregeln“ im Einrichtungsassistenten, gelesen über
+    | App\Support\BookingSettingRules.
     | Die Seiten zeigen sie als Feldgrenzen, die Prüfung beim Speichern nutzt
     | dieselben Werte.
     |
@@ -520,8 +520,8 @@ return [
     | Benachrichtigungen an Gäste und den Betrieb
     |--------------------------------------------------------------------------
     |
-    | Grenzen der Seite „Benachrichtigungen“ (bis Teil 3 auch der alten
-    | Sammelseite), gelesen über App\Support\NotificationSettingRules. Die
+    | Grenzen der Seite „Benachrichtigungen“, gelesen über
+    | App\Support\NotificationSettingRules. Die
     | Seite zeigt sie als Feldgrenzen, die Prüfung beim Speichern nutzt
     | dieselben Werte.
     |
@@ -580,8 +580,7 @@ return [
     | SMS-Versand (seven.io)
     |--------------------------------------------------------------------------
     |
-    | Grenzen der Seite „SMS-Versand“ (bis Teil 3 auch der alten Sammelseite),
-    | gelesen vom SmsController. Zugangsdaten und Absenderkennung liegen
+    | Grenzen der Seite „SMS-Versand“, gelesen vom SmsController. Zugangsdaten und Absenderkennung liegen
     | verschlüsselt in integration_connections.credentials_encrypted (text).
     |
     | sender_id_max: längste Absenderkennung aus Ziffern, auf Wunsch mit
@@ -603,8 +602,7 @@ return [
     | Zahlungsanbieter (Stripe, PayPal)
     |--------------------------------------------------------------------------
     |
-    | Grenzen der Seite „Zahlungsanbieter“ (bis Teil 3 auch der alten
-    | Sammelseite), gelesen vom PaymentProvidersController. Die Zugangsdaten
+    | Grenzen der Seite „Zahlungsanbieter“, gelesen vom PaymentProvidersController. Die Zugangsdaten
     | liegen verschlüsselt in integration_connections.credentials_encrypted
     | (text).
     |
@@ -621,8 +619,7 @@ return [
     | Anzahlungsregeln
     |--------------------------------------------------------------------------
     |
-    | Grenzen der Seite „Anzahlungen“ (bis Teil 3 auch der alten Sammelseite),
-    | gelesen vom DepositsController. Tabelle deposit_rules.
+    | Grenzen der Seite „Anzahlungen“, gelesen vom DepositsController. Tabelle deposit_rules.
     |
     | amount_max: höchster Betrag pro Person und höchster Grundbetrag in Euro
     | (10–212622). Der Betrag einer Buchung, Grundbetrag plus Betrag pro Person

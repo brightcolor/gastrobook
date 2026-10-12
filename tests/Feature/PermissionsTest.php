@@ -40,7 +40,8 @@ class PermissionsTest extends TestCase
         $admin = $this->createMember($setup['tenant'], 'tenant_admin');
         $this->clearTenantContext();
 
-        $this->actingAs($admin)->get('/admin/settings')->assertOk();
+        $this->actingAs($admin)->get('/admin/settings')->assertRedirect(route('admin.settings.general.show'));
+        $this->actingAs($admin)->get('/admin/settings/general')->assertOk();
         $this->actingAs($admin)->get('/admin/users')->assertOk();
         $this->actingAs($admin)->get('/admin/audit')->assertOk();
     }

@@ -16,9 +16,9 @@ use Tests\TestCase;
 
 /**
  * Blocking a single table (defect, repairs, needed for something else).
- * The read side existed from day one – assignment, manual choice, floor plan
- * and live board all honoured `table_blocks` – but nothing could ever create
- * one. These tests cover the write path end to end.
+ * Assignment, manual choice, floor plan and live board honour `table_blocks`;
+ * a block is created on the Ausnahmen page ("Räume oder Tische sperren").
+ * These tests cover the write path end to end.
  */
 class TableBlockTest extends TestCase
 {
@@ -32,11 +32,13 @@ class TableBlockTest extends TestCase
         $day = CarbonImmutable::now($tz)->addDay()->toDateString();
         $this->clearTenantContext();
 
-        $this->actingAs($admin)->post('/admin/settings/table-blocks', [
-            'restaurant_table_id' => $setup['tables'][0]->id,
-            'starts_at' => $day.'T18:00',
-            'ends_at' => $day.'T23:00',
-            'reason' => 'Tisch defekt',
+        $this->actingAs($admin)->post('/admin/settings/exceptions', [
+            'from' => $day,
+            'effects' => ['lock'],
+            'lock_tables' => [$setup['tables'][0]->id],
+            'lock_from' => '18:00',
+            'lock_until' => '23:00',
+            'label' => 'Tisch defekt',
         ])->assertRedirect();
 
         $block = TableBlock::withoutGlobalScopes()->firstOrFail();
@@ -122,11 +124,13 @@ class TableBlockTest extends TestCase
         ]);
         $this->clearTenantContext();
 
-        $this->actingAs($admin)->post('/admin/settings/table-blocks', [
-            'restaurant_table_id' => $setup['tables'][0]->id,
-            'starts_at' => $day.'T18:00',
-            'ends_at' => $day.'T23:00',
-        ])->assertSessionHasErrors('restaurant_table_id');
+        $this->actingAs($admin)->post('/admin/settings/exceptions', [
+            'from' => $day,
+            'effects' => ['lock'],
+            'lock_tables' => [$setup['tables'][0]->id],
+            'lock_from' => '18:00',
+            'lock_until' => '23:00',
+        ])->assertSessionHasErrors('lock_tables');
 
         $this->assertSame(0, TableBlock::withoutGlobalScopes()->count());
     }
@@ -147,7 +151,7 @@ class TableBlockTest extends TestCase
         ]);
         $this->clearTenantContext();
 
-        $this->actingAs($admin)->delete('/admin/settings/table-blocks/'.$block->id)->assertRedirect();
+        $this->actingAs($admin)->delete('/admin/settings/exceptions/t-'.$block->id)->assertRedirect();
         $this->assertSame(0, TableBlock::withoutGlobalScopes()->count());
 
         // …and the table is bookable again.
@@ -165,10 +169,10 @@ class TableBlockTest extends TestCase
         $day = CarbonImmutable::now($tz)->addDay()->toDateString();
         $this->clearTenantContext();
 
-        $this->actingAs($staff)->post('/admin/settings/table-blocks', [
-            'restaurant_table_id' => $setup['tables'][0]->id,
-            'starts_at' => $day.'T18:00',
-            'ends_at' => $day.'T23:00',
+        $this->actingAs($staff)->post('/admin/settings/exceptions', [
+            'from' => $day,
+            'effects' => ['lock'],
+            'lock_tables' => [$setup['tables'][0]->id],
         ])->assertForbidden();
     }
 
@@ -181,11 +185,13 @@ class TableBlockTest extends TestCase
         $day = CarbonImmutable::now($tz)->addDay()->toDateString();
         $this->clearTenantContext();
 
-        $this->actingAs($admin)->post('/admin/settings/table-blocks', [
-            'restaurant_table_id' => $other['tables'][0]->id,
-            'starts_at' => $day.'T18:00',
-            'ends_at' => $day.'T23:00',
-        ])->assertSessionHasErrors('restaurant_table_id');
+        $this->actingAs($admin)->post('/admin/settings/exceptions', [
+            'from' => $day,
+            'effects' => ['lock'],
+            'lock_tables' => [$other['tables'][0]->id],
+            'lock_from' => '18:00',
+            'lock_until' => '23:00',
+        ])->assertSessionHasErrors('lock_tables');
 
         $this->assertSame(0, TableBlock::withoutGlobalScopes()->count());
     }

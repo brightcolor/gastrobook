@@ -54,6 +54,19 @@ class TagSettingsPageTest extends TestCase
         return substr($html, $start, $end - $start);
     }
 
+    public function test_names_from_the_team_are_escaped_in_the_list(): void
+    {
+        $setup = $this->createTenantSetup();
+        Tag::create(['tenant_id' => $setup['tenant']->id, 'name' => '<img src=x onerror=alert(1)>', 'color' => '#aa3300', 'scope' => 'reservation']);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $html = (string) $this->actingAs($owner)->get('/admin/settings/tags')->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('<img src=x onerror', $html);
+        $this->assertStringContainsString('&lt;img src=x onerror=alert(1)&gt;', $html);
+    }
+
     public function test_owner_sees_tags_with_their_use_and_drawers(): void
     {
         $setup = $this->createTenantSetup();

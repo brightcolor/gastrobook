@@ -332,18 +332,18 @@ class BookingFormPageTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/<select id="f-fields-phone"[^>]*aria-invalid/', $content);
     }
 
-    public function test_the_old_combined_page_still_posts_to_the_same_route(): void
+    public function test_a_classic_form_post_goes_back_to_the_page_with_the_message(): void
     {
         $setup = $this->createTenantSetup();
         $owner = $this->createMember($setup['tenant'], 'tenant_owner');
         $this->clearTenantContext();
 
-        $this->actingAs($owner)->get('/admin/settings')
+        $this->actingAs($owner)->get('/admin/settings/booking-form')
             ->assertOk()
             ->assertSee('action="'.route('admin.settings.field-rules').'"', false);
 
-        $this->actingAs($owner)->from('/admin/settings')->put('/admin/settings/field-rules', $this->fields(['occasion' => 'hidden']))
-            ->assertRedirect('/admin/settings')
+        $this->actingAs($owner)->from('/admin/settings/booking-form')->put('/admin/settings/field-rules', $this->fields(['occasion' => 'hidden']))
+            ->assertRedirect('/admin/settings/booking-form')
             ->assertSessionHas('success', 'Formularfelder gespeichert.');
 
         $this->assertSame('hidden', $setup['location']->settings()->first()->fieldRule('occasion'));

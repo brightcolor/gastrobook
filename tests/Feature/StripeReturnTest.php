@@ -11,7 +11,6 @@ use App\Models\IntegrationConnection;
 use App\Models\NotificationLog;
 use App\Models\PaymentIntent;
 use App\Models\Reservation;
-use App\Models\Tenant;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
@@ -296,37 +295,5 @@ class StripeReturnTest extends TestCase
         $this->assertSame(0, AuditLog::where('tenant_id', $setup['tenant']->id)
             ->where('action', 'payment.webhook_received')
             ->count());
-    }
-
-    public function test_the_settings_page_warns_while_no_webhook_has_arrived(): void
-    {
-        $setup = $this->createTenantSetup();
-        $this->connectStripe($setup);
-        $admin = $this->createMember($setup['tenant'], 'tenant_owner');
-        $this->clearTenantContext();
-
-        $this->actingAs($admin)->get('/admin/settings')
-            ->assertOk()
-            ->assertSee('Vom Webhook kam bisher nichts an.');
-    }
-
-    public function test_the_settings_page_confirms_a_webhook_that_arrived(): void
-    {
-        $setup = $this->createTenantSetup();
-        $this->connectStripe($setup);
-        $admin = $this->createMember($setup['tenant'], 'tenant_owner');
-
-        AuditLog::create([
-            'tenant_id' => $setup['tenant']->id,
-            'action' => 'payment.webhook_received',
-            'entity_type' => Tenant::class,
-            'entity_id' => $setup['tenant']->id,
-        ]);
-        $this->clearTenantContext();
-
-        $this->actingAs($admin)->get('/admin/settings')
-            ->assertOk()
-            ->assertSee('Der Webhook hat sich zuletzt am')
-            ->assertDontSee('Vom Webhook kam bisher nichts an.');
     }
 }

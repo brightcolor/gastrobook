@@ -88,7 +88,7 @@ class GeneralSettingsTest extends TestCase
         $admin = $this->createMember($setup['tenant'], 'tenant_admin');
         $this->clearTenantContext();
 
-        $this->actingAs($admin)->from('/admin/settings')
+        $this->actingAs($admin)->from('/admin/settings/sender')
             ->put('/admin/settings/guest-mail', ['mail_relay_enabled' => '1'])
             ->assertSessionHasErrors('mail_relay_enabled');
 

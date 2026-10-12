@@ -359,87 +359,6 @@ class SmsPageTest extends TestCase
         $this->actingAs($manager)->putJson('/admin/settings/sms', ['api_key' => 'k', 'enabled' => '1'])->assertForbidden();
     }
 
-    public function test_the_old_combined_page_keeps_saving_through_the_same_route(): void
-    {
-        Http::fake(['*' => Http::response('12.50', 200)]);
-        $setup = $this->createTenantSetup();
-        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
-        $this->clearTenantContext();
-
-        $page = $this->actingAs($owner)->get('/admin/settings')->assertOk();
-        $page->assertSee('action="'.route('admin.settings.sms').'"', false);
-
-        $this->actingAs($owner)->put('/admin/settings/sms', ['api_key' => 'alter-weg', 'sender_id' => 'Alt', 'enabled' => '1'])
-            ->assertRedirect()
-            ->assertSessionHas('success');
-
-        $connection = IntegrationConnection::where('provider', 'sevenio')->firstOrFail();
-        $this->assertSame('connected', $connection->status);
-        $this->assertSame('alter-weg', $this->credentialsOf($connection)['api_key']);
-    }
-
-    /**
-     * Die neue Seite kann den Versand ausschalten. Speichert jemand danach das
-     * Formular der alten Sammelseite, darf es ihn nicht wieder einschalten:
-     * Das Kästchen steht dort unmarkiert, und eine 0 davor sorgt dafür, dass
-     * der Schalter in der Anfrage ankommt.
-     */
-    public function test_the_old_combined_page_keeps_a_switched_off_connection_off(): void
-    {
-        Http::fake();
-        $setup = $this->createTenantSetup();
-        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
-        $connection = $this->connect($setup['tenant']->id, 'disconnected');
-        $this->clearTenantContext();
-
-        $html = (string) $this->actingAs($owner)->get('/admin/settings')->assertOk()->getContent();
-        $this->assertMatchesRegularExpression('/<input type="hidden" name="enabled" value="0">\s*<input type="checkbox" name="enabled" value="1"\s*>\s*SMS-Versand aktiv/', $html);
-
-        // Das Formular der alten Seite mit unmarkiertem Kästchen sendet nur die 0.
-        $this->actingAs($owner)->put('/admin/settings/sms', ['api_key' => '', 'sender_id' => 'Trattoria', 'enabled' => '0'])
-            ->assertRedirect()
-            ->assertSessionHasNoErrors();
-
-        $this->assertSame('disconnected', $connection->fresh()->status);
-        Http::assertNothingSent();
-    }
-
-    /**
-     * Nach einem fehlgeschlagenen Verbindungstest steht der Versand auf „error“, bleibt aber eingeschaltet. Die alte
-     * Seite zeigt das Kästchen dann angehakt; sonst schaltete das Speichern des Formulars mit der 0 davor den Versand aus.
-     */
-    public function test_the_old_combined_page_keeps_sms_on_after_an_error(): void
-    {
-        Http::fake(['*' => Http::response('12.50', 200)]);
-        $setup = $this->createTenantSetup();
-        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
-        $connection = $this->connect($setup['tenant']->id, 'error');
-        $this->clearTenantContext();
-        $ticked = '/<input type="hidden" name="enabled" value="0">\s*<input type="checkbox" name="enabled" value="1"\s+checked\s*>\s*SMS-Versand aktiv/';
-
-        $html = (string) $this->actingAs($owner)->get('/admin/settings')->assertOk()->getContent();
-        $this->assertMatchesRegularExpression($ticked, $html);
-
-        // Das angehakte Kästchen der alten Seite sendet die 0 und danach die 1.
-        $this->actingAs($owner)->put('/admin/settings/sms', ['api_key' => '', 'sender_id' => 'Trattoria', 'enabled' => '1'])
-            ->assertRedirect()
-            ->assertSessionHasNoErrors();
-
-        $this->assertNotSame('disconnected', $connection->fresh()->status);
-        $this->assertSame('connected', $connection->fresh()->status);
-    }
-
-    public function test_the_old_combined_page_offers_a_new_connection_switched_on(): void
-    {
-        $setup = $this->createTenantSetup();
-        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
-        $this->clearTenantContext();
-
-        $html = (string) $this->actingAs($owner)->get('/admin/settings')->assertOk()->getContent();
-
-        $this->assertMatchesRegularExpression('/<input type="hidden" name="enabled" value="0">\s*<input type="checkbox" name="enabled" value="1"\s+checked\s*>\s*SMS-Versand aktiv/', $html);
-    }
-
     public function test_a_caller_without_the_switch_gets_a_connected_new_connection(): void
     {
         Http::fake(['*' => Http::response('12.50', 200)]);
@@ -483,18 +402,6 @@ class SmsPageTest extends TestCase
         $this->actingAs($owner)->putJson('/admin/settings/sms', ['api_key' => '', 'sender_id' => 'Trattoria'])->assertOk();
 
         $this->assertSame('connected', $connection->fresh()->status);
-    }
-
-    public function test_the_old_combined_page_offers_the_configured_length(): void
-    {
-        config(['swayy.sms.sender_id_max' => 9]);
-        $setup = $this->createTenantSetup();
-        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
-        $this->clearTenantContext();
-
-        $html = (string) $this->actingAs($owner)->get('/admin/settings')->assertOk()->getContent();
-
-        $this->assertMatchesRegularExpression('/name="sender_id"[^>]*maxlength="9"/', $html);
     }
 
     public function test_the_limits_stay_within_what_the_provider_allows_and_are_documented(): void

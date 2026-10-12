@@ -258,7 +258,7 @@ class MailwizzTargetCheckTest extends TestCase
         $this->assertSame([30, 90], $job->backoff);
     }
 
-    public function test_the_settings_page_shows_why_the_integration_stopped(): void
+    public function test_the_newsletter_page_shows_why_the_integration_stopped(): void
     {
         [$tenant, $admin] = $this->tenantWithAdmin();
         $grund = OutboundUrlBlocked::because(OutboundUrlBlocked::INTERNAL)->getMessage();
@@ -272,7 +272,7 @@ class MailwizzTargetCheckTest extends TestCase
             ])),
         ]);
 
-        $this->actingAs($admin)->get('/admin/settings')->assertOk()->assertSee($grund);
+        $this->actingAs($admin)->get('/admin/settings/newsletter')->assertOk()->assertSee($grund);
     }
 
     /**

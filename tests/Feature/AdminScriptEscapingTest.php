@@ -26,11 +26,6 @@ class AdminScriptEscapingTest extends TestCase
                 ['`${esc(tag.name)} <button', '>${esc(tag.name)}</button>', 'color:${esc(tag.color)}'],
                 ['`${tag.name} <button', '>${tag.name}</button>', 'color:${tag.color}'],
             ],
-            'Tags in den Einstellungen' => [
-                'views/admin/settings/index.blade.php',
-                ['${esc(t.name)}', 'color:${esc(t.color)}'],
-                ["\n                    \${t.name}\n", 'color:${t.color}'],
-            ],
             'Kombinationen im Tischplan' => [
                 'views/admin/floorplan/index.blade.php',
                 ['>${esc(c.name)}</p>', '${c.tables.map(t => esc(t.name))'],

@@ -87,7 +87,7 @@ class BookingFormController extends Controller
             return $this->failed($request, 'fields', __('Das Formular ist unvollständig: Es fehlen Felder, etwa weil sich der Betriebstyp seit dem Laden der Seite geändert hat. Bitte die Seite neu laden und erneut speichern.'));
         }
 
-        // Gespeichert wird jeder Wert aus CHOICES, damit die alte Sammelseite weiter speichert.
+        // Gespeichert wird jeder Wert aus CHOICES.
         $validated = $request->validate(
             collect($fields)
                 ->mapWithKeys(fn (string $field) => ["fields.{$field}" => ['required', 'in:'.implode(',', array_keys(self::CHOICES))]])

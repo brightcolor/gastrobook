@@ -12,28 +12,18 @@ class FeedbackSettingsTest extends TestCase
 {
     use CreatesTenants, RefreshDatabase;
 
-    /** Full valid booking-rules payload + the given overrides. */
+    /** Full valid payload of the page Benachrichtigungen + the given overrides. */
     private function payload(array $overrides = []): array
     {
         return array_merge([
-            'slot_interval_minutes' => 30,
-            'default_duration_minutes' => 120,
-            'buffer_minutes' => 0,
-            'min_lead_minutes' => 0,
-            'max_advance_days' => 90,
-            'min_party_online' => 1,
-            'max_party_online' => 10,
-            'booking_confirmation_mode' => 'auto',
-            'capacity_mode' => 'table',
-            'cancellation_deadline_minutes' => 120,
-            'modification_deadline_minutes' => 120,
-            'reminder_hours_before' => 24,
-            'refund_mode' => 'off',
-            'refund_percent' => 0,
-            'refund_processing' => 'immediate',
             'guest_address' => 'du',
+            'reminder_enabled' => '1',
+            'reminder_hours_before' => 24,
+            'sms_reminder_enabled' => '0',
+            'feedback_enabled' => '1',
             'feedback_hours_after' => 18,
             'feedback_redirect_min_score' => 4,
+            'owner_notification_enabled' => '0',
         ], $overrides);
     }
 
@@ -43,7 +33,7 @@ class FeedbackSettingsTest extends TestCase
         $admin = $this->createMember($setup['tenant'], 'tenant_admin');
         $this->clearTenantContext();
 
-        $this->actingAs($admin)->put('/admin/settings/booking-rules', $this->payload([
+        $this->actingAs($admin)->put('/admin/settings/notifications', $this->payload([
             'feedback_enabled' => '1',
             'feedback_hours_after' => 24,
             'feedback_redirect_min_score' => 5,
@@ -63,7 +53,7 @@ class FeedbackSettingsTest extends TestCase
         $admin = $this->createMember($setup['tenant'], 'tenant_admin');
         $this->clearTenantContext();
 
-        $this->actingAs($admin)->put('/admin/settings/booking-rules', $this->payload([
+        $this->actingAs($admin)->put('/admin/settings/notifications', $this->payload([
             'feedback_external_url' => 'not-a-url',
         ]))->assertSessionHasErrors('feedback_external_url');
     }

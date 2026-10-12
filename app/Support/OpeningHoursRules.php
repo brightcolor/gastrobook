@@ -6,8 +6,8 @@ namespace App\Support;
 
 /**
  * Prüfregeln und Meldungen für Öffnungszeiten und Saison. Die Seite
- * „Öffnungszeiten“, der Einrichtungsassistent und die alte Sammelseite
- * speichern über dieselben Regeln, die Vorschau prüft ihre Fenster ebenso.
+ * „Öffnungszeiten“ und der Einrichtungsassistent speichern über dieselben
+ * Regeln, die Vorschau prüft ihre Fenster ebenso.
  * Die Grenzen stehen in config/swayy.php (opening_hours.*).
  *
  * Neben den Regeln für einzelne Felder prüft after() die Fenster eines Tages

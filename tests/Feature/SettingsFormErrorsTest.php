@@ -7,10 +7,10 @@ namespace Tests\Feature;
 use App\Models\DepositRule;
 use App\Models\IntegrationConnection;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Session\TokenMismatchException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
@@ -28,6 +28,13 @@ use Tests\TestCase;
 class SettingsFormErrorsTest extends TestCase
 {
     use CreatesTenants, RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Die Ausnahmen verlangen Tage ab heute; die Beispiele liegen im Dezember 2026.
+        $this->travelTo(CarbonImmutable::parse('2026-10-12 10:00', 'Europe/Berlin'));
+    }
 
     /**
      * Jedes Formular der Seite mit einer Eingabe, die abgelehnt wird.
@@ -51,18 +58,18 @@ class SettingsFormErrorsTest extends TestCase
             'Formularfelder' => ['PUT', '/admin/settings/field-rules',
                 ['fields' => ['email' => 'immer', 'phone' => 'optional', 'occasion' => 'optional', 'note' => 'optional', 'allergies' => 'optional']],
                 'fields.email', 'Bitte für E-Mail „Ausgeblendet“, „Freiwillig“ oder „Pflichtfeld“ wählen.'],
-            'Buchungsregeln' => ['PUT', '/admin/settings/booking-rules',
-                self::bookingRules(['default_duration_minutes' => 10]),
+            'Kapazität & Dauer' => ['PUT', '/admin/settings/capacity',
+                self::capacity(['default_duration_minutes' => 10]),
                 'default_duration_minutes', 'Standarddauer muss mindestens 30 sein.'],
-            'Buchungsregeln mit unbekanntem Takt' => ['PUT', '/admin/settings/booking-rules',
-                self::bookingRules(['slot_interval_minutes' => 7]),
-                'slot_interval_minutes', 'Der Wert bei „Slot-Intervall“ steht nicht zur Auswahl. Bitte einen Wert aus der Liste wählen oder die Seite neu laden.'],
-            'Buchungsregeln mit unklarem Schalter' => ['PUT', '/admin/settings/booking-rules',
+            'Kapazität mit unbekanntem Takt' => ['PUT', '/admin/settings/capacity',
+                self::capacity(['slot_interval_minutes' => 7]),
+                'slot_interval_minutes', 'Der Wert bei „Takt der Uhrzeiten“ steht nicht zur Auswahl. Bitte einen Wert aus der Liste wählen oder die Seite neu laden.'],
+            'Kapazität ohne Zählweise' => ['PUT', '/admin/settings/capacity',
+                self::capacity(['capacity_mode' => '']),
+                'capacity_mode', 'Bei „Zählweise“ fehlt ein Wert. Bitte einen Wert eintragen oder wählen; steht das Feld nicht auf der Seite, die Seite neu laden.'],
+            'Buchungsregeln mit unklarem Schalter' => ['PUT', '/admin/settings/rules',
                 self::bookingRules(['waitlist_enabled' => 'vielleicht']),
-                'waitlist_enabled', 'Bitte „Warteliste aktiv“ ein- oder ausschalten.'],
-            'Buchungsregeln ohne Zählweise' => ['PUT', '/admin/settings/booking-rules',
-                self::bookingRules(['capacity_mode' => '']),
-                'capacity_mode', 'Bei „Kapazitätsmodus“ fehlt ein Wert. Bitte einen Wert eintragen oder wählen; steht das Feld nicht auf der Seite, die Seite neu laden.'],
+                'waitlist_enabled', 'Bitte „Warteliste anbieten“ ein- oder ausschalten.'],
             'Öffnungszeiten' => ['PUT', '/admin/settings/opening-hours',
                 ['hours' => [['weekday' => 1, 'opens_at' => '25:00', 'closes_at' => '22:00']]],
                 'hours.0.opens_at', 'Bitte die Uhrzeit als HH:MM eintragen, etwa 11:30.'],
@@ -75,15 +82,13 @@ class SettingsFormErrorsTest extends TestCase
             'Saison mit unmöglichem Monat' => ['POST', '/admin/settings/seasons',
                 ['start_month' => 13, 'start_day' => 1, 'end_month' => 10, 'end_day' => 31],
                 'start_month', 'Bitte einen Monat aus der Liste wählen.'],
-            'Sonderöffnungszeit' => ['POST', '/admin/settings/special-hours',
-                ['date' => '2026-12-24', 'closes_at' => '14:00'],
-                'opens_at', 'Bitte eine Öffnungszeit eintragen oder „Geschlossen“ ankreuzen.'],
-            'Sperrzeit' => ['POST', '/admin/settings/blackouts',
-                ['starts_at' => '2026-12-24T18:00', 'ends_at' => '2026-12-24T12:00'],
-                'ends_at', 'Ende muss ein Datum nach Beginn sein.'],
-            'Tischsperre' => ['POST', '/admin/settings/table-blocks',
-                ['restaurant_table_id' => '{table}', 'starts_at' => '2026-12-24T18:00'],
-                'ends_at', 'Ende ist ein Pflichtfeld.'],
+            // Weitere Ablehnungen der Ausnahmen (Zeitfenster, Gästegrenze, Sperre, Tische und Räume anderer Standorte) prüft ScheduleExceptionsTest.
+            'Ausnahme' => ['POST', '/admin/settings/exceptions',
+                ['from' => '2026-12-24', 'until' => '2026-12-23', 'effects' => ['closed']],
+                'until', 'Das Ende liegt vor dem Beginn. Bitte ein späteres Datum wählen.'],
+            'Ausnahme mit Sperre ohne zweite Uhrzeit' => ['POST', '/admin/settings/exceptions',
+                ['from' => '2026-12-24', 'effects' => ['lock'], 'lock_tables' => ['{table}'], 'lock_from' => '18:00'],
+                'lock_until', 'Bitte beide Uhrzeiten eintragen oder beide leer lassen.'],
             'Raum anlegen' => ['POST', '/admin/settings/rooms',
                 ['name' => ''],
                 'name', 'Bitte einen Namen eintragen.'],
@@ -141,17 +146,6 @@ class SettingsFormErrorsTest extends TestCase
         $this->assertSame($message, $response->json('errors')[$field][0] ?? null, (string) $response->getContent());
     }
 
-    public function test_an_image_upload_names_the_problem(): void
-    {
-        $admin = $this->adminWithEntries($ids);
-
-        $response = $this->actingAs($admin)
-            ->post('/admin/settings/logo', ['logo' => UploadedFile::fake()->create('logo.pdf', 20, 'application/pdf')], ['Accept' => 'application/json'])
-            ->assertStatus(422);
-
-        $this->assertSame('Logo muss ein Bild sein.', $response->json('errors.logo.0'));
-    }
-
     /**
      * Ohne fetch, etwa mit abgeschaltetem JavaScript, bleibt alles beim Alten:
      * zurueck zur Seite, die Meldung steht in der Sitzung.
@@ -161,44 +155,10 @@ class SettingsFormErrorsTest extends TestCase
         $admin = $this->adminWithEntries($ids);
 
         $this->actingAs($admin)
-            ->from('/admin/settings')
-            ->put('/admin/settings/booking-rules', self::bookingRules(['default_duration_minutes' => 10]))
-            ->assertRedirect('/admin/settings')
+            ->from('/admin/settings/capacity')
+            ->put('/admin/settings/capacity', self::capacity(['default_duration_minutes' => 10]))
+            ->assertRedirect('/admin/settings/capacity')
             ->assertSessionHasErrors(['default_duration_minutes' => 'Standarddauer muss mindestens 30 sein.']);
-    }
-
-    public function test_a_room_of_another_location_is_refused_with_a_reason(): void
-    {
-        $admin = $this->adminWithEntries($ids);
-        $foreign = $this->createTenantSetup();
-
-        $response = $this->actingAs($admin)->postJson('/admin/settings/blackouts', [
-            'starts_at' => '2026-12-24T12:00',
-            'ends_at' => '2026-12-24T18:00',
-            'room_id' => $foreign['room']->id,
-        ])->assertStatus(422);
-
-        $this->assertSame(
-            'Dieser Raum gehört nicht zu diesem Standort. Bitte die Seite neu laden und einen Raum aus der Liste wählen.',
-            $response->json('errors.room_id.0')
-        );
-    }
-
-    public function test_a_table_of_another_location_is_refused_with_a_reason(): void
-    {
-        $admin = $this->adminWithEntries($ids);
-        $foreign = $this->createTenantSetup();
-
-        $response = $this->actingAs($admin)->postJson('/admin/settings/table-blocks', [
-            'restaurant_table_id' => $foreign['tables'][0]->id,
-            'starts_at' => '2026-12-24T12:00',
-            'ends_at' => '2026-12-24T18:00',
-        ])->assertStatus(422);
-
-        $this->assertSame(
-            'Dieser Tisch gehört nicht zu diesem Standort. Bitte die Seite neu laden und einen Tisch aus der Liste wählen.',
-            $response->json('errors.restaurant_table_id.0')
-        );
     }
 
     /**
@@ -274,7 +234,7 @@ class SettingsFormErrorsTest extends TestCase
         $admin = $this->adminWithEntries($ids);
 
         $this->actingAs($admin)
-            ->putJson('/admin/settings/booking-rules', self::bookingRules(['default_duration_minutes' => 10, 'buffer_minutes' => 500]))
+            ->putJson('/admin/settings/capacity', self::capacity(['default_duration_minutes' => 10, 'buffer_minutes' => 500]))
             ->assertStatus(422)
             ->assertJsonPath('message', 'Standarddauer muss mindestens 30 sein. (und 1 weiterer Fehler)');
     }
@@ -305,7 +265,7 @@ class SettingsFormErrorsTest extends TestCase
     {
         $this->createTenantSetup();
 
-        $this->putJson('/admin/settings/booking-rules', self::bookingRules())
+        $this->putJson('/admin/settings/rules', self::bookingRules())
             ->assertUnauthorized()
             ->assertExactJson(['message' => 'Die Anmeldung ist abgelaufen. Bitte neu anmelden und es dann noch einmal versuchen.']);
     }
@@ -372,7 +332,7 @@ class SettingsFormErrorsTest extends TestCase
     {
         $admin = $this->adminWithEntries($ids);
 
-        $this->actingAs($admin)->get('/admin/settings')
+        $this->actingAs($admin)->get('/admin/settings/general')
             ->assertOk()
             ->assertSee('Keine Verbindung zum Server', false)
             ->assertSee('Die Sitzung ist abgelaufen', false)
@@ -380,7 +340,24 @@ class SettingsFormErrorsTest extends TestCase
     }
 
     /**
-     * Gueltige Buchungsregeln; $overrides macht einzelne Felder ungueltig.
+     * Gueltige Angaben der Seite Kapazität & Dauer; $overrides macht einzelne Felder ungueltig.
+     *
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    private static function capacity(array $overrides = []): array
+    {
+        return array_merge([
+            'slot_interval_minutes' => 30,
+            'default_duration_minutes' => 120,
+            'buffer_minutes' => 0,
+            'capacity_mode' => 'table',
+            'max_covers_per_slot' => '',
+        ], $overrides);
+    }
+
+    /**
+     * Gueltige Angaben der Seite Buchungsregeln; $overrides macht einzelne Felder ungueltig.
      *
      * @param  array<string, mixed>  $overrides
      * @return array<string, mixed>
@@ -388,24 +365,17 @@ class SettingsFormErrorsTest extends TestCase
     private static function bookingRules(array $overrides = []): array
     {
         return array_merge([
-            'slot_interval_minutes' => 30,
-            'default_duration_minutes' => 120,
-            'buffer_minutes' => 0,
             'min_lead_minutes' => 0,
             'max_advance_days' => 90,
             'min_party_online' => 1,
             'max_party_online' => 10,
-            'booking_confirmation_mode' => 'auto',
-            'capacity_mode' => 'table',
+            'large_group_email' => '',
             'cancellation_deadline_minutes' => 120,
             'modification_deadline_minutes' => 120,
-            'reminder_hours_before' => 24,
-            'refund_mode' => 'off',
-            'refund_percent' => 0,
-            'refund_processing' => 'immediate',
-            'guest_address' => 'Sie',
-            'feedback_hours_after' => 18,
-            'feedback_redirect_min_score' => 4,
+            'booking_confirmation_mode' => 'auto',
+            'require_email_confirmation' => '0',
+            'waitlist_enabled' => '1',
+            'walkins_enabled' => '1',
         ], $overrides);
     }
 
@@ -449,6 +419,12 @@ class SettingsFormErrorsTest extends TestCase
      */
     private function fill(array $payload, array $ids): array
     {
-        return array_map(fn (mixed $value) => is_string($value) ? strtr($value, $ids) : $value, $payload);
+        array_walk_recursive($payload, function (mixed &$value) use ($ids) {
+            if (is_string($value)) {
+                $value = strtr($value, $ids);
+            }
+        });
+
+        return $payload;
     }
 }

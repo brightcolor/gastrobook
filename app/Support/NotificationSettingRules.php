@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace App\Support;
 
 /**
- * Prüfregeln und Meldungen für Benachrichtigungen. Die neue Seite und die
- * alte Sammelseite (SettingsController::updateBookingRules) nutzen dieselben.
- * Die Grenzen stehen in config/swayy.php (notifications.*).
+ * Prüfregeln und Meldungen für die Seite „Benachrichtigungen“. Die Grenzen
+ * stehen in config/swayy.php (notifications.*).
  */
 final class NotificationSettingRules
 {
     /**
-     * @param  bool  $switchesRequired  true auf der neuen Seite (x-checkbox sendet ohne Haken eine 0), false auf der alten Sammelseite (dort sendet nur ein angehaktes Kästchen etwas; ein fehlendes gilt als aus)
+     * @param  bool  $switchesRequired  true: Die Schalter sind Pflicht (x-checkbox sendet ohne Haken eine 0). false: Ein fehlender Schalter gilt als aus.
      * @return array<string, list<mixed>>
      */
     public static function rules(bool $switchesRequired = true): array

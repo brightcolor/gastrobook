@@ -152,25 +152,6 @@ class LocationLogoTest extends TestCase
         ])->assertOk();
     }
 
-    public function test_the_old_upload_on_the_general_page_follows_the_same_settings(): void
-    {
-        Storage::fake('public');
-        config(['swayy.uploads.logo_directory' => 'marken', 'swayy.uploads.logo_max_kb' => 100]);
-        $setup = $this->createTenantSetup();
-        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
-        $this->clearTenantContext();
-
-        $this->actingAs($owner)->postJson(route('admin.settings.logo.upload'), [
-            'logo' => UploadedFile::fake()->image('logo.png', 120, 60)->size(150),
-        ])->assertStatus(422)->assertJsonValidationErrors('logo');
-
-        $this->actingAs($owner)->postJson(route('admin.settings.logo.upload'), [
-            'logo' => UploadedFile::fake()->image('logo.png', 120, 60),
-        ])->assertOk();
-
-        $this->assertStringStartsWith('marken/'.$setup['location']->id.'/', (string) $setup['location']->fresh()->brand_logo_path);
-    }
-
     public function test_a_location_of_another_tenant_is_not_found(): void
     {
         Storage::fake('public');

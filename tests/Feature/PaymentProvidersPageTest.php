@@ -405,66 +405,6 @@ class PaymentProvidersPageTest extends TestCase
         $this->assertSame($key, $this->credentialsOf('paypal')['secret']);
     }
 
-    public function test_the_old_combined_page_keeps_saving_through_the_same_routes(): void
-    {
-        $setup = $this->createTenantSetup();
-        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
-        $this->clearTenantContext();
-
-        $page = $this->actingAs($owner)->get('/admin/settings')->assertOk();
-        $page->assertSee('action="'.route('admin.settings.stripe').'"', false)
-            ->assertSee('action="'.route('admin.settings.paypal').'"', false);
-
-        $this->actingAs($owner)->put('/admin/settings/stripe', ['secret_key' => 'sk_alter_weg', 'webhook_secret' => 'wh_alter_weg', 'enabled' => '1'])
-            ->assertRedirect()->assertSessionHas('success');
-        $this->actingAs($owner)->put('/admin/settings/paypal', ['client_id' => 'cid_alter_weg', 'secret' => 'sec_alter_weg', 'mode' => 'live', 'enabled' => '1'])
-            ->assertRedirect()->assertSessionHas('success');
-
-        $this->assertSame('connected', IntegrationConnection::where('provider', 'stripe')->value('status'));
-        $this->assertSame('sk_alter_weg', $this->credentialsOf('stripe')['secret_key']);
-        $this->assertSame('cid_alter_weg', $this->credentialsOf('paypal')['client_id']);
-    }
-
-    /**
-     * Ein abgehaktes Kästchen sendet auf der alten Sammelseite nichts, und
-     * ohne Angabe gilt eine Anbindung als eingeschaltet. Die 0 vor dem
-     * Kästchen sorgt dafür, dass ein ausgeschalteter Zahlungsanbieter nach
-     * dem Speichern der alten Seite ausgeschaltet bleibt.
-     */
-    public function test_the_old_combined_page_keeps_switched_off_providers_off(): void
-    {
-        $setup = $this->createTenantSetup();
-        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
-        $this->connect($setup['tenant']->id, 'stripe', ['secret_key' => 'sk', 'webhook_secret' => 'wh'], 'disconnected');
-        $this->connect($setup['tenant']->id, 'paypal', ['client_id' => 'cid', 'secret' => 'sec', 'mode' => 'live'], 'disconnected');
-        $this->clearTenantContext();
-
-        $html = (string) $this->actingAs($owner)->get('/admin/settings')->assertOk()->getContent();
-        $this->assertMatchesRegularExpression('/<input type="hidden" name="enabled" value="0">\s*<input type="checkbox" name="enabled" value="1"\s*>\s*Online-Zahlung aktiv/', $html);
-        $this->assertMatchesRegularExpression('/<input type="hidden" name="enabled" value="0">\s*<input type="checkbox" name="enabled" value="1"\s*>\s*PayPal-Zahlung aktiv/', $html);
-
-        // Die alten Formulare senden mit unmarkiertem Kästchen nur die 0.
-        $this->actingAs($owner)->put('/admin/settings/stripe', ['secret_key' => '', 'webhook_secret' => '', 'enabled' => '0'])
-            ->assertRedirect()->assertSessionHasNoErrors();
-        $this->actingAs($owner)->put('/admin/settings/paypal', ['client_id' => '', 'secret' => '', 'mode' => 'live', 'enabled' => '0'])
-            ->assertRedirect()->assertSessionHasNoErrors();
-
-        $this->assertSame('disconnected', IntegrationConnection::where('provider', 'stripe')->value('status'));
-        $this->assertSame('disconnected', IntegrationConnection::where('provider', 'paypal')->value('status'));
-    }
-
-    public function test_the_old_combined_page_shows_a_switched_on_provider_as_checked(): void
-    {
-        $setup = $this->createTenantSetup();
-        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
-        $this->connect($setup['tenant']->id, 'stripe', ['secret_key' => 'sk', 'webhook_secret' => 'wh']);
-        $this->clearTenantContext();
-
-        $html = (string) $this->actingAs($owner)->get('/admin/settings')->assertOk()->getContent();
-
-        $this->assertMatchesRegularExpression('/<input type="hidden" name="enabled" value="0">\s*<input type="checkbox" name="enabled" value="1"\s+checked\s*>\s*Online-Zahlung aktiv/', $html);
-    }
-
     public function test_a_caller_without_the_switch_gets_a_connected_new_connection(): void
     {
         $setup = $this->createTenantSetup();
@@ -514,32 +454,6 @@ class PaymentProvidersPageTest extends TestCase
         $this->assertSame('connected', IntegrationConnection::where('provider', 'paypal')->value('status'));
     }
 
-    /**
-     * Ein Betrieb ohne Anbindung speichert Stripe oder PayPal zum ersten Mal auf der alten Sammelseite. Der Browser
-     * sendet, was das Kästchen zeigt: Steht es angehakt da, folgt auf die 0 die 1. Die Anbindung ist danach verbunden.
-     */
-    public function test_a_first_connection_saved_from_the_old_page_stays_connected(): void
-    {
-        $setup = $this->createTenantSetup();
-        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
-        $this->clearTenantContext();
-
-        $html = (string) $this->actingAs($owner)->get('/admin/settings')->assertOk()->getContent();
-        $submitted = [];
-        foreach (['Online-Zahlung aktiv' => 'stripe', 'PayPal-Zahlung aktiv' => 'paypal'] as $label => $provider) {
-            $this->assertSame(1, preg_match('/<input type="hidden" name="enabled" value="0">\s*<input type="checkbox" name="enabled" value="1"([^>]*)>\s*'.preg_quote($label, '/').'/', $html, $match), $label);
-            $submitted[$provider] = str_contains($match[1], 'checked') ? '1' : '0';
-        }
-
-        $this->actingAs($owner)->put('/admin/settings/stripe', ['secret_key' => 'sk_erste_anbindung', 'webhook_secret' => 'wh_erste_anbindung', 'enabled' => $submitted['stripe']])
-            ->assertRedirect()->assertSessionHasNoErrors();
-        $this->actingAs($owner)->put('/admin/settings/paypal', ['client_id' => 'cid_erste_anbindung', 'secret' => 'sec_erste_anbindung', 'mode' => 'live', 'enabled' => $submitted['paypal']])
-            ->assertRedirect()->assertSessionHasNoErrors();
-
-        $this->assertSame('connected', IntegrationConnection::where('provider', 'stripe')->value('status'));
-        $this->assertSame('connected', IntegrationConnection::where('provider', 'paypal')->value('status'));
-    }
-
     public function test_an_invalid_switch_value_asks_to_reload(): void
     {
         $setup = $this->createTenantSetup();
@@ -562,7 +476,7 @@ class PaymentProvidersPageTest extends TestCase
         $this->assertSame('admin.settings.payment-providers.show', $item['route']);
         $this->assertArrayNotHasKey('active', $item);
         $this->assertArrayNotHasKey('fragment', $item);
-        $this->assertSame(['tables.manage', 'integrations.manage'], $item['can']);
+        $this->assertSame(['integrations.manage'], $item['can']);
         $targets = collect($item['keywords'])->filter(fn ($value, $key) => is_string($key))->unique()->values();
         $this->assertSame(['stripe', 'paypal'], $targets->all());
 

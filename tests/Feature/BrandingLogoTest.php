@@ -21,7 +21,7 @@ class BrandingLogoTest extends TestCase
         $admin = $this->createMember($setup['tenant'], 'tenant_admin');
         $this->clearTenantContext();
 
-        $this->actingAs($admin)->post('/admin/settings/logo', [
+        $this->actingAs($admin)->post(route('admin.locations.logo.store', $setup['location']), [
             'logo' => UploadedFile::fake()->image('logo.png', 200, 80),
         ])->assertRedirect()->assertSessionHas('success');
 
@@ -45,7 +45,7 @@ class BrandingLogoTest extends TestCase
             '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'
         );
 
-        $this->actingAs($admin)->post('/admin/settings/logo', ['logo' => $svg])
+        $this->actingAs($admin)->post(route('admin.locations.logo.store', $setup['location']), ['logo' => $svg])
             ->assertSessionHasErrors('logo');
 
         $this->assertNull($setup['location']->fresh()->brand_logo_path);

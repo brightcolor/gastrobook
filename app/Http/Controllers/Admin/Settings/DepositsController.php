@@ -21,8 +21,8 @@ use Illuminate\View\View;
  * Einstellungen › Zahlungen › Anzahlungen: Regeln, wann eine Online-Buchung
  * vorab bezahlt wird, und die Erstattung der Anzahlung bei Storno. Gilt für
  * den gewählten Standort. Die Regeln speichern je Eintrag über die
- * Seitenleiste (admin.settings.deposit-rules.*, auch von der alten
- * Sammelseite genutzt), die Erstattung über ihre eigene Karte.
+ * Seitenleiste (admin.settings.deposit-rules.*), die Erstattung über ihre
+ * eigene Karte.
  */
 class DepositsController extends Controller
 {
@@ -40,8 +40,7 @@ class DepositsController extends Controller
     ) {}
 
     /**
-     * Prüfregeln der Erstattung. Die Buchungsregeln der alten Sammelseite
-     * prüfen dieselben Felder.
+     * Prüfregeln der Erstattung der Anzahlung.
      *
      * @return array<string, list<string>>
      */
@@ -153,9 +152,9 @@ class DepositsController extends Controller
         }
 
         $old = $this->snapshot($rule);
-        // Was die Anfrage nicht nennt, bleibt: Leistung, Raum, Tage, Mindestzahl an Personen und Bis-Uhrzeit fehlen
-        // je nach Betriebsart oder Seite (Salon ohne Personenzahl, alte Sammelseite ohne Tage, Raum und Bis-Uhrzeit),
-        // und die bestehende Bindung darf davon nicht verschwinden.
+        // Was die Anfrage nicht nennt, bleibt: Leistung, Raum, Tage und Mindestzahl an Personen fehlen je nach
+        // Betriebsart (Salon ohne Personenzahl und Raum, Restaurant ohne Leistung), und die bestehende Bindung
+        // darf davon nicht verschwinden.
         $rule->update([
             'name' => $validated['name'],
             'service_id' => $request->has('service_id') ? $this->bindingId($validated['service_id'] ?? null) : $rule->service_id,
@@ -229,8 +228,7 @@ class DepositsController extends Controller
             // Ohne Von-Uhrzeit gibt es nichts zu vergleichen.
             'until_time' => ['nullable', 'date_format:H:i', ...($request->filled('from_time') ? ['after:from_time'] : [])],
             'payment_deadline_minutes' => ['nullable', 'integer', 'min:'.(int) $limits['deadline_min'], 'max:'.(int) $limits['deadline_max']],
-            // Die neue Seite sendet den Schalter immer (verstecktes 0 vor dem Kästchen). Die alte Sammelseite sendet ihn nur
-            // angehakt; ein fehlender Schalter gilt dort als "aus".
+            // Die Seite sendet den Schalter immer (verstecktes 0 vor dem Kästchen); ein fehlender Schalter gilt als "aus".
             'cancel_unpaid_automatically' => ['nullable', 'boolean'],
             'service_id' => ['nullable', 'integer'],
             'room_id' => ['nullable', 'integer'],

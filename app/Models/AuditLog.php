@@ -150,7 +150,7 @@ class AuditLog extends Model
         'key' => 'Vorlage',
         // 'type' auch bei Marketing-Kampagnen, deshalb allgemein
         'type' => 'Art',
-        // Allgemein (GeneralController), alte Sammelseite mit Standortdaten
+        // Allgemein (GeneralController, mit Standortdaten)
         'business_name' => 'Name des Betriebs',
         'location_name' => 'Name des Standorts',
         // Kapazität & Dauer (CapacityController)
@@ -307,6 +307,7 @@ class AuditLog extends Model
         'location.field_rules_updated' => 'Standort: Feldregeln geändert',
         'location.general_updated' => 'Standort: Stammdaten geändert',
         'tenant.general_updated' => 'Betrieb: Stammdaten geändert',
+        // Schrieb die frühere Sammelseite der Einstellungen; ihre Einträge stehen weiter im Protokoll.
         'location.settings_updated' => 'Standort: Einstellungen geändert',
         'location.capacity_updated' => 'Standort: Kapazität und Dauer geändert',
         'location.booking_rules_updated' => 'Standort: Buchungsregeln geändert',
@@ -354,7 +355,7 @@ class AuditLog extends Model
         'blackout' => 'Sperrzeit', 'special_hours' => 'Sonderöffnungszeit',
         'opening_hours' => 'Öffnungszeiten', 'template' => 'E-Mail-Vorlage',
         'api_token' => 'API-Schlüssel', 'webhook' => 'Webhook', 'tenant' => 'Betrieb',
-        'floorplan' => 'Tischplan', 'billing' => 'Abrechnung', 'integration' => 'Integration',
+        'floorplan' => 'Tischplan', 'billing' => 'Abo & Rechnungen', 'integration' => 'Integration',
         'waitlist' => 'Warteliste', 'payment' => 'Zahlung', 'saas' => 'Plattform-Benutzer',
         'marketing_campaign' => 'Marketing-Kampagne', 'table_block' => 'Tischsperre',
         'account' => 'Konto', 'season' => 'Saison', 'exception' => 'Ausnahmen',

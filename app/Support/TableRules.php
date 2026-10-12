@@ -10,9 +10,9 @@ use Illuminate\Validation\Rule;
 
 /**
  * Prüfregeln, Meldungen und Feldnamen für Räume, Tische, Tischkombinationen
- * und Raummaße. „Räume & Tische“, der Tischplan, der Einrichtungsassistent
- * und bis Teil 3 die alte Sammelseite speichern über dieselben Regeln; die
- * Grenzen stehen in config/swayy.php (tables.*).
+ * und Raummaße. „Räume & Tische“, der Tischplan und der Einrichtungsassistent
+ * speichern über dieselben Regeln; die Grenzen stehen in config/swayy.php
+ * (tables.*).
  *
  * Die Meldungen sprechen von der kleinsten und der größten Personenzahl: Die
  * Formulare der einzelnen Seiten beschriften die Felder verschieden („Ab
@@ -53,9 +53,9 @@ final class TableRules
     }
 
     /**
-     * Schalter eines Tisches. Sie sind optional: Der Einrichtungsassistent und
-     * die alte Sammelseite senden nicht alle, und beim Bearbeiten ändert nur,
-     * was das Formular mitschickt.
+     * Schalter eines Tisches. Sie sind optional: Der Einrichtungsassistent
+     * sendet nicht alle, und beim Bearbeiten ändert nur, was das Formular
+     * mitschickt.
      *
      * @return array<string, list<string>>
      */

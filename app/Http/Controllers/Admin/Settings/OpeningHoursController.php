@@ -23,9 +23,8 @@ use Illuminate\View\View;
  * Einstellungen › Platz & Zeiten › Öffnungszeiten: die reguläre Woche mit
  * ihren Zeitfenstern, die Vorschau „So sehen Gäste es“ und die buchbare
  * Saison. Gilt für den gewählten Standort. Die Speicherwege
- * (admin.settings.opening-hours, seasons.*) nutzen auch der
- * Einrichtungsassistent und bis Teil 3 die alte Sammelseite; ihre Antworten
- * behalten deshalb ihre Felder.
+ * (admin.settings.opening-hours, seasons.*) nutzt auch der
+ * Einrichtungsassistent; ihre Antworten behalten deshalb ihre Felder.
  */
 class OpeningHoursController extends Controller
 {

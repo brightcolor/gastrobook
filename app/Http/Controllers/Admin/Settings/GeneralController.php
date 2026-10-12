@@ -37,15 +37,15 @@ class GeneralController extends Controller
     }
 
     /**
-     * Stammdaten des Betriebs. Die alte Sammelseite schickt bis zu ihrem
-     * Abbau auch die Standortdaten mit; die Seite „Allgemein“ schickt sie
-     * nicht, dann bleibt der Standort unverändert.
+     * Stammdaten des Betriebs. Nennt die Anfrage auch location_name, folgen
+     * die Standortdaten (Name, Zeitzone, Adresse, Begrüßung); die Seite
+     * „Allgemein“ sendet sie nicht, dann bleibt der Standort unverändert.
      */
     public function update(Request $request)
     {
         $tenant = $this->context->tenant();
         abort_if($tenant === null, 404);
-        // Den aktuellen Standort braucht nur die alte Sammelseite, die seine Daten mitschickt.
+        // Den aktuellen Standort braucht nur eine Anfrage, die seine Daten mitschickt.
         $location = $request->has('location_name') ? $this->context->location() : null;
         abort_if($request->has('location_name') && $location === null, 404);
 

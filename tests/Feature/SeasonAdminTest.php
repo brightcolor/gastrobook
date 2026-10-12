@@ -84,7 +84,7 @@ class SeasonAdminTest extends TestCase
         $this->assertSame(1, SeasonPeriod::withoutGlobalScopes()->count());
     }
 
-    public function test_the_settings_page_shows_the_season_section(): void
+    public function test_the_opening_hours_page_shows_the_season_section(): void
     {
         $setup = $this->createTenantSetup();
         $admin = $this->createMember($setup['tenant'], 'tenant_owner');
@@ -94,7 +94,7 @@ class SeasonAdminTest extends TestCase
         ]);
         $this->clearTenantContext();
 
-        $this->actingAs($admin)->get('/admin/settings')
+        $this->actingAs($admin)->get('/admin/settings/opening-hours')
             ->assertOk()
             ->assertSee('Buchbare Saison', false)
             ->assertSee('Sommersaison', false)

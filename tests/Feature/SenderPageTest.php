@@ -301,43 +301,6 @@ class SenderPageTest extends TestCase
         $this->assertFalse($setup['tenant']->fresh()->mail_relay_enabled);
     }
 
-    /**
-     * Die alte Sammelseite sendet das Kästchen nur angehakt: ein fehlender
-     * Schalter gilt als „aus“.
-     */
-    public function test_the_old_combined_page_still_saves_without_the_switch(): void
-    {
-        $setup = $this->createTenantSetup();
-        $setup['tenant']->update(['mail_relay_enabled' => true]);
-        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
-        $this->clearTenantContext();
-
-        $page = $this->actingAs($owner)->get('/admin/settings')->assertOk();
-        $page->assertSee('action="'.route('admin.settings.guest-mail').'"', false);
-
-        $this->actingAs($owner)->put('/admin/settings/guest-mail', ['mail_from_name' => 'Alt-Seite', 'mail_reply_to' => 'alt@example.test'])
-            ->assertRedirect()
-            ->assertSessionHasNoErrors();
-
-        $tenant = $setup['tenant']->fresh();
-        $this->assertSame('Alt-Seite', $tenant->mail_from_name);
-        $this->assertSame('alt@example.test', $tenant->mail_reply_to);
-        $this->assertFalse($tenant->mail_relay_enabled);
-    }
-
-    public function test_the_old_combined_page_offers_the_configured_lengths(): void
-    {
-        config(['swayy.guest_mail.from_name_max' => 25, 'swayy.guest_mail.reply_to_max' => 60]);
-        $setup = $this->createTenantSetup();
-        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
-        $this->clearTenantContext();
-
-        $html = (string) $this->actingAs($owner)->get('/admin/settings')->assertOk()->getContent();
-
-        $this->assertMatchesRegularExpression('/name="mail_from_name"[^>]*maxlength="25"/', $html);
-        $this->assertMatchesRegularExpression('/name="mail_reply_to"[^>]*maxlength="60"/', $html);
-    }
-
     public function test_saving_leaves_other_businesses_untouched(): void
     {
         $setup = $this->createTenantSetup();

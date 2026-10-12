@@ -15,24 +15,17 @@ class BookingRuleModificationDeadlineTest extends TestCase
     private function payload(array $overrides = []): array
     {
         return array_merge([
-            'slot_interval_minutes' => 30,
-            'default_duration_minutes' => 120,
-            'buffer_minutes' => 0,
             'min_lead_minutes' => 0,
             'max_advance_days' => 90,
             'min_party_online' => 1,
             'max_party_online' => 10,
-            'booking_confirmation_mode' => 'auto',
-            'capacity_mode' => 'table',
+            'large_group_email' => '',
             'cancellation_deadline_minutes' => 120,
             'modification_deadline_minutes' => 120,
-            'reminder_hours_before' => 24,
-            'refund_mode' => 'off',
-            'refund_percent' => 0,
-            'refund_processing' => 'immediate',
-            'guest_address' => 'Sie',
-            'feedback_hours_after' => 18,
-            'feedback_redirect_min_score' => 4,
+            'booking_confirmation_mode' => 'auto',
+            'require_email_confirmation' => '0',
+            'waitlist_enabled' => '1',
+            'walkins_enabled' => '1',
         ], $overrides);
     }
 
@@ -43,7 +36,7 @@ class BookingRuleModificationDeadlineTest extends TestCase
         $this->clearTenantContext();
 
         $this->actingAs($admin)
-            ->put('/admin/settings/booking-rules', $this->payload(['modification_deadline_minutes' => 360]))
+            ->put('/admin/settings/rules', $this->payload(['modification_deadline_minutes' => 360]))
             ->assertRedirect();
 
         $this->assertSame(360, (int) $setup['location']->settings()->first()->modification_deadline_minutes);
@@ -59,7 +52,7 @@ class BookingRuleModificationDeadlineTest extends TestCase
         unset($payload['modification_deadline_minutes']);
 
         $this->actingAs($admin)
-            ->put('/admin/settings/booking-rules', $payload)
+            ->put('/admin/settings/rules', $payload)
             ->assertSessionHasErrors('modification_deadline_minutes');
     }
 }

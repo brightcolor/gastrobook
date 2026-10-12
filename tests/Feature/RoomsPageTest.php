@@ -152,7 +152,6 @@ class RoomsPageTest extends TestCase
             ->assertStatus(422);
         $this->actingAs($owner)->get('/admin/settings/rooms')->assertOk()->assertSee('max="12"', false);
         $this->actingAs($owner)->get('/admin/floorplan')->assertOk()->assertSee('max="12"', false);
-        $this->actingAs($owner)->get('/admin/settings')->assertOk()->assertSee('max="12"', false);
     }
 
     public function test_a_table_with_an_upcoming_reservation_names_the_count(): void
@@ -261,13 +260,20 @@ class RoomsPageTest extends TestCase
             ->assertJsonPath('errors.name.0', 'Dein Tarif umfasst 3 Tische, und alle sind schon angelegt. Für weitere Tische bitte eine Person mit Zugang zu „Abo & Rechnungen“ fragen.');
     }
 
-    public function test_the_old_settings_page_sends_every_table_switch(): void
+    public function test_names_from_the_team_are_escaped_in_the_list(): void
     {
-        $source = (string) file_get_contents(resource_path('views/admin/settings/index.blade.php'));
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 4]]);
+        $setup['room']->update(['name' => '<b onmouseover=alert(1)>Raum</b>']);
+        $setup['tables'][0]->update(['name' => '<img src=x onerror=alert(2)>']);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
 
-        foreach (['online_bookable', 'joinable', 'accessible', 'high_chair_possible'] as $flag) {
-            $this->assertStringContainsString('<input type="hidden" name="'.$flag.'" value="0">', $source, $flag);
-        }
+        $html = (string) $this->actingAs($owner)->get('/admin/settings/rooms')->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('<img src=x onerror', $html);
+        $this->assertStringNotContainsString('<b onmouseover', $html);
+        $this->assertStringContainsString('&lt;img src=x onerror=alert(2)&gt;', $html);
+        $this->assertStringContainsString('&lt;b onmouseover=alert(1)&gt;Raum&lt;/b&gt;', $html);
     }
 
     public function test_the_page_uses_no_inline_handlers(): void

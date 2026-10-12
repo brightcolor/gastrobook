@@ -24,13 +24,13 @@ class SettingsTablesTest extends TestCase
             ->assertSee('id="newTableBack"', false);
     }
 
-    public function test_settings_page_no_longer_shows_table_creation(): void
+    public function test_the_rooms_page_shows_no_table_modal_and_points_to_the_floorplan(): void
     {
         $setup = $this->createTenantSetup();
         $admin = $this->createMember($setup['tenant'], 'tenant_admin');
         $this->clearTenantContext();
 
-        $this->actingAs($admin)->get('/admin/settings')
+        $this->actingAs($admin)->get('/admin/settings/rooms')
             ->assertOk()
             ->assertDontSee('tableModalBack')
             ->assertSee('Tischplan');

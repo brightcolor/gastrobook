@@ -83,7 +83,7 @@ class PaymentProvidersController extends Controller
         abort_if($tenant === null, 404);
 
         $validated = $request->validate($this->secretRules(['secret_key', 'webhook_secret']) + [
-            // Die neue Seite und die alte Sammelseite senden eine 0 vor dem Kästchen. Fehlt der Schalter, bleibt der Zustand einer bestehenden Anbindung (IntegrationStatus::afterSave).
+            // Die Seite sendet eine 0 vor dem Kästchen. Fehlt der Schalter, bleibt der Zustand einer bestehenden Anbindung (IntegrationStatus::afterSave).
             'enabled' => ['nullable', 'boolean'],
         ], $this->secretMessages([
             'secret_key' => [__('Der Secret Key'), __('Bitte ihn im Stripe-Dashboard unter Developers → API keys kopieren und ohne Leerzeichen einfügen.')],

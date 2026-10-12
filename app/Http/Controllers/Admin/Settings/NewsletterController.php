@@ -89,8 +89,8 @@ class NewsletterController extends Controller
             'api_url' => ['bail', 'required', 'string', 'max:'.$urlMax, 'url', new AllowedOutboundUrl],
             'api_key' => ['nullable', 'string', 'max:'.$keyMax],
             'list_uid' => ['required', 'string', 'max:'.$uidMax],
-            // Die neue Seite und die alte Sammelseite senden eine 0 vor dem Kästchen. Fehlt der Schalter, bleibt der
-            // Zustand einer bestehenden Anbindung, wie er ist (siehe $enabled unten).
+            // Die Seite sendet eine 0 vor dem Kästchen. Fehlt der Schalter, bleibt der Zustand einer bestehenden
+            // Anbindung, wie er ist (siehe $enabled unten).
             'enabled' => ['nullable', 'boolean'],
         ], [
             'api_url.required' => __('Die API-URL fehlt. Bitte die Adresse deiner MailWizz-API eintragen, etwa https://news.example.com/api (in MailWizz unter Account → API).'),
