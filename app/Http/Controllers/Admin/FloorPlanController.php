@@ -38,8 +38,8 @@ class FloorPlanController extends Controller
         return view('admin.floorplan.index', [
             'location' => $location,
             'rooms' => $rooms,
-            // „Tisch sperren…“ im Fenster eines Tisches führt zur Seite Ausnahmen und braucht deren Rechte.
-            'canBlock' => $tenant !== null && ScheduleExceptionRules::canManage($request->user(), $tenant, $location),
+            // „Tisch sperren…“ im Fenster eines Tisches führt zur Seite Ausnahmen: Es braucht deren Rechte und eine Zählweise mit Tischvergabe.
+            'canBlock' => $tenant !== null && ScheduleExceptionRules::canLockTables($request->user(), $tenant, $location),
             'date' => $request->input('date', CarbonImmutable::now($location->timezone)->toDateString()),
             'combinations' => ($combinations = $location->tableCombinations()->with('tables:id,name')->get()),
             'joinableTables' => $location->tables()->where('joinable', true)->where('is_active', true)->with('room:id,name')->get(),

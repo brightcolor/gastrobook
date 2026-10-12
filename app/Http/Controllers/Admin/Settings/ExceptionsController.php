@@ -11,6 +11,7 @@ use App\Models\RestaurantTable;
 use App\Models\Room;
 use App\Services\AuditLogger;
 use App\Services\ScheduleExceptions;
+use App\Support\CapacityModes;
 use App\Support\NameOrder;
 use App\Support\ScheduleExceptionRules;
 use App\Support\TenantContext;
@@ -55,13 +56,17 @@ class ExceptionsController extends Controller
         $salon = $tenant->isSalon();
         $entries = $this->exceptions->entries($location);
         $rooms = $salon ? collect() : $this->rooms($location);
-        $presetTable = $this->presetTable($request, $this->offered($rooms, $this->blank(null)));
+        // Räume und Tische wirken nur, wo Swayy Tische vergibt; sonst entfällt auch die Vorbelegung über ?tisch=.
+        $assignsTables = CapacityModes::assignsTables($location);
+        $presetTable = $assignsTables ? $this->presetTable($request, $this->offered($rooms, $this->blank(null))) : null;
 
         return view('admin.settings.exceptions', [
             'upcoming' => $entries['upcoming'],
             'past' => $entries['past'],
             'blank' => $this->blank($presetTable),
             'presetTable' => $presetTable,
+            'assignsTables' => $assignsTables,
+            'capacityMode' => CapacityModes::of($location),
             // Räume und Tische, die ein Formular anbietet: die aktiven und die, auf die seine Werte verweisen.
             'roomsFor' => fn (array $values): Collection => $this->offered($rooms, $values),
             'salon' => $salon,

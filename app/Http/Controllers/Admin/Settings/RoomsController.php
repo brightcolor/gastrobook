@@ -74,7 +74,7 @@ class RoomsController extends Controller
             'combinations' => $combinations,
             'canRooms' => $request->user()->canInTenant('rooms.manage', $tenant, $location),
             'canFloorplan' => $request->user()->canInTenant('floorplan.update', $tenant, $location),
-            'canBlock' => ScheduleExceptionRules::canManage($request->user(), $tenant, $location),
+            'canBlock' => ScheduleExceptionRules::canLockTables($request->user(), $tenant, $location),
             'tableLimit' => $tenant->limit('max_tables'),
             'tablesUsed' => $this->limits->currentUsage($tenant, 'max_tables'),
             'capacityMax' => (int) config('swayy.tables.capacity_max'),

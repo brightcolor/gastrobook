@@ -46,6 +46,16 @@ final class ScheduleExceptionRules
     public const KEY_PATTERN = '[gsbt]-[A-Za-z0-9-]+';
 
     /**
+     * Darf der Nutzer einen Tisch über „Sperren…“ sperren? Er braucht die Rechte
+     * für Ausnahmen, und der Standort vergibt Tische (CapacityModes::ASSIGNING):
+     * In „Nach Personen“ wirkt eine Tischsperre nicht auf Buchungen.
+     */
+    public static function canLockTables(User $user, Tenant $tenant, Location $location): bool
+    {
+        return self::canManage($user, $tenant, $location) && CapacityModes::assignsTables($location);
+    }
+
+    /**
      * Hat der Nutzer alle Rechte aus PERMISSIONS? Links auf die Seite
      * („Sperren…“ am Tisch) erscheinen nur dann.
      */
@@ -229,6 +239,10 @@ final class ScheduleExceptionRules
      *   exceptions.windows_max Fenster, ohne Überschneidung.
      * - Weniger Gäste: die Zahl und ein Raum dieses Standorts.
      * - Sperre: mindestens ein Raum oder Tisch dieses Standorts.
+     * - Räume und Tische (Sperre, Raum bei „Weniger Gäste“) nur in den
+     *   Zählweisen, in denen Swayy Tische vergibt (CapacityModes::ASSIGNING);
+     *   in „Nach Personen“ kennt die Verfügbarkeit weder Räume noch Tische,
+     *   und die Bestätigung wäre falsch.
      * - Uhrzeiten von Grenze und Sperre: beide oder keine, nicht gleich.
      *
      * @param  array<string, mixed>  $data  geprüfte Felder aus rules()
@@ -331,7 +345,12 @@ final class ScheduleExceptionRules
         }
 
         $roomId = $data['limit_room_id'] ?? null;
-        if ($roomId !== null && ! $location->rooms()->whereKey((int) $roomId)->exists()) {
+        if ($roomId !== null && ! CapacityModes::assignsTables($location)) {
+            $errors['limit_room_id'] = __('Im Modus „:mode“ zählt Swayy die Gäste im ganzen Betrieb und vergibt keine Räume. Wähle „Ganzer Betrieb“ oder stelle unter Kapazität & Dauer auf „:tables“ um.', [
+                'mode' => CapacityModes::label(CapacityModes::of($location)),
+                'tables' => CapacityModes::label(CapacityModes::TABLE),
+            ]);
+        } elseif ($roomId !== null && ! $location->rooms()->whereKey((int) $roomId)->exists()) {
             $errors['limit_room_id'] = self::foreignRoom();
         }
 
@@ -344,6 +363,15 @@ final class ScheduleExceptionRules
      */
     private static function checkLock(array &$errors, Location $location, array $data): void
     {
+        if (! CapacityModes::assignsTables($location)) {
+            $errors['effects'] ??= __('Im Modus „:mode“ vergibt Swayy keine Tische. Nutze „Weniger Gäste“ für den ganzen Betrieb oder stelle unter Kapazität & Dauer auf „:tables“ um.', [
+                'mode' => CapacityModes::label(CapacityModes::of($location)),
+                'tables' => CapacityModes::label(CapacityModes::TABLE),
+            ]);
+
+            return;
+        }
+
         $rooms = self::ids($data['lock_rooms'] ?? null);
         $tables = self::ids($data['lock_tables'] ?? null);
 

@@ -1,4 +1,7 @@
+@use('App\Support\CapacityModes')
 {{-- Formular einer Ausnahme in der Seitenleiste (resources/js/admin/exceptions.js, reveal.js, rows.js).
+     $assignsTables sagt, ob Swayy am Standort Tische vergibt (Zählweise $capacityMode); sonst fehlen die Karte
+     „Räume oder Tische sperren“ und die Wahl des Raums bei „Weniger Gäste“, außer ein Eintrag trägt sie schon.
      $prefix ist die Kennung der Seitenleiste ("ausnahme-neu", "ausnahme-g-…") und macht alle IDs eindeutig,
      $action und $method gehen an Anlegen oder Ändern, $key nennt beim Ändern den Eintrag (die Vorschau lässt dessen
      eigene Zeilen aus), $values trägt die Felder (Eintrag['form'] beim Ändern, Vorbelegung beim Anlegen).
@@ -16,9 +19,16 @@
         'closed' => ['Geschlossen', 'Niemand kann online buchen.'],
         'hours' => ['Andere Öffnungszeiten', 'Zum Beispiel kürzer an Heiligabend.'],
     ];
+    // Räume und Tische wirken nur, wo Swayy Tische vergibt ($assignsTables). Ein Eintrag, der sie schon trägt, zeigt Karte und
+    // Abschnitt weiter, damit Speichern nichts stumm entfernt; der Server verlangt dann, sie abzuwählen oder die Zählweise zu ändern.
+    $showLock = $assignsTables || $has('lock');
+    $showRoomChoice = $assignsTables || $values['limit_room_id'] !== null;
+    $modeLabel = CapacityModes::label($capacityMode);
     if (! $salon) {
         $effects['limit'] = ['Weniger Gäste', 'Höchstens so viele Gäste gleichzeitig.'];
-        $effects['lock'] = ['Räume oder Tische sperren', 'Etwa für eine geschlossene Gesellschaft.'];
+        if ($showLock) {
+            $effects['lock'] = ['Räume oder Tische sperren', 'Etwa für eine geschlossene Gesellschaft.'];
+        }
     }
     $windows = $values['windows'] === [] ? [['opens_at' => '', 'closes_at' => '']] : $values['windows'];
     $card = 'flex cursor-pointer items-start gap-3 rounded-lg border border-stone-300 p-4 has-[:checked]:border-(--brand) has-[:checked]:ring-1 has-[:checked]:ring-(--brand) has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-(--brand)';
@@ -75,14 +85,19 @@
             <h3 class="text-sm font-semibold text-stone-900">Weniger Gäste</h3>
             <x-field name="limit_covers" :id="$id('limit_covers')" label="Höchstens gleichzeitig" type="number" unit="Gäste" min="1"
                      :max="$limits['covers_max']" inputmode="numeric" :value="$values['limit_covers']" class="max-w-56" />
-            <x-field name="limit_room_id" :id="$id('limit_room_id')" label="Gilt für">
-                <select id="{{ $id('limit_room_id') }}" name="limit_room_id" class="w-full">
-                    <option value="">Ganzer Betrieb</option>
-                    @foreach($rooms as $room)
-                        <option value="{{ $room->id }}" @selected((int) $values['limit_room_id'] === (int) $room->id)>Nur: {{ $room->name }}{{ $room->is_active ? '' : ' (inaktiv)' }}</option>
-                    @endforeach
-                </select>
-            </x-field>
+            @if($showRoomChoice)
+                <x-field name="limit_room_id" :id="$id('limit_room_id')" label="Gilt für"
+                         :help="$assignsTables ? null : 'Im Modus „'.$modeLabel.'“ vergibt Swayy keine Räume. Zum Speichern bitte „Ganzer Betrieb“ wählen oder unter Kapazität & Dauer die Zählweise ändern.'">
+                    <select id="{{ $id('limit_room_id') }}" name="limit_room_id" @unless($assignsTables) aria-describedby="{{ $id('limit_room_id') }}-help" @endunless class="w-full">
+                        <option value="">Ganzer Betrieb</option>
+                        @foreach($rooms as $room)
+                            <option value="{{ $room->id }}" @selected((int) $values['limit_room_id'] === (int) $room->id)>Nur: {{ $room->name }}{{ $room->is_active ? '' : ' (inaktiv)' }}</option>
+                        @endforeach
+                    </select>
+                </x-field>
+            @else
+                <p class="text-[0.8125rem] text-stone-600">Im Modus „{{ $modeLabel }}“ gilt die Grenze für den ganzen Betrieb.</p>
+            @endif
             <fieldset class="space-y-2">
                 <legend class="text-sm font-semibold text-stone-800">Uhrzeit</legend>
                 <div class="flex flex-wrap items-start gap-3">
@@ -93,8 +108,12 @@
             </fieldset>
         </div>
 
+        @if($showLock)
         <div data-show-if="effects[]:lock" @unless($has('lock')) hidden @endunless class="space-y-4 border-t border-stone-200 pt-5">
             <h3 class="text-sm font-semibold text-stone-900">Räume oder Tische sperren</h3>
+            @unless($assignsTables)
+                <p class="text-[0.8125rem] text-stone-600">Im Modus „{{ $modeLabel }}“ vergibt Swayy keine Tische. Diese Sperre wirkt auf Buchungen in den Zählweisen {{ CapacityModes::assigningList() }}. Zum Speichern bitte „Räume oder Tische sperren“ abwählen oder unter Kapazität &amp; Dauer die Zählweise ändern.</p>
+            @endunless
             @if($rooms->isEmpty())
                 <p class="text-sm text-stone-600">An diesem Standort gibt es noch keine Räume. Lege unter <a href="{{ route('admin.settings.rooms.index') }}" class="font-semibold underline underline-offset-2">Räume &amp; Tische</a> einen Raum mit Tischen an.</p>
             @else
@@ -125,5 +144,6 @@
                 </fieldset>
             @endif
         </div>
+        @endif
     @endunless
 </form>

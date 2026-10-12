@@ -1,4 +1,5 @@
 @extends('layouts.admin')
+@use('App\Support\CapacityModes')
 @section('title', 'Kapazität & Dauer')
 
 @section('content')
@@ -78,14 +79,14 @@
             <fieldset class="grid gap-3 sm:grid-cols-3">
                 <legend class="mb-2 text-sm font-semibold text-stone-800">Zählweise</legend>
                 @foreach([
-                    'table' => ['Nach Tischen', 'Für Betriebe mit festen Tischen.'],
-                    'person' => ['Nach Personen', 'Für Plätze ohne feste Tische, etwa an einer Bar.'],
-                    'hybrid' => ['Beides', 'Tische und eine Höchstzahl für den ganzen Standort.'],
-                ] as $mode => [$modeLabel, $modeSummary])
+                    'table' => ['Für Betriebe mit festen Tischen.'],
+                    'person' => ['Für Plätze ohne feste Tische, etwa an einer Bar.'],
+                    'hybrid' => ['Tische und eine Höchstzahl für den ganzen Standort.'],
+                ] as $mode => [$modeSummary])
                     <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-stone-300 p-4 has-[:checked]:border-(--brand) has-[:checked]:ring-1 has-[:checked]:ring-(--brand) has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-(--brand)">
                         <input type="radio" name="capacity_mode" value="{{ $mode }}" @checked(old('capacity_mode', $settings->capacity_mode) === $mode) class="mt-1">
                         <span class="min-w-0 [overflow-wrap:anywhere]">
-                            <span class="block font-semibold">{{ $modeLabel }}</span>
+                            <span class="block font-semibold">{{ CapacityModes::label($mode) }}</span>
                             <span class="block text-[0.8125rem] text-stone-500">{{ $modeSummary }}</span>
                         </span>
                     </label>

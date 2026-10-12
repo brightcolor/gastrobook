@@ -250,6 +250,19 @@ class ExceptionsPageTest extends TestCase
             ->assertSee('data-reload-after-save', false);
     }
 
+    public function test_the_delete_question_speaks_of_appointments_in_a_salon(): void
+    {
+        $setup = $this->createTenantSetup();
+        $setup['tenant']->update(['type' => 'salon']);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+        $this->actingAs($owner)->postJson('/admin/settings/exceptions', ['from' => '2026-12-24', 'label' => 'Heiligabend', 'effects' => ['closed']])->assertOk();
+
+        $this->actingAs($owner)->get('/admin/settings/exceptions')
+            ->assertSee('Ausnahme „Heiligabend“ löschen? Swayy nimmt danach wieder Termine nach den regulären Zeiten an.')
+            ->assertDontSee('wieder Buchungen');
+    }
+
     public function test_limits_and_delay_come_from_the_settings(): void
     {
         config([
