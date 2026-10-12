@@ -5,39 +5,42 @@ bei einer Absage durch euch, bei einem abgesagten Event.
 
 ## Die drei Betriebsarten
 
-Unter **Einstellungen → Buchungsregeln** legst du fest, wie Swayy damit umgeht:
+Unter **Einstellungen › Zahlungen › Anzahlungen** legst du in der Karte
+„Erstattung der Anzahlung“ fest, wie Swayy damit umgeht. Standortleitung und
+Administration des Betriebs stellen das ein. Die Karte gilt für den Standort,
+der oben in der Auswahl steht. Im Feld „Erstattung bei Storno“ wählst du:
 
 | Modus | Was passiert |
 |---|---|
-| **Aus** | Keine automatischen Erstattungen. Alles läuft von Hand über den Zahlungsanbieter. |
-| **Manuell** | Bei einer Stornierung entsteht eine Erstattungs-**Anfrage**, die jemand von euch freigibt. |
-| **Automatisch** | Storniert der Gast rechtzeitig, wird ohne Nachfrage erstattet. |
+| **Aus** | Die Anzahlung bleibt beim Betrieb. Wenn du erstattest, läuft das von Hand über den Zahlungsanbieter. |
+| **Von Hand freigeben** | Bei einer Stornierung entsteht eine Erstattungs-**Anfrage**, die jemand von euch freigibt. |
+| **Automatisch** | Storniert der Gast rechtzeitig, erstattet Swayy von selbst. |
 
-Dazu zwei Stellschrauben:
+Dazu zwei Stellschrauben, sobald der Modus nicht „Aus“ ist:
 
-- **Anteil in Prozent** – 100 % (alles zurück) oder z. B. 50 % (die Hälfte bleibt
+- **Erstattung in %** – 100 % (alles zurück) oder z. B. 50 % (die Hälfte bleibt
   als Aufwandsentschädigung).
-- **Sofort oder per Zeitplan** – sofort erstattet in dem Moment, in dem die
-  Freigabe erfolgt; per Zeitplan sammelt Swayy und arbeitet sie im
-  Viertelstundentakt ab.
+- **Ausführung** – **Sofort** erstattet in dem Moment, in dem die Freigabe
+  erfolgt; **Gesammelt nach Zeitplan** sammelt Swayy und arbeitet die
+  Erstattungen in einem Lauf ab (im Viertelstundentakt).
 
 ## Was wann greift
 
 - **Gast storniert innerhalb der Frist** → Erstattung nach eingestelltem Modus.
-- **Gast storniert zu spät** oder erscheint nicht → **keine** Erstattung. Das ist
-  der Zweck des No-Show-Schutzes und steht so auch im Hinweis, den der Gast bei
-  der Zahlung gesehen hat.
+- **Gast storniert zu spät** oder erscheint nicht → die Anzahlung bleibt beim
+  Betrieb. Das ist der Zweck des No-Show-Schutzes und steht so auch im Hinweis,
+  den der Gast bei der Zahlung gesehen hat.
 - **Ihr storniert** → ebenfalls nach eingestelltem Modus. Hier ist voller
   Rückerstattungsanteil das Übliche und Faire.
 - **Eventticket storniert oder Event abgesagt** → läuft durch dieselbe Logik.
   Sagt ihr ein Event ab, entsteht für **jede bezahlte Buchung** ein eigener
-  Vorgang; im Modus „Manuell" liegen die dann alle zur Freigabe bereit und ihr
-  gebt sie in einem Rutsch frei. Nur der Modus „Aus" bedeutet: Ihr müsst jede
-  Rückzahlung selbst beim Anbieter auslösen.
+  Vorgang; im Modus „Von Hand freigeben" liegen die dann alle zur Freigabe bereit
+  und ihr gebt sie in einem Rutsch frei. Im Modus „Aus" löst ihr jede
+  Rückzahlung selbst beim Anbieter aus.
 
 ## Der Arbeitsplatz
 
-**Rückerstattungen** in der Seitenleiste (Recht für Zahlungen nötig). Dort
+**Buchungen › Erstattungen** in der Seitenleiste (Recht für Zahlungen nötig). Dort
 stehen alle Vorgänge mit Status:
 
 **Angefragt** → **Freigegeben** → **In Arbeit** → **Erledigt**
@@ -48,7 +51,8 @@ Du kannst freigeben, ablehnen und bei einem Fehlschlag erneut versuchen.
 ursprüngliche Zahlung zu lange her ist. Dann bleibt der Weg über das Konto beim
 Anbieter.
 
-Jeder Schritt landet im Auditlog: Wer hat wann was freigegeben.
+Jeder Schritt landet im Protokoll (**Einstellungen › Betrieb › Protokoll**): Wer
+hat wann was freigegeben.
 
 ## Der Gast
 
@@ -71,7 +75,7 @@ wissen, bevor man ein Event leichtfertig absagt.
 
 ## Empfehlung
 
-Für den Anfang: **Manuell mit 100 %**. Du siehst jeden Fall, bevor Geld
+Für den Anfang: **Von Hand freigeben mit 100 %**. Du siehst jeden Fall, bevor Geld
 zurückgeht, und bekommst ein Gefühl dafür, wie oft das überhaupt vorkommt. Wenn
 sich zeigt, dass ihr ohnehin immer freigebt, stell auf automatisch um – das
 spart Arbeit und wirkt auf den Gast souveräner.

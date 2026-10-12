@@ -55,11 +55,12 @@ Umrechnung in Euro brauchst du deinen Durchschnittsbon aus der Kasse:
 Diese Zahl neben der No-Show-Quote macht sehr schnell klar, was ein
 ausgefallener Tisch kostet.
 
-## Auditlog
+## Protokoll (Auditlog)
 
-Getrennt von den Berichten gibt es das **Auditlog**: wer hat wann was geändert.
-Filterbar nach Aktion.
+Getrennt von den Berichten gibt es das **Protokoll** unter **Einstellungen ›
+Betrieb › Protokoll**: wer hat wann was geändert, mit altem und neuem Wert in
+lesbaren Worten. Du suchst nach Name, Wert oder Aktion und filterst nach Bereich
+und Zeitraum. Einträge lassen sich nachträglich nicht ändern.
 
-Das ist kein Kontrollinstrument gegen Mitarbeiter, sondern die Antwort auf
-Fragen wie „wer hat die Buchung storniert?" oder „seit wann steht die Regel so?".
-IP-Adressen werden nur gekürzt gespeichert.
+Das Protokoll beantwortet Fragen wie „wer hat die Buchung storniert?" oder „seit
+wann steht die Regel so?". IP-Adressen werden nur gekürzt gespeichert.

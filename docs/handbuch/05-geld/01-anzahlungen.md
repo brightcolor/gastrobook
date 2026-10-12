@@ -7,39 +7,49 @@ deshalb lohnt sich der Blick auf beide Seiten der Rechnung.
 ## Voraussetzungen
 
 1. Ein **Zahlungsanbieter** ist verbunden: **Stripe** oder **PayPal** (oder
-   beide). Einzurichten unter **Einstellungen → Zahlungen**.
+   beide). Einzurichten unter **Einstellungen › Zahlungen › Zahlungsanbieter**.
 2. Dein Tarif enthält Anzahlungen.
 3. Mindestens eine **Anzahlungsregel** ist angelegt.
 
 Zum Verbinden brauchst du ein Konto beim jeweiligen Anbieter und die
-Zugangsdaten von dort. Die Daten werden verschlüsselt gespeichert und nie wieder
-angezeigt. **Karten- oder Kontodaten deiner Gäste liegen zu keinem Zeitpunkt in
-Swayy** – die Zahlung läuft auf den Seiten des Anbieters.
+Zugangsdaten von dort: bei Stripe den Secret Key und das
+Webhook-Signing-Secret, bei PayPal Client-ID und Secret. Die Daten werden
+verschlüsselt gespeichert; die Seite zeigt sie nie wieder an. Ein leeres Feld
+behält den gespeicherten Wert. **Karten- oder Kontodaten deiner Gäste liegen zu
+keinem Zeitpunkt in Swayy** – die Zahlung läuft auf den Seiten des Anbieters.
+
+Jeder Anbieter zeigt seinen **Status** und hat einen Schalter („Online-Zahlung
+mit Stripe“ bzw. „… mit PayPal“). Ausgeschaltet bleiben die Zugangsdaten
+gespeichert, und Swayy verlangt keine Zahlung über diesen Anbieter. Bei Stripe
+trägst du die **Webhook-Adresse**, die die Seite zum Kopieren anzeigt, im
+Stripe-Dashboard ein. PayPal braucht keinen Webhook und hat zusätzlich den
+Modus **Test (Sandbox)** oder **Live**: Stelle vor dem Start auf Live um.
 
 Sind beide Anbieter aktiv, darf der Gast an der Kasse wählen.
 
 ## Eine Regel anlegen
 
-**Einstellungen → Zahlungen → Anzahlungsregeln.** Eine Regel besteht aus
-Bedingungen und einem Betrag:
+**Einstellungen › Zahlungen › Anzahlungen.** Der Abschnitt „Anzahlungsregeln“
+listet deine Regeln. Mit **Regel hinzufügen** (oder einem Klick auf den Namen
+einer Regel) öffnet sich die Seitenleiste. Eine Regel besteht aus Bedingungen
+und einem Betrag; alle Beträge stehen in Euro:
 
 **Bedingungen** (alle optional, wirken zusammen):
 
 - ab Personenzahl (z. B. ab 6)
-- Wochentage
-- ab/bis Uhrzeit (z. B. erst ab 18:00)
-- bestimmter Raum
-- bestimmtes Event
-- im Salon: bestimmte Leistung
+- Wochentage (ohne Haken: alle Tage)
+- „Nur ab Uhrzeit“ und „Nur bis Uhrzeit“ (z. B. erst ab 18:00)
+- „Nur für Raum“
+- im Salon: „Nur für Leistung“
 
-**Betrag:** Grundbetrag + Betrag pro Person.
+**Betrag:** Grundbetrag + Betrag pro Person (im Salon: Betrag pro Termin).
 Beispiel: 20 € Grundbetrag + 5 € pro Person → bei vier Gästen 40 €.
 
 **Zahlungsfrist:** Wie lange der Gast Zeit hat (üblich 60 Minuten).
 
-**Automatisch stornieren:** Ob eine unbezahlte Buchung nach Fristablauf von
-selbst frei wird. An = der Platz wird wieder verkauft. Aus = die Buchung bleibt
-offen und ihr fasst selbst nach.
+**Unbezahlte Buchungen nach Ablauf der Frist stornieren:** Ob eine unbezahlte
+Buchung nach Fristablauf von selbst frei wird. Mit Haken wird der Platz wieder
+verkauft. Ohne Haken bleibt die Buchung offen und ihr fasst selbst nach.
 
 Trifft eine Buchung mehrere Regeln, gewinnt die spezifischere.
 
@@ -55,15 +65,15 @@ Drei Nachrichten laufen dabei von selbst:
 |---|---|
 | sofort nach der Buchung | Zahlungsaufforderung mit Betrag, Link und Frist |
 | nach der halben Frist | Erinnerung, dass die Anzahlung noch aussteht |
-| nach Fristablauf | Absage – nur wenn „Automatisch stornieren" an ist |
+| nach Fristablauf | Absage – wenn die Regel unbezahlte Buchungen automatisch storniert |
 
 Der Tisch bleibt bis zum Fristende reserviert und wird danach wieder verkauft.
 Hat der Gast den Bezahlvorgang **kurz vor Schluss noch gestartet**, wartet
 Swayy eine Viertelstunde länger – wer pünktlich klickt, soll seinen Tisch nicht
 deshalb verlieren, weil die Kartenzahlung ein paar Minuten dauert.
 
-Steht „Automatisch stornieren" auf Aus, bleibt die Buchung nach Fristablauf
-stehen und wartet auf euch. Sie steht dann im Reservierungsbuch weiterhin unter
+Ist das automatische Stornieren ausgeschaltet, bleibt die Buchung nach
+Fristablauf stehen und wartet auf euch. Sie steht dann im Reservierungsbuch weiterhin unter
 **Zahlung ausstehend** – bitte regelmäßig durchsehen, sonst blockieren diese
 Buchungen Plätze, für die nie Geld gekommen ist.
 

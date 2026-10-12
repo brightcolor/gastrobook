@@ -20,13 +20,23 @@ Bestätigungslink bei der E-Mail-Verifizierung, Anmeldelink fürs Kundenkonto un
 – falls eingerichtet – die Marketing-Nachrichten (eigenes Kapitel).
 
 **Die Erinnerung ist die wirksamste Mail überhaupt.** Sie kostet nichts und
-senkt die No-Show-Quote spürbar. Lass sie an.
+senkt die No-Show-Quote spürbar. Lass sie an. Du schaltest sie unter
+**Einstellungen › Gästekommunikation › Benachrichtigungen** im Abschnitt
+„Erinnerung“ ein und stellst dort die Stunden vorher ein.
+
+Die **Anrede** („du“ oder „Sie“) für alle Texte wählst du auf derselben Seite im
+Abschnitt „Anrede“.
 
 ## Texte anpassen
 
-**E-Mail-Vorlagen** in der Seitenleiste. Für jede der sieben Mails kannst du
-**Betreff** und **Text** überschreiben. Wer nichts ändert, bekommt eine
-sinnvolle Standardfassung.
+**Einstellungen › Gästekommunikation › Vorlagen.** Für jede Vorlage der Liste
+kannst du **Betreff** und **Text** überschreiben. Die Vorlage öffnet sich an der
+Seite. Ohne eigene Fassung verschickt Swayy eine sinnvolle Standardfassung. Die
+Liste zeigt je Vorlage „Standard“ oder „Angepasst“, und „Auf Standard
+zurücksetzen“ nimmt deine Fassung zurück.
+
+Der Standardtext in der Seitenleiste folgt der Anrede des Standorts, den du oben
+gewählt hast. Die Seitenleiste nennt, für welche Anrede der Text gilt.
 
 ### Platzhalter
 
@@ -37,7 +47,8 @@ Werte ersetzt werden:
 `{location_name}`, `{tenant_name}`, `{table_name}`, `{reservation_code}`,
 `{cancel_link}`, `{modify_link}`
 
-Am besten stehen lassen und nur den Text drumherum ändern. **Lösch niemals
+Die Seite zeigt alle Platzhalter; ein Klick kopiert einen. Am besten stehen
+lassen und nur den Text drumherum ändern. **Lösch niemals
 `{cancel_link}`** aus der Bestätigung – dann kann der Gast nicht mehr selbst
 absagen und ihr habt den Anruf.
 
@@ -57,22 +68,31 @@ Du schreibst einfachen Text. Swayy gestaltet ihn beim Versand:
 
 Oben steht eine Überschrift, die Swayy je Mail setzt, unten der Fußbereich mit
 Adresse, Telefon, E-Mail, Impressum und Datenschutz deines Standorts. Pflege
-diese Angaben unter Einstellungen › Standorte und Einstellungen › Allgemein,
-dann erscheinen sie in jeder Mail. Logo und Markenfarbe übernimmt Swayy ebenfalls.
+diese Angaben unter **Einstellungen › Betrieb › Standorte** (Adresse, Telefon,
+E-Mail, Logo) und **Einstellungen › Betrieb › Allgemein** (Impressum,
+Datenschutz, Markenfarbe), dann erscheinen sie in jeder Mail.
 
-### Zwei Ebenen
+### Gültigkeit
 
-Vorlagen gelten für den ganzen Betrieb. Bei mehreren Standorten kann ein
-einzelner Standort abweichen. Swayy nimmt immer die spezifischste Fassung:
-Standort vor Betrieb vor Standardtext.
+Eine eigene Fassung gilt für den ganzen Betrieb, also für alle Standorte. Swayy
+nimmt die eigene Fassung, und sonst den Standardtext.
 
-## Absender
+## Absender und Antworten
 
-Die Mails kommen von der Adresse, die für dein System hinterlegt ist – aber mit
-**deinem Betriebsnamen** als Anzeigename. Optional trägst du eine
-**Antwortadresse** ein: Antwortet ein Gast auf die Bestätigung, landet die
-Antwort dann in deinem Postfach. Ohne diese Einstellung gehen solche Antworten
-ins Leere, und Gäste antworten häufiger, als man denkt.
+**Einstellungen › Gästekommunikation › Absender & Antworten.** Die Mails kommen
+von der Adresse, die für dein System hinterlegt ist, mit einem Anzeigenamen. Den
+**Absendernamen** trägst du hier ein; ist das Feld leer, steht dort der Name des
+Standorts oder Betriebs.
+
+Die **Antwortadresse** bestimmt, wohin die Antwort eines Gastes geht: Antwortet er
+auf die Bestätigung, landet die Antwort in deinem Postfach. Gäste antworten
+häufiger, als man denkt. Steht weder hier noch am Standort eine Adresse, weist
+die Seite darauf hin: Dann erreichen Antworten niemanden.
+
+Mit **Antworten über Swayy sammeln** bekommt jede Mail eine eigene Adresse.
+Antworten erscheinen im Buchungsverlauf und gehen zusätzlich an deine Adresse.
+Diese Funktion richtet der Betreiber von Swayy ein; die Seite sagt, wenn sie
+noch fehlt.
 
 ## Zustellung
 
@@ -84,9 +104,10 @@ zuerst die Adresse im Gastprofil und lass den Gast im Spam-Ordner nachsehen.
 
 ## Wer bekommt was nicht?
 
-- **Ohne E-Mail-Adresse** gibt es keine Mail. Wenn Telefon Pflicht ist, aber
-  E-Mail nicht, verzichtest du auf Bestätigung, Erinnerung und Feedback. Das ist
-  eine bewusste Entscheidung, keine Panne.
+- **Ohne E-Mail-Adresse** gibt es keine Mail. Wenn Telefon Pflicht ist und
+  E-Mail freiwillig, verzichtest du für Gäste ohne Adresse auf Bestätigung,
+  Erinnerung und Feedback. Das entscheidest du unter **Einstellungen ›
+  Buchungen › Buchungsformular**.
 - **Anonymisierte Gäste** bekommen nichts mehr.
 - **Marketing-Nachrichten** gehen nur an Gäste mit Einwilligung. Bestätigungen
   und Erinnerungen gehören zur Buchung und laufen unabhängig davon weiter – auch
@@ -94,7 +115,9 @@ zuerst die Adresse im Gastprofil und lass den Gast im Spam-Ordner nachsehen.
 
 ## Optional: Benachrichtigung für dich
 
-Unter **Einstellungen → Buchungsregeln** kannst du einschalten, dass **du** bei
-jeder neuen Reservierung eine Mail bekommst, wahlweise an eine eigene Adresse.
+Unter **Einstellungen › Gästekommunikation › Benachrichtigungen** kannst du im
+Abschnitt „Info an den Betrieb“ einschalten, dass **du** bei jeder neuen
+Reservierung eine Mail bekommst, wahlweise an eine eigene Adresse. Ohne eigene
+Adresse geht die Mail an die Kontaktadresse des Standorts.
 Praktisch am Anfang, wenn man dem Automatismus noch nicht traut. Nach ein paar
 Wochen schalten die meisten es wieder aus.

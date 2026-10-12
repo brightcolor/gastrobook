@@ -80,6 +80,7 @@ Fertige Docker-Images baut die CI automatisch: `ghcr.io/brightcolor/gastrobook:l
 5. [Lokales Setup](#lokales-setup)
 6. [Docker Setup](#docker-setup)
 7. [Erste Schritte (Superadmin → Tenant → Buchung)](#erste-schritte)
+    - [Verwaltungsoberfläche](#verwaltungsoberfläche)
 8. [Öffentliche Buchungsseite](#öffentliche-buchungsseite)
 9. [API](#api)
 10. [Webhooks](#webhooks)
@@ -180,9 +181,11 @@ Seite; Hinweise dazu in [`docs/handbuch/00-import-hinweis.md`](docs/handbuch/00-
 | Stripe/Mollie-Billing für Tenants | 🔶 vorbereitet |
 | SaaS-Website (Landingpage, Preise, FAQ, Kontaktformular, Impressum/Datenschutz/AGB) | ✅ |
 | Self-Service-Registrierung (Trial-Tenant inkl. Standort, ohne Zahlungsdaten) | ✅ |
-| Geführter Onboarding-Wizard nach Registrierung (Betriebstyp → Öffnungszeiten → Räume/Tische oder Mitarbeiter/Leistungen → Buchungsregeln → Branding → Fertig) | ✅ |
+| Geführter Onboarding-Wizard nach Registrierung (Betriebstyp → Öffnungszeiten → Räume/Tische oder Mitarbeiter/Leistungen → Buchungsregeln mit üblicher Besuchsdauer → Branding → Fertig); jeder Schritt speichert nur seine Felder | ✅ |
 | Erklär-Tooltips (Fragezeichen) an Feldern und Aktionen in der ganzen Verwaltung | ✅ |
-| Einstellungsseite mit Tab-Navigation (7 Bereiche: Allgemein, Buchungsregeln, Zeiten, Räume & Tags, Zahlungen, Integrationen, Widget; Tab-State per URL-Hash) | ✅ |
+| Einstellungen auf eigenen Seiten in sechs Gruppen (Betrieb, Platz & Zeiten, Buchungen, Gästekommunikation, Zahlungen, Verbindungen) mit Suche, Speicherleiste und Seitenleisten zum Anlegen und Bearbeiten | ✅ |
+| Öffnungszeiten mit Vorschau „So sehen Gäste es“, Ausnahmen (Feiertage, Betriebsferien, Sperren) mit „So wirkt es“, „Tisch sperren…“ im Tischplan | ✅ |
+| Eigene Fehlerseiten (402, 403, 404, 419, 429, 500, 503) mit Ursache und nächstem Schritt; „Passwort ändern“ unter Mein Konto | ✅ |
 | Markenfarbe (brand_primary_color) im Admin speicherbar, Live-Vorschau, synchronisiert Widget-Farbpicker | ✅ |
 
 ---
@@ -358,9 +361,144 @@ Tags: `latest` (main), `sha-<commit>`, `main`, sowie `x.y.z` bei Versions-Tags.
 1. **Superadmin anmelden** → `/saas/tenants`
 2. **Tenant erstellen**: Name, Tarif, Inhaber-E-Mail, erster Standort. Das Initialpasswort des Inhabers wird **einmalig** angezeigt.
 3. **Als Inhaber anmelden** → `/admin`
-4. **Einstellungen** → Öffnungszeiten, Buchungsregeln (Intervall, Dauer, Vorlauf, Kapazitätsmodus), Räume und Tische anlegen, optional Tischkombinationen.
-5. **Buchungsseite teilen**: Link steht oben auf der Einstellungsseite (`/book/<tenant>/<standort>`), z. B. für Website, Instagram-Bio oder Google Business Profile.
-6. **Benutzer einladen** unter `/admin/users` (bestehende Konten werden direkt verknüpft, neue erhalten einen Einladungslink).
+4. **Einstellungen** → Öffnungszeiten (Platz & Zeiten), Kapazität & Dauer (Takt, Dauer, Zählweise), Buchungsregeln (Vorlauf, Fristen, Bestätigung), Räume und Tische anlegen, optional Tischkombinationen.
+5. **Buchungsseite teilen**: Link steht unter *Einstellungen › Buchungen › Buchungsseite & Widget* (`/book/<tenant>/<standort>`), z. B. für Website, Instagram-Bio oder Google Business Profile.
+6. **Benutzer einladen** unter *Einstellungen › Betrieb › Team & Rollen* (`/admin/users`; bestehende Konten werden direkt verknüpft, neue erhalten einen Einladungslink).
+
+---
+
+## Verwaltungsoberfläche
+
+Die Navigation kommt aus einer Quelle, [`config/navigation.php`](config/navigation.php): Seitenleiste am Computer, Symbolleiste am Tablet, untere Leiste auf dem Smartphone mit „Mehr“ und der Einstellungsbereich. Die Arbeitsbereiche (Übersicht, Service, Buchungen, Gäste, Berichte) stehen in der Seitenleiste; `App\Support\Navigation\Navigation` filtert nach Rechten und Betriebstyp (Restaurant oder Salon).
+
+**Einstellungen** liegen auf eigenen Seiten in sechs Gruppen. Jede Seite speichert nur ihre Felder, zeigt ihren Geltungsbereich (alle Standorte oder ein Standort) und meldet Änderungen in einer Speicherleiste mit „Verwerfen“. Anlegen und Bearbeiten laufen in Seitenleisten, Löschen mit Rückfrage in der Zeile.
+
+| Gruppe | Seiten |
+|---|---|
+| Betrieb | Allgemein, Standorte, Team & Rollen, Abo & Rechnungen, Protokoll, Daten |
+| Platz & Zeiten | Öffnungszeiten, Ausnahmen, Räume & Tische (Restaurant), Leistungen und Mitarbeiter (Salon), Kapazität & Dauer |
+| Buchungen | Buchungsregeln, Buchungsformular, Buchungsseite & Widget, Tags |
+| Gästekommunikation (Salon: Kundenkommunikation) | Benachrichtigungen, Vorlagen, Absender & Antworten, SMS-Versand |
+| Zahlungen | Zahlungsanbieter, Anzahlungen |
+| Verbindungen | Newsletter, API-Schlüssel, Webhooks |
+
+**Einstieg:** `/admin/settings` führt auf die erste Seite, die die Rolle öffnen darf (`SettingsEntryController`). `/admin/settings/menu` listet alle erlaubten Seiten samt Suche und ist auf dem Smartphone der Einstieg. Eine Rolle ohne Einstellungsseite bekommt die Fehlerseite 403 mit einem Satz zur Ursache. Alte Sprungmarken der früheren Sammelseite (`#zeiten`, `#zahlungen`, `#widget` …) leiten auf die Seite weiter, die den Bereich übernommen hat; die Zuordnung steht unter `legacy_anchors` in `config/navigation.php`.
+
+**Fehlerseiten** (`resources/views/errors`) nennen Ursache, nächsten Schritt und den Fehlercode. Die Adresse für Rückfragen kommt aus `SWAYY_SUPPORT_EMAIL`.
+
+**Einstellungen der Oberfläche und der Eingabegrenzen.** Alle Werte haben eine Voreinstellung und Grenzen; ein ungültiger Wert legt nichts lahm: Es gilt die Voreinstellung oder die nächste Grenze, und eine Warnung im Log nennt die Variable. Die Grenzen der Textfelder passen zu den Spalten der Datenbank. Alle Variablen stehen mit Erklärung in [`.env.example`](.env.example).
+
+| Variable | Voreinstellung | Wirkung |
+|---|---|---|
+| `SWAYY_UI_TOAST_MS` | `3200` | Anzeigedauer von Hinweisen wie „Gespeichert“ in Millisekunden (1000 bis 20000) |
+| `SWAYY_UI_RELOAD_DELAY_MS` | `1200` | Wartezeit vor dem Neuladen nach Änderungen an Navigation oder Aufbau in Millisekunden (0 bis 10000) |
+| `SWAYY_UI_PREVIEW_DELAY_MS` | `400` | Wartezeit nach der letzten Eingabe, bevor die Vorschau der Öffnungszeiten neu rechnet, in Millisekunden (100 bis 3000) |
+| `SWAYY_UI_DEFAULT_BRAND_COLOR` | `#0f766e` | Markenfarbe, solange ein Betrieb keine eigene gewählt hat (`#rrggbb`) |
+| `SWAYY_UI_DEFAULT_STAFF_COLOR` | `#0f766e` | Farbe, die „Person hinzufügen“ im Salon vorschlägt (`#rrggbb`) |
+| `SWAYY_UI_DEFAULT_LABEL_COLOR` | `#6b7280` | Farbe für neue Tags und Leistungen (`#rrggbb`) |
+| `SWAYY_UI_WIDGET_LABEL_MAX` | `40` | Längster Text auf dem Buchungsknopf und dem Link für die eigene Website in Zeichen (10 bis 100) |
+| `SWAYY_UI_TAG_NAME_MAX` | `40` | Längster Name eines Tags in Zeichen (10 bis 255) |
+| `SWAYY_NAV_MOBILE_BAR_MAX` | `4` | Einträge in der unteren Leiste auf dem Smartphone, dazu kommt „Mehr“ (1 bis 4) |
+| `SWAYY_NAV_HEADING_MIN_ITEMS` | `2` | Sichtbare Einträge, ab denen eine Gruppe der Navigation ihre Überschrift zeigt (1 bis 10) |
+| `SWAYY_SUPPORT_EMAIL` | `info@swayy.de` | Adresse, die die Fehlerseiten und die Hinweise für Rückfragen nennen |
+| `SWAYY_DONT_FLASH` | `api_key,secret_key,webhook_secret,client_id,secret,token,cap-token` | Felder, die nach einer abgelehnten Eingabe nie in der Sitzung landen (Komma-Liste von Namen); `password`, `password_confirmation`, `current_password` und die Zugangsdaten `api_key`, `secret_key`, `webhook_secret`, `client_id`, `secret` sind immer dabei, `-` lässt nur diese festen |
+| `SWAYY_PASSWORD_MIN_LENGTH` | `10` | Mindestlänge neuer Passwörter (8 bis 64), zusätzlich Buchstaben und Ziffern; gilt bei Registrierung, Einladung, Zurücksetzen, „Mein Konto“, Plattform-Benutzern und `swayy:create-admin` |
+| `SWAYY_PASSWORD_CHANGE_PER_MINUTE` | `6` | Versuche je Konto und Minute, unter „Mein Konto“ das Passwort zu ändern (3 bis 30) |
+| `SWAYY_AUDIT_PER_PAGE` | `100` | Einträge je Seite im Protokoll (10 bis 500) |
+| `SWAYY_AUDIT_SEARCH_MAX` | `100` | Längster Suchtext im Protokoll in Zeichen (20 bis 200) |
+| `SWAYY_IMPORT_MAX_KB` | `20480` | Größte Datei für „Daten einspielen“ in KB (1024 bis 20480; mehr lassen PHP und nginx nicht durch) |
+| `SWAYY_API_TOKEN_NAME_MAX` | `80` | Längster Name eines API-Schlüssels in Zeichen (10 bis 255) |
+
+**Standorte und Logo:**
+
+| Variable | Voreinstellung | Wirkung |
+|---|---|---|
+| `SWAYY_DEFAULT_TIMEZONE` | `Europe/Berlin` | Zeitzone, die „Neuer Standort“ vorschlägt (gültige Zeitzone) |
+| `SWAYY_LOCATION_INTRO_MAX` | `1000` | Längste Begrüßung auf der Buchungsseite in Zeichen (100 bis 5000) |
+| `SWAYY_LOGO_MAX_KB` | `3072` | Größte Datei für ein Standort-Logo in KB (64 bis 10240) |
+| `SWAYY_LOGO_TYPES` | `jpg,jpeg,png,webp` | Erlaubte Dateiendungen für Logos, durch Komma getrennt (`jpg`, `jpeg`, `png`, `webp`, `gif`) |
+| `SWAYY_LOGO_DIRECTORY` | `logos` | Ordner für Logos auf dem Speicher „public“ (Kleinbuchstaben, Ziffern, `-` und `_`) |
+
+**Öffnungszeiten und Ausnahmen:**
+
+| Variable | Voreinstellung | Wirkung |
+|---|---|---|
+| `SWAYY_OPENING_HOURS_WINDOWS_PER_DAY_MAX` | `6` | Zeitfenster je Wochentag; die Woche nimmt höchstens das Siebenfache an (1 bis 12) |
+| `SWAYY_OPENING_HOURS_NAME_MAX` | `60` | Länge der Bezeichnung eines Zeitfensters (10 bis 120; die Spalte fasst 255) |
+| `SWAYY_OPENING_HOURS_SEASON_LABEL_MAX` | `60` | Länge der Bezeichnung einer Saison (10 bis 60; die Spalte fasst 60) |
+| `SWAYY_OPENING_HOURS_PREVIEW_GROUPS_MAX` | `8` | Zeilen mit abweichender Dauer in der Vorschau (1 bis 30) |
+| `SWAYY_EXCEPTIONS_MAX_DAYS` | `93` | Längster Zeitraum einer Ausnahme in Tagen (1 bis 366) |
+| `SWAYY_EXCEPTIONS_WINDOWS_MAX` | `6` | Zeitfenster bei „Andere Öffnungszeiten“ (1 bis 12) |
+| `SWAYY_EXCEPTIONS_LABEL_MAX` | `120` | Länge der Bezeichnung einer Ausnahme (20 bis 200; die Spalten fassen 255) |
+| `SWAYY_EXCEPTIONS_COVERS_MAX` | `10000` | Obergrenze für „Weniger Gäste“ (1 bis 32767; die Spalte ist `smallint`) |
+| `SWAYY_EXCEPTIONS_PAST_MONTHS` | `12` | Monate zurück, die die Liste „Vergangen“ zeigt (1 bis 60) |
+
+**Kapazität, Dauer und Buchungsregeln:**
+
+| Variable | Voreinstellung | Wirkung |
+|---|---|---|
+| `SWAYY_BOOKING_SLOT_INTERVALS` | `15,30,60` | Auswahl für den Takt der Uhrzeiten in Minuten, durch Komma getrennt (je 5 bis 240) |
+| `SWAYY_BOOKING_DURATION_MIN` | `30` | Kleinste Standarddauer eines Besuchs in Minuten (5 bis 240) |
+| `SWAYY_BOOKING_DURATION_MAX` | `480` | Größte Standarddauer eines Besuchs in Minuten (60 bis 1440) |
+| `SWAYY_BOOKING_BUFFER_MAX` | `120` | Längster Puffer nach einer Buchung in Minuten (0 bis 480) |
+| `SWAYY_BOOKING_DURATION_RULES_MAX` | `20` | Höchstzahl der Tischzeiten je Gruppengröße (1 bis 50) |
+| `SWAYY_BOOKING_RULE_DURATION_MIN` | `15` | Kürzeste Tischzeit einer Regel in Minuten (5 bis 240) |
+| `SWAYY_BOOKING_RULE_DURATION_MAX` | `600` | Längste Tischzeit einer Regel in Minuten (60 bis 1440) |
+| `SWAYY_BOOKING_RULE_PARTY_MAX` | `100` | Größte Gruppe einer Tischzeit-Regel (1 bis 100; jeder Buchungsweg nimmt höchstens 100 Personen an) |
+| `SWAYY_BOOKING_COVERS_MAX` | `2000` | Größte Zahl für „Höchstens gleichzeitig“ in Gästen (1 bis 32767) |
+| `SWAYY_BOOKING_LEAD_MAX` | `10080` | Längster Mindestvorlauf in Minuten (0 bis 32767) |
+| `SWAYY_BOOKING_ADVANCE_MAX` | `730` | So viele Tage im Voraus ist höchstens buchbar (1 bis 1825) |
+| `SWAYY_BOOKING_DEADLINE_MAX` | `20160` | Längste Storno- und Umbuchungsfrist in Minuten (0 bis 32767) |
+| `SWAYY_BOOKING_PARTY_ONLINE_MAX` | `100` | Größte Gruppe, die online buchen kann (1 bis 100) |
+
+**Benachrichtigungen, Vorlagen und SMS:**
+
+| Variable | Voreinstellung | Wirkung |
+|---|---|---|
+| `SWAYY_REMINDER_HOURS_MIN` | `1` | Früheste Erinnerung an Gäste, Stunden vor dem Besuch (1 bis 24) |
+| `SWAYY_REMINDER_HOURS_MAX` | `168` | Späteste Erinnerung an Gäste, Stunden vor dem Besuch (24 bis 720) |
+| `SWAYY_FEEDBACK_HOURS_MIN` | `1` | Früheste Feedback-Anfrage, Stunden nach dem Besuch (1 bis 24) |
+| `SWAYY_FEEDBACK_HOURS_MAX` | `336` | Späteste Feedback-Anfrage, Stunden nach dem Besuch (24 bis 720) |
+| `SWAYY_FEEDBACK_URL_MAX` | `255` | Längster Link zum Bewertungsportal in Zeichen (30 bis 255; die Spalte fasst 255) |
+| `SWAYY_FEEDBACK_LOOKBACK_GRACE_DAYS` | `7` | Tage Luft für Ausfälle von Scheduler oder Queue: Feedback-Anfragen gehen an Besuche, die höchstens `SWAYY_FEEDBACK_HOURS_MAX` Stunden (auf ganze Tage aufgerundet) plus diese Tage zurückliegen (0 bis 30) |
+| `SWAYY_OWNER_EMAIL_MAX` | `200` | Längste Adresse für die Info an den Betrieb in Zeichen (50 bis 255) |
+| `SWAYY_TEMPLATE_SUBJECT_MAX` | `200` | Längster Betreff einer Mailvorlage in Zeichen (20 bis 255) |
+| `SWAYY_TEMPLATE_BODY_MAX` | `5000` | Längster Text einer Mailvorlage in Zeichen (500 bis 20000) |
+| `SWAYY_SMS_SENDER_ID_MAX` | `16` | Längste Absenderkennung aus Ziffern (Rufnummer) beim SMS-Versand über seven.io (3 bis 16) |
+| `SWAYY_SMS_SENDER_ID_TEXT_MAX` | `11` | Längste Kennung mit Buchstaben, höchstens so lang wie die Rufnummer (3 bis 16) |
+| `SWAYY_SMS_API_KEY_MAX` | `255` | Längster API-Key für seven.io in Zeichen (32 bis 1000) |
+
+**Zahlungen und Anzahlungen:**
+
+| Variable | Voreinstellung | Wirkung |
+|---|---|---|
+| `SWAYY_PAYMENT_SECRET_MAX` | `255` | Längster einzelner Schlüssel eines Zahlungsanbieters (Secret Key, Webhook-Secret, Client-ID, Secret) in Zeichen (32 bis 1000) |
+| `SWAYY_DEPOSIT_AMOUNT_MAX` | `10000` | Höchster Betrag pro Person und höchster Grundbetrag einer Anzahlungsregel in Euro (10 bis 212622; Grundbetrag plus Betrag pro Person mal 100 Personen passt in die Spalten der Buchung) |
+| `SWAYY_DEPOSIT_DEADLINE_MIN` | `10` | Kürzeste Zahlungsfrist einer Regel in Minuten (5 bis 120) |
+| `SWAYY_DEPOSIT_DEADLINE_MAX` | `10080` | Längste Zahlungsfrist einer Regel in Minuten (60 bis 32767) |
+| `SWAYY_DEPOSIT_DEADLINE_DEFAULT` | `60` | Zahlungsfrist ohne Angabe in Minuten (5 bis 32767, begrenzt auf den Bereich von kürzester bis längster) |
+| `SWAYY_DEPOSIT_PARTY_SIZE_MAX` | `100` | Größte Personenzahl, ab der eine Regel gilt (2 bis 100) |
+| `SWAYY_DEPOSIT_NAME_MAX` | `120` | Längster Name einer Anzahlungsregel in Zeichen (20 bis 255) |
+
+**Räume, Tische, Leistungen und Mitarbeiter:**
+
+| Variable | Voreinstellung | Wirkung |
+|---|---|---|
+| `SWAYY_TABLE_CAPACITY_MAX` | `50` | Größte Platzzahl eines Tisches (1 bis 255) |
+| `SWAYY_ROOM_SIZE_MAX_M` | `300` | Größte Breite und Tiefe eines Raums im Tischplan in Metern (10 bis 327; die Spalten fassen 32767 Einheiten zu je 1 cm) |
+| `SWAYY_TABLE_NAME_MAX` | `40` | Längster Name eines Tisches in Zeichen (10 bis 255) |
+| `SWAYY_ROOM_NAME_MAX` | `80` | Längster Name eines Raums in Zeichen (10 bis 255) |
+| `SWAYY_COMBINATION_NAME_MAX` | `80` | Längster Name einer Tischkombination in Zeichen (10 bis 255) |
+| `SWAYY_SERVICE_DURATION_MIN` | `5` | Kürzeste Dauer einer Leistung im Salon in Minuten (1 bis 60) |
+| `SWAYY_SERVICE_DURATION_MAX` | `480` | Längste Dauer einer Leistung im Salon in Minuten (30 bis 1440) |
+| `SWAYY_SERVICE_PRICE_MAX` | `1000` | Höchster Preis einer Leistung in Euro (1 bis 100000) |
+| `SWAYY_SERVICE_NAME_MAX` | `120` | Längster Name einer Leistung in Zeichen (10 bis 255) |
+| `SWAYY_SERVICE_DESCRIPTION_MAX` | `1000` | Längste Beschreibung einer Leistung in Zeichen (50 bis 5000) |
+| `SWAYY_STAFF_NAME_MAX` | `120` | Längster Name einer Person im Salon in Zeichen (10 bis 255) |
+| `SWAYY_STAFF_BIO_MAX` | `500` | Längste Kurzvorstellung einer Person in Zeichen (50 bis 5000) |
+| `SWAYY_STAFF_HOURS_MAX` | `28` | Die meisten Zeitfenster, die eine Person je Woche haben kann (7 bis 200) |
+| `SWAYY_ABSENCE_REASON_MAX` | `120` | Längster Grund einer Abwesenheit in Zeichen (10 bis 120; die Spalte fasst 120) |
+| `SWAYY_ABSENCE_WINDOW_YEARS` | `10` | Beginn und Ende einer Abwesenheit liegen höchstens so viele Jahre vor oder nach heute (1 bis 100) |
 
 ---
 
@@ -372,7 +510,7 @@ Personenzahl → Datum → verfügbare Uhrzeiten (live via `/slots`-JSON) → Ko
 
 - Bei Ausbuchung: Alternativzeiten am selben Tag, alternative Tage, optional Warteliste.
 - Je nach Standortregel: sofort bestätigt / als Anfrage / Zahlung erforderlich (Deposit-Regel).
-- Pflichtfelder pro Standort konfigurierbar – im Adminbereich unter **Einstellungen → Formularfelder im Buchungswidget**: jedes Feld (E-Mail, Telefon, Anlass, Allergien, Anmerkung) ist auf *Ausgeblendet / Optional / Pflichtfeld* stellbar; die Validierung greift serverseitig.
+- Pflichtfelder pro Standort konfigurierbar – im Adminbereich unter **Einstellungen › Buchungen › Buchungsformular**: jedes Feld (E-Mail, Telefon, Anlass, Allergien, Anmerkung) ist auf *Ausgeblendet / Optional / Pflichtfeld* stellbar; die Validierung greift serverseitig.
 - **Einbetten auf der eigenen Website:**
   ```html
   <div id="swayy-widget"></div>
@@ -386,7 +524,7 @@ Personenzahl → Datum → verfügbare Uhrzeiten (live via `/slots`-JSON) → Ko
 
 ## API
 
-REST-API unter `/api/v1`, Auth via Sanctum-Bearer-Token. Tokens werden im Adminbereich (`/admin/api-tokens`) erstellt, sind **tenant-gebunden** und tragen Scopes:
+REST-API unter `/api/v1`, Auth via Sanctum-Bearer-Token. Tokens werden im Adminbereich unter *Einstellungen › Verbindungen › API-Schlüssel* (`/admin/api-tokens`) erstellt, sind **tenant-gebunden** und tragen Scopes:
 
 `reservations:read|write`, `guests:read|write`, `availability:read`, `waitlist:write`, `events:read|write`, `webhooks:manage`, `reports:read`
 
@@ -413,7 +551,7 @@ Rate Limit: 120 Requests/Minute pro Token. Der Telefon-/AI-Assistent (vorbereite
 
 ## Webhooks
 
-Endpoints pro Tenant. **Verwaltung im Admin unter `/admin/webhooks`** (Recht `webhooks.manage`): anlegen, Ereignisse auswählen, **Testereignis** senden, Secret neu erzeugen, pausieren/reaktivieren, Zustellprotokoll der letzten Versuche (Voreinstellung 25). Alternativ per REST-API (`POST /api/v1/webhooks`, Scope `webhooks:manage`) – dieselben Endpunkte.
+Endpoints pro Tenant. **Verwaltung im Admin unter *Einstellungen › Verbindungen › Webhooks*** (`/admin/webhooks`, Recht `webhooks.manage`): anlegen, Ereignisse auswählen, **Testereignis** senden, Secret neu erzeugen, pausieren/reaktivieren, Zustellprotokoll der letzten Versuche (Voreinstellung 25). Alternativ per REST-API (`POST /api/v1/webhooks`, Scope `webhooks:manage`) – dieselben Endpunkte.
 
 Events: `reservation.created|confirmed|updated|cancelled|seated|completed|no_show`, `waitlist.created|offered|accepted`, `event.booking_created`, `payment.succeeded`, `feedback.received` — oder `*` für alle.
 
@@ -432,6 +570,7 @@ Events: `reservation.created|confirmed|updated|cancelled|seated|completed|no_sho
 | `SWAYY_WEBHOOK_DISABLE_AFTER` | `20` | Gescheiterte Ereignisse in Folge, nach denen sich ein Endpunkt abschaltet (1 bis 1000) |
 | `SWAYY_WEBHOOK_RESPONSE_LIMIT` | `2000` | Zeichen der Antwort einer Gegenstelle, die das Zustellprotokoll aufbewahrt (0 bis 10000) |
 | `SWAYY_WEBHOOK_LOG_ENTRIES` | `25` | Einträge, die das Zustellprotokoll auf der Webhook-Seite zeigt (1 bis 500) |
+| `SWAYY_WEBHOOK_URL_MAX` | `255` | Längste Adresse eines Endpunkts in Zeichen (30 bis 255; die Spalte fasst 255) |
 
 Ein ungültiger Wert legt nichts lahm: Es gilt die Voreinstellung oder die nächste Grenze, und eine Warnung im Log nennt die Variable.
 
@@ -462,13 +601,13 @@ Preise werden in Minor Units gespeichert; `payment_status = required` markiert o
 
 ## Zahlungen (Stripe)
 
-**Konfiguration** unter *Einstellungen → Zahlungen: Stripe* (Recht `integrations.manage`): Secret Key (`sk_…`) und Webhook-Signing-Secret (`whsec_…`) eintragen — verschlüsselt gespeichert, nie wieder angezeigt. In Stripe die Webhook-URL `https://…/webhooks/stripe` mit den Events `checkout.session.completed` und `checkout.session.expired` hinterlegen. Voraussetzung: Tarif-Feature `deposits_enabled`.
+**Konfiguration** unter *Einstellungen › Zahlungen › Zahlungsanbieter* (Recht `integrations.manage`): Secret Key (`sk_…`) und Webhook-Signing-Secret (`whsec_…`) eintragen — verschlüsselt gespeichert, nie wieder angezeigt. In Stripe die Webhook-URL `https://…/webhooks/stripe` mit den Events `checkout.session.completed` und `checkout.session.expired` hinterlegen. Voraussetzung: Tarif-Feature `deposits_enabled`.
 
 **Zwei Wege zur Bestätigung.** Der Rücksprung von Stripe (`/pay/stripe/return/{intent}?session_id=…`) fragt die Sitzung über die API ab und schließt die Zahlung selbst ab; der Webhook ist die zweite Spur für den Fall, dass der Gast den Tab vorher schließt. `handlePaid()` ist idempotent, doppelte Meldungen sind also harmlos. Ob der Endpunkt in Stripe wirklich existiert, kann die Anwendung nicht abfragen — deshalb protokolliert der Webhook-Handler `payment.webhook_received` im Auditlog, und die Einstellungsseite zeigt an, wann sich der Webhook zuletzt gemeldet hat (oder dass noch nie einer ankam). Bei PayPal erledigt der Rücksprung die Erfassung ohnehin allein.
 
 **Event-Vorauszahlungen:** Eventbuchungen mit Preis erhalten in Bestätigungsmail und auf der Verwaltungsseite einen „Jetzt bezahlen"-Button → Stripe Checkout (gehostet, **keine Kartendaten im System**). Nach Zahlungseingang setzt der signierte Webhook die Buchung auf `paid`.
 
-**Reservierungs-Deposits (No-Show-Schutz):** Unter *Einstellungen → Anzahlungsregeln* legst du fest, ab welcher Personenzahl/Uhrzeit eine Anzahlung fällig ist (Betrag pro Person, Zahlungsfrist). Online-Reservierungen, die eine Regel treffen, starten als `payment_pending` mit Zahlungslink; nach Zahlung bestätigt der Webhook die Reservierung automatisch.
+**Reservierungs-Deposits (No-Show-Schutz):** Unter *Einstellungen › Zahlungen › Anzahlungen* legst du fest, ab welcher Personenzahl/Uhrzeit eine Anzahlung fällig ist (Betrag pro Person, Zahlungsfrist). Online-Reservierungen, die eine Regel treffen, starten als `payment_pending` mit Zahlungslink; nach Zahlung bestätigt der Webhook die Reservierung automatisch.
 
 Den offenen Zahlungen widmet sich `App\Jobs\ExpireUnpaidReservations` (Scheduler, alle 5 Minuten):
 
@@ -518,7 +657,21 @@ Schlüssel, je mindestens 32 Zeichen) und denselben Schlüssel im Panel unter
 SaaS-Dienste eintragen. `PANEL_BASE_URL` öffnet den Rückweg „Tarif und
 Rechnungen“, `PANEL_ORDER_URL` leitet `/register` auf die Bestellseite des
 Panels. Alle Einstellungen mit Vorgaben und Grenzen stehen in `.env.example`
-und `config/provisioning.php`.
+und `config/provisioning.php`:
+
+| Variable | Voreinstellung | Wirkung |
+|---|---|---|
+| `PROVISIONING_KEYS` | leer | Ein oder zwei Schlüssel, je mindestens 32 Zeichen, durch Komma; der erste signiert auch den Rückweg ins Panel. Ohne Schlüssel ist die Schnittstelle aus |
+| `PROVISIONING_SERVICE_CODE` | `swayy` | Name dieses Dienstes im Panel (`a–z`, `0–9`, `-`; höchstens 40 Zeichen) |
+| `PROVISIONING_MAX_SKEW_SECONDS` | `300` | Erlaubte Abweichung des Zeitstempels in Sekunden (30 bis 3600) |
+| `PROVISIONING_IDEMPOTENCY_DAYS` | `7` | So viele Tage merkt sich Swayy die Antwort auf einen Aufruf (1 bis 90) |
+| `PROVISIONING_ALLOWED_NETWORKS` | leer | IP-Netze, aus denen das Panel aufrufen darf (CIDR, Komma); leer erlaubt alle |
+| `PROVISIONING_MAX_FAILURES` | `10` | Fehlversuche mit falscher Signatur je Absender, danach gilt die Sperre (1 bis 100) |
+| `PROVISIONING_LOCK_SECONDS` | `900` | Dauer der Sperre in Sekunden (60 bis 86400) |
+| `PROVISIONING_CLEANUP_TIME` | `04:40` | Uhrzeit für das tägliche Aufräumen von Aufrufkennungen und Anmeldelinks (`HH:MM`) |
+| `LOGIN_LINK_SECONDS` | `120` | Gültigkeit des Anmeldelinks aus „Zum Dienst“ in Sekunden (30 bis 900) |
+| `PANEL_BASE_URL` | leer | Adresse des Kundenpanels (`https://…`) für den Rückweg „Tarif und Rechnungen“ |
+| `PANEL_ORDER_URL` | leer | Bestellseite des Panels; ist sie gesetzt, leitet `/register` dorthin, leer bleibt die eigene Registrierung |
 
 **Was sich für einen Betrieb mit Vertrag ändert:**
 
@@ -592,7 +745,7 @@ Sicherheit: Mandats-Einrichtung als „genau-einmal“-Flow per `lockForUpdate` 
 
 ## Newsletter (MailWizz)
 
-Konfiguration im Adminbereich unter **Einstellungen → Newsletter: MailWizz** (Recht `integrations.manage`):
+Konfiguration im Adminbereich unter **Einstellungen › Verbindungen › Newsletter** (Recht `integrations.manage`):
 
 1. API-URL (z. B. `https://news.example.com/api`), API-Key und Listen-UID eintragen – die Verbindung wird beim Speichern sofort getestet.
 2. Credentials werden **verschlüsselt** gespeichert (`integration_connections`, Laravel Crypt); der API-Key wird nach dem Speichern nie wieder angezeigt.
@@ -608,6 +761,9 @@ Ohne konfigurierte Integration wird die Einwilligung nur gespeichert – es geht
 | `SWAYY_NEWSLETTER_TIMEOUT` | `10` | Wartezeit je Anfrage an MailWizz in Sekunden, auch beim Verbindungstest (1 bis 60) |
 | `SWAYY_NEWSLETTER_TRIES` | `3` | Versuche je Übertragung eines Gastes (1 bis 10) |
 | `SWAYY_NEWSLETTER_BACKOFF` | `60,600` | Wartezeiten zwischen den Versuchen in Sekunden; der letzte Wert gilt für alle weiteren (je 1 bis 86400) |
+| `SWAYY_NEWSLETTER_API_URL_MAX` | `255` | Längste API-URL der Seite „Newsletter“ in Zeichen (30 bis 2000) |
+| `SWAYY_NEWSLETTER_API_KEY_MAX` | `255` | Längster API-Key in Zeichen (32 bis 1000) |
+| `SWAYY_NEWSLETTER_LIST_UID_MAX` | `64` | Längste Listen-UID in Zeichen (8 bis 255); die drei Angaben liegen verschlüsselt in einem Textfeld der Datenbank, die Höchstwerte passen zusammen hinein |
 
 Ein ungültiger Wert legt nichts lahm: Eine Zahl außerhalb der Grenzen gilt als nächste Grenze, alles andere als Voreinstellung, und eine Warnung im Log nennt die Variable.
 
@@ -778,13 +934,31 @@ MAIL_FROM_ADDRESS="no-reply@example.com"
 MAIL_FROM_NAME="Swayy"
 ```
 
-**Antworten von Gästen:** Alle Mails an Gäste gehen mit `MAIL_FROM_ADDRESS` als Absender (SPF/DKIM bleiben passend), zeigen aber den Namen des Betriebs und tragen dessen Antwortadresse als Reply-To. Antwortet ein Gast, landet die Mail direkt beim Betrieb, ohne eigenes SMTP je Betrieb. Der Betrieb pflegt Absendername und Antwortadresse unter *Einstellungen › Allgemein › E-Mails an Gäste*. Ohne eigene Angabe gelten die Ersatzlisten:
+**Antworten von Gästen:** Alle Mails an Gäste gehen mit `MAIL_FROM_ADDRESS` als Absender (SPF/DKIM bleiben passend), zeigen aber den Namen des Betriebs und tragen dessen Antwortadresse als Reply-To. Antwortet ein Gast, landet die Mail direkt beim Betrieb, ohne eigenes SMTP je Betrieb. Der Betrieb pflegt Absendername und Antwortadresse unter *Einstellungen › Gästekommunikation › Absender & Antworten*. Ohne eigene Angabe gelten die Ersatzlisten:
 
 | Variable | Voreinstellung | Wirkung |
 |---|---|---|
 | `SWAYY_GUEST_MAIL_REPLY_TO_FALLBACKS` | `location_email,owner_notification_email` | Ersatz für die Antwortadresse, in dieser Reihenfolge; `-` für keinen |
 | `SWAYY_GUEST_MAIL_FROM_NAME_FALLBACKS` | `location_name,tenant_name` | Ersatz für den Absendernamen; ohne Treffer gilt `MAIL_FROM_NAME` |
 | `SWAYY_GUEST_MAIL_OWNER_REPLY_TO_GUEST` | `true` | Benachrichtigung über eine neue Buchung: Antworten des Betriebs gehen direkt an den Gast |
+| `SWAYY_GUEST_MAIL_FROM_NAME_MAX` | `100` | Längster Absendername in Zeichen (10 bis 255; die Spalte fasst 255) |
+| `SWAYY_GUEST_MAIL_REPLY_TO_MAX` | `200` | Längste Antwortadresse in Zeichen (30 bis 255; die Spalte fasst 255) |
+
+**Gestaltung der Mails:** Alle Mails teilen einen Rahmen mit Überschrift, Tabelle für Angaben, Knöpfen und Fußbereich (`mail:vorschau` zeigt sie an). Diese Einstellungen steuern ihn und die Gültigkeit der Links:
+
+| Variable | Voreinstellung | Wirkung |
+|---|---|---|
+| `SWAYY_MAIL_OWNER_ADDRESS` | `du` | Anrede in Mails an Betriebe und in Swayy-Mails: `du` oder `Sie` |
+| `SWAYY_MAIL_POWERED_BY` | `true` | „Reserviert mit Swayy“ im Fußbereich der Gast-Mails: `true` oder `false` |
+| `SWAYY_MAIL_LOGO_MAX_KB` | `200` | Größte Logodatei, die in eine Mail eingebettet wird, in KB (16 bis 1024) |
+| `SWAYY_MAIL_LOGO_HEIGHT` | `44` | Anzeigehöhe des Logos in px (24 bis 96) |
+| `SWAYY_MAIL_CONTRAST_MIN` | `4.5` | Mindestkontrast für Knopftext und Links (3,0 bis 7,0) |
+| `SWAYY_MAIL_DETAILS_MIN_ROWS` | `2` | Zeilen „Bezeichnung: Wert“, ab denen ein Absatz zur Tabelle wird (1 bis 6) |
+| `SWAYY_MAIL_LABEL_MAX` | `40` | Längste Bezeichnung in einer solchen Zeile in Zeichen (10 bis 80) |
+| `SWAYY_MAIL_BUTTON_LABEL_MAX` | `60` | Längste Knopfbeschriftung in Zeichen (20 bis 120) |
+| `SWAYY_GUEST_LOGIN_LINK_MINUTES` | `60` | Gültigkeit des Anmeldelinks für Gäste in Minuten (10 bis 1440) |
+| `SWAYY_GUEST_VERIFY_LINK_MINUTES` | `1440` | Gültigkeit des Bestätigungslinks einer Buchung in Minuten (60 bis 10080) |
+| `SWAYY_BILLING_CONFIRM_HOURS` | `72` | Gültigkeit des Bestätigungslinks einer Tarifanfrage in Stunden (1 bis 336) |
 
 Zum lokalen Testen ohne echten Versand: `MAIL_MAILER=log` → Mails landen in `storage/logs/laravel.log`. Vorlagen liegen als Defaults im `NotificationTemplateRenderer` und sind pro Tenant/Standort über die Tabelle `notification_templates` überschreibbar (Platzhalter: `{guest_name}`, `{reservation_date}`, `{cancel_link}`, …).
 

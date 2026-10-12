@@ -1,100 +1,181 @@
-# Öffnungszeiten, Sonderzeiten und Sperrzeiten
+# Öffnungszeiten, Ausnahmen und Buchungsregeln
 
-Diese drei bestimmen zusammen, wann überhaupt gebucht werden kann. Sie greifen
-in dieser Reihenfolge ineinander.
+Öffnungszeiten, Ausnahmen und Regeln bestimmen zusammen, wann überhaupt gebucht
+werden kann. Sie greifen in dieser Reihenfolge ineinander. Alle Seiten gelten
+für den Standort, der oben in der Auswahl steht.
 
 ## 1. Öffnungszeiten (der Normalfall)
 
-Pro Wochentag ein oder mehrere Zeitfenster, unter **Einstellungen → Zeiten**.
-Zwei Fenster am Tag sind üblich (Mittag/Abend); die Lücke dazwischen ist dann
-nicht buchbar.
+**Einstellungen › Platz & Zeiten › Öffnungszeiten.** Der Abschnitt „Reguläre
+Woche“ zeigt jeden Wochentag mit einem Schalter **Geöffnet**:
 
-Optional kannst du einem Fenster einen Namen geben („Mittagstisch") – nur zur
-Übersicht für euch.
+- Ein ausgeschalteter Tag ist geschlossen. Gäste finden dort keine Uhrzeit.
+- Ein eingeschalteter Tag hat ein oder mehrere **Zeitfenster** mit „Öffnet“ und
+  „Schließt“. Mit **Zeitfenster hinzufügen** kommt ein weiteres dazu. Zwei
+  Fenster am Tag sind üblich (Mittag/Abend); die Lücke dazwischen ist dann nicht
+  buchbar.
+- Optional gibst du einem Fenster eine **Bezeichnung** („Mittagstisch“), zur
+  Übersicht für euch.
+- Über Mitternacht funktioniert: 18:00–01:00 ist ein Fenster. Ein Hinweis unter
+  dem Fenster bestätigt das.
 
-Über Mitternacht funktioniert: 18:00–01:00 ist ein Fenster, kein Fehler.
+Mit **Auf andere Tage übertragen…** kopierst du die Fenster eines Tages auf
+beliebige andere Tage. Zwei Schnellwahlen helfen dabei: „Mo–Fr“ und „Alle Tage“.
+Die kopierten Fenster ersetzen die Fenster der gewählten Tage. Gespeichert wird
+erst über die Speicherleiste mit **Speichern**; **Verwerfen** nimmt alles zurück.
 
-## 2. Sonderöffnungszeiten (die Ausnahme an einem Datum)
+### Die Vorschau „So sehen Gäste es“
 
-Für einzelne Tage: **abweichende Zeiten** oder **geschlossen**.
+Neben der Woche zeigt die Vorschau, was die Buchungsseite anbietet. Sie rechnet
+mit den Zeiten im Formular, auch bevor du speicherst. Du siehst die angebotenen
+Uhrzeiten eines Tages und die **letzte Uhrzeit** je Fenster. Die letzte Uhrzeit
+liegt so weit vor dem Schließen, wie ein Besuch dauert. Ein Fenster, das für
+einen Besuch zu kurz ist, bekommt einen Hinweis; dann bietet die Seite dort keine
+Uhrzeit an.
 
-Typisch: Heiligabend nur mittags, Feiertag geschlossen, Sonderveranstaltung
-länger offen. Eine Sonderzeit gewinnt immer gegen die normale Öffnungszeit
-dieses Wochentags.
+Sind alle Tage geschlossen, weist die Seite darauf hin: Gäste finden online keine
+Uhrzeit.
+
+### Buchbare Saison
+
+Der Abschnitt „Buchbare Saison“ gilt jedes Jahr, zum Beispiel für eine
+Terrasse, die von April bis Oktober öffnet. Mit **Saison hinzufügen** trägst du
+Beginn und Ende (Tag und Monat) ein, optional mit Bezeichnung. Ohne Eintrag ist
+das ganze Jahr buchbar. Außerhalb der Saison nimmt die Buchungsseite keine
+Buchungen an und zeigt, ab wann es wieder losgeht.
+
+## 2. Ausnahmen (ein Tag oder Zeitraum ist anders)
+
+**Einstellungen › Platz & Zeiten › Ausnahmen.** Hier steht alles, was an
+bestimmten Tagen anders ist: Feiertage, Betriebsferien, besondere
+Öffnungszeiten, weniger Plätze, gesperrte Räume oder Tische. Die Liste zeigt
+„Kommend“ nach Monaten und darunter „Vergangen“.
+
+Mit **Ausnahme anlegen** öffnet sich die Seitenleiste:
+
+- **Von** und **Bis**: der Zeitraum. Ohne „Bis“ gilt die Ausnahme für einen
+  einzelnen Tag. Der letzte Tag liegt heute oder später, und ein Zeitraum hat
+  eine Höchstlänge (Vorgabe 93 Tage).
+- **Bezeichnung**: ein Name wie „Betriebsferien“.
+- **Was ist anders?** – du wählst eine oder mehrere Wirkungen:
+  - **Geschlossen**: Niemand kann online buchen. „Geschlossen“ steht für sich
+    allein und lässt sich nicht mit einer anderen Wirkung verbinden.
+  - **Andere Öffnungszeiten**: An diesen Tagen gelten nur die Zeitfenster, die
+    du einträgst, etwa kürzer an Heiligabend. Mehrere Fenster ergeben eine Pause
+    dazwischen.
+  - **Weniger Gäste** (Restaurant): Höchstens so viele Gäste gleichzeitig, für
+    den ganzen Betrieb oder nur für einen Raum, optional in einem Zeitfenster
+    des Tages. Gut, wenn eine Gesellschaft die halbe Küche bindet.
+  - **Räume oder Tische sperren** (Restaurant): Du hakst ganze Räume oder
+    einzelne Tische an, optional mit Uhrzeiten.
+- **Uhrzeiten** bei „Weniger Gäste“ und beim Sperren: Beginn und Ende, beide
+  leer für den ganzen Tag.
+
+Im Fuß der Seitenleiste steht **So wirkt es**: ein Satz, der beschreibt, was
+Gäste erleben, zum Beispiel wann sie noch buchen können. Er ändert sich mit
+deinen Eingaben und zeigt Fehler, bevor du speicherst.
+
+**Gruppen:** Eine Ausnahme mit mehreren Wirkungen, etwa Betriebsferien mit
+„Geschlossen“ und gesperrter Terrasse, bleibt ein Eintrag. Du bearbeitest und
+löschst sie gemeinsam. Ältere Sondertage, Sperrzeiten und Tischsperren aus der
+Zeit vor dieser Seite stehen einzeln in der Liste. Sie lassen sich löschen, und
+wo das Formular sie abbilden kann, auch bearbeiten.
+
+**Bestehende Reservierungen bleiben.** Eine Ausnahme storniert nichts. Liegen im
+Zeitraum schon Reservierungen (im Salon Termine), nennt die Meldung nach dem
+Speichern ihre Zahl. Informiere die Gäste bei Bedarf selbst. Eine Tischsperre
+lehnt Swayy ab, solange auf dem Tisch eine Reservierung liegt (siehe
+*Tischplan*).
 
 Trag Feiertage und Betriebsferien **im Voraus** ein. Der häufigste peinliche
 Fehler ist eine Onlinebuchung für einen Tag, an dem gar niemand da ist.
 
-## 3. Sperrzeiten (ein Zeitraum fällt weg)
+An jedem Datum gilt höchstens eine Ausnahme mit „Geschlossen“ oder „Andere
+Öffnungszeiten“. Liegt auf dem Tag schon eine, nennt die Meldung sie und bittet
+dich, sie zu bearbeiten oder zuerst zu löschen. „Weniger Gäste“ und Sperren
+dürfen sich überlagern.
 
-Für Zeiträume, die quer zu allem liegen: Betriebsfeier, Renovierung, private
-Feier im Nebenraum.
+## 3. Einzelne Tische sperren
 
-Eine Sperrzeit gilt wahlweise für den **ganzen Standort** oder **einen Raum**.
-Und sie kann zweierlei bedeuten:
+Für „dieser eine Tisch, an diesem Abend“ wählst du in einer Ausnahme „Räume oder
+Tische sperren“. Im Tischplan geht es direkt über **„Tisch sperren…“** im Fenster
+des Tisches. Die Reihenfolge ist: Standort → Raum → einzelner Tisch.
 
-- **voll gesperrt** – in diesem Zeitraum geht nichts
-- **Gästezahl begrenzen** – es sind noch Buchungen möglich, aber nur bis zur
-  angegebenen Anzahl Gäste. Gut, wenn eine Gesellschaft die halbe Küche bindet.
+## 4. Kapazität & Dauer
 
-## 4. Einzelne Tische sperren
+**Einstellungen › Platz & Zeiten › Kapazität & Dauer.**
 
-Für „dieser eine Tisch, an diesem Abend" gibt es die Tischsperre – siehe
-*Tischplan*. Sie ist die feinste Stufe: Standort → Raum → einzelner Tisch.
-
-## Die Buchungsregeln
-
-Ebenfalls unter **Einstellungen → Buchungsregeln**. Was sie bewirken:
-
-**Zeitraster** – in welchem Abstand Uhrzeiten angeboten werden (15, 30 oder 60
-Minuten). Kleineres Raster = mehr Auswahl für den Gast, aber zerstückelte
+**Takt der Uhrzeiten** – in welchem Abstand Uhrzeiten angeboten werden (15, 30
+oder 60 Minuten). Kleinerer Takt = mehr Auswahl für den Gast, aber zerstückelte
 Tische.
 
-**Standarddauer** – wie lange ein Tisch als belegt gilt. Zu kurz und ihr steht
-unter Druck; zu lang und der Abend verkauft sich nur einmal.
+**Standarddauer** (Restaurant) – wie lange ein Tisch als belegt gilt. Zu kurz und
+ihr steht unter Druck; zu lang und der Abend verkauft sich nur einmal.
 
-**Tischzeit je Gruppengröße** – dasselbe, aber gestaffelt: 1–2 Personen 75
-Minuten, 3–5 Personen 120, 6–20 Personen 150. Realistischer als ein
-Einheitswert, weil große Runden länger sitzen. Die Bereiche dürfen sich nicht
-überschneiden.
+**Tischzeiten je Gruppengröße** (Restaurant) – dasselbe, aber gestaffelt: 1–2
+Personen 75 Minuten, 3–5 Personen 105, 6–20 Personen 150. Realistischer als ein
+Einheitswert, weil große Runden länger sitzen. Mit „Tischzeit hinzufügen“ legst
+du eine Regel an. Jede Gruppengröße gehört zu höchstens einer Regel, die Bereiche
+überschneiden sich also nie.
 
-**Puffer** – Aufräumzeit zwischen zwei Buchungen am selben Tisch.
+**Puffer nach jeder Buchung** – Aufräumzeit zwischen zwei Buchungen am selben
+Tisch (im Salon zwischen zwei Terminen).
 
-**Vorlaufzeit** – wie kurzfristig online gebucht werden darf. 60 Minuten sind
-üblich; 0 heißt „bis zur letzten Sekunde".
+**Lückenoptimierung** (Salon) – siehe Kapitel *Friseur- und
+Dienstleisterbetrieb*.
 
-**Vorausbuchbar** – wie weit in die Zukunft. 90 Tage sind üblich.
+### Kapazität: Tische oder Plätze?
 
-**Kleinste/größte Gruppe online** – größere Gruppen sollen anrufen? Dann Maximum
-auf 8 und in den Text schreiben, dass es ab 9 Personen telefonisch geht.
-
-**Automatisch bestätigen** – siehe *Einrichtung*. Die folgenreichste
-Einstellung.
-
-**Storno- und Änderungsfrist** – bis wann der Gast selbst darf. Danach nur noch
-über euch.
-
-## Kapazität: Tische oder Plätze?
-
-Zwei Denkweisen:
+Im Restaurant wählst du unter „Wie Swayy die Plätze zählt“ die Zählweise:
 
 - **Nach Tischen** (Standard): Es kann gebucht werden, solange ein passender
   Tisch frei ist. Realistisch für Restaurants.
-- **Nach Plätzen**: Es zählt nur die Gesamtzahl der Gäste pro Zeitfenster.
-  Sinnvoll für offene Konzepte ohne feste Tische.
+- **Nach Personen**: Es zählt die Gesamtzahl der Gäste pro Zeitfenster, bis zur
+  Höchstzahl („Höchstens gleichzeitig“). Sinnvoll für offene Konzepte ohne feste
+  Tische, etwa eine Bar.
+- **Beides**: Es braucht einen passenden Tisch, und die Höchstzahl gilt
+  zusätzlich.
+
+## 5. Buchungsregeln
+
+**Einstellungen › Buchungen › Buchungsregeln.** Was sie bewirken:
+
+**Mindestvorlauf** – wie kurzfristig online gebucht werden darf. 60 Minuten sind
+üblich; 0 heißt „bis zur letzten Sekunde“.
+
+**Vorausbuchung** – wie weit in die Zukunft die Buchungsseite freie Tage zeigt.
+90 Tage sind üblich.
+
+**Kleinste und größte Gruppe** (Restaurant) – größere Gruppen sollen anrufen?
+Dann trag als größte Gruppe zum Beispiel 8 ein und gib unter „Adresse für größere
+Gruppen“ eine Mailadresse an. Gruppen darüber sehen auf der Buchungsseite diese
+Adresse. Lässt du das Feld leer, entfällt der Hinweis.
+
+**Stornofrist und Umbuchungsfrist** – bis wann der Gast selbst darf. Danach geht
+es nur noch über euch.
+
+**Bestätigung** – „Sofort bestätigen“ oder „Von Hand freigeben“, dazu das
+Kästchen „E-Mail-Adresse bestätigen lassen“. Siehe *Einrichtung*. Die
+folgenreichste Einstellung.
+
+**Warteliste und Walk-ins** – ob Gäste auf eine Warteliste kommen, wenn alles
+belegt ist, und ob dein Team Walk-ins im Live-Board erfasst.
 
 ## Wenn nichts angeboten wird
 
 Diese Kette von oben nach unten durchgehen:
 
-1. Öffnungszeit für den Wochentag hinterlegt?
-2. Sonderzeit „geschlossen" für das Datum?
-3. Sperrzeit, die den Zeitraum abdeckt?
-4. Vorlaufzeit – liegt der Termin zu nah?
-5. „Vorausbuchbar" – liegt er zu weit weg?
+1. Öffnungszeit für den Wochentag hinterlegt (Schalter „Geöffnet“) und liegt der
+   Tag in der buchbaren Saison?
+2. Ausnahme „Geschlossen“ für das Datum?
+3. Ausnahme mit „Weniger Gäste“ oder gesperrten Räumen, die den Zeitraum
+   abdeckt?
+4. Mindestvorlauf – liegt der Termin zu nah?
+5. „Vorausbuchung“ – liegt er zu weit weg?
 6. Gruppengröße innerhalb der Online-Grenzen?
 7. Gibt es überhaupt einen Tisch mit passender Kapazität – und ist er „online
-   buchbar"?
+   buchbar“?
 8. Ist er womöglich gesperrt?
 
-In neun von zehn Fällen steckt die Antwort in Punkt 1, 3 oder 7.
+In neun von zehn Fällen steckt die Antwort in Punkt 1, 3 oder 7. Die Vorschau
+„So sehen Gäste es“ unter den Öffnungszeiten zeigt dir Punkt 1 auf einen Blick.

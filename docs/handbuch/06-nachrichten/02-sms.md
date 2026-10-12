@@ -25,14 +25,19 @@ Die SMS kommt **zusätzlich** zur E-Mail-Erinnerung, zur selben Zeit (standardm�
    US-Anbieter.
 2. **Guthaben aufladen** – seven.io arbeitet auf Prepaid-Basis. Ist das Guthaben
    leer, wird nichts mehr verschickt.
-3. **API-Schlüssel eintragen** in Swayy unter **Einstellungen → Integrationen →
-   SMS**. Dazu einen **Absendernamen** (z. B. „Sonne", max. 11 Zeichen).
-4. **SMS-Erinnerung einschalten** – pro Standort unter **Einstellungen →
-   Buchungsregeln**. Das ist bewusst getrennt: Du kannst SMS in einer Filiale
-   nutzen und in der anderen nicht.
+3. **API-Key eintragen** in Swayy unter **Einstellungen › Gästekommunikation ›
+   SMS-Versand** (im Salon: Kundenkommunikation). Dazu eine
+   **Absenderkennung**: bis zu 11 Zeichen (z. B. „Sonne") oder eine Rufnummer
+   mit bis zu 16 Ziffern. Ohne Kennung nimmt seven.io seine Standardkennung.
+   Der Schalter „SMS-Versand einschalten“ steht dort ebenfalls.
+4. **SMS-Erinnerung einschalten** – pro Standort unter **Einstellungen ›
+   Gästekommunikation › Benachrichtigungen**, Abschnitt „Erinnerung“, Kästchen
+   „Erinnerung zusätzlich per SMS“. Das ist bewusst getrennt: Du kannst SMS in
+   einer Filiale nutzen und in der anderen nicht.
 
-In den Einstellungen gibt es einen **Verbindungstest**, der das Guthaben
-abfragt. Wenn der funktioniert, stimmen Schlüssel und Konto.
+Mit **Speichern und Verbindung testen** fragt Swayy das Guthaben ab. Die Seite
+zeigt den **Status** der Anbindung. Wenn der Test gelingt, stimmen Schlüssel und
+Konto; sonst nennt die Seite die Ursache und was du prüfst.
 
 ## Wer bekommt eine SMS?
 
@@ -109,7 +114,8 @@ die automatischen Kampagnen laufen ausschließlich per E-Mail.
 2. SMS-Erinnerung für **diesen Standort** eingeschaltet?
 3. Hat der Gast überhaupt eine Mobilnummer hinterlegt?
 4. Ist die Erinnerung überhaupt fällig (Zeitpunkt bereits vorbei)?
-5. Absendername korrekt (max. 11 Zeichen, keine Sonderzeichen)?
+5. Absenderkennung korrekt (höchstens 11 Zeichen oder eine Rufnummer mit bis zu
+   16 Ziffern)?
 
 Fehlgeschlagene Versuche werden protokolliert – frag im Zweifel den, der die
 Systemprotokolle einsehen kann.

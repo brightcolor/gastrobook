@@ -32,8 +32,8 @@ Leitungsstoff.
 5. Gäste (Kundenkartei)
 
 **Buchungen von außen**
-1. Buchungsseite und Website-Widget
-2. Öffnungszeiten, Sonderzeiten und Sperrzeiten
+1. Buchungsseite und Widget
+2. Öffnungszeiten, Ausnahmen und Buchungsregeln
 3. Events und Tickets
 
 **Friseur- und Dienstleisterbetrieb**

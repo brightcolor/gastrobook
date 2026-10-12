@@ -15,7 +15,7 @@ oder einen Anwalt.*
   besondere Daten, deshalb freiwillig und nur zur Berücksichtigung beim Besuch
 - **Einwilligungen** mit Zeitpunkt und Kanal
 - **Dateien**, die ihr an eine Buchung hängt
-- **Auditlog**: wer im System was getan hat
+- **Protokoll** (Auditlog): wer im System was getan hat
 
 ## Einwilligungen
 
@@ -33,13 +33,13 @@ Ein Widerruf über den Abmeldelink landet automatisch dort.
 
 Ein Gast fragt, was ihr über ihn gespeichert habt?
 
-**Kunden → Gast öffnen → Datenexport.** Das erzeugt eine Datei mit Profil,
+**Gäste (im Salon: Kunden) → Gast öffnen → Datenexport.** Das erzeugt eine Datei mit Profil,
 Buchungshistorie, Einwilligungen, Notizen und den Namen angehängter Dateien.
 Diese Datei gibst du dem Gast.
 
 ## Löschen (Art. 17)
 
-**Kunden → Gast öffnen → Anonymisieren.**
+**Gäste (im Salon: Kunden) → Gast öffnen → Anonymisieren.**
 
 Was passiert: Name, Kontaktdaten, Adresse, Geburtstag, Vorlieben, Allergien und
 Notizen werden unwiderruflich entfernt. Ebenso Dateien an seinen Buchungen und
@@ -52,8 +52,12 @@ aufbewahren musst, gehört es in deine Buchhaltung – nicht nur hierher.
 
 ## Aufbewahrung
 
-Unter **Einstellungen** legst du fest, nach wie vielen Monaten ohne Aktivität
-Gastprofile automatisch anonymisiert werden. Ein nächtlicher Lauf erledigt das.
+Gastprofile ohne Aktivität anonymisiert Swayy automatisch nach einer festen
+Aufbewahrungsfrist. Die Vorgabe sind 36 Monate; ein nächtlicher Lauf erledigt
+das. Die Frist gilt je Betrieb und liegt beim Betreiber deiner Swayy-Installation.
+Eine Seite in den Einstellungen gibt es dafür bisher nicht. Brauchst du eine
+andere Frist, frag den Betreiber und halte die gewählte Frist in deiner
+Datenschutzerklärung fest.
 
 Kürzere Fristen sind datenschutzfreundlicher, längere besser für die
 Stammgastpflege. 24 bis 36 Monate sind ein üblicher Kompromiss – entscheide es
@@ -81,10 +85,10 @@ Sobald du Dienste einbindest, verarbeiten Dritte Daten deiner Gäste:
 
 | Dienst | Wofür | Was übermittelt wird |
 |---|---|---|
-| seven.io | SMS-Erinnerungen | Mobilnummer, Nachrichtentext |
-| Stripe / PayPal | Anzahlungen | Zahlungsdaten, Betrag, Referenz |
+| seven.io | SMS-Erinnerungen (Einstellungen › Gästekommunikation › SMS-Versand) | Mobilnummer, Nachrichtentext |
+| Stripe / PayPal | Anzahlungen (Einstellungen › Zahlungen › Zahlungsanbieter) | Zahlungsdaten, Betrag, Referenz |
 | GoCardless | dein eigenes Abo | deine Bankdaten (nicht die der Gäste) |
-| MailWizz | Newsletter, falls genutzt | E-Mail-Adresse, Name |
+| MailWizz | Newsletter, falls genutzt (Einstellungen › Verbindungen › Newsletter) | E-Mail-Adresse, Name |
 
 Für jeden dieser Dienste brauchst du einen **Auftragsverarbeitungsvertrag** und
 einen Eintrag in deinem **Verarbeitungsverzeichnis**. Die Anbieter stellen
@@ -93,4 +97,5 @@ Musterverträge bereit. Nutzt du einen Dienst nicht, entfällt das.
 ## Zugriff durch den Anbieter
 
 Wenn der Plattformbetreiber zur Fehlersuche in deinen Betrieb schaut, wird das
-im **Auditlog** vermerkt. Da kannst du jederzeit nachsehen.
+im **Protokoll** vermerkt (**Einstellungen › Betrieb › Protokoll**). Da kannst du
+jederzeit nachsehen.

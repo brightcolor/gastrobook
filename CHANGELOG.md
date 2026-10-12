@@ -2,6 +2,103 @@
 
 ## [Unreleased]
 
+### Neue Verwaltungsoberfläche
+
+- Navigation nach Arbeitsbereichen: Seitenleiste am Computer, untere Leiste mit
+  „Mehr“ auf dem Smartphone, Suche in den Einstellungen mit Suchbegriffen. Eine
+  Quelle für alle Ansichten: `config/navigation.php`.
+- Einstellungen auf eigene Seiten verteilt (Betrieb, Platz & Zeiten, Buchungen,
+  Gästekommunikation, Zahlungen, Verbindungen). Jede Seite speichert nur ihre
+  Felder, zeigt ihren Geltungsbereich und meldet Änderungen in einer
+  Speicherleiste mit Verwerfen. Anlegen und Bearbeiten laufen in Seitenleisten,
+  Löschen mit Rückfrage in der Zeile.
+- Öffnungszeiten mit Vorschau „So sehen Gäste es“ (letzte Uhrzeit je Fenster),
+  Zeitfenstern über Mitternacht und Übertragen auf andere Tage. Ausnahmen
+  bündeln Sonderzeiten, Sperrzeiten und Tischsperren in einem Eintrag mit „So
+  wirkt es“. „Tisch sperren…“ steht im Tischplan und unter Räume & Tische.
+- Benachrichtigungen, Vorlagen, Absender & Antworten, SMS-Versand,
+  Zahlungsanbieter, Anzahlungen, Newsletter, API-Schlüssel und Webhooks im
+  neuen Muster, mit Statusanzeige und Hinweisen zur nächsten Aktion.
+- Eigene Fehlerseiten (402, 403, 404, 419, 429, 500, 503) mit Ursache und
+  nächstem Schritt. „Passwort ändern“ unter Mein Konto. Protokoll mit Suche und
+  lesbaren Werten.
+- `/admin/settings` führt auf die erste Seite, die die Rolle öffnen darf. Alte
+  Sprungmarken wie `#zeiten` und `#widget` leiten auf die neuen Seiten weiter.
+- Der Einrichtungsassistent speichert nur die Felder seines Schritts. Die
+  Besuchsdauer ist ein sichtbares Feld.
+- Vorgabefarbe für neue Betriebe, Mitarbeiter und Widget `#0f766e` (vorher
+  `#0d9488`), wegen des Kontrasts.
+- Das Handbuch (`docs/handbuch`) beschreibt die neuen Wege „Einstellungen ›
+  Gruppe › Seite“, die Fehlerseiten und alte Lesezeichen.
+- Neue Einstellungen (Umgebungsvariablen, alle mit Vorgabe und Grenzen in
+  `.env.example`):
+  - Oberfläche und Navigation:
+    `SWAYY_UI_TOAST_MS`, `SWAYY_UI_RELOAD_DELAY_MS`, `SWAYY_UI_PREVIEW_DELAY_MS`,
+    `SWAYY_UI_DEFAULT_BRAND_COLOR`, `SWAYY_UI_DEFAULT_STAFF_COLOR`,
+    `SWAYY_UI_DEFAULT_LABEL_COLOR`, `SWAYY_UI_WIDGET_LABEL_MAX`,
+    `SWAYY_UI_TAG_NAME_MAX`, `SWAYY_NAV_MOBILE_BAR_MAX`,
+    `SWAYY_NAV_HEADING_MIN_ITEMS`.
+  - Anmeldung, Fehlerseiten, Protokoll, Daten: `SWAYY_PASSWORD_MIN_LENGTH`,
+    `SWAYY_PASSWORD_CHANGE_PER_MINUTE`, `SWAYY_SUPPORT_EMAIL`, `SWAYY_DONT_FLASH`,
+    `SWAYY_AUDIT_PER_PAGE`, `SWAYY_AUDIT_SEARCH_MAX`, `SWAYY_IMPORT_MAX_KB`.
+  - Standorte:
+    `SWAYY_DEFAULT_TIMEZONE`, `SWAYY_LOCATION_INTRO_MAX`, `SWAYY_LOGO_MAX_KB`,
+    `SWAYY_LOGO_TYPES`, `SWAYY_LOGO_DIRECTORY`.
+  - Öffnungszeiten und Ausnahmen:
+    `SWAYY_OPENING_HOURS_WINDOWS_PER_DAY_MAX`, `SWAYY_OPENING_HOURS_NAME_MAX`,
+    `SWAYY_OPENING_HOURS_SEASON_LABEL_MAX`,
+    `SWAYY_OPENING_HOURS_PREVIEW_GROUPS_MAX`, `SWAYY_EXCEPTIONS_MAX_DAYS`,
+    `SWAYY_EXCEPTIONS_WINDOWS_MAX`, `SWAYY_EXCEPTIONS_LABEL_MAX`,
+    `SWAYY_EXCEPTIONS_COVERS_MAX`, `SWAYY_EXCEPTIONS_PAST_MONTHS`.
+  - Kapazität, Dauer und Buchungsregeln:
+    `SWAYY_BOOKING_SLOT_INTERVALS`, `SWAYY_BOOKING_DURATION_MIN`,
+    `SWAYY_BOOKING_DURATION_MAX`, `SWAYY_BOOKING_BUFFER_MAX`,
+    `SWAYY_BOOKING_DURATION_RULES_MAX`, `SWAYY_BOOKING_RULE_DURATION_MIN`,
+    `SWAYY_BOOKING_RULE_DURATION_MAX`, `SWAYY_BOOKING_RULE_PARTY_MAX`,
+    `SWAYY_BOOKING_COVERS_MAX`, `SWAYY_BOOKING_LEAD_MAX`,
+    `SWAYY_BOOKING_ADVANCE_MAX`, `SWAYY_BOOKING_DEADLINE_MAX`,
+    `SWAYY_BOOKING_PARTY_ONLINE_MAX`.
+  - Benachrichtigungen, Vorlagen, SMS:
+    `SWAYY_REMINDER_HOURS_MIN`, `SWAYY_REMINDER_HOURS_MAX`,
+    `SWAYY_FEEDBACK_HOURS_MIN`, `SWAYY_FEEDBACK_HOURS_MAX`,
+    `SWAYY_FEEDBACK_URL_MAX`, `SWAYY_FEEDBACK_LOOKBACK_GRACE_DAYS`,
+    `SWAYY_OWNER_EMAIL_MAX`, `SWAYY_TEMPLATE_SUBJECT_MAX`,
+    `SWAYY_TEMPLATE_BODY_MAX`, `SWAYY_SMS_SENDER_ID_MAX`,
+    `SWAYY_SMS_SENDER_ID_TEXT_MAX`, `SWAYY_SMS_API_KEY_MAX`.
+  - Absender, Newsletter, API und Webhooks:
+    `SWAYY_GUEST_MAIL_FROM_NAME_MAX`, `SWAYY_GUEST_MAIL_REPLY_TO_MAX`,
+    `SWAYY_NEWSLETTER_API_URL_MAX`, `SWAYY_NEWSLETTER_API_KEY_MAX`,
+    `SWAYY_NEWSLETTER_LIST_UID_MAX`, `SWAYY_WEBHOOK_URL_MAX`,
+    `SWAYY_API_TOKEN_NAME_MAX`.
+  - Zahlungen und Anzahlungen:
+    `SWAYY_PAYMENT_SECRET_MAX`, `SWAYY_DEPOSIT_AMOUNT_MAX`,
+    `SWAYY_DEPOSIT_DEADLINE_MIN`, `SWAYY_DEPOSIT_DEADLINE_MAX`,
+    `SWAYY_DEPOSIT_DEADLINE_DEFAULT`, `SWAYY_DEPOSIT_PARTY_SIZE_MAX`,
+    `SWAYY_DEPOSIT_NAME_MAX`.
+  - Räume, Tische, Leistungen und Mitarbeiter:
+    `SWAYY_TABLE_CAPACITY_MAX`, `SWAYY_ROOM_SIZE_MAX_M`, `SWAYY_TABLE_NAME_MAX`,
+    `SWAYY_ROOM_NAME_MAX`, `SWAYY_COMBINATION_NAME_MAX`,
+    `SWAYY_SERVICE_DURATION_MIN`, `SWAYY_SERVICE_DURATION_MAX`,
+    `SWAYY_SERVICE_PRICE_MAX`, `SWAYY_SERVICE_NAME_MAX`,
+    `SWAYY_SERVICE_DESCRIPTION_MAX`, `SWAYY_STAFF_NAME_MAX`,
+    `SWAYY_STAFF_BIO_MAX`, `SWAYY_STAFF_HOURS_MAX`, `SWAYY_ABSENCE_REASON_MAX`,
+    `SWAYY_ABSENCE_WINDOW_YEARS`.
+  - Mails und Kundenpanel (siehe die Abschnitte darunter):
+    `SWAYY_MAIL_OWNER_ADDRESS`, `SWAYY_MAIL_POWERED_BY`,
+    `SWAYY_MAIL_LOGO_MAX_KB`, `SWAYY_MAIL_LOGO_HEIGHT`,
+    `SWAYY_MAIL_CONTRAST_MIN`, `SWAYY_MAIL_DETAILS_MIN_ROWS`,
+    `SWAYY_MAIL_LABEL_MAX`, `SWAYY_MAIL_BUTTON_LABEL_MAX`,
+    `SWAYY_GUEST_LOGIN_LINK_MINUTES`, `SWAYY_GUEST_VERIFY_LINK_MINUTES`,
+    `SWAYY_BILLING_CONFIRM_HOURS`, `PROVISIONING_KEYS`,
+    `PROVISIONING_SERVICE_CODE`, `PROVISIONING_MAX_SKEW_SECONDS`,
+    `PROVISIONING_IDEMPOTENCY_DAYS`, `PROVISIONING_ALLOWED_NETWORKS`,
+    `PROVISIONING_MAX_FAILURES`, `PROVISIONING_LOCK_SECONDS`,
+    `PROVISIONING_CLEANUP_TIME`, `LOGIN_LINK_SECONDS`, `PANEL_BASE_URL`,
+    `PANEL_ORDER_URL`.
+- Neue Spalte `exception_group` in `special_opening_hours`,
+  `blackout_periods` und `table_blocks`. Die Migration lässt sich mehrfach
+  ausführen.
+
 ### Neues Mail-Design
 
 - Alle Mails haben einen gemeinsamen, hochwertigen Rahmen: Überschrift je

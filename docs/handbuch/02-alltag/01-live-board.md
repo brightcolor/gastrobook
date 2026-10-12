@@ -26,7 +26,7 @@ Buchungen der letzten Stunden. Hier bestätigst oder lehnst du ab.
 | grün | Gäste sitzen |
 | blau | teilweise eingetroffen |
 | rot | erhöhtes No-Show-Risiko |
-| dunkel/schraffiert | Tisch gesperrt |
+| dunkel/schraffiert | Tisch gesperrt (siehe *Tischplan*, „Einen Tisch sperren“) |
 
 Ein Tipp auf einen Tisch öffnet ein Fenster mit Belegung, Zeiten, Gastname und
 Telefonnummer. Von dort aus kannst du direkt:
@@ -36,7 +36,8 @@ Telefonnummer. Von dort aus kannst du direkt:
 - einen **Walk-in** an diesen Tisch setzen
 - den Tisch **mit einer zweiten Gruppe teilen**, wenn noch Plätze frei sind
 
-Bei mehreren Räumen gibt es Reiter; auf dem Tablet kannst du seitlich wischen.
+Bei mehreren Räumen wechselst du oben zwischen den Räumen; auf dem Tablet
+wischst du seitlich.
 
 ## Verbindungsanzeige
 

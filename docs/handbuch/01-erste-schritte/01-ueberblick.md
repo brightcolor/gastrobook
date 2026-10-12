@@ -20,8 +20,8 @@ laufen. Das entscheidet, wie das System denkt:
 | Zentrale Ansicht | Tischplan | Terminplan (Spalte je Mitarbeiter) |
 | Menü heißt | „Reservierungen", „Tischplan" | „Termine", „Terminplan", „Leistungen", „Mitarbeiter" |
 
-Umgestellt wird das unter **Einstellungen → Allgemein**. Du kannst wechseln,
-aber es ist keine Kleinigkeit: Der ganze Buchungsablauf ändert sich. Entscheide
+Umgestellt wird das unter **Einstellungen › Betrieb › Allgemein**. Du kannst
+wechseln. Dabei ändert sich der ganze Buchungsablauf, deshalb entscheidest du
 das am besten am Anfang.
 
 ## Die Bausteine und ihr Zusammenspiel
@@ -30,7 +30,8 @@ Es hilft, sich das als Kette vorzustellen:
 
 **Öffnungszeiten** sagen, wann überhaupt gebucht werden kann.
 → **Buchungsregeln** (Vorlauf, Dauer, maximale Gruppengröße) engen das weiter ein.
-→ **Sperrzeiten** und **gesperrte Tische** nehmen einzelne Zeiträume wieder heraus.
+→ **Ausnahmen** (Feiertage, Betriebsferien, gesperrte Räume und Tische) nehmen
+einzelne Zeiträume wieder heraus oder ändern sie.
 → Was übrig bleibt, sind die **freien Zeitfenster**, die ein Gast auf der
 **Buchungsseite** sieht.
 → Bucht er, entsteht eine **Reservierung**, die automatisch einem **Tisch**
@@ -51,12 +52,12 @@ solltest.
 - Ein **Betrieb** ist dein Unternehmen. Alles, was du anlegst, gehört dazu und
   ist von anderen Betrieben strikt getrennt.
 - Ein **Standort** ist ein Lokal, ein Salon, eine Filiale. Öffnungszeiten,
-  Tische, Buchungsregeln und die Buchungsseite hängen **am Standort**, nicht am
-  Betrieb. Wer mehrere Standorte hat, stellt sie einzeln ein.
+  Tische, Buchungsregeln und die Buchungsseite hängen **am Standort**. Wer
+  mehrere Standorte hat, stellt sie einzeln ein.
 - **Benutzer** sind deine Mitarbeiter. Sie haben eine Rolle, die bestimmt, was
   sie sehen und dürfen (siehe *Anmelden, Rollen und Rechte*).
-- **Gäste** gehören dem Betrieb, nicht dem Standort – ein Gast, der in zwei
-  Filialen war, hat trotzdem ein Profil.
+- **Gäste** gehören dem Betrieb. Ein Gast, der in zwei Filialen war, hat ein
+  einziges Profil.
 
 Oben links im Menü kannst du zwischen Standorten umschalten, wenn du mehrere
 hast. **Achte darauf, in welchem Standort du gerade arbeitest** – die meisten
@@ -66,24 +67,53 @@ Einstellungen wirken nur dort.
 
 | Ich will … | Menüpunkt |
 |---|---|
-| sehen, was jetzt gerade los ist | Live-Board |
-| eine Buchung suchen, anlegen, ändern | Reservierungen / Termine |
-| sehen, wer wo sitzt | Tischplan |
-| jemanden ohne Reservierung setzen | Walk-ins |
-| Gäste vertrösten und später anbieten | Warteliste |
-| einen Gast nachschlagen | Kunden |
-| Öffnungszeiten, Regeln, Tische ändern | Einstellungen |
+| sehen, was jetzt gerade los ist | Service › Live-Board |
+| jemanden ohne Reservierung setzen | Service › Walk-ins |
+| Gäste vertrösten und später anbieten | Service › Warteliste |
+| sehen, wer wo sitzt | Service › Tischplan (im Salon: Terminplan) |
+| eine Buchung suchen, anlegen, ändern | Buchungen › Reservierungen (im Salon: Termine) |
+| Events und Tickets verwalten | Buchungen › Events |
+| Rückerstattungen freigeben | Buchungen › Erstattungen |
+| einen Gast nachschlagen | Gäste (im Salon: Kunden) |
+| automatische Gästepost einrichten | Gäste › Marketing |
 | Zahlen sehen | Berichte |
-| Nachrichtentexte ändern | E-Mail-Vorlagen |
-| automatische Gästepost einrichten | Marketing |
-| Mitarbeiter einladen | Benutzer |
+| Öffnungszeiten, Regeln, Tische, Texte, Zahlungen ändern | Einstellungen |
+
+Auf dem Smartphone steht unten eine Leiste mit den häufigsten Zielen. Alles
+andere liegt unter **Mehr**.
+
+## Die Einstellungen
+
+Alle Einstellungen liegen unter **Einstellungen** am Ende der Seitenleiste,
+geordnet in Gruppen. Jede Seite hat ein eigenes Thema und speichert nur ihre
+Felder. Das Handbuch nennt den Weg immer so: **Einstellungen › Gruppe › Seite**.
+Mit „Zurück zum Betrieb“ kehrst du in die Arbeitsansicht zurück.
+
+| Gruppe | Was du dort findest |
+|---|---|
+| **Betrieb** | Name und Betriebstyp (Allgemein), Standorte, Team & Rollen, Abo & Rechnungen, Protokoll, Daten (Export, Import, Betrieb löschen) |
+| **Platz & Zeiten** | Öffnungszeiten, Ausnahmen, Räume & Tische (im Salon Leistungen und Mitarbeiter), Kapazität & Dauer |
+| **Buchungen** | Buchungsregeln, Buchungsformular, Buchungsseite & Widget, Tags |
+| **Gästekommunikation** | Benachrichtigungen, Vorlagen, Absender & Antworten, SMS-Versand (im Salon heißt die Gruppe Kundenkommunikation) |
+| **Zahlungen** | Zahlungsanbieter, Anzahlungen samt Erstattung |
+| **Verbindungen** | Newsletter, API-Schlüssel, Webhooks |
+
+Mit der **Suche** („Einstellungen durchsuchen“) über der Liste der Seiten findest
+du eine Einstellung über ihre Stichwörter. Gibst du „Feiertag“, „Stornofrist“
+oder „Stripe“ ein, führt die Suche dich an die passende Stelle. Auf dem
+Smartphone erreichst du die Einstellungen über **Mehr**. Die Liste zeigt die
+Seiten, für die deine Rolle berechtigt ist.
+
+Oben auf jeder Seite steht, wofür sie gilt: **Gilt für alle Standorte** oder
+**Gilt für Standort** mit einer Auswahl. Sobald du etwas änderst, erscheint die
+Speicherleiste mit **Speichern** und **Verwerfen**.
 
 ## Was du regelmäßig anfassen wirst – und was einmal
 
 **Einmal einrichten:** Öffnungszeiten, Räume und Tische (bzw. Leistungen und
-Mitarbeiter), Buchungsregeln, Texte, Rechtstexte, Benutzer.
+Mitarbeiter), Buchungsregeln, Texte, Rechtstexte, Team.
 
-**Ab und zu:** Sonderöffnungszeiten und Feiertage, Sperrzeiten, Anzahlungsregeln,
+**Ab und zu:** Ausnahmen für Feiertage und Betriebsferien, Anzahlungsregeln,
 Events, Marketing-Kampagnen.
 
 **Täglich:** Live-Board, Reservierungsbuch, Walk-ins, Warteliste.

@@ -22,12 +22,14 @@ geradezubiegen.
 
 ## Einrichten
 
-**Einstellungen → Buchungsregeln:**
+**Einstellungen › Gästekommunikation › Benachrichtigungen**, Abschnitt
+„Feedback nach dem Besuch“:
 
-- **Feedback aktiv** ein- oder ausschalten
+- **Feedback-Anfrage schicken** ein- oder ausschalten
 - **Stunden nach dem Besuch** – 18 Stunden treffen meist den nächsten Vormittag
-- **Ab wie vielen Sternen** zum Portal weitergeleitet wird (Standard 4)
-- **Adresse des Portals** – der Link zu deiner Google-Bewertungsseite
+- **Ab Sternen zum Portal** – ab welcher Bewertung der Gast zum Portal
+  weitergeleitet wird (Standard 4)
+- **Link zum Bewertungsportal** – der Link zu deiner Google-Bewertungsseite
 
 Den Google-Link findest du in deinem Unternehmensprofil unter „Rezensionen
 erhalten".
@@ -45,7 +47,8 @@ Klick am Ende des Abends speist drei Funktionen gleichzeitig.**
 
 ## Den Text anpassen
 
-Die Anfrage ist eine der sieben Vorlagen unter **E-Mail-Vorlagen**. Kurz halten;
+Die Anfrage ist eine der Vorlagen unter **Einstellungen › Gästekommunikation ›
+Vorlagen** („Feedback-Anfrage“). Kurz halten;
 eine Feedback-Mail mit drei Absätzen liest niemand.
 
 ## Wo die Antworten landen

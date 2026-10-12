@@ -1,9 +1,15 @@
-# Buchungsseite und Website-Widget
+# Buchungsseite und Widget
 
 ## Deine Buchungsseite
 
 Jeder Standort hat eine öffentliche Adresse, unter der Gäste buchen können. Du
-findest sie in den **Einstellungen** über den Knopf „Buchungsseite ansehen".
+findest sie unter **Einstellungen › Buchungen › Buchungsseite & Widget**. Dort
+kopierst du die Adresse mit „Adresse kopieren“ und siehst die Seite mit dem Knopf
+„Buchungsseite ansehen“.
+
+Auf derselben Seite schaltest du zwei Dinge ein: „Tischplan zeigen“ (nur
+Restaurant, der Gast wählt seinen Tisch selbst) und „Konfetti nach dem Buchen“.
+Die Seite gilt für den Standort, der oben in der Auswahl steht.
 
 Hast du nur einen Standort, führt die kurze Adresse direkt zur Buchung. Bei
 mehreren erscheint zuerst eine Auswahl.
@@ -20,8 +26,9 @@ Mailsignatur, Speisekarte als QR-Code.
    eingeschaltet hast
 5. **Kontaktdaten** und Zustimmung zur Datenschutzerklärung
 
-Dazu Logo, Farbe, Adresse, Telefonnummer und Anfahrt – alles aus deinen
-Einstellungen.
+Dazu Logo, Farbe, Adresse, Telefonnummer, Anfahrt und die Begrüßung – alles aus
+deinen Einstellungen (**Betrieb › Allgemein** für die Farbe, **Betrieb ›
+Standorte** für Logo, Adresse, Telefon und Begrüßung).
 
 Ist der Spamschutz eingeschaltet, steht über dem Absenden-Knopf ein Kästchen
 „Ich bin ein Mensch". Ein Klick genügt, den Rest erledigt der Rechner des
@@ -33,37 +40,49 @@ Termine** und – wenn eingeschaltet – die **Warteliste** an.
 
 ## Welche Felder abgefragt werden
 
-Unter **Einstellungen → Widget** legst du je Feld fest: **ausgeblendet**,
-**freiwillig** oder **Pflicht**. Betrifft E-Mail, Telefon, Anlass, Allergien und
-Anmerkungen.
+Unter **Einstellungen › Buchungen › Buchungsformular** legst du je Feld fest:
+**Ausgeblendet**, **Freiwillig** oder **Pflichtfeld**. Es betrifft E-Mail,
+Telefon, Anlass, Allergien und Anmerkung. Ein Pflichtfeld gibt es bei E-Mail und
+Telefon; Anlass, Allergien und Anmerkung erscheinen oder bleiben ausgeblendet.
+Den Namen fragt das Formular immer ab. Im Salon stellst du nur die Anmerkung
+ein.
 
 Die Faustregel: Jedes Pflichtfeld kostet Buchungen. Jedes weggelassene Feld
-kostet Vorbereitung. Für die meisten Betriebe ist E-Mail Pflicht (sonst gibt es
-keine Bestätigung und keine Erinnerung), Telefon freiwillig.
+kostet Vorbereitung. Für die meisten Betriebe ist E-Mail Pflicht (ohne sie gibt
+es keine Bestätigung und keine Erinnerung), Telefon freiwillig. Blendest du
+E-Mail und Telefon beide aus, weist die Seite darauf hin: Dann bekommt der Gast
+keine Bestätigung, und Swayy ordnet die Buchung keinem Gästeprofil zu.
 
 ## Einbau in die eigene Website
 
-Zwei Wege, beide unter **Einstellungen → Website-Widget**:
+Drei Wege, alle unter **Einstellungen › Buchungen › Buchungsseite & Widget**.
+Du stellst Text und Farbe ein, die Seite zeigt den fertigen Code zum Kopieren.
 
-**Eingebettet** – ein kurzer Schnipsel Code, den deine Webagentur an die Stelle
-setzt, wo das Formular erscheinen soll. Die Buchung wird Teil deiner Seite und
-passt ihre Höhe selbst an.
+**Knopf mit Buchungsfenster (Popup)** – ein „Tisch reservieren"-Knopf, der ein
+Fenster über deiner Seite öffnet. Du wählst den Text auf dem Knopf, seine Farbe
+und ob er schwebend unten rechts steht. Das passt zu jeder Website und ist der
+einfachste Weg.
 
-**Als Knopf** – ein „Tisch reservieren"-Knopf, der ein Fenster über deiner Seite
-öffnet. Weniger Aufwand, gut für bestehende Websites.
+**Eingebettetes Formular** – ein kurzer Schnipsel Code, den du oder deine
+Webagentur an die Stelle setzt, wo das Formular erscheinen soll. Die Buchung wird
+Teil deiner Seite und passt ihre Höhe selbst an.
 
-Beides ist Kopieren und Einfügen. Wenn du keine Website selbst pflegst: Schick
-deiner Agentur den Schnipsel, das ist eine Fünf-Minuten-Aufgabe.
+**Einfacher Link (Direktlink)** – ein gestalteter Link zur Buchungsseite aus
+reinem HTML. Er passt in jeden Baukasten.
+
+Alle drei Wege sind Kopieren und Einfügen. Wenn du die Website nicht selbst
+pflegst, schick deiner Agentur den Code.
 
 ## Der Buchungsablauf danach
 
-Nach dem Absenden:
+Nach dem Absenden hängt der Ablauf von den Einstellungen unter **Einstellungen
+› Buchungen › Buchungsregeln**, Abschnitt „Bestätigung“, ab:
 
-- **Automatisch bestätigen an** → die Buchung steht fest, der Gast bekommt sofort
-  die Bestätigung mit Storno- und Änderungslink.
-- **Automatisch bestätigen aus** → es wird eine **Anfrage**, der Gast bekommt eine
+- **Sofort bestätigen** → die Buchung steht fest, der Gast bekommt sofort die
+  Bestätigung mit Storno- und Änderungslink.
+- **Von Hand freigeben** → es wird eine **Anfrage**, der Gast bekommt eine
   Eingangsbestätigung, und ihr entscheidet im Board.
-- **E-Mail-Bestätigung verlangt** (optional) → der Gast bekommt eine Mail und
+- **E-Mail-Adresse bestätigen lassen** (optional) → der Gast bekommt eine Mail und
   muss auf den Link darin klicken. Erst dann ist der Tisch reserviert. Das gilt
   für **jede** Buchung, auch bei Gästen, die schon oft da waren.
 
@@ -81,14 +100,15 @@ Nach dem Absenden:
 
 In der Bestätigungsmail steckt ein persönlicher Link. Damit kann der Gast
 **stornieren** und **umbuchen** – jeweils nur innerhalb der Fristen, die du
+unter **Buchungsregeln › Fristen für Gäste** (Stornofrist, Umbuchungsfrist)
 eingestellt hast. Beim Umbuchen prüft Swayy alles noch einmal: Öffnungszeiten,
-Sperrzeiten, freie Tische.
+Ausnahmen, freie Tische.
 
 Das spart Anrufe. Wer das nicht will, stellt die Fristen auf 0 – dann muss jede
 Änderung über euch laufen.
 
-## Kundenkonto ohne Passwort
+## Kundenkonto per Anmeldelink
 
 Gäste können sich unter **/konto** einen Anmeldelink schicken lassen und sehen
-dann ihre Termine, können umbuchen und stornieren. Kein Passwort, kein Konto
-anlegen – der Link im Postfach genügt.
+dann ihre Termine, können umbuchen und stornieren. Der Link im Postfach dient
+als Anmeldung, ein Passwort legt niemand an.
