@@ -99,8 +99,9 @@ return [
         ['label' => 'Platz & Zeiten', 'items' => [
             ['key' => 'opening-hours', 'label' => 'Öffnungszeiten', 'route' => 'admin.settings.opening-hours.show', 'scope' => 'location', 'can' => ['tables.manage', 'opening_hours.manage'],
                 'keywords' => ['Öffnungszeiten' => 'woche', 'Ruhetag' => 'woche', 'Zeitfenster' => 'woche', 'Saison' => 'saison', 'Buchbare Saison' => 'saison']],
-            ['key' => 'exceptions', 'label' => 'Ausnahmen', 'route' => 'admin.settings.index', 'fragment' => 'zeiten', 'active' => [], 'scope' => 'location', 'can' => ['tables.manage'],
-                'keywords' => ['Sonderzeiten', 'Feiertag', 'Schließtag', 'Sperrzeit', 'Betriebsferien', 'Tisch sperren', 'Weniger Gäste']],
+            ['key' => 'exceptions', 'label' => 'Ausnahmen', 'route' => 'admin.settings.exceptions.show', 'scope' => 'location', 'can' => ['tables.manage', 'special_hours.manage', 'blackouts.manage'],
+                'keywords' => ['Sonderzeiten' => 'ausnahme-neu', 'Feiertag' => 'ausnahme-neu', 'Schließtag' => 'ausnahme-neu', 'Betriebsferien' => 'ausnahme-neu', 'Sperrzeit' => 'ausnahme-neu'],
+                'keywords_restaurant' => ['Tisch sperren' => 'ausnahme-neu', 'Weniger Gäste' => 'ausnahme-neu', 'Raum sperren' => 'ausnahme-neu']],
             ['key' => 'rooms', 'label' => 'Räume & Tische', 'route' => 'admin.settings.rooms.index', 'scope' => 'location', 'can' => ['tables.manage'], 'only' => 'restaurant',
                 'keywords' => ['Raum', 'Neuer Raum' => 'raum-neu', 'Tisch', 'Tischkombination' => 'kombinationen', 'Kombination' => 'kombinationen', 'Raummaße', 'Kinderstuhl', 'Barrierefrei']],
             ['key' => 'services', 'label' => 'Leistungen', 'route' => 'admin.services.index', 'scope' => 'location', 'can' => ['tables.manage'], 'only' => 'salon', 'active' => ['admin.services.*'],

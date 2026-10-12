@@ -86,10 +86,13 @@ export function clearProblems(form) {
 }
 
 // Wo der Text am Feld steht: am Feld selbst oder, bei Feldern ohne eigene ID
-// (Kästchen, Optionsfelder), an der umgebenden Gruppe.
+// (Kästchen, Optionsfelder), an der umgebenden Gruppe. Ein Fieldset mit
+// data-error-group nimmt die Texte seiner Felder auch dann auf, wenn diese
+// IDs tragen (Auswahlkarten, Listen von Kästchen).
 function errorTarget(field) {
-    if (field.id) return field;
-    const group = field.closest('fieldset');
+    const marked = field.closest('fieldset[data-error-group]');
+    if (!marked && field.id) return field;
+    const group = marked ?? field.closest('fieldset');
     if (!group) return null;
     if (!group.id) group.id = `fieldset${++groupCount}`;
     return group;

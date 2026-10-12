@@ -7,8 +7,17 @@
     $anyOpen = collect($days)->contains(fn (array $day) => $day['windows'] !== []);
 @endphp
 <x-save-bar one="1 Tag geändert" many=":count Tage geändert" />
-<x-page-header title="Öffnungszeiten" :crumb="['Einstellungen', 'Platz & Zeiten']" scope="location"
-               :description="'Wann '.$guests.' online buchen können. Abweichende Tage, etwa Feiertage, trägst du unter Ausnahmen ein.'" />
+<x-page-header title="Öffnungszeiten" :crumb="['Einstellungen', 'Platz & Zeiten']" scope="location">
+    <x-slot:description>
+        Wann {{ $guests }} online buchen können. Abweichende Tage, etwa Feiertage, trägst du unter
+        @if($canExceptions)
+            <a href="{{ route('admin.settings.exceptions.show') }}" class="font-semibold underline underline-offset-2">Ausnahmen</a>
+        @else
+            Ausnahmen
+        @endif
+        ein.
+    </x-slot:description>
+</x-page-header>
 
 <form id="formHours" method="POST" action="{{ route('admin.settings.opening-hours') }}" data-ajax data-savebar
       data-preview-url="{{ route('admin.settings.opening-hours.preview') }}" data-preview-delay="{{ $previewDelay }}"

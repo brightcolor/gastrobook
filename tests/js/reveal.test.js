@@ -70,6 +70,32 @@ describe('Hinweise je nach Eingabe', () => {
         expect(document.getElementById('covers').hidden).toBe(true);
     });
 
+    it('trifft bei einer Gruppe von Kästchen zu, sobald einer der angehakten Werte passt', () => {
+        mount(`
+            <form>
+                <input type="checkbox" name="effects[]" value="hours" checked>
+                <input type="checkbox" name="effects[]" value="limit">
+                <input type="checkbox" name="effects[]" value="lock" checked>
+                <p id="hours" data-show-if="effects[]:hours">Zeiten</p>
+                <p id="limit" data-show-if="effects[]:limit">Grenze</p>
+                <p id="lock" data-show-if="effects[]:lock">Sperre</p>
+                <p id="either" data-show-if="effects[]:limit,lock">Grenze oder Sperre</p>
+            </form>`);
+        applyReveals();
+
+        expect(document.getElementById('hours').hidden).toBe(false);
+        expect(document.getElementById('limit').hidden).toBe(true);
+        expect(document.getElementById('lock').hidden).toBe(false);
+        expect(document.getElementById('either').hidden).toBe(false);
+
+        document.querySelector('[value="limit"]').checked = true;
+        document.querySelector('[value="lock"]').checked = false;
+        applyReveals();
+
+        expect(document.getElementById('limit').hidden).toBe(false);
+        expect(document.getElementById('lock').hidden).toBe(true);
+    });
+
     it('liest bei einem Kästchen mit verstecktem Feld die 0, solange der Haken fehlt', () => {
         mount(`
             <form>

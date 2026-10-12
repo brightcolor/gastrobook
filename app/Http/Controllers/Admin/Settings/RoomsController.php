@@ -14,6 +14,7 @@ use App\Models\TableCombination;
 use App\Services\AuditLogger;
 use App\Services\PlanLimitService;
 use App\Support\PlanLimitMessage;
+use App\Support\ScheduleExceptionRules;
 use App\Support\TableRules;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
@@ -72,6 +73,7 @@ class RoomsController extends Controller
             'combinations' => $combinations,
             'canRooms' => $request->user()->canInTenant('rooms.manage', $tenant, $location),
             'canFloorplan' => $request->user()->canInTenant('floorplan.update', $tenant, $location),
+            'canBlock' => ScheduleExceptionRules::canManage($request->user(), $tenant, $location),
             'tableLimit' => $tenant->limit('max_tables'),
             'tablesUsed' => $this->limits->currentUsage($tenant, 'max_tables'),
             'capacityMax' => (int) config('swayy.tables.capacity_max'),

@@ -7,6 +7,8 @@ namespace App\Http\Controllers\Admin\Settings;
 use App\Http\Controllers\Admin\Settings\Concerns\RespondsToSettingsForms;
 use App\Http\Controllers\Controller;
 use App\Models\Location;
+use App\Models\RestaurantTable;
+use App\Models\Room;
 use App\Services\AuditLogger;
 use App\Services\ScheduleExceptions;
 use App\Support\ScheduleExceptionRules;
@@ -14,15 +16,17 @@ use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * Einstellungen › Platz & Zeiten › Ausnahmen: Anlegen, Ändern, Löschen und
- * die Vorschau „So wirkt es“ für den gewählten Standort. Die Seite zeigt die
- * Liste und das Formular; hier liegen die Speicherwege. Sie verlangen die
- * Rechte für Sondertage und für Sperrzeiten, weil eine Ausnahme beides
- * schreiben kann.
+ * Einstellungen › Platz & Zeiten › Ausnahmen: die Liste mit dem Formular
+ * (show) und die Speicherwege zum Anlegen, Ändern und Löschen samt Vorschau
+ * „So wirkt es“ für den gewählten Standort. Die Seite und alle Wege
+ * verlangen die Rechte für Sondertage und für Sperrzeiten, weil eine
+ * Ausnahme beides schreiben kann.
  *
  * @phpstan-import-type Entry from ScheduleExceptions
  */
@@ -35,6 +39,32 @@ class ExceptionsController extends Controller
         private readonly AuditLogger $audit,
         private readonly ScheduleExceptions $exceptions,
     ) {}
+
+    /**
+     * Die Liste der Ausnahmen (kommend nach Monat, vergangen getrennt) und das
+     * Formular. Mit ?tisch={id} öffnet „Sperren…“ eines Tisches die Seite mit
+     * der Adresse #ausnahme-neu: Die Seitenleiste erscheint mit dem Tisch
+     * vorbelegt. Eine fremde oder unbekannte Nummer wird übergangen.
+     */
+    public function show(Request $request): View
+    {
+        $location = $this->location();
+        $tenant = $this->context->tenant();
+        abort_if($tenant === null, 404);
+        $salon = $tenant->isSalon();
+        $entries = $this->exceptions->entries($location);
+        $rooms = $salon ? collect() : $this->rooms($location);
+
+        return view('admin.settings.exceptions', [
+            'upcoming' => $entries['upcoming'],
+            'past' => $entries['past'],
+            'rooms' => $rooms,
+            'blank' => $this->blank($this->presetTable($request, $rooms)),
+            'salon' => $salon,
+            'limits' => (array) config('swayy.exceptions'),
+            'previewDelay' => (int) config('swayy.ui.preview_delay_ms'),
+        ]);
+    }
 
     public function store(Request $request): mixed
     {
@@ -95,6 +125,70 @@ class ExceptionsController extends Controller
         }
 
         return response()->json(['sentence' => $this->exceptions->describe($location, $data, $key)]);
+    }
+
+    /**
+     * Räume des Standorts mit ihren aktiven Tischen, in der Reihenfolge von
+     * Räume & Tische.
+     *
+     * @return Collection<int, Room>
+     */
+    private function rooms(Location $location): Collection
+    {
+        $rooms = $this->inOrder($location->rooms()
+            ->where('is_active', true)
+            ->with(['tables' => fn ($query) => $query->where('is_active', true)])
+            ->get());
+        $rooms->each(fn (Room $room) => $room->setRelation('tables', $this->inOrder($room->tables)));
+
+        return $rooms;
+    }
+
+    /**
+     * Die Nummer des Tisches aus ?tisch={id}, wenn das Formular ihn anbietet
+     * (ein aktiver Tisch dieses Standorts), sonst null.
+     *
+     * @param  Collection<int, Room>  $rooms
+     */
+    private function presetTable(Request $request, Collection $rooms): ?int
+    {
+        $id = filter_var($request->query('tisch'), FILTER_VALIDATE_INT);
+        if ($id === false) {
+            return null;
+        }
+
+        return $rooms->contains(fn (Room $room) => $room->tables->contains('id', $id)) ? $id : null;
+    }
+
+    /**
+     * Die Felder des Formulars zum Anlegen. Ein vorbelegter Tisch wählt „Räume
+     * oder Tische sperren“ mit diesem Tisch.
+     *
+     * @return array<string, mixed>
+     */
+    private function blank(?int $table): array
+    {
+        return [
+            'from' => null, 'until' => null, 'label' => null,
+            'effects' => $table === null ? [] : ['lock'], 'windows' => [],
+            'limit_covers' => null, 'limit_room_id' => null, 'limit_from' => null, 'limit_until' => null,
+            'lock_rooms' => [], 'lock_tables' => $table === null ? [] : [$table], 'lock_from' => null, 'lock_until' => null,
+        ];
+    }
+
+    /**
+     * Nach Reihenfolge, dann nach Namen, wie Räume & Tische sie zeigt.
+     *
+     * @template TItem of Room|RestaurantTable
+     *
+     * @param  Collection<int, TItem>  $items
+     * @return Collection<int, TItem>
+     */
+    private function inOrder(Collection $items): Collection
+    {
+        return $items
+            ->sort(fn ($a, $b) => (($a->sort_order ?? 0) <=> ($b->sort_order ?? 0)) ?: strnatcasecmp((string) $a->name, (string) $b->name))
+            ->values();
     }
 
     private function location(): Location

@@ -4,20 +4,24 @@
 // durch „;“, müssen alle zutreffen: "fields[email]:hidden;fields[phone]:hidden".
 // Gesucht wird im Formular des Elements, sonst im ganzen Dokument. Felder in
 // verborgenen Bereichen werden weiter gesendet.
+//
+// Eine Gruppe von Kästchen mit gleichem Namen ("effects[]") hat mehrere Werte
+// zugleich: Die Bedingung trifft zu, sobald einer der angehakten Werte passt.
 
 let installed = false;
 
-// Wert eines Feldes nach Name: gewählte Option, Haken (sonst das versteckte
-// 0-Feld von x-checkbox) oder Eingabe.
-function currentValue(scope, name) {
+// Werte eines Feldes nach Name: gewählte Option, angehakte Kästchen (sonst das
+// versteckte 0-Feld von x-checkbox) oder Eingabe. Eine Auswahl und ein Textfeld
+// haben einen Wert, eine Gruppe von Kästchen so viele, wie angehakt sind.
+function currentValues(scope, name) {
     const fields = [...scope.querySelectorAll(`[name="${CSS.escape(name)}"]`)];
     const choices = fields.filter((el) => el.type === 'radio' || el.type === 'checkbox');
     if (choices.length > 0) {
-        const picked = choices.find((el) => el.checked);
-        if (picked) return picked.value;
-        return fields.find((el) => el.type === 'hidden')?.value ?? '';
+        const picked = choices.filter((el) => el.checked).map((el) => el.value);
+        if (picked.length > 0) return picked;
+        return [fields.find((el) => el.type === 'hidden')?.value ?? ''];
     }
-    return fields.at(-1)?.value ?? '';
+    return [fields.at(-1)?.value ?? ''];
 }
 
 function matches(el) {
@@ -27,7 +31,7 @@ function matches(el) {
         const at = condition.indexOf(':');
         const name = condition.slice(0, at);
         const allowed = condition.slice(at + 1).split(',');
-        return allowed.includes(currentValue(scope, name));
+        return currentValues(scope, name).some((value) => allowed.includes(value));
     });
 }
 

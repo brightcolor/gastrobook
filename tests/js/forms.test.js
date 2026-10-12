@@ -242,6 +242,30 @@ describe('Formulare mit data-ajax', () => {
         expect(document.activeElement).toBe(document.querySelector('[name="location_ids[]"]'));
     });
 
+    it('zeigen Fehler zu Kästchen mit ID in einer Gruppe mit data-error-group bei der Gruppe', async () => {
+        const text = 'Bitte wählen, was an diesen Tagen anders ist.';
+        vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ message: text, errors: { effects: [text] } }, 422)));
+        mount(`
+            <form id="i" method="POST" action="/admin/settings/exceptions" data-ajax>
+                <fieldset id="wirkungen" data-error-group>
+                    <legend>Was ist anders?</legend>
+                    <label><input type="checkbox" id="w-closed" name="effects[]" value="closed"> Geschlossen</label>
+                    <label><input type="checkbox" id="w-hours" name="effects[]" value="hours"> Andere Öffnungszeiten</label>
+                </fieldset>
+            </form>`);
+
+        document.getElementById('i').requestSubmit();
+
+        const group = document.getElementById('wirkungen');
+        await vi.waitFor(() => expect(group.querySelector('[data-ajax-error]')?.textContent).toBe(text));
+        // Der Text steht am Ende der Gruppe und nicht in der Karte des ersten Kästchens.
+        expect(group.lastElementChild.id).toBe('wirkungen-error');
+        expect(document.querySelector('label [data-ajax-error]')).toBeNull();
+        expect(group.getAttribute('aria-describedby')).toBe('wirkungen-error');
+        expect(document.querySelector('#i [data-form-problems] a').getAttribute('href')).toBe('#wirkungen');
+        expect(document.activeElement).toBe(document.getElementById('w-closed'));
+    });
+
     it('kehren mit data-reset-after-save nach dem Speichern zum Ausgangsstand zurück', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ message: 'Angelegt.' })));
         mount(form('data-reset-after-save'));

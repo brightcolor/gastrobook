@@ -83,9 +83,14 @@
                                             class="text-left font-semibold underline-offset-2 hover:underline [overflow-wrap:anywhere]">{{ $table->name }}</button>
                                     <p class="text-[0.8125rem] text-stone-600">{{ $table->min_capacity }}–{{ $table->max_capacity }} Personen{{ $flags ? ' · '.implode(' · ', $flags) : '' }}</p>
                                 </div>
-                                <x-inline-confirm :id="'tisch-loeschen-'.$table->id" :action="route('admin.settings.tables.delete', $table)" method="DELETE"
-                                                  label="Löschen" confirm="Tisch löschen" :subject="$table->name" :reload="true"
-                                                  :question="'Tisch „'.$table->name.'“ löschen? Er verschwindet aus dem Tischplan; vergangene Reservierungen behalten ihn.'" />
+                                <div class="flex flex-wrap items-center gap-1">
+                                    @if($canBlock)
+                                        <a href="{{ route('admin.settings.exceptions.show', ['tisch' => $table->id]) }}#ausnahme-neu" class="btn btn-quiet">Sperren…<span class="sr-only"> Tisch {{ $table->name }}</span></a>
+                                    @endif
+                                    <x-inline-confirm :id="'tisch-loeschen-'.$table->id" :action="route('admin.settings.tables.delete', $table)" method="DELETE"
+                                                      label="Löschen" confirm="Tisch löschen" :subject="$table->name" :reload="true"
+                                                      :question="'Tisch „'.$table->name.'“ löschen? Er verschwindet aus dem Tischplan; vergangene Reservierungen behalten ihn.'" />
+                                </div>
                             </li>
                         @endforeach
                     </ul>

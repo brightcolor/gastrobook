@@ -11,6 +11,7 @@ use App\Models\Room;
 use App\Services\AuditLogger;
 use App\Services\PlanLimitService;
 use App\Support\PlanLimitMessage;
+use App\Support\ScheduleExceptionRules;
 use App\Support\TableRules;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
@@ -32,9 +33,13 @@ class FloorPlanController extends Controller
 
         $rooms = $location->rooms()->where('is_active', true)->orderBy('sort_order')->with(['tables' => fn ($q) => $q->where('is_active', true)])->get();
 
+        $tenant = $this->context->tenant();
+
         return view('admin.floorplan.index', [
             'location' => $location,
             'rooms' => $rooms,
+            // „Tisch sperren…“ im Fenster eines Tisches führt zur Seite Ausnahmen und braucht deren Rechte.
+            'canBlock' => $tenant !== null && ScheduleExceptionRules::canManage($request->user(), $tenant, $location),
             'date' => $request->input('date', CarbonImmutable::now($location->timezone)->toDateString()),
             'combinations' => ($combinations = $location->tableCombinations()->with('tables:id,name')->get()),
             'joinableTables' => $location->tables()->where('joinable', true)->where('is_active', true)->with('room:id,name')->get(),

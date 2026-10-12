@@ -454,6 +454,8 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
             ->middleware('permission:blackouts.manage')->name('settings.blackouts.store');
         Route::delete('/settings/blackouts/{blackout}', [SettingsController::class, 'deleteBlackout'])
             ->middleware('permission:blackouts.manage')->name('settings.blackouts.delete');
+        Route::get('/settings/exceptions', [ExceptionsController::class, 'show'])
+            ->middleware(['permission:special_hours.manage', 'permission:blackouts.manage'])->name('settings.exceptions.show');
         Route::post('/settings/exceptions/preview', [ExceptionsController::class, 'preview'])
             ->middleware(['permission:special_hours.manage', 'permission:blackouts.manage'])->name('settings.exceptions.preview');
         Route::post('/settings/exceptions', [ExceptionsController::class, 'store'])

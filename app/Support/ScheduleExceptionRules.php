@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Support;
 
 use App\Models\Location;
+use App\Models\Tenant;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Str;
 
@@ -37,8 +39,26 @@ final class ScheduleExceptionRules
         'lock' => ['lock_rooms', 'lock_tables', 'lock_from', 'lock_until'],
     ];
 
+    /** Rechte, die eine Ausnahme verlangt: Sie schreibt Sondertage und Sperrzeiten zusammen (Seite und Speicherwege). */
+    public const PERMISSIONS = ['special_hours.manage', 'blackouts.manage'];
+
     /** Form des Schlüssels eines Eintrags in Adressen (Routen und Vorschau): g-{uuid}, s-{id}, b-{id}, t-{id}. */
     public const KEY_PATTERN = '[gsbt]-[A-Za-z0-9-]+';
+
+    /**
+     * Hat der Nutzer alle Rechte aus PERMISSIONS? Links auf die Seite
+     * („Sperren…“ am Tisch) erscheinen nur dann.
+     */
+    public static function canManage(User $user, Tenant $tenant, ?Location $location): bool
+    {
+        foreach (self::PERMISSIONS as $permission) {
+            if (! $user->canInTenant($permission, $tenant, $location)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     /**
      * Die Eingabe, begrenzt auf die Felder der gewählten Wirkungen. Ein leeres

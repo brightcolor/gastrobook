@@ -1,6 +1,7 @@
 // Verwaltung: alle Bausteine starten, sobald die Seite steht.
 import { initCopyButtons } from './copy.js';
 import { initDrawers } from './drawer.js';
+import { initExceptions } from './exceptions.js';
 import { initAjaxForms } from './forms.js';
 import { initHours } from './hours.js';
 import { initInlineConfirms } from './inline-confirm.js';
@@ -19,6 +20,7 @@ export function initAdmin() {
     initAjaxForms();
     initRows();
     initHours();
+    initExceptions();
     initReveals();
     initMinuteHints();
     initSaveBar();

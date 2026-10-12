@@ -85,8 +85,8 @@
     <button id="reassignCancel" class="rounded-lg bg-white/20 px-4 py-1.5 hover:bg-white/30">Abbrechen</button>
 </div>
 
-{{-- Reservation popup --}}
-<div id="tablePopup" class="fp-popup hidden"></div>
+{{-- Reservation popup; data-lock-url führt zu „Sperren…“ auf der Seite Ausnahmen (nur mit deren Rechten) --}}
+<div id="tablePopup" class="fp-popup hidden" @if($canBlock) data-lock-url="{{ route('admin.settings.exceptions.show') }}" @endif></div>
 
 {{-- Combinations modal --}}
 <div id="comboBack" class="fp-modal-back hidden">
@@ -496,6 +496,8 @@
     function showPopup(t) {
         const pct = t.seats ? Math.round((t.occupied || 0) / t.seats * 100) : 0;
         let body;
+        // Link zur Seite Ausnahmen: 'lock' sperrt diesen Tisch, 'view' zeigt die bestehenden Sperren.
+        let lockLink = null;
         if (t.current) {
             const cur = t.current.party, full = cur >= t.seats;
             const tagBadges = (t.current.tags?.length)
@@ -523,7 +525,9 @@
                 <a href="/admin/reservations/${t.upcoming.id}" class="pp-btn pp-dark">Reservierung öffnen</a>`;
         } else if (t.status === 'blocked') {
             body = `<p class="pp-sub">Dieser Tisch ist aktuell gesperrt.</p>`;
+            lockLink = 'view';
         } else {
+            lockLink = 'lock';
             body = `<p class="pp-sub" style="color:#047857">Frei.</p>
                 <a href="{{ route('admin.reservations.create') }}?date=${dateInput.value}&time=${timeInput.value}&table_id=${t.id}" class="pp-btn pp-green">Hier reservieren</a>
                 <a href="{{ route('admin.walkins.index') }}" class="pp-btn pp-soft">Walk-in platzieren</a>`;
@@ -531,11 +535,22 @@
         popup.innerHTML = `<div class="pp-head st-${t.status}">
                 <div><div class="pp-title">Tisch ${esc(t.name)}</div>
                 <div class="pp-cap">${t.occupied || 0}/${t.seats} Plätze belegt</div></div>
-                <button class="pp-x" onclick="document.getElementById('tablePopup').classList.add('hidden')">✕</button>
+                <button type="button" class="pp-x" aria-label="Schließen">✕</button>
             </div>
             <div class="pp-bar"><span style="width:${pct}%"></span></div>
             <div class="pp-body">${body}</div>`;
         popup.classList.remove('hidden');
+
+        popup.querySelector('.pp-x').addEventListener('click', () => popup.classList.add('hidden'));
+        // Mit den Rechten für Ausnahmen (data-lock-url): „Tisch sperren…“ öffnet die Seitenleiste mit diesem Tisch.
+        const lockUrl = popup.dataset.lockUrl;
+        if (lockUrl && lockLink) {
+            const link = document.createElement('a');
+            link.className = 'pp-btn pp-soft';
+            link.href = lockLink === 'lock' ? `${lockUrl}?tisch=${encodeURIComponent(t.id)}#ausnahme-neu` : lockUrl;
+            link.textContent = lockLink === 'lock' ? 'Tisch sperren…' : 'Sperren ansehen…';
+            popup.querySelector('.pp-body').append(link);
+        }
 
         popup.querySelectorAll('.pp-step').forEach(b => b.addEventListener('click', () => {
             const next = (t.current.party || 0) + (+b.dataset.d);

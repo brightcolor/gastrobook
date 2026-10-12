@@ -12,6 +12,7 @@ use App\Models\SeasonPeriod;
 use App\Services\AuditLogger;
 use App\Support\OpeningHoursPreview;
 use App\Support\OpeningHoursRules;
+use App\Support\ScheduleExceptionRules;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -68,6 +69,7 @@ class OpeningHoursController extends Controller
             'duration' => $this->preview->duration($location, $salon),
             'salon' => $salon,
             'canSeasons' => $request->user()->canInTenant('blackouts.manage', $tenant, $location),
+            'canExceptions' => ScheduleExceptionRules::canManage($request->user(), $tenant, $location),
         ]);
     }
 
