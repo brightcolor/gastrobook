@@ -818,10 +818,10 @@ class ScheduleExceptionsTest extends TestCase
             ['Am 07.11.2026 gelten höchstens 1 Gast gleichzeitig im Raum „Saal“; letzte Uhrzeit 21:30.', [
                 'from' => '2026-11-07', 'effects' => ['limit'], 'limit_covers' => 1, 'limit_room_id' => $setup['room']->id,
             ]],
-            ['Am 07.11.2026 ist Tisch T1 gesperrt; letzte Uhrzeit 21:30.', [
+            ['Am 07.11.2026 ist Tisch T1 gesperrt.', [
                 'from' => '2026-11-07', 'effects' => ['lock'], 'lock_tables' => [$setup['tables'][0]->id],
             ]],
-            ['Vom 07.11.2026 bis 08.11.2026 sind „Saal“, „Terrasse“, Tisch T1 und Tisch T2 gesperrt von 18:00 bis 22:00; letzte Uhrzeit 21:30.', [
+            ['Vom 07.11.2026 bis 08.11.2026 sind „Saal“, „Terrasse“, Tisch T1 und Tisch T2 gesperrt von 18:00 bis 22:00.', [
                 'from' => '2026-11-07', 'until' => '2026-11-08', 'effects' => ['lock'], 'lock_rooms' => [$terrace->id, $setup['room']->id],
                 'lock_tables' => [$setup['tables'][1]->id, $setup['tables'][0]->id], 'lock_from' => '18:00', 'lock_until' => '22:00',
             ]],

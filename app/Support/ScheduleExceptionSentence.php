@@ -92,6 +92,11 @@ final class ScheduleExceptionSentence
         }
         $sentence = $when.' '.implode('; ', array_values(array_filter($parts)));
 
+        // Eine reine Sperre ändert keine Zeiten: Die letzte Uhrzeit gehört zu den Wirkungen, die Zeiten oder Plätze ändern.
+        // Schließt ein anderer Eintrag den Tag, sagt der Satz das weiterhin.
+        if ($effects === ['lock'] && $closure === null) {
+            return $sentence.'.';
+        }
         if ($last !== null) {
             return $sentence.'; '.__('letzte Uhrzeit :last.', ['last' => $last]);
         }

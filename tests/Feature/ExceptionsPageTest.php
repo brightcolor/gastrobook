@@ -312,6 +312,8 @@ class ExceptionsPageTest extends TestCase
 
         $response = $this->actingAs($owner)->get('/admin/settings/exceptions')->assertOk();
 
+        // Die Rolle „status“ erlaubt den Namen aus der Überschrift „So wirkt es“ (aria-labelledby an einem einfachen Absatz wäre unzulässig).
+        $this->assertMatchesRegularExpression('/<p data-effect-sentence role="status" aria-live="polite" aria-atomic="true" aria-labelledby="ausnahme-neu-sentence-title"/', (string) $response->getContent());
         $response->assertSee('data-effect-sentence', false)
             ->assertSee('aria-live="polite"', false)
             ->assertSee('Wähle Tage und was anders ist; hier steht dann, was Gäste erleben.')

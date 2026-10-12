@@ -96,7 +96,7 @@
             <x-slot:footer>
                 <div class="w-full space-y-1">
                     <p id="{{ $drawerId }}-sentence-title" class="text-sm font-semibold text-stone-900">So wirkt es</p>
-                    <p data-effect-sentence aria-live="polite" aria-atomic="true" aria-labelledby="{{ $drawerId }}-sentence-title"
+                    <p data-effect-sentence role="status" aria-live="polite" aria-atomic="true" aria-labelledby="{{ $drawerId }}-sentence-title"
                        data-text-start="{{ $texts['start'] }}" data-text-incomplete="{{ $texts['incomplete'] }}" data-text-unavailable="{{ $texts['unavailable'] }}"
                        class="text-sm text-stone-700 [overflow-wrap:anywhere]">{{ $texts['start'] }}</p>
                 </div>
