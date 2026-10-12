@@ -92,7 +92,9 @@ class EntrypointCreateAdminTest extends TestCase
         $this->assertStringContainsString('Der Oberadmin konnte nicht angelegt werden (Ergebnis 1). Der Befehl meldet:', $output);
         $this->assertStringContainsString('Das Passwort muss mindestens 10 Zeichen lang sein.', $output);
         $this->assertStringContainsString('Der Start läuft weiter.', $output);
-        // Ergebnis 1 meldet eine abgelehnte Eingabe: Der Hinweis nennt die Einstellungen und den Befehl.
+        // Ergebnis 1 meldet eine abgelehnte Eingabe, Laravel auch eine abgefangene Ausnahme: Der Hinweis gilt für den ersten Fall,
+        // nennt die Einstellungen und den Befehl und verweist auf die Ausgabe darüber.
+        $this->assertStringContainsString('Falls die Ausgabe oben eine abgelehnte Eingabe nennt, bitte SWAYY_ADMIN_EMAIL und SWAYY_ADMIN_PASSWORD in der .env prüfen', $output);
         $this->assertStringContainsString('SWAYY_ADMIN_EMAIL', $output);
         $this->assertStringContainsString('php artisan swayy:create-admin', $output);
         $this->assertStringNotContainsString('unerwartet gescheitert', $output);

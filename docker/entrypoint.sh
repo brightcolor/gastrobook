@@ -40,8 +40,9 @@ else
     echo "[swayy] Der Oberadmin konnte nicht angelegt werden (Ergebnis $admin_status). Der Befehl meldet:"
     echo "$admin_output" | tail -n 20
     if [ "$admin_status" -eq 1 ]; then
-        # Ergebnis 1 meldet der Befehl bei einer abgelehnten Eingabe.
-        echo "[swayy] Der Start läuft weiter. Bitte SWAYY_ADMIN_EMAIL und SWAYY_ADMIN_PASSWORD in der .env prüfen"
+        # Ergebnis 1 meldet der Befehl bei einer abgelehnten Eingabe; Laravel meldet 1 auch bei einer abgefangenen Ausnahme.
+        # Die Zeilen oben nennen die Ursache, der Hinweis gilt für den Fall der abgelehnten Eingabe.
+        echo "[swayy] Der Start läuft weiter. Falls die Ausgabe oben eine abgelehnte Eingabe nennt, bitte SWAYY_ADMIN_EMAIL und SWAYY_ADMIN_PASSWORD in der .env prüfen"
         echo "[swayy] (Passwort mit Buchstaben und Ziffern in der Mindestlänge von SWAYY_PASSWORD_MIN_LENGTH, Adresse noch nicht vergeben)"
         echo "[swayy] und den Oberadmin danach mit \"php artisan swayy:create-admin\" anlegen."
     else
