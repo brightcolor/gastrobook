@@ -14,8 +14,8 @@ Leistung:
 - **Preis**
 - **Beschreibung** – ein Satz für die Buchungsseite
 - **Farbe** – zur Wiedererkennung in der Liste
-- **Online buchbar** – mit Haken buchen Gäste die Leistung online; ohne Haken
-  ist sie pausiert, und bestehende Termine behalten sie
+- **Online buchbar** – mit Haken buchen Gäste die Leistung online; ist der Haken
+  entfernt, ist sie pausiert, und bestehende Termine behalten sie
 
 Die Dauer ist die wichtigste Angabe. Wenn eine Balayage in Wahrheit drei Stunden
 dauert, aber 90 Minuten hinterlegt sind, verkauft dir das System den Tag
@@ -59,7 +59,7 @@ anderen Personen zu oder sage sie ab.
 
 ## 4. Termin am Telefon annehmen
 
-**Terminbuch → Neuer Termin.** Die Maske zeigt im Salon-Modus zwei zusätzliche
+**Buchungen › Termine › + Neu.** Die Maske zeigt im Salon-Modus zwei zusätzliche
 Felder:
 
 - **Leistungen** – ankreuzen, was gemacht wird. Die Dauer des Termins ergibt
@@ -106,8 +106,8 @@ jemanden zu – danach steht er im Terminplan in der richtigen Spalte. Solange
 niemand zugewiesen ist, taucht der Termin in keiner Tagesspalte auf und wird beim
 Verplanen leicht übersehen.
 
-Der Plan ist zum Ansehen gedacht. Gebucht, verschoben und storniert wird im
-Terminbuch, wo alle Prüfungen greifen.
+Der Plan dient zum Ansehen. Gebucht, verschoben und storniert wird unter
+**Buchungen › Termine**, wo alle Prüfungen greifen.
 
 ## 7. Anzahlung für teure Leistungen
 

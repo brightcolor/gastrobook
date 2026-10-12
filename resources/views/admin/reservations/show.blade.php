@@ -346,11 +346,12 @@
         renderPicker();
     }
 
-    // Die Speicherungen laufen nacheinander: Eine spätere Antwort überholt keine frühere.
+    // Die Speicherungen laufen nacheinander: Eine spätere Antwort überholt keine frühere. Scheitert eine unerwartet,
+    // nennt die Seite den Fehler und die Warteschlange läuft für die nächste Änderung weiter.
     let syncQueue = Promise.resolve();
 
     function sync() {
-        syncQueue = syncQueue.then(saveTags);
+        syncQueue = syncQueue.then(saveTags).catch(() => syncFailed(syncFailedText));
         return syncQueue;
     }
 

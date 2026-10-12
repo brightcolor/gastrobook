@@ -6,7 +6,7 @@ optional einen Preis pro Person.
 
 ## Ein Event anlegen
 
-**Events → Neues Event.** Was du angibst:
+**Buchungen › Events › Event anlegen.** Was du angibst:
 
 - **Titel und Beschreibung** – erscheint auf der öffentlichen Seite
 - **Datum und Uhrzeit**, auch über Mitternacht
@@ -56,7 +56,7 @@ Knopf weisen beides getrennt aus. Details zu Gebühren stehen im Kapitel
 
 ## Am Eventtag
 
-**Events → Event öffnen → Teilnehmerliste.** Dort hakst du jeden Gast beim
+**Buchungen › Events**, Event öffnen, **Teilnehmerliste**. Dort hakst du jeden Gast beim
 Eintreffen ab (**Check-in**). Wer nicht kommt, bleibt offen – so hast du am Ende
 eine ehrliche Liste.
 
@@ -67,14 +67,15 @@ auf Papier.
 
 Musst du absagen: Status auf **Abgesagt** setzen und die Gäste informieren. Die
 Kontaktdaten hast du in der Teilnehmerliste. Bereits gezahlte Beträge
-erstattest du über die **Rückerstattungen** (siehe dort) – eine Absage durch
-euch ist der klassische Fall für eine vollständige Rückzahlung.
+erstattest du unter **Buchungen › Erstattungen** (siehe *Rückerstattungen*) – eine
+Absage durch euch ist der klassische Fall für eine vollständige Rückzahlung.
 
 ## Zusammenhang
 
-Eventbuchungen sind **keine** Tischreservierungen: Sie blockieren keine Tische
-und tauchen nicht im Tischplan auf. Wenn dein Event den ganzen Laden belegt,
-lege zusätzlich eine **Sperrzeit** für diesen Zeitraum an – sonst bucht jemand
-parallel einen Tisch.
+Eventbuchungen sind Buchungen eigener Art: Sie blockieren keine Tische und
+tauchen nicht im Tischplan auf. Wenn dein Event den ganzen Laden belegt, lege
+zusätzlich unter **Einstellungen › Platz & Zeiten › Ausnahmen** eine Ausnahme
+für diesen Zeitraum an („Geschlossen“ oder „Weniger Gäste“, bei einzelnen
+Räumen „Räume oder Tische sperren“) – sonst bucht jemand parallel einen Tisch.
 
 Das ist der häufigste Fehler bei Events. Beides zusammen gehört zusammen.

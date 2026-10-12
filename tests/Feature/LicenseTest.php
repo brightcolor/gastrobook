@@ -211,7 +211,7 @@ class LicenseTest extends TestCase
             ->assertSee('Lizenz-ID: lic_layout')
             ->assertSee('href="mailto:lizenz@example.test"', false)
             ->assertSee('Schreib uns an')
-            ->assertSee('Die Buchungsseite für deine Gäste ist weiterhin erreichbar.')
+            ->assertSee('Die Buchungsseiten sind weiterhin erreichbar.')
             ->assertSee('Abmelden')
             ->assertDontSee('Zur Übersicht')
             ->assertDontSee('info@swayy.de')

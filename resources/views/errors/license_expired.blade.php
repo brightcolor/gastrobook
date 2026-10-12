@@ -23,7 +23,7 @@
 @section('step')
     Schreib uns an
     <a href="mailto:{{ $support }}" class="font-semibold underline underline-offset-2">{{ $support }}</a>,
-    dann klären wir die Erneuerung. Die Buchungsseite für deine Gäste ist weiterhin erreichbar.
+    dann klären wir die Erneuerung. Die Buchungsseiten sind weiterhin erreichbar.
 @endsection
 @section('actions')
     <a href="mailto:{{ $support }}" class="btn btn-primary">Lizenz erneuern</a>

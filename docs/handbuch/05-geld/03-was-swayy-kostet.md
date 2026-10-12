@@ -38,8 +38,8 @@ anzufangen.
 
 ## Bezahlen per SEPA-Lastschrift
 
-**Abrechnung → Per Lastschrift einrichten.** Du wirst zu einer gesicherten Seite
-weitergeleitet, gibst dort deine IBAN ein und erteilst ein **SEPA-Mandat**.
+**Einstellungen › Betrieb › Abo & Rechnungen › SEPA-Lastschrift › Per Lastschrift
+einrichten.** Du wirst zu einer gesicherten Seite weitergeleitet, gibst dort deine IBAN ein und erteilst ein **SEPA-Mandat**.
 
 Wichtig zum Verständnis: Das ist **kein Dauerauftrag**, den du bei deiner Bank
 einrichtest, sondern eine Einzugsermächtigung. Du autorisierst einmal, danach
@@ -53,9 +53,10 @@ den Anbieter.
 
 ## Kündigen
 
-**Abrechnung → Lastschrift kündigen.** Das beendet Abo und Mandat, es wird nichts
-mehr eingezogen. Deine Daten kannst du vorher über den **Account-Export**
-mitnehmen (siehe *Umzug, Export und Import*).
+**Einstellungen › Betrieb › Abo & Rechnungen › SEPA-Lastschrift › Lastschrift
+kündigen.** Das beendet Abo und Mandat, danach zieht Swayy nichts mehr ein. Deine
+Daten kannst du vorher über **Einstellungen › Betrieb › Daten** herunterladen
+(siehe *Sicherung, Umzug, Export und Import*).
 
 ## Was kostet der Betrieb realistisch?
 

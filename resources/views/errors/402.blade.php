@@ -3,7 +3,7 @@
 
 {{-- 402 sperrt den Zugang eines Betriebs (EnsureTrialActive). „Zur Übersicht“ führt wieder in diese Seite, deshalb fehlt
      der Knopf; Startseite und Abmelden bleiben. Plattform-Administratoren kommen über den Supportzugriff hierher und
-     finden mit „Zur Plattform“ zurück zu den Betrieben. --}}
+     finden mit „Zur Plattform“ zurück zu den Mandanten. --}}
 @php
     $reason = ErrorPage::reason($exception ?? null);
 @endphp
@@ -15,7 +15,7 @@
     @if(ErrorPage::signedIn())
         Frag den Inhaber deines Betriebs oder melde dich mit einem anderen Konto an.
         @if(ErrorPage::platformAdmin())
-            Als Plattform-Administrator änderst du den Zustand des Betriebs in der Plattform unter „Betriebe“.
+            Als Plattform-Administrator änderst du den Zustand des Betriebs in der Plattform unter „Mandanten“.
         @endif
     @else
         Wende dich an den Betrieb.

@@ -77,8 +77,8 @@ deinen Eingaben und zeigt Fehler, bevor du speicherst.
 
 **Gruppen:** Eine Ausnahme mit mehreren Wirkungen, etwa Betriebsferien mit
 „Geschlossen“ und gesperrter Terrasse, bleibt ein Eintrag. Du bearbeitest und
-löschst sie gemeinsam. Ältere Sondertage, Sperrzeiten und Tischsperren aus der
-Zeit vor dieser Seite stehen einzeln in der Liste. Sie lassen sich löschen, und
+löschst sie gemeinsam. Ältere Einträge aus der Zeit vor dieser Seite (frühere
+Sondertage und Sperren) stehen einzeln in der Liste. Sie lassen sich löschen, und
 wo das Formular sie abbilden kann, auch bearbeiten.
 
 **Bestehende Reservierungen bleiben.** Eine Ausnahme storniert nichts. Liegen im
@@ -131,8 +131,8 @@ Im Restaurant wählst du unter „Wie Swayy die Plätze zählt“ die Zählweise
 - **Nach Tischen** (Standard): Es kann gebucht werden, solange ein passender
   Tisch frei ist. Realistisch für Restaurants.
 - **Nach Personen**: Es zählt die Gesamtzahl der Gäste pro Zeitfenster, bis zur
-  Höchstzahl („Höchstens gleichzeitig“). Sinnvoll für offene Konzepte ohne feste
-  Tische, etwa eine Bar.
+  Höchstzahl („Höchstens gleichzeitig“). Sinnvoll für offene Konzepte mit freier
+  Platzwahl, etwa eine Bar.
 - **Beides**: Es braucht einen passenden Tisch, und die Höchstzahl gilt
   zusätzlich.
 

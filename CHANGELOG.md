@@ -106,16 +106,20 @@
   tragen sie als `maxlength`. Das Kürzel eines Standorts passt auch bei 255
   Zeichen in seine Spalte. Räume, Tische, Kombinationen, Leistungen und
   Mitarbeiter stehen in Namensreihenfolge mit Umlauten und Zahlen („Älteste“
-  zwischen „Abend“ und „Bart“, „T2“ vor „T10“).
+  zwischen „Abend“ und „Bart“, „T2“ vor „T10“). Die Sortierung nutzt die
+  PHP-Erweiterung `intl`; `composer.json` verlangt sie jetzt ausdrücklich.
 - Öffnungszeiten und Ausnahmen prüfen die Zahl der Zeilen vor der Prüfung der
   Überschneidung. Eine Woche nimmt höchstens das Siebenfache der Fenster je Tag
   an; eine größere Liste weist die Seite mit Ursache und nächstem Schritt ab.
 - Fehlertexte: Das Reservierungsdetail zeigt die Meldung des Servers oder einen
   Satz zur Verbindung, wenn das Speichern der Tags scheitert. Die Meldung zum
-  Überbuchen nennt den nächsten Schritt. Der Einrichtungsassistent nennt beim
-  Kopieren der Adresse die Ursache.
+  Überbuchen nennt den nächsten Schritt. Der Einrichtungsassistent und alle
+  Kopierknöpfe der Verwaltung nennen bei einer verweigerten Zwischenablage die
+  Ursache.
 - Protokoll in den Worten des Betriebs: Ein Salon liest „Termin“ und „Kunde“
-  in Einträgen, Bereichsauswahl und Suche.
+  in Einträgen, Bereichsauswahl und Suche. Bereiche, die nur ein Restaurant
+  kennt (Tisch, Raum, Tischkombination, Tischplan, Tischsperre, Zone), stehen in
+  der Auswahl eines Salons nur, wenn der Betrieb Einträge darin hat.
 - Der Vorlageneditor zeigt den Standardtext in der Anrede des gewählten
   Standorts und nennt sie in der Seitenleiste.
 - Die Lizenzseite hat das Layout der Fehlerseiten, spricht mit „du“ und nennt

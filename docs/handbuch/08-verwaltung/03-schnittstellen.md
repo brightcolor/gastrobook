@@ -27,8 +27,7 @@ Schlüssel nutzt, etwa „Kassensystem“) und hakst die **Rechte** an, die es
 braucht. Die Rechte tragen deutsche Namen, zum Beispiel „Reservierungen lesen“,
 „Reservierungen anlegen und ändern“, „Gäste lesen“, „Freie Zeiten abfragen“,
 „Warteliste befüllen“, „Events lesen“, „Webhooks verwalten“ und „Berichte
-lesen“. Im Salon steht „Termine“ statt „Reservierungen“ und „Kunden“ statt
-„Gäste“.
+lesen“. Im Salon lauten sie „Termine lesen“, „Kunden lesen“ und so weiter.
 
 Hake nur an, was der andere Dienst wirklich braucht. „Lesen“ allein ist deutlich
 harmloser als „anlegen und ändern“. Für die meisten Programme reicht

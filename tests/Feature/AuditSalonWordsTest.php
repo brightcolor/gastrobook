@@ -66,7 +66,7 @@ class AuditSalonWordsTest extends TestCase
         }
         // Jede Bezeichnung, die im Restaurant „Reservierung“ oder „Gast“ sagt, hat eine Fassung für den Salon.
         foreach (AuditLog::ACTION_LABELS as $action => $label) {
-            if (preg_match('/Reservierung|\bGast\b|Gäste|Gastdaten/u', $label) === 1 && ! str_starts_with($action, 'event.') && $action !== 'payment.forfeited') {
+            if (preg_match('/Reservierung|\bGast\b|Gäste|Gastdaten/u', $label) === 1) {
                 $this->assertArrayHasKey($action, AuditLog::SALON_ACTION_LABELS, "{$action} sagt im Salon noch: {$label}");
             }
         }
@@ -98,6 +98,55 @@ class AuditSalonWordsTest extends TestCase
             ->assertDontSee('Kunde geändert')
             ->assertSee('Bereich')
             ->assertSee('Termin');
+    }
+
+    public function test_a_salon_lists_restaurant_areas_only_when_it_has_entries_in_them(): void
+    {
+        $setup = $this->createTenantSetup();
+        $setup['tenant']->update(['type' => TenantType::Salon]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->log($setup['tenant']->id, 'reservation.status_changed');
+        $this->clearTenantContext();
+
+        $html = (string) $this->actingAs($owner)->get('/admin/audit')->assertOk()->getContent();
+
+        foreach (AuditLog::RESTAURANT_ONLY_SUBJECTS as $prefix) {
+            $this->assertDoesNotMatchRegularExpression('#<option value="'.$prefix.'"#', $html, "{$prefix} steht in der Auswahl.");
+        }
+        $this->assertMatchesRegularExpression('#<option value="reservation"#', $html);
+        $this->assertMatchesRegularExpression('#<option value="staff_member"#', $html);
+
+        // Nach einem Wechsel der Betriebsart bleiben alte Einträge auffindbar.
+        $this->log($setup['tenant']->id, 'table.deleted');
+        $this->log($setup['tenant']->id, 'floorplan.updated');
+
+        $html = (string) $this->actingAs($owner)->get('/admin/audit')->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('#<option value="table"[^>]*>Tisch</option>#', $html);
+        $this->assertMatchesRegularExpression('#<option value="floorplan"[^>]*>Tischplan</option>#', $html);
+        foreach (['room', 'table_combination', 'zone', 'table_block'] as $prefix) {
+            $this->assertDoesNotMatchRegularExpression('#<option value="'.$prefix.'"#', $html);
+        }
+        $this->actingAs($owner)->get('/admin/audit?area=table')->assertOk()->assertSee('Tisch gelöscht')->assertDontSee('Termin: Status geändert');
+    }
+
+    public function test_a_filtered_restaurant_area_stays_in_the_list_of_a_salon_and_a_restaurant_lists_every_area(): void
+    {
+        $setup = $this->createTenantSetup();
+        $setup['tenant']->update(['type' => TenantType::Salon]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        // Ein Bereich ohne Einträge, den die Adresse trotzdem nennt, bleibt sichtbar und gewählt.
+        $response = $this->actingAs($owner)->get('/admin/audit?area=room')->assertOk()->assertSee('Filter aktiv');
+        $this->assertMatchesRegularExpression('#<option value="room"[^>]*selected[^>]*>Raum</option>#', (string) $response->getContent());
+
+        $setup['tenant']->update(['type' => TenantType::Restaurant]);
+
+        $html = (string) $this->actingAs($owner)->get('/admin/audit')->assertOk()->getContent();
+        foreach (AuditLog::RESTAURANT_ONLY_SUBJECTS as $prefix) {
+            $this->assertMatchesRegularExpression('#<option value="'.$prefix.'"#', $html, "{$prefix} fehlt in der Auswahl eines Restaurants.");
+        }
     }
 
     public function test_the_page_and_the_area_filter_of_a_restaurant_keep_their_words(): void

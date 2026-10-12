@@ -16,13 +16,15 @@ describe('Kopierknopf', () => {
         expect(writeText).toHaveBeenCalledWith('https://swayy.test/invitation/abc');
     });
 
-    it('nennt den Weg von Hand, wenn der Browser das Kopieren verweigert', async () => {
+    it('nennt die Ursache und den Weg von Hand, wenn der Browser das Kopieren verweigert', async () => {
         vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn(async () => { throw new Error('denied'); }) } });
         mount('<button type="button" data-copy="abc">Kopieren</button>');
 
         document.querySelector('[data-copy]').click();
 
         await vi.waitFor(() => expect(document.getElementById('swayyToast').dataset.state).toBe('error'));
-        expect(document.getElementById('swayyToast').textContent).toContain('Strg+C');
+        expect(document.getElementById('swayyToast').textContent).toBe(
+            'Der Browser erlaubt den Zugriff auf die Zwischenablage nicht. Bitte den Text markieren und mit Strg+C (Mac: ⌘+C) kopieren.',
+        );
     });
 });

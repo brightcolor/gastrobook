@@ -4,7 +4,7 @@ Drei automatische Nachrichten, die Gäste zurückholen, ohne dass jemand eine
 Liste pflegen muss. Sie laufen täglich von selbst – du schreibst den Text
 einmal.
 
-Zu finden unter **Marketing**. Sichtbar für Inhaber, Verwaltung, Betriebs- und
+Zu finden unter **Gäste › Marketing** (im Salon: **Kunden › Marketing**). Sichtbar für Inhaber, Verwaltung, Betriebs- und
 Standortleitung sowie Marketing.
 
 ## Die drei Kampagnenarten

@@ -50,20 +50,20 @@ class RoomsController extends Controller
         abort_if($location === null || $tenant === null, 404);
         abort_if($tenant->isSalon(), 403, __('Räume und Tische gibt es bei Restaurants. Salons richten unter „Platz & Zeiten“ Leistungen und Mitarbeiter ein.'));
 
-        $rooms = $this->inOrder($location->rooms()
+        $rooms = NameOrder::inOrder($location->rooms()
             ->where('is_active', true)
             ->with(['tables' => fn ($query) => $query->where('is_active', true)])
             ->get());
         // Jeder Tisch kennt seinen Raum, ohne ihn neu zu laden.
         $tables = $rooms->flatMap(function (Room $room) {
-            $room->setRelation('tables', $this->inOrder($room->tables));
+            $room->setRelation('tables', NameOrder::inOrder($room->tables));
 
             return $room->tables->each(fn (RestaurantTable $table) => $table->setRelation('room', $room));
         });
         // Die Mitglieder einer Kombination mit Raum, Größe und "Kombinierbar", auch wenn ein Tisch nicht mehr kombinierbar ist.
-        $combinations = $this->inOrder($location->tableCombinations()->with(['tables:id,name,room_id,min_capacity,max_capacity,joinable', 'tables.room:id,name'])->get());
+        $combinations = NameOrder::inOrder($location->tableCombinations()->with(['tables:id,name,room_id,min_capacity,max_capacity,joinable', 'tables.room:id,name'])->get());
         $byId = $tables->keyBy('id');
-        $combinations->each(fn (TableCombination $combination) => $combination->setRelation('tables', $this->inOrder(
+        $combinations->each(fn (TableCombination $combination) => $combination->setRelation('tables', NameOrder::inOrder(
             $combination->tables->map(fn (RestaurantTable $member) => $byId->get($member->id) ?? $member),
         )));
 
@@ -388,20 +388,6 @@ class RoomsController extends Controller
         });
 
         return $this->saved($request, __('Tischkombination gelöscht.'));
-    }
-
-    /**
-     * Nach Reihenfolge und Name sortiert, "T2" vor "T10".
-     *
-     * @template TKey of array-key
-     * @template TModel of Room|RestaurantTable|TableCombination
-     *
-     * @param  Collection<TKey, TModel>  $items
-     * @return Collection<int, TModel>
-     */
-    private function inOrder(Collection $items): Collection
-    {
-        return NameOrder::inOrder($items);
     }
 
     /**

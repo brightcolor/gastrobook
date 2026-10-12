@@ -48,8 +48,8 @@ class ServiceController extends Controller
 
         return view('admin.services.index', [
             'location' => $location,
-            'services' => $this->inOrder($services),
-            'staff' => $this->inOrder($staff),
+            'services' => NameOrder::inOrder($services),
+            'staff' => NameOrder::inOrder($staff),
             'limits' => (array) config('swayy.salon'),
             'defaultColor' => config('swayy.ui.default_label_color'),
         ]);
@@ -315,20 +315,5 @@ class ServiceController extends Controller
     private function assignedStaff(Service $service): Collection
     {
         return $service->staff()->pluck('staff_members.id')->map(fn ($id) => (int) $id)->sort()->values();
-    }
-
-    /**
-     * Nach Reihenfolge und Name sortiert, „Pflege 2“ vor „Pflege 10“. In PHP sortiert, damit die Reihenfolge unter
-     * SQLite und PostgreSQL gleich ausfällt.
-     *
-     * @template TKey of array-key
-     * @template TModel of Service|StaffMember
-     *
-     * @param  Collection<TKey, TModel>  $items
-     * @return Collection<int, TModel>
-     */
-    private function inOrder(Collection $items): Collection
-    {
-        return NameOrder::inOrder($items);
     }
 }

@@ -98,12 +98,15 @@ Nehmt euch das für zwei Wochen konsequent vor; danach stimmen die Zahlen.
 
 Wenn Swayy etwas nicht ausführen kann, zeigt es eine Seite mit der Ursache und
 dem nächsten Schritt. Unten steht ein **Fehlercode**. Nenne ihn dem Support, wenn du
-dich meldest.
+dich meldest. Die 403 gibt es in drei Fassungen: Die Rolle hat kein Recht für die
+Seite, ein Grund aus Swayy steht im Satz, oder ein Link aus einer Mail gilt
+nicht mehr.
 
 | Code | Titel | Was es bedeutet | Was du tust |
 |---|---|---|---|
-| 402 | Dieser Betrieb ist gesperrt | Der Zugang des Betriebs ist gesperrt. | Frag den Inhaber deines Betriebs. Plattform-Administratoren kehren von dort in die Plattform zurück. |
+| 402 | Dieser Betrieb ist gesperrt | Der Zugang des Betriebs ist gesperrt. | Frag den Inhaber deines Betriebs. Plattform-Administratoren finden über „Zur Plattform“ zurück. |
 | 403 | Dafür fehlt dir das Recht | Deine Rolle hat für diese Seite keine Freigabe. | Frag den Inhaber oder die Administration. |
+| 403 | Zugriff nicht möglich | Swayy nennt den Grund im Satz darunter, zum Beispiel eine Überbuchung, für die dir die erweiterte Berechtigung fehlt. | Folge dem Schritt im Satz. Hilft er nicht, frag den Inhaber deines Betriebs oder melde dich mit einem anderen Konto an. |
 | 403 | Dieser Link funktioniert nicht (mehr) | Ein Link aus einer Mail ist abgelaufen, wurde verändert oder gehört zu einem anderen Vorgang. | Öffne den Link noch einmal aus deiner Mail oder wende dich an den Betrieb. |
 | 404 | Diese Seite gibt es nicht | Die Adresse ist falsch oder der Eintrag wurde gelöscht. | Prüfe die Adresse oder starte über „Zur Übersicht“ neu. |
 | 419 | Die Seite war zu lange offen | Ein Formular gilt aus Sicherheitsgründen nur eine Weile. | Lade die Seite neu („Seite neu laden“) und sende das Formular noch einmal. |

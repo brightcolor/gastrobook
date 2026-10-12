@@ -278,6 +278,8 @@ class ReservationListLayoutTest extends TestCase
         $this->assertStringContainsString('if (!res.ok) {', $html);
         $this->assertStringContainsString('syncFailed(failureText(res, await readJson(res), syncFailedText));', $html);
         $this->assertStringContainsString('syncFailed(syncNetworkText);', $html);
+        // Auch ein unerwarteter Fehler beim Speichern lässt die Warteschlange weiterlaufen und meldet sich.
+        $this->assertStringContainsString('syncQueue = syncQueue.then(saveTags).catch(() => syncFailed(syncFailedText));', $html);
         // Das Skript bekommt die Texte als JSON; die Umlaute stehen dort maskiert.
         foreach (['Die Änderung konnte nicht gespeichert werden. Bitte die Verbindung prüfen und erneut versuchen.', 'Die Änderung konnte nicht gespeichert werden. Bitte die Seite neu laden und es noch einmal versuchen.'] as $text) {
             $this->assertStringContainsString(substr((string) json_encode($text), 1, -1), $html);

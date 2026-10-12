@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use Symfony\Component\Process\Process;
 use Tests\TestCase;
+use Throwable;
 
 /**
  * docker/entrypoint.sh läuft mit set -e. Der Schritt „Oberadmin anlegen“ darf den Start nie abbrechen und meldet einen
@@ -23,7 +24,7 @@ class EntrypointCreateAdminTest extends TestCase
         $probe = new Process(['sh', '-c', 'exit 0']);
         try {
             $probe->run();
-        } catch (\Throwable) {
+        } catch (Throwable) {
             $this->markTestSkipped('Auf diesem Rechner steht keine Shell (sh) bereit.');
         }
 
@@ -91,7 +92,10 @@ class EntrypointCreateAdminTest extends TestCase
         $this->assertStringContainsString('Der Oberadmin konnte nicht angelegt werden (Ergebnis 1). Der Befehl meldet:', $output);
         $this->assertStringContainsString('Das Passwort muss mindestens 10 Zeichen lang sein.', $output);
         $this->assertStringContainsString('Der Start läuft weiter.', $output);
+        // Ergebnis 1 meldet eine abgelehnte Eingabe: Der Hinweis nennt die Einstellungen und den Befehl.
         $this->assertStringContainsString('SWAYY_ADMIN_EMAIL', $output);
+        $this->assertStringContainsString('php artisan swayy:create-admin', $output);
+        $this->assertStringNotContainsString('unerwartet gescheitert', $output);
         $this->assertStringContainsString('START LAEUFT WEITER', $output);
         $this->assertStringNotContainsString('Admin already exists', $output);
     }
@@ -103,6 +107,11 @@ class EntrypointCreateAdminTest extends TestCase
         $this->assertSame(0, $status);
         $this->assertStringContainsString('(Ergebnis 255)', $output);
         $this->assertStringContainsString('Die Datenbank antwortet nicht.', $output);
+        // Jedes andere Ergebnis meldet keine abgelehnte Eingabe: Der Hinweis auf die .env entfällt, der nächste Schritt ist das Protokoll.
+        $this->assertStringContainsString('Der Befehl ist unerwartet gescheitert; die Zeilen oben nennen die Ursache. Der Start läuft weiter.', $output);
+        $this->assertStringContainsString('Bitte das Protokoll des Containers prüfen. Bleibt die Ursache offen, bitte den Support fragen.', $output);
+        $this->assertStringNotContainsString('SWAYY_ADMIN_EMAIL', $output);
+        $this->assertStringNotContainsString('SWAYY_ADMIN_PASSWORD', $output);
         $this->assertStringContainsString('START LAEUFT WEITER', $output);
     }
 

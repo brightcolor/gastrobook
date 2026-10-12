@@ -238,8 +238,8 @@ class LocationController extends Controller
     private function uniqueSlug(int $tenantId, string $name): string
     {
         // Das Kürzel schreibt „ä“ als „ae“ und kann länger werden als der Name. Die Spalte slug fasst 255 Zeichen;
-        // die Kürzung lässt Platz für den Zähler („-2“).
-        $base = Str::limit(Str::slug($name), self::SLUG_BASE_MAX, '') ?: 'standort';
+        // die Kürzung lässt Platz für den Zähler („-2“) und endet nie auf einem Bindestrich.
+        $base = rtrim(Str::limit(Str::slug($name), self::SLUG_BASE_MAX, ''), '-') ?: 'standort';
         $slug = $base;
         $i = 1;
         while (Location::withTrashed()

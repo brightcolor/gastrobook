@@ -1,6 +1,6 @@
 # Gäste (Kundenkartei)
 
-Unter **Kunden** liegt das Gedächtnis deines Betriebs: Wer war da, wie oft,
+Unter **Gäste** (im Salon: **Kunden**) liegt das Gedächtnis deines Betriebs: Wer war da, wie oft,
 was mag die Person, wo hakt es.
 
 ## Wie ein Gastprofil entsteht

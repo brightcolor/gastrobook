@@ -375,6 +375,15 @@ class AuditLog extends Model
     public const SALON_SUBJECTS = ['reservation' => 'Termin', 'guest' => 'Kunde', 'guests' => 'Kunden'];
 
     /**
+     * Bereiche, die nur ein Restaurant kennt. Die Bereichsauswahl eines Salons
+     * führt sie nur auf, wenn der Betrieb Einträge darin hat (etwa nach einem
+     * Wechsel der Betriebsart), damit sie auffindbar bleiben.
+     *
+     * @var list<string>
+     */
+    public const RESTAURANT_ONLY_SUBJECTS = ['table', 'table_combination', 'room', 'zone', 'floorplan', 'table_block'];
+
+    /**
      * Aktionsbezeichnungen in den Worten eines Salons; für jede Aktion aus
      * ACTION_LABELS, die „Reservierung“ oder „Gast“ sagt. Ohne Eintrag gilt die
      * Bezeichnung aus ACTION_LABELS oder der Satz aus Bereich und Tätigkeit.

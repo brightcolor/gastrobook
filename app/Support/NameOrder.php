@@ -16,7 +16,9 @@ use Illuminate\Support\Collection;
  * und Zahlen zählen als Zahl („T2“ vor „T10“).
  *
  * Die Sprachregeln kommen aus der Sprache der Anwendung (app.locale, die
- * Erweiterung intl liefert sie).
+ * Erweiterung intl liefert sie; composer.json verlangt sie). Fehlt sie
+ * trotzdem, gilt die natürliche Reihenfolge ohne Sprachregeln
+ * (compareWithoutIntl), und die Listen bleiben nutzbar.
  */
 final class NameOrder
 {
@@ -29,10 +31,23 @@ final class NameOrder
      */
     public static function compare(string $a, string $b): int
     {
+        if (! class_exists(Collator::class)) {
+            return self::compareWithoutIntl($a, $b);
+        }
+
         $result = self::collator()->compare($a, $b);
 
         // false meldet einen Fehler der Bibliothek; dann entscheidet die Byte-Reihenfolge.
         return $result === false ? strcmp($a, $b) <=> 0 : $result;
+    }
+
+    /**
+     * Rückfall ohne intl: natürliche Reihenfolge ohne Rücksicht auf Groß- und
+     * Kleinschreibung („T2“ vor „T10“). Umlaute stehen hinter dem „z“.
+     */
+    public static function compareWithoutIntl(string $a, string $b): int
+    {
+        return strnatcasecmp($a, $b) <=> 0;
     }
 
     /**

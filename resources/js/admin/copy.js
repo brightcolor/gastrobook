@@ -18,7 +18,7 @@ export function initCopyButtons() {
             await navigator.clipboard.writeText(button.dataset.copy);
             showToast(button.dataset.copyMessage || 'Kopiert.');
         } catch {
-            showToast('Kopieren hat nicht geklappt. Bitte den Text markieren und mit Strg+C (Mac: ⌘+C) kopieren.', { error: true });
+            showToast('Der Browser erlaubt den Zugriff auf die Zwischenablage nicht. Bitte den Text markieren und mit Strg+C (Mac: ⌘+C) kopieren.', { error: true });
         }
     });
 }

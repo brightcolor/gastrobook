@@ -140,8 +140,8 @@ class ExceptionsController extends Controller
      */
     private function rooms(Location $location): Collection
     {
-        $rooms = $this->inOrder($location->rooms()->with('tables')->get());
-        $rooms->each(fn (Room $room) => $room->setRelation('tables', $this->inOrder($room->tables)));
+        $rooms = NameOrder::inOrder($location->rooms()->with('tables')->get());
+        $rooms->each(fn (Room $room) => $room->setRelation('tables', NameOrder::inOrder($room->tables)));
 
         return $rooms;
     }
@@ -213,19 +213,6 @@ class ExceptionsController extends Controller
             'limit_covers' => null, 'limit_room_id' => null, 'limit_from' => null, 'limit_until' => null,
             'lock_rooms' => [], 'lock_tables' => $table === null ? [] : [$table], 'lock_from' => null, 'lock_until' => null,
         ];
-    }
-
-    /**
-     * Nach Reihenfolge, dann nach Namen, wie Räume & Tische sie zeigt.
-     *
-     * @template TItem of Room|RestaurantTable
-     *
-     * @param  Collection<int, TItem>  $items
-     * @return Collection<int, TItem>
-     */
-    private function inOrder(Collection $items): Collection
-    {
-        return NameOrder::inOrder($items);
     }
 
     private function location(): Location

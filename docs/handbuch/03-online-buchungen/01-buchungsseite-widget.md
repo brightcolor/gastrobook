@@ -111,4 +111,4 @@ Das spart Anrufe. Wer das nicht will, stellt die Fristen auf 0 – dann muss jed
 
 Gäste können sich unter **/konto** einen Anmeldelink schicken lassen und sehen
 dann ihre Termine, können umbuchen und stornieren. Der Link im Postfach dient
-als Anmeldung, ein Passwort legt niemand an.
+als Anmeldung.

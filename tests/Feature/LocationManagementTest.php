@@ -392,6 +392,21 @@ class LocationManagementTest extends TestCase
         }
     }
 
+    public function test_a_cut_slug_never_ends_in_a_hyphen(): void
+    {
+        config(['swayy.locations.name_max' => 255]);
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 4]]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        // Das Kürzel hat 239 Buchstaben, dann einen Bindestrich: Der Schnitt bei 240 Zeichen träfe den Bindestrich.
+        $name = str_repeat('a', 239).' b';
+        $this->actingAs($owner)->postJson('/admin/locations', ['name' => $name, 'timezone' => 'Europe/Berlin'])->assertOk();
+
+        $slug = (string) Location::withoutGlobalScopes()->where('tenant_id', $setup['tenant']->id)->where('name', $name)->value('slug');
+        $this->assertSame(str_repeat('a', 239), $slug);
+    }
+
     public function test_a_rejected_form_keeps_the_input_and_marks_the_fields(): void
     {
         config(['swayy.locations.intro_max' => 100]);

@@ -24,6 +24,7 @@ class AuditLogController extends Controller
     {
         $tenant = $this->context->tenant();
         abort_if($tenant === null, 404);
+        $salon = $tenant->isSalon();
 
         // Nur Text aus der Adresse; Listen (?area[]=…), ungültige UTF-8-Bytes und andere Formen gelten als leer.
         // Steuerzeichen (auch NUL, das PostgreSQL in Text ablehnt) werden zu Leerzeichen.
@@ -66,7 +67,7 @@ class AuditLogController extends Controller
             ->when($filters['user_id'] !== '', fn ($q) => $q->where('user_id', (int) $filters['user_id']))
             ->when($filters['from'] !== '', fn ($q) => $q->where('created_at', '>=', $filters['from']))
             ->when($filters['until'] !== '', fn ($q) => $q->where('created_at', '<=', $filters['until'].' 23:59:59'))
-            ->when($filters['q'] !== '', fn ($q) => $q->matchingText($filters['q'], $tenant->isSalon()))
+            ->when($filters['q'] !== '', fn ($q) => $q->matchingText($filters['q'], $salon))
             ->with('user')
             ->orderByDesc('created_at')
             ->paginate((int) config('swayy.audit.per_page'))
@@ -79,13 +80,49 @@ class AuditLogController extends Controller
         return view('admin.audit.index', [
             'logs' => $logs,
             'tz' => $tz,
-            'areas' => collect(AuditLog::subjects($tenant->isSalon()))->sortBy(fn (string $label) => Str::lower(Str::ascii($label)))->all(),
+            'areas' => collect($this->areas($tenant->id, $salon, $area))->sortBy(fn (string $label) => Str::lower(Str::ascii($label)))->all(),
             'area' => $area,
             'filters' => $filters,
             'searchMax' => $searchMax,
-            'salon' => $tenant->isSalon(),
-            'entityLabel' => $byEntity ? (AuditLog::subjects($tenant->isSalon())[$entity] ?? $entity).' Nr. '.$entityId : null,
+            'salon' => $salon,
+            'entityLabel' => $byEntity ? (AuditLog::subjects($salon)[$entity] ?? $entity).' Nr. '.$entityId : null,
             'filtered' => $area !== '' || $byEntity || $filters['q'] !== '' || $filters['action'] !== '' || $filters['from'] !== '' || $filters['until'] !== '',
         ]);
+    }
+
+    /**
+     * Die Bereiche der Auswahl in den Worten der Betriebsart. Ein Salon sieht die Bereiche, die nur ein
+     * Restaurant kennt (Tisch, Raum, Tischplan …), nur dann, wenn er Einträge darin hat oder einen davon
+     * gerade filtert.
+     *
+     * @return array<string, string>
+     */
+    private function areas(int $tenantId, bool $salon, string $selected): array
+    {
+        $areas = AuditLog::subjects($salon);
+        if (! $salon) {
+            return $areas;
+        }
+
+        $used = AuditLog::query()
+            ->where('tenant_id', $tenantId)
+            ->where(function ($query): void {
+                foreach (AuditLog::RESTAURANT_ONLY_SUBJECTS as $prefix) {
+                    $query->orWhere('action', 'like', $prefix.'.%');
+                }
+            })
+            ->distinct()
+            ->pluck('action')
+            ->map(fn (mixed $action): string => Str::before((string) $action, '.'))
+            ->unique()
+            ->all();
+
+        return array_filter(
+            $areas,
+            fn (string $label, string $prefix): bool => ! in_array($prefix, AuditLog::RESTAURANT_ONLY_SUBJECTS, true)
+                || in_array($prefix, $used, true)
+                || $prefix === $selected,
+            ARRAY_FILTER_USE_BOTH,
+        );
     }
 }

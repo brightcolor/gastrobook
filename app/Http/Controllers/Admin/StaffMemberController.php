@@ -51,13 +51,13 @@ class StaffMemberController extends Controller
             ->with(['services', 'workingHours', 'absences' => fn ($query) => $query->where('ends_at', '>=', now())->orderBy('starts_at')])
             ->get();
 
-        $members = $this->inOrder($members);
+        $members = NameOrder::inOrder($members);
 
         return view('admin.staff.index', [
             'location' => $location,
             'members' => $members,
             'absenceNotes' => $this->absenceNotes($location, $members),
-            'services' => $this->inOrder(Service::where('location_id', $location->id)->where('is_active', true)->get()),
+            'services' => NameOrder::inOrder(Service::where('location_id', $location->id)->where('is_active', true)->get()),
             'defaultColor' => config('swayy.ui.default_staff_color'),
             'limits' => (array) config('swayy.salon'),
             'weekdays' => self::WEEKDAYS,
@@ -655,20 +655,5 @@ class StaffMemberController extends Controller
             'reason.string' => __('Bitte den Grund als Text eintragen.'),
             'reason.max' => __('Der Grund darf höchstens :max Zeichen lang sein. Bitte kürze ihn.'),
         ];
-    }
-
-    /**
-     * Nach Reihenfolge und Name sortiert, „Team 2“ vor „Team 10“. In PHP sortiert, damit die Reihenfolge unter SQLite und
-     * PostgreSQL gleich ausfällt.
-     *
-     * @template TKey of array-key
-     * @template TModel of Service|StaffMember
-     *
-     * @param  Collection<TKey, TModel>  $items
-     * @return Collection<int, TModel>
-     */
-    private function inOrder(Collection $items): Collection
-    {
-        return NameOrder::inOrder($items);
     }
 }

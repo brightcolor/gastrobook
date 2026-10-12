@@ -400,7 +400,7 @@ class ErrorPagesTest extends TestCase
             ->assertStatus(402)
             ->assertSee('Zur Plattform')
             ->assertSee('href="'.url('/saas').'"', false)
-            ->assertSee('Als Plattform-Administrator änderst du den Zustand des Betriebs in der Plattform unter „Betriebe“.')
+            ->assertSee('Als Plattform-Administrator änderst du den Zustand des Betriebs in der Plattform unter „Mandanten“.')
             // Die übrigen Wege bleiben, und der Knopf „Zur Startseite“ tritt hinter die Plattform zurück.
             ->assertSee('href="'.route('logout.confirm').'"', false);
 

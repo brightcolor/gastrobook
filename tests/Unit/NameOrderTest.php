@@ -51,6 +51,17 @@ class NameOrderTest extends TestCase
         $this->assertSame(0, NameOrder::compare('Bart', 'Bart'));
     }
 
+    public function test_the_fallback_without_intl_keeps_numbers_in_order(): void
+    {
+        $names = ['Tisch 10', 'tisch 2', 'Tisch 1'];
+        usort($names, fn (string $a, string $b) => NameOrder::compareWithoutIntl($a, $b));
+
+        $this->assertSame(['Tisch 1', 'tisch 2', 'Tisch 10'], $names);
+        $this->assertSame(-1, NameOrder::compareWithoutIntl('Abend', 'Bart'));
+        $this->assertSame(1, NameOrder::compareWithoutIntl('Bart', 'Abend'));
+        $this->assertSame(0, NameOrder::compareWithoutIntl('Bart', 'bart'));
+    }
+
     public function test_the_rules_follow_the_language_of_the_application(): void
     {
         // Im Schwedischen steht „ä“ hinter dem „z“.

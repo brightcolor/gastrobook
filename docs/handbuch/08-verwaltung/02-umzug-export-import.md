@@ -67,8 +67,9 @@ Der Export ersetzt keine Serversicherung, sondern ergänzt sie. Wer Swayy selbst
 betreibt, braucht zusätzlich ein Backup der Datenbank und des
 Dateiverzeichnisses – das macht die Person, die deine Installation betreut.
 
-Als Betriebsinhaber ohne Serverzugang ist ein monatlicher Account-Export, sicher
-abgelegt, ein vernünftiges Sicherheitsnetz.
+Als Betriebsinhaber ohne Serverzugang ist ein regelmäßiger Export unter
+**Einstellungen › Betrieb › Daten**, sicher abgelegt, ein vernünftiges
+Sicherheitsnetz.
 
 ## Einen Betrieb löschen
 
