@@ -487,6 +487,10 @@ return [
     | preview_groups_max: so viele Zeilen mit abweichender Dauer zeigt die
     | Vorschau „So sehen Gäste es“ höchstens (1–30): Tischzeiten je
     | Gruppengröße im Restaurant, Leistungen im Salon.
+    | time_step_minutes: Raster der Uhrzeitfelder auf der Seite in Minuten
+    | (1–60; 5 ergibt Schritte von fünf Minuten). Eine gespeicherte Zeit
+    | neben dem Raster, etwa 11:32, bekommt ihr Feld mit Minutenschritten,
+    | damit die Prüfung des Browsers das Speichern der Woche nicht anhält.
     |
     */
     'opening_hours' => [
@@ -494,6 +498,7 @@ return [
         'name_max' => EnvSetting::integer('SWAYY_OPENING_HOURS_NAME_MAX', default: 60, min: 10, max: 120),
         'season_label_max' => EnvSetting::integer('SWAYY_OPENING_HOURS_SEASON_LABEL_MAX', default: 60, min: 10, max: 60),
         'preview_groups_max' => EnvSetting::integer('SWAYY_OPENING_HOURS_PREVIEW_GROUPS_MAX', default: 8, min: 1, max: 30),
+        'time_step_minutes' => EnvSetting::integer('SWAYY_OPENING_HOURS_TIME_STEP_MINUTES', default: 5, min: 1, max: 60),
     ],
 
     /*

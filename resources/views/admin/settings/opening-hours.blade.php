@@ -21,7 +21,7 @@
 
 <form id="formHours" method="POST" action="{{ route('admin.settings.opening-hours') }}" data-ajax data-savebar
       data-preview-url="{{ route('admin.settings.opening-hours.preview') }}" data-preview-delay="{{ $previewDelay }}"
-      data-duration="{{ $duration }}" data-windows-max="{{ $limits['windows_per_day_max'] }}" @if($salon) data-salon @endif>
+      data-duration="{{ $duration }}" data-windows-max="{{ $limits['windows_per_day_max'] }}" data-time-step="{{ $limits['time_step_minutes'] }}" @if($salon) data-salon @endif>
     @csrf
     @method('PUT')
     {{-- Sind alle Tage geschlossen, sendet das Formular keine Zeile; dieses Feld macht daraus eine leere Woche. --}}

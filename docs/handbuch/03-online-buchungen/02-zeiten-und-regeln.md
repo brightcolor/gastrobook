@@ -18,6 +18,13 @@ Woche“ zeigt jeden Wochentag mit einem Schalter **Geöffnet**:
   Übersicht für euch.
 - Über Mitternacht funktioniert: 18:00–01:00 ist ein Fenster. Ein Hinweis unter
   dem Fenster bestätigt das.
+- Gleiche Uhrzeit bei „Öffnet“ und „Schließt“ ergibt ein Fenster rund um die Uhr
+  (24 Stunden). Es reicht bis zur selben Uhrzeit am Folgetag; Fenster des
+  Folgetags dürfen dort erst danach beginnen. Ein Hinweis unter dem Fenster sagt
+  es.
+- Die Uhrzeitfelder springen in Schritten von fünf Minuten (einstellbar mit
+  `SWAYY_OPENING_HOURS_TIME_STEP_MINUTES`). Eine gespeicherte Zeit zwischen den
+  Schritten, etwa 11:32, bleibt erhalten und speicherbar.
 
 Mit **Auf andere Tage übertragen…** kopierst du die Fenster eines Tages auf
 beliebige andere Tage. Zwei Schnellwahlen helfen dabei: „Mo–Fr“ und „Alle Tage“.

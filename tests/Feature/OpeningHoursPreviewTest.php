@@ -27,6 +27,9 @@ class OpeningHoursPreviewTest extends TestCase
             'über Mitternacht' => ['20:00', '01:30', 15, 150],
             'zu kurz' => ['12:00', '12:45', 20, 60],
             'Takt 45' => ['11:00', '15:00', 45, 60],
+            '24 Stunden ab 10:00' => ['10:00', '10:00', 30, 90],
+            '24 Stunden ab Mitternacht' => ['00:00', '00:00', 60, 120],
+            '24 Stunden, Takt 20, Dauer 150' => ['18:00', '18:00', 20, 150],
         ];
     }
 
@@ -105,6 +108,25 @@ class OpeningHoursPreviewTest extends TestCase
             ['index' => 0, 'text' => 'Kürzer als ein Besuch (120 Minuten): Hier finden Gäste keine Uhrzeit.'],
             ['index' => 1, 'text' => 'Endet am Folgetag (Sonntag) um 02:00.'],
         ], $response->json('hints'));
+    }
+
+    public function test_a_window_with_equal_times_runs_around_the_clock(): void
+    {
+        $setup = $this->createTenantSetup();
+        $setup['location']->settings()->update(['slot_interval_minutes' => 30, 'default_duration_minutes' => 120]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $response = $this->actingAs($owner)->postJson('/admin/settings/opening-hours/preview', [
+            'weekday' => 2,
+            'windows' => [['opens_at' => '10:00', 'closes_at' => '10:00']],
+        ])->assertOk();
+
+        $this->assertSame([['index' => 0, 'text' => 'Rund um die Uhr geöffnet: Das Fenster dauert 24 Stunden.']], $response->json('hints'));
+        $this->assertSame('10:00', $response->json('starts.0'));
+        // Der letzte Start: Ein Besuch von 120 Minuten endet um 10:00 des Folgetags.
+        $this->assertSame('08:00', $response->json('last'));
+        $this->assertSame('Letzte Uhrzeit 08:00: Ein Besuch dauert 120 Minuten, um 10:00 wird geschlossen.', $response->json('reason'));
     }
 
     public function test_invalid_windows_answer_422_with_reason(): void

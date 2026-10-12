@@ -11,6 +11,7 @@ use App\Models\OpeningHour;
 use App\Models\SeasonPeriod;
 use App\Support\OpeningHoursRules;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Concerns\CreatesTenants;
 use Tests\Concerns\ReadsSwayyConfig;
 use Tests\TestCase;
@@ -72,7 +73,7 @@ class OpeningHoursPageTest extends TestCase
         $this->assertSame(0, OpeningHour::where('location_id', $setup['location']->id)->count());
     }
 
-    public function test_overlapping_and_zero_length_windows_are_refused(): void
+    public function test_overlapping_windows_are_refused(): void
     {
         $setup = $this->createTenantSetup();
         $owner = $this->createMember($setup['tenant'], 'tenant_owner');
@@ -81,12 +82,147 @@ class OpeningHoursPageTest extends TestCase
         $response = $this->actingAs($owner)->putJson('/admin/settings/opening-hours', ['hours' => [
             ['weekday' => 2, 'opens_at' => '11:00', 'closes_at' => '15:00'],
             ['weekday' => 2, 'opens_at' => '14:00', 'closes_at' => '22:00'],
-            ['weekday' => 3, 'opens_at' => '12:00', 'closes_at' => '12:00'],
         ]])->assertStatus(422);
 
         $this->assertSame('Dieses Zeitfenster überschneidet sich mit 11:00–15:00 am selben Tag. Bitte die Zeiten anpassen oder die Fenster zusammenlegen.', $response->json('errors')['hours.1.opens_at'][0]);
-        $this->assertSame('Öffnet und schließt zur selben Uhrzeit. Bitte eine andere Schließzeit wählen.', $response->json('errors')['hours.2.closes_at'][0]);
         $this->assertSame(7, OpeningHour::where('location_id', $setup['location']->id)->count());
+    }
+
+    public function test_equal_opening_and_closing_time_is_a_window_of_24_hours(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        // Wie die Buchungsseite die Zeiten liest (TimeSlotService::makeWindow): 24 Stunden.
+        $this->actingAs($owner)->putJson('/admin/settings/opening-hours', ['hours' => [
+            ['weekday' => 3, 'opens_at' => '12:00', 'closes_at' => '12:00'],
+            ['weekday' => 5, 'opens_at' => '00:00', 'closes_at' => '00:00'],
+        ]])->assertOk();
+
+        $this->assertSame(['12:00', '12:00', '00:00', '00:00'], OpeningHour::where('location_id', $setup['location']->id)->orderBy('weekday')
+            ->get()->flatMap(fn ($hour) => [substr((string) $hour->opens_at, 0, 5), substr((string) $hour->closes_at, 0, 5)])->all());
+    }
+
+    public function test_a_window_of_24_hours_runs_into_the_next_day(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        // 10:00–10:00 am Mittwoch reicht bis Donnerstag 10:00 und trifft ein Fenster am Donnerstagmorgen.
+        $response = $this->actingAs($owner)->putJson('/admin/settings/opening-hours', ['hours' => [
+            ['weekday' => 2, 'opens_at' => '10:00', 'closes_at' => '10:00'],
+            ['weekday' => 3, 'opens_at' => '09:00', 'closes_at' => '11:00'],
+        ]])->assertStatus(422);
+        $this->assertSame('Dieses Zeitfenster überschneidet sich mit Mittwoch 10:00–10:00. Bitte die Zeiten anpassen oder die Fenster zusammenlegen.', $response->json('errors')['hours.1.opens_at'][0]);
+
+        // Am selben Tag überschneidet es sich mit jedem anderen Fenster.
+        $same = $this->actingAs($owner)->putJson('/admin/settings/opening-hours', ['hours' => [
+            ['weekday' => 2, 'opens_at' => '10:00', 'closes_at' => '10:00'],
+            ['weekday' => 2, 'opens_at' => '12:00', 'closes_at' => '14:00'],
+        ]])->assertStatus(422);
+        $this->assertSame('Dieses Zeitfenster überschneidet sich mit 10:00–10:00 am selben Tag. Bitte die Zeiten anpassen oder die Fenster zusammenlegen.', $same->json('errors')['hours.1.opens_at'][0]);
+
+        // Die Woche läuft im Kreis: Sonntag 10:00–10:00 trifft den Montagmorgen.
+        $this->actingAs($owner)->putJson('/admin/settings/opening-hours', ['hours' => [
+            ['weekday' => 6, 'opens_at' => '10:00', 'closes_at' => '10:00'],
+            ['weekday' => 0, 'opens_at' => '08:00', 'closes_at' => '09:00'],
+        ]])->assertStatus(422);
+        $this->assertSame(7, OpeningHour::where('location_id', $setup['location']->id)->count());
+    }
+
+    public function test_a_window_from_midnight_to_midnight_ends_flush_with_the_next_day(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        // 00:00–00:00 füllt genau einen Tag; das Fenster des Folgetags darf um 00:00 beginnen.
+        $this->actingAs($owner)->putJson('/admin/settings/opening-hours', ['hours' => [
+            ['weekday' => 2, 'opens_at' => '00:00', 'closes_at' => '00:00'],
+            ['weekday' => 3, 'opens_at' => '00:00', 'closes_at' => '06:00'],
+        ]])->assertOk();
+        // Alle sieben Tage rund um die Uhr, auch Sonntag an Montag.
+        $this->actingAs($owner)->putJson('/admin/settings/opening-hours', ['hours' => array_map(
+            fn (int $weekday) => ['weekday' => $weekday, 'opens_at' => '00:00', 'closes_at' => '00:00'],
+            range(0, 6),
+        )])->assertOk();
+        $this->assertSame(7, OpeningHour::where('location_id', $setup['location']->id)->count());
+    }
+
+    public function test_the_time_fields_follow_the_step_of_the_settings(): void
+    {
+        config(['swayy.opening_hours.time_step_minutes' => 15]);
+        $setup = $this->createTenantSetup();
+        OpeningHour::where('location_id', $setup['location']->id)->where('weekday', 0)->update(['opens_at' => '11:30', 'closes_at' => '14:32']);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $content = (string) $this->actingAs($owner)->get('/admin/settings/opening-hours')->assertOk()->getContent();
+
+        // Auf dem Raster: Schritte der Einstellung. Neben dem Raster (14:32): Minutenschritte, damit Speichern möglich bleibt.
+        $this->assertMatchesRegularExpression('/name="hours\[0\]\[opens_at\]"[^>]*value="11:30"[^>]*step="900"/', $content);
+        $this->assertMatchesRegularExpression('/name="hours\[0\]\[closes_at\]"[^>]*value="14:32"[^>]*step="60"/', $content);
+        $this->assertMatchesRegularExpression('/name="hours\[1\]\[opens_at\]"[^>]*value="12:00"[^>]*step="900"/', $content);
+        // Die Vorlage für neue Zeilen und das Formular tragen das Raster ebenfalls.
+        $this->assertMatchesRegularExpression('/name="hours\[__INDEX__\]\[opens_at\]"[^>]*step="900"/', $content);
+        $this->assertStringContainsString('data-time-step="15"', $content);
+        $this->assertStringNotContainsString('step="300"', $content);
+    }
+
+    public function test_the_default_step_is_five_minutes(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $content = (string) $this->actingAs($owner)->get('/admin/settings/opening-hours')->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/name="hours\[0\]\[opens_at\]"[^>]*step="300"/', $content);
+        $this->assertStringContainsString('data-time-step="5"', $content);
+    }
+
+    #[DataProvider('steps')]
+    public function test_a_time_off_the_grid_gets_steps_of_one_minute(?string $time, int $grid, int $seconds): void
+    {
+        $this->assertSame($seconds, OpeningHoursRules::timeStep($time, $grid));
+    }
+
+    /** @return array<string, array{0: ?string, 1: int, 2: int}> */
+    public static function steps(): array
+    {
+        return [
+            'auf dem Raster von fünf Minuten' => ['11:30', 5, 300],
+            'neben dem Raster' => ['11:32', 5, 60],
+            'leeres Feld' => ['', 5, 300],
+            'ohne Wert' => [null, 5, 300],
+            'unlesbare Zeit' => ['abc', 5, 300],
+            'Raster von sieben Minuten, Mitternacht zählt' => ['11:33', 7, 420],
+            'Raster von sieben Minuten, daneben' => ['11:30', 7, 60],
+            'volle Stunde bei Stundenraster' => ['12:00', 60, 3600],
+            'halbe Stunde bei Stundenraster' => ['12:30', 60, 60],
+            'Raster von einer Minute' => ['12:31', 1, 60],
+        ];
+    }
+
+    public function test_the_step_is_bounded_and_documented(): void
+    {
+        [$config, $warnings] = $this->swayyConfig(['SWAYY_OPENING_HOURS_TIME_STEP_MINUTES' => '99']);
+        $this->assertSame(60, $config['opening_hours']['time_step_minutes']);
+        $this->assertStringContainsString('SWAYY_OPENING_HOURS_TIME_STEP_MINUTES', $warnings);
+
+        [$config] = $this->swayyConfig(['SWAYY_OPENING_HOURS_TIME_STEP_MINUTES' => '0']);
+        $this->assertSame(1, $config['opening_hours']['time_step_minutes']);
+
+        [$config] = $this->swayyConfig(['SWAYY_OPENING_HOURS_TIME_STEP_MINUTES' => '10']);
+        $this->assertSame(10, $config['opening_hours']['time_step_minutes']);
+
+        [$config] = $this->swayyConfig([]);
+        $this->assertSame(5, $config['opening_hours']['time_step_minutes']);
+
+        $this->assertDocumentedInEnvExample(['SWAYY_OPENING_HOURS_TIME_STEP_MINUTES']);
+        $this->assertStringContainsString('`SWAYY_OPENING_HOURS_TIME_STEP_MINUTES`', (string) file_get_contents(base_path('README.md')));
     }
 
     public function test_window_count_and_name_length_come_from_the_settings(): void
@@ -276,9 +412,12 @@ class OpeningHoursPageTest extends TestCase
             ->assertSessionHas('success', 'Öffnungszeiten gespeichert.');
 
         $this->actingAs($owner)->from('/admin/settings/opening-hours')
-            ->put('/admin/settings/opening-hours', ['hours' => [['weekday' => 0, 'opens_at' => '12:00', 'closes_at' => '12:00']]])
+            ->put('/admin/settings/opening-hours', ['hours' => [
+                ['weekday' => 0, 'opens_at' => '10:00', 'closes_at' => '12:00'],
+                ['weekday' => 0, 'opens_at' => '11:00', 'closes_at' => '13:00'],
+            ]])
             ->assertRedirect('/admin/settings/opening-hours')
-            ->assertSessionHasErrors(['hours.0.closes_at']);
+            ->assertSessionHasErrors(['hours.1.opens_at']);
     }
 
     public function test_the_setup_wizard_sends_text_values_and_reads_errors_as_json(): void
@@ -451,11 +590,12 @@ class OpeningHoursPageTest extends TestCase
         $response = $this->actingAs($owner)->putJson('/admin/settings/opening-hours', ['hours' => [
             '0' => ['weekday' => 2, 'opens_at' => '11:00', 'closes_at' => '15:00'],
             'n1' => ['weekday' => 2, 'opens_at' => '12:00', 'closes_at' => '13:00'],
-            'c4' => ['weekday' => 3, 'opens_at' => '12:00', 'closes_at' => '12:00'],
+            'c4' => ['weekday' => 3, 'opens_at' => '12:00', 'closes_at' => '14:00'],
+            'c5' => ['weekday' => 3, 'opens_at' => '13:00', 'closes_at' => '15:00'],
         ]])->assertStatus(422);
 
         $this->assertArrayHasKey('hours.n1.opens_at', $response->json('errors'));
-        $this->assertArrayHasKey('hours.c4.closes_at', $response->json('errors'));
+        $this->assertArrayHasKey('hours.c5.opens_at', $response->json('errors'));
     }
 
     public function test_the_limits_stay_within_the_columns_and_are_documented(): void
@@ -490,7 +630,7 @@ class OpeningHoursPageTest extends TestCase
         $this->assertSame(100, $config['ui']['preview_delay_ms']);
 
         [$config] = $this->swayyConfig([]);
-        $this->assertSame(['windows_per_day_max' => 6, 'name_max' => 60, 'season_label_max' => 60, 'preview_groups_max' => 8], $config['opening_hours']);
+        $this->assertSame(['windows_per_day_max' => 6, 'name_max' => 60, 'season_label_max' => 60, 'preview_groups_max' => 8, 'time_step_minutes' => 5], $config['opening_hours']);
         $this->assertSame(400, $config['ui']['preview_delay_ms']);
 
         $this->assertDocumentedInEnvExample([

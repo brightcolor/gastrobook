@@ -26,6 +26,21 @@ final class OpeningHoursRules
     private const WEEK_MINUTES = 10080;
 
     /**
+     * Das Raster eines Uhrzeitfelds (Attribut step) in Sekunden. Es folgt
+     * opening_hours.time_step_minutes ($gridMinutes). Eine gespeicherte Zeit
+     * neben dem Raster, etwa 11:32 bei Schritten von fünf Minuten, bekommt
+     * Minutenschritte: Die Prüfung des Browsers lehnte sonst das Formular der
+     * ganzen Woche wegen dieses Feldes ab. Ein leeres Feld folgt dem Raster.
+     */
+    public static function timeStep(?string $time, int $gridMinutes): int
+    {
+        $minutes = self::minutes($time);
+        $grid = max(1, $gridMinutes);
+
+        return ($minutes === null || $minutes % $grid === 0 ? $grid : 1) * 60;
+    }
+
+    /**
      * Regeln für die Woche beim Speichern.
      *
      * @return array<string, list<string>>
@@ -94,7 +109,8 @@ final class OpeningHoursRules
      * ihn sendet (0, n1, c4). Zeilen mit unlesbarem Wochentag oder unlesbarer
      * Uhrzeit meldet schon die Prüfung der einzelnen Felder.
      *
-     * - Öffnen und Schließen zur selben Uhrzeit: Fehler am Schließen.
+     * - Öffnen und Schließen zur selben Uhrzeit ergeben ein Fenster von 24
+     *   Stunden, wie die Buchungsseite es liest (TimeSlotService::makeWindow).
      * - Mehr Zeilen als die Woche (7 × opening_hours.windows_per_day_max) oder,
      *   bei $sameDay, der Tag zulässt: ein Fehler an der Liste ($prefix), sonst
      *   nichts. Die Gruppierung und die Prüfung der Überschneidung entfallen.
@@ -104,7 +120,10 @@ final class OpeningHoursRules
      *   nächsten Tag und kann sich mit dessen Fenstern überschneiden, der
      *   Sonntag mit dem Montag. Fenster am frühen Morgen und am späten Abend
      *   desselben Wochentags liegen dagegen weit auseinander. Der Fehler steht
-     *   am Fenster, das auf der Zeitachse später beginnt.
+     *   am Fenster, das auf der Zeitachse später beginnt. Ein Fenster, das
+     *   nicht nach seinem Beginn endet (auch bei gleicher Uhrzeit), reicht in den
+     *   nächsten Tag: 10:00–10:00 überschneidet sich mit den Fenstern des
+     *   Folgetags vor 10:00, 00:00–00:00 schließt dagegen genau an den Folgetag an.
      *
      * @param  array<array-key, mixed>  $rows  Zeilen mit weekday, opens_at, closes_at
      * @param  bool  $sameDay  alle Zeilen gehören zu einem Datum (Vorschau, dort ohne weekday): Die Zeitachse ist eine Gerade ohne Wochenkreis
@@ -142,12 +161,6 @@ final class OpeningHoursRules
         }
 
         foreach ($days as $windows) {
-            foreach ($windows as $window) {
-                if ($window['opens'] !== null && $window['opens'] === $window['closes']) {
-                    $errors["{$prefix}.{$window['key']}.closes_at"] = __('Öffnet und schließt zur selben Uhrzeit. Bitte eine andere Schließzeit wählen.');
-                }
-            }
-
             if (count($windows) > $max) {
                 $errors["{$prefix}.{$windows[$max]['key']}.opens_at"] = __('An einem Tag gehen höchstens :max Zeitfenster. Bitte Fenster zusammenlegen.', ['max' => $max]);
             }
@@ -251,8 +264,8 @@ final class OpeningHoursRules
      * über Mitternacht bis zum nächsten Tag. Ergebnis: Schlüssel der Zeile, die
      * später beginnt => das andere Fenster mit Zeitraum ("11:00–15:00") und,
      * wenn es an einem anderen Wochentag beginnt, dessen Name. Je Fenster zählt
-     * der erste Treffer; Fenster mit gleicher Uhrzeit zum Öffnen und Schließen
-     * bleiben außen vor (eigener Fehler).
+     * der erste Treffer. Endet ein Fenster nicht nach seinem Beginn, reicht es
+     * in den nächsten Tag; bei gleicher Uhrzeit dauert es 24 Stunden.
      *
      * @param  list<array{key: array-key, day: int, opens: ?int, closes: ?int}>  $windows
      * @return array<array-key, array{window: string, day: ?string}>
@@ -261,7 +274,7 @@ final class OpeningHoursRules
     {
         $line = [];
         foreach ($windows as $order => $window) {
-            if ($window['opens'] === null || $window['closes'] === null || $window['opens'] === $window['closes']) {
+            if ($window['opens'] === null || $window['closes'] === null) {
                 continue;
             }
             $start = ($weekly ? $window['day'] * self::DAY_MINUTES : 0) + $window['opens'];

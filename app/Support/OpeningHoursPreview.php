@@ -172,7 +172,10 @@ final class OpeningHoursPreview
                     ? __('Kürzer als ein Termin (:duration Minuten): Hier finden Kunden keine Uhrzeit.', ['duration' => $duration])
                     : __('Kürzer als ein Besuch (:duration Minuten): Hier finden Gäste keine Uhrzeit.', ['duration' => $duration])];
             }
-            if ($window['closes']->toDateString() !== $window['opens']->toDateString()) {
+            if ($window['closes']->format('H:i') === $window['opens']->format('H:i')) {
+                // Gleiche Öffnungs- und Schließzeit: Das Fenster dauert 24 Stunden, so liest es auch die Buchungsseite.
+                $hints[] = ['index' => $index, 'text' => __('Rund um die Uhr geöffnet: Das Fenster dauert 24 Stunden.')];
+            } elseif ($window['closes']->toDateString() !== $window['opens']->toDateString()) {
                 $hints[] = ['index' => $index, 'text' => __('Endet am Folgetag (:day) um :time.', [
                     'day' => self::WEEKDAYS[($weekday + 1) % 7],
                     'time' => $window['closes']->format('H:i'),

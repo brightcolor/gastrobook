@@ -473,10 +473,15 @@ class ScheduleExceptionsTest extends TestCase
         ])->assertStatus(422);
         $this->assertSame('Dieses Zeitfenster überschneidet sich mit 12:00–15:00 am selben Tag. Bitte die Zeiten anpassen oder die Fenster zusammenlegen.', $overlap->json('errors')['windows.1.opens_at'][0]);
 
+        // Gleiche Uhrzeit zum Öffnen und Schließen ist ein Fenster von 24 Stunden (so liest es die Buchungsseite) und
+        // überschneidet sich mit jedem anderen Fenster desselben Datums.
+        $this->actingAs($owner)->postJson('/admin/settings/exceptions', [
+            'from' => '2026-12-20', 'effects' => ['hours'], 'windows' => [['opens_at' => '12:00', 'closes_at' => '12:00']],
+        ])->assertOk();
         $same = $this->actingAs($owner)->postJson('/admin/settings/exceptions', [
-            'from' => '2026-12-24', 'effects' => ['hours'], 'windows' => [['opens_at' => '12:00', 'closes_at' => '12:00']],
+            'from' => '2026-12-21', 'effects' => ['hours'], 'windows' => [['opens_at' => '10:00', 'closes_at' => '10:00'], ['opens_at' => '12:00', 'closes_at' => '14:00']],
         ])->assertStatus(422);
-        $this->assertSame('Öffnet und schließt zur selben Uhrzeit. Bitte eine andere Schließzeit wählen.', $same->json('errors')['windows.0.closes_at'][0]);
+        $this->assertSame('Dieses Zeitfenster überschneidet sich mit 10:00–10:00 am selben Tag. Bitte die Zeiten anpassen oder die Fenster zusammenlegen.', $same->json('errors')['windows.1.opens_at'][0]);
 
         $none = $this->actingAs($owner)->postJson('/admin/settings/exceptions', ['from' => '2026-12-24', 'effects' => ['hours'], 'windows' => []])->assertStatus(422);
         $this->assertSame('Bitte mindestens ein Zeitfenster eintragen.', $none->json('errors.windows.0'));

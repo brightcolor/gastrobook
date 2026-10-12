@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { initAjaxForms } from '../../resources/js/admin/forms.js';
-import { copyWindows, initHours, overnightHint, shortHint } from '../../resources/js/admin/hours.js';
+import { allDayHint, copyWindows, initHours, overnightHint, shortHint } from '../../resources/js/admin/hours.js';
 import { initRows } from '../../resources/js/admin/rows.js';
 import { initSaveBar } from '../../resources/js/admin/savebar.js';
 import { jsonResponse, mount } from './helpers.js';
@@ -28,6 +28,14 @@ describe('Hinweise am Zeitfenster', () => {
     it('spricht im Salon von Terminen und Kunden', () => {
         expect(shortHint('12:00', '13:00', 90, true)).toBe('Kürzer als ein Termin (90 Minuten): Hier finden Kunden keine Uhrzeit.');
     });
+
+    it('nennt ein Fenster mit gleicher Öffnungs- und Schließzeit rund um die Uhr geöffnet', () => {
+        expect(allDayHint('10:00', '10:00')).toBe('Rund um die Uhr geöffnet: Das Fenster dauert 24 Stunden.');
+        expect(allDayHint('00:00', '00:00')).toBe('Rund um die Uhr geöffnet: Das Fenster dauert 24 Stunden.');
+        expect(allDayHint('10:00', '10:05')).toBeNull();
+        expect(allDayHint('', '')).toBeNull();
+        expect(allDayHint('10:00', '')).toBeNull();
+    });
 });
 
 describe('Auf andere Tage übertragen', () => {
@@ -47,6 +55,26 @@ describe('Auf andere Tage übertragen', () => {
         expect(target.dataset.open).toBe('1');
         expect([...target.querySelectorAll('[name$="[opens_at]"]')].map((i) => i.value)).toEqual(['11:00']);
         expect(target.querySelector('[name$="[weekday]"]').value).toBe('1');
+    });
+
+    it('gibt einer kopierten Zeit neben dem Raster Minutenschritte, den übrigen das Raster der Seite', () => {
+        const row = (key, opens, closes) => `<div data-row>
+            <input type="time" step="300" name="hours[${key}][opens_at]" value="${opens}">
+            <input type="time" step="300" name="hours[${key}][closes_at]" value="${closes}"></div>`;
+        document.body.innerHTML = `
+            <form data-time-step="5">
+              <fieldset data-day="0" data-open="1"><div data-rows><div data-rows-list>${row('a', '11:32', '14:00')}</div>
+                <template data-rows-template>${row('__INDEX__', '', '')}</template></div></fieldset>
+              <fieldset data-day="1" data-open="0"><div data-rows><div data-rows-list></div>
+                <template data-rows-template>${row('__INDEX__', '', '')}</template></div></fieldset>
+            </form>`;
+        const form = document.querySelector('form');
+
+        copyWindows(form, 0, [1]);
+
+        const [opens, closes] = form.querySelectorAll('[data-day="1"] input[type="time"]');
+        expect([opens.value, opens.step]).toEqual(['11:32', '60']);
+        expect([closes.value, closes.step]).toEqual(['14:00', '300']);
     });
 });
 
@@ -290,6 +318,21 @@ describe('Hinweise am Zeitfenster auf der Seite', () => {
         expect(hintsIn(0)).toEqual(['Kürzer als ein Besuch (120 Minuten): Hier finden Gäste keine Uhrzeit.']);
 
         type(opens, '18:00');
+        type(closes, '22:00');
+        expect(hintsIn(0)).toEqual(['']);
+    });
+
+    it('sagt bei gleicher Öffnungs- und Schließzeit, dass rund um die Uhr geöffnet ist', () => {
+        vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(previewAnswer())));
+        page();
+        initRows();
+        initHours();
+        const [opens, closes] = rowsIn(0)[0].querySelectorAll('input[type="time"]');
+
+        type(opens, '10:00');
+        type(closes, '10:00');
+        expect(hintsIn(0)).toEqual(['Rund um die Uhr geöffnet: Das Fenster dauert 24 Stunden.']);
+
         type(closes, '22:00');
         expect(hintsIn(0)).toEqual(['']);
     });

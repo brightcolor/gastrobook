@@ -433,6 +433,7 @@ Die Navigation kommt aus einer Quelle, [`config/navigation.php`](config/navigati
 | `SWAYY_OPENING_HOURS_NAME_MAX` | `60` | Länge der Bezeichnung eines Zeitfensters (10 bis 120; die Spalte fasst 255) |
 | `SWAYY_OPENING_HOURS_SEASON_LABEL_MAX` | `60` | Länge der Bezeichnung einer Saison (10 bis 60; die Spalte fasst 60) |
 | `SWAYY_OPENING_HOURS_PREVIEW_GROUPS_MAX` | `8` | Zeilen mit abweichender Dauer in der Vorschau (1 bis 30) |
+| `SWAYY_OPENING_HOURS_TIME_STEP_MINUTES` | `5` | Raster der Uhrzeitfelder bei den Öffnungszeiten in Minuten (1 bis 60); eine gespeicherte Zeit neben dem Raster bleibt speicherbar |
 | `SWAYY_EXCEPTIONS_MAX_DAYS` | `93` | Längster Zeitraum einer Ausnahme in Tagen (1 bis 366) |
 | `SWAYY_EXCEPTIONS_WINDOWS_MAX` | `6` | Zeitfenster bei „Andere Öffnungszeiten“ (1 bis 12) |
 | `SWAYY_EXCEPTIONS_LABEL_MAX` | `120` | Länge der Bezeichnung einer Ausnahme (20 bis 200; die Spalten fassen 255) |

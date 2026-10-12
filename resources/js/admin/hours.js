@@ -2,7 +2,7 @@
 // Zeiten auf andere Tage übertragen und die Vorschau „So sehen Gäste es“.
 //
 // Aufbau (resources/views/admin/settings/opening-hours.blade.php):
-//   <form data-preview-url data-preview-delay data-duration data-windows-max [data-salon]>
+//   <form data-preview-url data-preview-delay data-duration data-windows-max data-time-step [data-salon]>
 //     <fieldset data-day="0" data-day-name="Montag" data-open="1">
 //       <input type="checkbox" data-day-open>            Schalter, der nichts sendet
 //       <div data-rows> … Zeilen (rows.js) mit [data-hint] … </div>
@@ -39,6 +39,13 @@ export function overnightHint(opens, closes, nextDayName) {
     return `Endet am Folgetag (${nextDayName}) um ${closes.slice(0, 5)}.`;
 }
 
+// Hinweis bei einem Fenster mit gleicher Öffnungs- und Schließzeit: Es dauert 24 Stunden, so liest es auch die Buchungsseite.
+export function allDayHint(opens, closes) {
+    const from = minutesOf(opens);
+    if (from === null || from !== minutesOf(closes)) return null;
+    return 'Rund um die Uhr geöffnet: Das Fenster dauert 24 Stunden.';
+}
+
 // Hinweis bei einem Fenster, in dem kein Besuch Platz hat.
 export function shortHint(opens, closes, durationMinutes, salon = false) {
     const from = minutesOf(opens);
@@ -49,6 +56,15 @@ export function shortHint(opens, closes, durationMinutes, salon = false) {
     return salon
         ? `Kürzer als ein Termin (${durationMinutes} Minuten): Hier finden Kunden keine Uhrzeit.`
         : `Kürzer als ein Besuch (${durationMinutes} Minuten): Hier finden Gäste keine Uhrzeit.`;
+}
+
+// Eine Zeit neben dem Raster der Seite (data-time-step, Minuten) bekommt ihr Feld mit Minutenschritten, wie der Server es
+// rendert (OpeningHoursRules::timeStep): Sonst hielte die Prüfung des Browsers das Speichern der ganzen Woche an.
+function fitStep(field, form) {
+    const grid = Number.parseInt(form.dataset.timeStep ?? '', 10);
+    if (field.type !== 'time' || !(grid >= 1)) return;
+    const minutes = minutesOf(field.value);
+    field.step = String((minutes === null || minutes % grid === 0 ? grid : 1) * 60);
 }
 
 const formOf = (el) => el?.closest?.('form[data-preview-url]') ?? null;
@@ -103,7 +119,7 @@ function updateHints(form, day) {
     rowsOf(day).forEach((row) => {
         const opens = valueOf(row, 'opens_at');
         const closes = valueOf(row, 'closes_at');
-        const texts = [shortHint(opens, closes, duration, salon), overnightHint(opens, closes, nextName)].filter(Boolean);
+        const texts = [shortHint(opens, closes, duration, salon), overnightHint(opens, closes, nextName), allDayHint(opens, closes)].filter(Boolean);
         const hint = row.querySelector('[data-hint]');
         // Gleicher Text bleibt stehen, damit die Live-Region nicht bei jeder Eingabe spricht.
         if (!hint || hint.dataset.text === texts.join('\n')) return;
@@ -268,7 +284,9 @@ export function copyWindows(form, fromDay, toDays) {
             const row = rowFromTemplate(template);
             Object.entries(entry).forEach(([name, value]) => {
                 const field = fieldOf(row, name);
-                if (field) field.value = value;
+                if (!field) return;
+                field.value = value;
+                fitStep(field, form);
             });
             list.append(row);
         });
