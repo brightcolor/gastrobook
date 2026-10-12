@@ -1200,4 +1200,130 @@ class ScheduleExceptionsTest extends TestCase
         // Außerhalb der Spanne gilt die Grenze nicht.
         $this->assertTrue($availability->checkExact($location, $at('20:00'), 2)['available']);
     }
+
+    // --- Alte Zeilen ohne Gruppe: ein Datum, ein Eintrag --------------------------------
+
+    /**
+     * Wie die alte Verwaltung einen Tag mit Mittag und Abend ablegte: je Fenster eine Zeile ohne Gruppe.
+     *
+     * @return array{0: SpecialOpeningHour, 1: SpecialOpeningHour}
+     */
+    private function splitServiceDay(array $setup, string $date = '2026-12-24'): array
+    {
+        $make = fn (string $opens, string $closes) => SpecialOpeningHour::create([
+            'tenant_id' => $setup['tenant']->id, 'location_id' => $setup['location']->id, 'date' => $date,
+            'closed' => false, 'label' => 'Heiligabend', 'opens_at' => $opens, 'closes_at' => $closes,
+        ]);
+
+        return [$make('11:30', '14:00'), $make('17:00', '22:00')];
+    }
+
+    public function test_ungrouped_special_rows_of_one_date_are_one_entry(): void
+    {
+        [$setup] = $this->owner();
+        [$lunch, $dinner] = $this->splitServiceDay($setup);
+        $next = SpecialOpeningHour::create(['tenant_id' => $setup['tenant']->id, 'location_id' => $setup['location']->id, 'date' => '2026-12-25', 'closed' => true, 'label' => 'Feiertag']);
+
+        $entries = app(ScheduleExceptions::class)->entries($setup['location']->fresh())['upcoming']['Dezember 2026'];
+
+        $this->assertSame(['s-'.$lunch->id, 's-'.$next->id], array_column($entries, 'key'));
+        $this->assertSame([['type' => 'hours', 'text' => 'Geöffnet 11:30–14:00 und 17:00–22:00']], $entries[0]['effects']);
+        $this->assertSame(['2026-12-24', '2026-12-24'], [$entries[0]['from'], $entries[0]['until']]);
+        $this->assertSame([['opens_at' => '11:30', 'closes_at' => '14:00'], ['opens_at' => '17:00', 'closes_at' => '22:00']], $entries[0]['form']['windows']);
+        $this->assertTrue($entries[0]['editable']);
+        // Dieselben Zeilen unter dem Schlüssel der zweiten Zeile gehören zum selben Eintrag.
+        $this->assertSame($entries[0]['effects'], app(ScheduleExceptions::class)->find($setup['location']->fresh(), 's-'.$dinner->id)['effects']);
+    }
+
+    public function test_an_entry_of_ungrouped_rows_of_one_date_can_be_edited(): void
+    {
+        [$setup, $owner] = $this->owner();
+        [$lunch, $dinner] = $this->splitServiceDay($setup);
+
+        $this->actingAs($owner)->putJson('/admin/settings/exceptions/s-'.$lunch->id, [
+            'from' => '2026-12-24', 'label' => 'Heiligabend', 'effects' => ['hours'],
+            'windows' => [['opens_at' => '11:30', 'closes_at' => '14:00'], ['opens_at' => '17:00', 'closes_at' => '21:00']],
+        ])->assertOk();
+
+        $rows = SpecialOpeningHour::where('location_id', $setup['location']->id)->orderBy('opens_at')->get();
+        $this->assertCount(2, $rows);
+        $this->assertSame(1, $rows->pluck('exception_group')->unique()->count());
+        $this->assertNotNull($rows[0]->exception_group);
+        $this->assertSame([['11:30', '14:00'], ['17:00', '21:00']], $rows->map(fn ($r) => [substr((string) $r->opens_at, 0, 5), substr((string) $r->closes_at, 0, 5)])->all());
+        $this->assertNull(SpecialOpeningHour::find($lunch->id));
+        $this->assertNull(SpecialOpeningHour::find($dinner->id));
+    }
+
+    public function test_the_second_row_of_a_split_day_edits_the_same_entry(): void
+    {
+        [$setup, $owner] = $this->owner();
+        [, $dinner] = $this->splitServiceDay($setup);
+
+        $this->actingAs($owner)->putJson('/admin/settings/exceptions/s-'.$dinner->id, [
+            'from' => '2026-12-24', 'effects' => ['closed'],
+        ])->assertOk();
+
+        $rows = SpecialOpeningHour::where('location_id', $setup['location']->id)->get();
+        $this->assertCount(1, $rows);
+        $this->assertTrue((bool) $rows[0]->closed);
+    }
+
+    public function test_deleting_an_entry_of_ungrouped_rows_removes_all_of_them(): void
+    {
+        [$setup, $owner] = $this->owner();
+        [$lunch] = $this->splitServiceDay($setup);
+        $other = $this->splitServiceDay($setup, '2026-12-31');
+
+        $this->actingAs($owner)->deleteJson('/admin/settings/exceptions/s-'.$lunch->id)->assertOk();
+
+        $this->assertSame([$other[0]->id, $other[1]->id], SpecialOpeningHour::where('location_id', $setup['location']->id)->orderBy('id')->pluck('id')->all());
+    }
+
+    public function test_the_preview_does_not_report_the_sibling_row_as_another_exception(): void
+    {
+        [$setup, $owner] = $this->owner();
+        [$lunch, $dinner] = $this->splitServiceDay($setup);
+        $fields = ['from' => '2026-12-24', 'effects' => ['hours'], 'windows' => [['opens_at' => '11:30', 'closes_at' => '14:00'], ['opens_at' => '17:00', 'closes_at' => '21:00']]];
+
+        foreach ([$lunch, $dinner] as $row) {
+            $response = $this->actingAs($owner)->postJson('/admin/settings/exceptions/preview', $fields + ['key' => 's-'.$row->id])->assertOk();
+            $this->assertStringNotContainsString('gilt schon', $response->json('sentence'));
+        }
+        // Ein neuer Eintrag für denselben Tag findet die alten Zeilen als eine Ausnahme.
+        $this->actingAs($owner)->postJson('/admin/settings/exceptions/preview', $fields)
+            ->assertStatus(422)->assertJsonPath('errors.from.0', 'Am 24.12.2026 gilt schon die Ausnahme „Heiligabend“. Bitte diese Ausnahme bearbeiten oder zuerst löschen.');
+    }
+
+    public function test_a_legacy_closed_row_next_to_an_hours_row_is_one_entry_that_opens(): void
+    {
+        [$setup, $owner] = $this->owner();
+        $closed = SpecialOpeningHour::create(['tenant_id' => $setup['tenant']->id, 'location_id' => $setup['location']->id, 'date' => '2026-12-24', 'closed' => true, 'label' => 'Heiligabend']);
+        SpecialOpeningHour::create(['tenant_id' => $setup['tenant']->id, 'location_id' => $setup['location']->id, 'date' => '2026-12-24', 'closed' => false, 'opens_at' => '12:00', 'closes_at' => '15:00']);
+
+        $entries = app(ScheduleExceptions::class)->entries($setup['location']->fresh())['upcoming']['Dezember 2026'];
+
+        // Die Buchungsseite liest die offene Zeile; die geschlossene fällt weg, solange eine offene da ist.
+        $this->assertCount(1, $entries);
+        $this->assertSame([['type' => 'hours', 'text' => 'Geöffnet 12:00–15:00']], $entries[0]['effects']);
+        $this->assertSame(['hours'], $entries[0]['form']['effects']);
+        $this->assertSame('Heiligabend', $entries[0]['label']);
+
+        $this->actingAs($owner)->putJson('/admin/settings/exceptions/'.$entries[0]['key'], [
+            'from' => '2026-12-24', 'label' => 'Heiligabend', 'effects' => ['hours'], 'windows' => [['opens_at' => '12:00', 'closes_at' => '16:00']],
+        ])->assertOk();
+        $this->assertCount(1, SpecialOpeningHour::where('location_id', $setup['location']->id)->get());
+        $this->assertNull(SpecialOpeningHour::find($closed->id));
+    }
+
+    public function test_rows_of_other_dates_and_of_groups_do_not_join_the_entry(): void
+    {
+        [$setup, $owner] = $this->owner();
+        [$lunch] = $this->splitServiceDay($setup);
+        $this->actingAs($owner)->postJson('/admin/settings/exceptions', ['from' => '2026-12-26', 'effects' => ['closed']])->assertOk();
+        $group = SpecialOpeningHour::whereDate('date', '2026-12-26')->value('exception_group');
+
+        $this->actingAs($owner)->deleteJson('/admin/settings/exceptions/s-'.$lunch->id)->assertOk();
+
+        $this->assertSame([$group], SpecialOpeningHour::where('location_id', $setup['location']->id)->pluck('exception_group')->all());
+    }
 }

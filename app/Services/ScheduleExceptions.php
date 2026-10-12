@@ -33,9 +33,12 @@ use Illuminate\Validation\ValidationException;
  *
  * Alle Zeilen einer Ausnahme tragen dieselbe exception_group und erscheinen als
  * ein Eintrag mit dem Schlüssel "g-{uuid}". Zeilen ohne Gruppe stammen aus der
- * Zeit davor und erscheinen einzeln: "s-{id}" (Sondertag), "b-{id}" (Sperrzeit),
- * "t-{id}" (Tischsperre). Speichern ersetzt alle Zeilen eines Eintrags in einer
- * Transaktion.
+ * Zeit davor und erscheinen einzeln: "b-{id}" (Sperrzeit), "t-{id}" (Tischsperre)
+ * und, als Sondertag, alle Zeilen eines Datums zusammen unter "s-{id}" mit der
+ * kleinsten Nummer (die alte Verwaltung legte Mittag und Abend als zwei Zeilen
+ * ab; die Buchungsseite liest die Sondertage eines Datums als Ganzes). Jede
+ * Nummer des Datums öffnet denselben Eintrag. Speichern ersetzt alle Zeilen
+ * eines Eintrags in einer Transaktion.
  *
  * Sperrzeiten und Tischsperren liegen in UTC, die Eingaben in der Zeit des
  * Standorts. Die Grenzen stehen in config/swayy.php (exceptions.*).
@@ -174,7 +177,7 @@ final class ScheduleExceptions
      */
     public function describe(Location $location, array $data, ?string $key = null): string
     {
-        return $this->sentence->describe($location, $data, $this->otherSpecialRows($key));
+        return $this->sentence->describe($location, $data, $this->otherSpecialRows($location, $key));
     }
 
     /**
@@ -196,7 +199,7 @@ final class ScheduleExceptions
         }
 
         $days = $this->dates($data);
-        $others = $this->otherSpecialRows($key);
+        $others = $this->otherSpecialRows($location, $key);
         $rows = SpecialOpeningHour::query()->where('location_id', $location->id)
             ->whereDate('date', '>=', $days[0])->whereDate('date', '<=', $days[array_key_last($days)])
             ->when($others !== null, $others)
@@ -224,21 +227,35 @@ final class ScheduleExceptions
 
     /**
      * Schränkt eine Abfrage der Sondertage auf die Zeilen anderer Einträge ein:
-     * Die Zeilen des Eintrags $key fallen heraus. Null ohne Schlüssel und für
+     * Die Zeilen des Eintrags $key fallen heraus, bei einem alten Sondertag alle
+     * Zeilen ohne Gruppe an seinem Datum. Null ohne Schlüssel und für
      * Sperrzeiten und Tischsperren, die keine Sondertage anlegen.
      *
      * @return ?Closure(mixed): mixed
      */
-    private function otherSpecialRows(?string $key): ?Closure
+    private function otherSpecialRows(Location $location, ?string $key): ?Closure
     {
         $parsed = $key === null ? null : ScheduleExceptionRules::parseKey($key);
         $value = $parsed['value'] ?? null;
 
+        if (($parsed['kind'] ?? null) === 's') {
+            $day = $this->legacyRow($location, (int) $value)?->date->toDateString();
+
+            return $day === null
+                ? fn ($query) => $query->where('id', '!=', $value)
+                : fn ($query) => $query->where(fn ($rows) => $rows->whereNotNull('exception_group')->orWhereDate('date', '!=', $day));
+        }
+
         return match ($parsed['kind'] ?? null) {
             'g' => fn ($query) => $query->where(fn ($rows) => $rows->whereNull('exception_group')->orWhere('exception_group', '!=', $value)),
-            's' => fn ($query) => $query->where('id', '!=', $value),
             default => null,
         };
+    }
+
+    /** Die alte Sondertag-Zeile ohne Gruppe mit dieser Nummer an diesem Standort, oder null. */
+    private function legacyRow(Location $location, int $id): ?SpecialOpeningHour
+    {
+        return SpecialOpeningHour::query()->where('location_id', $location->id)->whereNull('exception_group')->whereKey($id)->first();
     }
 
     // --- Lesen --------------------------------------------------------------
@@ -272,8 +289,19 @@ final class ScheduleExceptions
             $rows = $model::query()->where('location_id', $location->id)
                 ->where(fn (Builder $query) => $query->where($windows[$model])->orWhereIn('exception_group', $groups))
                 ->get();
+            // Alte Sondertage ohne Gruppe: Alle Zeilen eines Datums gehören zusammen und tragen die kleinste Nummer.
+            $lowest = [];
+            if ($model === SpecialOpeningHour::class) {
+                foreach ($rows as $row) {
+                    if ($row->exception_group === null) {
+                        $day = $row->date->toDateString();
+                        $lowest[$day] = min($lowest[$day] ?? PHP_INT_MAX, (int) $row->id);
+                    }
+                }
+            }
             foreach ($rows as $row) {
-                $key = $row->exception_group !== null ? 'g-'.$row->exception_group : $prefix.'-'.$row->id;
+                $number = $lowest[$row instanceof SpecialOpeningHour ? $row->date->toDateString() : ''] ?? $row->id;
+                $key = $row->exception_group !== null ? 'g-'.$row->exception_group : $prefix.'-'.$number;
                 $bundles[$key] ??= $this->emptyBundle();
                 $bundles[$key][$slot]->push($row);
             }
@@ -305,6 +333,13 @@ final class ScheduleExceptions
             $query = $model::query()->where('location_id', $location->id);
             if ($kind === 'g') {
                 $query->where('exception_group', $value);
+            } elseif ($model === SpecialOpeningHour::class) {
+                // Eine alte Zeile steht für alle Zeilen ohne Gruppe an ihrem Datum.
+                $day = $this->legacyRow($location, (int) $value)?->date->toDateString();
+                if ($day === null) {
+                    continue;
+                }
+                $query->whereNull('exception_group')->whereDate('date', $day);
             } else {
                 $query->whereNull('exception_group')->whereKey($value);
             }
@@ -383,8 +418,9 @@ final class ScheduleExceptions
         $from = $days[0];
         $until = $days[array_key_last($days)];
 
-        $closed = $special->contains(fn (SpecialOpeningHour $row) => $row->closed);
         $open = $special->filter(fn (SpecialOpeningHour $row) => ! $row->closed && $row->opens_at !== null && $row->closes_at !== null)->values();
+        // Ein alter Tag mit einer geschlossenen und einer offenen Zeile gilt als geöffnet: Die Buchungsseite lässt die geschlossene Zeile weg, solange eine offene da ist.
+        $closed = $open->isEmpty() && $special->contains(fn (SpecialOpeningHour $row) => $row->closed);
         $firstDay = $open->isEmpty() ? null : $open->first()->date->toDateString();
         $windows = $firstDay === null ? [] : $open
             ->filter(fn (SpecialOpeningHour $row) => $row->date->toDateString() === $firstDay)
