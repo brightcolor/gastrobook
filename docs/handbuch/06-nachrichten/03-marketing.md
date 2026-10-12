@@ -76,9 +76,17 @@ Bewusst eng gefasst:
 
 ## Abmelden
 
-Jede Nachricht enthält einen Abmeldelink. Ein Klick genügt – kein Login, kein
-Formular. Die Einwilligung ist damit widerrufen, und der Widerruf wird in der
-Einwilligungshistorie des Gastes festgehalten.
+Jede Nachricht enthält einen Abmeldelink. Ein Klick genügt. Die Einwilligung
+ist damit widerrufen, und der Widerruf wird in der Einwilligungshistorie des
+Gastes festgehalten.
+
+**Und wenn ein Gast wieder bucht und den Haken leer lässt?** Dann bleibt seine
+Einwilligung bestehen. Wer schon eingewilligt hat, setzt den Haken bei der
+nächsten Buchung meist nicht noch einmal. Soll ein leerer Haken als Abmeldung
+zählen, schalte unter **Einstellungen › Betrieb › Allgemein ›
+Newsletter-Einwilligung** „Leerer Haken zählt als Abmeldung“ ein. Dann verbucht
+die Buchung einen Widerruf, und der Gast wird aus deiner MailWizz-Liste
+ausgetragen. Passe in dem Fall auch Abschnitt 10 deiner Datenschutzerklärung an.
 
 **Terminbestätigungen und Erinnerungen laufen davon unberührt weiter.** Sie
 gehören zur Buchung, nicht zur Werbung. Das ist auch rechtlich der Unterschied.

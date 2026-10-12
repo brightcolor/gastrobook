@@ -169,9 +169,7 @@ class ReservationLifecycleService
                     'source' => $online ? 'online_booking' : $data['source'],
                 ]);
 
-                foreach ($data['consents'] ?? [] as $type => $granted) {
-                    $this->guests->recordConsent($guest, $type, $granted, $online ? 'booking_widget' : 'staff', $data['ip'] ?? null);
-                }
+                $this->guests->recordBookingConsents($guest, $location->tenant, $data['consents'] ?? [], $online ? 'booking_widget' : 'staff', $data['ip'] ?? null);
             }
 
             // Initial status

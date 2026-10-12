@@ -20,6 +20,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $approved_at
  * @property Carbon|null $tariff_ends_at
  * @property array<string, int|null>|null $contract_limits
+ * @property bool $newsletter_unticked_revokes
  * @property-read Plan|null $plan
  */
 class Tenant extends Model
@@ -33,6 +34,7 @@ class Tenant extends Model
         'mail_from_name', 'mail_reply_to', 'mail_relay_enabled',
         'imprint_url', 'privacy_url', 'terms_url',
         'guest_retention_months', 'settings', 'feature_overrides',
+        'newsletter_unticked_revokes',
     ];
 
     protected function casts(): array
@@ -45,6 +47,7 @@ class Tenant extends Model
             'settings' => 'array',
             'feature_overrides' => 'array',
             'mail_relay_enabled' => 'boolean',
+            'newsletter_unticked_revokes' => 'boolean',
             'approved_at' => 'datetime',
             'tariff_ends_at' => 'datetime',
             'free_place' => 'boolean',

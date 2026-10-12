@@ -196,7 +196,11 @@ Newsletter-Dienst ([MailWizz]) eingesetzt werden.
 **Rechtsgrundlage:** Art. 6 Abs. 1 lit. a DSGVO (Einwilligung). Sie können den
 Newsletter jederzeit über den Abmeldelink oder per Nachricht an uns abbestellen;
 der Widerruf berührt nicht die Rechtmäßigkeit der bis dahin erfolgten
-Verarbeitung.
+Verarbeitung. Lassen Sie bei einer späteren Buchung den Haken beim Newsletter
+leer, bleibt eine bereits erteilte Einwilligung bestehen. [Falls unter
+Einstellungen › Betrieb › Allgemein › Newsletter-Einwilligung „Leerer Haken
+zählt als Abmeldung“ eingeschaltet ist, stattdessen: Eine spätere Buchung ohne
+diesen Haken gilt als Widerruf.]
 
 **Automatische Nachrichten (Geburtstag, Erinnerung, „lange nicht gesehen"):**
 Auf Grundlage derselben Einwilligung können wir Ihnen anlassbezogene Nachrichten

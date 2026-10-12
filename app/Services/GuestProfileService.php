@@ -68,6 +68,28 @@ class GuestProfileService
         return $guest;
     }
 
+    /**
+     * Die Haken einer Buchung verbuchen.
+     *
+     * Ein fehlender Newsletter-Haken zählt nur als Widerruf, wenn der Betrieb
+     * das eingestellt hat (newsletter_unticked_revokes). Sonst bleibt eine
+     * erteilte Einwilligung bestehen: Wer schon eingewilligt hat, setzt den
+     * Haken bei der nächsten Buchung meist nicht noch einmal. Widerrufen geht
+     * über den Abmeldelink.
+     *
+     * @param  array<string, bool>  $consents
+     */
+    public function recordBookingConsents(Guest $guest, Tenant $tenant, array $consents, string $channel, ?string $ip = null): void
+    {
+        foreach ($consents as $type => $granted) {
+            if ($type === 'newsletter' && ! $granted && ! $tenant->newsletter_unticked_revokes) {
+                continue;
+            }
+
+            $this->recordConsent($guest, $type, $granted, $channel, $ip);
+        }
+    }
+
     public function recordConsent(Guest $guest, string $type, bool $granted, string $channel, ?string $ip = null): GuestConsent
     {
         if ($type === 'marketing' || $type === 'newsletter') {

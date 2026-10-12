@@ -475,6 +475,8 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
         ->middleware('permission:tenant.settings.manage')->name('settings.tenant-type');
     Route::put('/settings/branding', [GeneralController::class, 'updateBranding'])
         ->middleware('permission:tenant.settings.manage')->name('settings.branding');
+    Route::put('/settings/newsletter-consent', [GeneralController::class, 'updateNewsletterConsent'])
+        ->middleware('permission:tenant.settings.manage')->name('settings.newsletter-consent');
     Route::get('/settings/sender', [SenderController::class, 'show'])
         ->middleware('permission:tenant.settings.manage')->name('settings.sender.show');
     Route::put('/settings/guest-mail', [SenderController::class, 'update'])

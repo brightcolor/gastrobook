@@ -14,7 +14,7 @@ use Illuminate\View\View;
 
 /**
  * Einstellungen › Betrieb › Allgemein: Name, Rechtslinks, Betriebstyp,
- * Markenfarbe. Gilt für alle Standorte.
+ * Markenfarbe, Newsletter-Einwilligung. Gilt für alle Standorte.
  */
 class GeneralController extends Controller
 {
@@ -85,6 +85,35 @@ class GeneralController extends Controller
         $this->audit->log('tenant.branding_updated', $tenant, $old, $validated);
 
         return $this->saved($request, __('Markenfarbe gespeichert.'));
+    }
+
+    /**
+     * Zählt eine spätere Buchung ohne Newsletter-Haken als Widerruf? Gilt für
+     * den ganzen Betrieb, weil die Einwilligung am Gästeprofil hängt und das
+     * Profil allen Standorten gehört. Wirkung:
+     * GuestProfileService::recordBookingConsents(). Fehlt das Feld, bleibt
+     * der gespeicherte Zustand; die Seite sendet das versteckte 0.
+     */
+    public function updateNewsletterConsent(Request $request)
+    {
+        $tenant = $this->context->tenant();
+        abort_if($tenant === null, 404);
+
+        $request->validate([
+            'newsletter_unticked_revokes' => ['sometimes', 'boolean'],
+        ], [
+            'newsletter_unticked_revokes.boolean' => __('Die Einstellung zum Newsletter-Haken kennt nur an oder aus. Bitte den Schalter neu setzen und speichern.'),
+        ]);
+
+        $old = ['newsletter_unticked_revokes' => (bool) $tenant->newsletter_unticked_revokes];
+        $new = ['newsletter_unticked_revokes' => $request->has('newsletter_unticked_revokes')
+            ? $request->boolean('newsletter_unticked_revokes')
+            : $old['newsletter_unticked_revokes']];
+        $tenant->update($new);
+
+        $this->audit->log('tenant.newsletter_consent_updated', $tenant, $old, $new);
+
+        return $this->saved($request, __('Newsletter-Einwilligung gespeichert.'));
     }
 
     public function updateTenantType(Request $request)

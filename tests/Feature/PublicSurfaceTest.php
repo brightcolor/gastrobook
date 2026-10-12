@@ -56,11 +56,16 @@ class PublicSurfaceTest extends TestCase
      * array_filter warf den nicht gesetzten Haken aus dem Array - der Widerruf
      * wurde nie verbucht. Der Gast blieb im Verteiler, und in der
      * Einwilligungshistorie fehlte der Eintrag, den Art. 7 Abs. 3 verlangt.
+     *
+     * Seit 1.136.0 gilt das nur, wenn der Betrieb den leeren Haken als
+     * Abmeldung eingestellt hat (newsletter_unticked_revokes). Die Vorgabe
+     * prüft NewsletterUntickedTest.
      */
     public function test_unticking_the_newsletter_records_the_withdrawal(): void
     {
         Mail::fake();
         $setup = $this->createTenantSetup();
+        $setup['tenant']->update(['newsletter_unticked_revokes' => true]);
         $this->clearTenantContext();
 
         $this->post($this->buchungsUrl($setup), $this->formular($setup, ['newsletter' => '1']))

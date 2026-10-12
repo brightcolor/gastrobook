@@ -52,15 +52,14 @@ class EventBookingService
 
             $guest = null;
             if (! empty($data['guest_email']) || ! empty($data['guest_phone'])) {
-                $guest = $this->guests->findOrCreate($event->tenant()->firstOrFail(), [
+                $tenant = $event->tenant()->firstOrFail();
+                $guest = $this->guests->findOrCreate($tenant, [
                     'name' => $data['guest_name'],
                     'email' => $data['guest_email'] ?? null,
                     'phone' => $data['guest_phone'] ?? null,
                     'source' => 'online_booking',
                 ]);
-                foreach ($data['consents'] ?? [] as $type => $granted) {
-                    $this->guests->recordConsent($guest, $type, $granted, 'booking_widget', $data['ip'] ?? null);
-                }
+                $this->guests->recordBookingConsents($guest, $tenant, $data['consents'] ?? [], 'booking_widget', $data['ip'] ?? null);
             }
 
             // With a deposit set, only that part is collected online – the rest

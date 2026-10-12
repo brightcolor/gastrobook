@@ -761,6 +761,8 @@ Konfiguration im Adminbereich unter **Einstellungen › Verbindungen › Newslet
 5. Jede Übertragung wird in `notification_logs` (Kanal `newsletter`) protokolliert; die Einwilligung selbst liegt unabhängig davon DSGVO-konform in `guest_consents`.
 6. Die API-URL läuft durch dieselbe [Zielprüfung](#zielprüfung-für-ausgehende-anfragen) wie Webhook-Endpunkte: beim Speichern, beim Verbindungstest und vor jeder Übertragung. Lehnt die Prüfung eine gespeicherte Adresse ab, steht die Anbindung auf „Fehler“, die Einstellungsseite nennt den Grund, und weitere Übertragungen ruhen bis zum nächsten Speichern. Ein Name, der sich vorübergehend nicht auflösen lässt, führt zu einem späteren Versuch.
 
+**Spätere Buchung ohne Haken:** Unter *Einstellungen › Betrieb › Allgemein › Newsletter-Einwilligung* legt der Betrieb fest, ob ein leerer Newsletter-Haken bei einer weiteren Buchung als Abmeldung zählt (`tenants.newsletter_unticked_revokes`, Recht `tenant.settings.manage`). Vorgabe: aus, die erteilte Einwilligung bleibt bestehen, abgemeldet wird über den Abmeldelink. Eingeschaltet verbucht die Buchung einen Widerruf in `guest_consents` und trägt den Gast aus der MailWizz-Liste aus. Gilt für Tischbuchungen, Salontermine und Veranstaltungen. Einwilligungen, die vor 1.136.0 nur eine solche Buchung widerrufen hatte, stellt `php artisan swayy:newsletter-consent-restore` wieder her (ohne `--apply` nur Anzeige; Kanal `correction` in der Einwilligungshistorie, Eintrag im Protokoll).
+
 Ohne konfigurierte Integration wird die Einwilligung nur gespeichert – es geht nichts verloren, die Synchronisierung kann später nachgeholt werden. Weitere Provider (Mailchimp, Brevo, CleverReach) lassen sich über das `NewsletterProvider`-Interface ergänzen.
 
 | Variable | Voreinstellung | Wirkung |
@@ -839,6 +841,13 @@ php artisan swayy:tenants --status=active --search=müller --with-trashed
 - `--with-anonymized` — auch DSGVO-anonymisierte (gelöschte) Gäste anzeigen.
 ```bash
 php artisan swayy:guests --tenant=demo --search=meier --limit=0 --with-anonymized
+```
+
+**`php artisan swayy:newsletter-consent-restore`** — Stellt Newsletter-Einwilligungen wieder her, die vor 1.136.0 nur eine spätere Online-Buchung ohne Haken widerrufen hatte. Betroffen ist ein Gast, dessen letzter Eintrag zu Newsletter oder Werbung genau dieser Widerruf ist und der vorher eingewilligt hatte; wer sich über den Abmeldelink abgemeldet hat, bleibt abgemeldet. Betriebe mit „Leerer Haken zählt als Abmeldung“ bleiben unberührt.
+- `--tenant=` — nur ein Betrieb (ID oder Kürzel).
+- `--apply` — wirklich wiederherstellen; ohne die Option nur Anzeige der betroffenen Gäste (IDs).
+```bash
+php artisan swayy:newsletter-consent-restore --apply
 ```
 
 **`php artisan swayy:reservations`** — Listet Reservierungen über alle Mandanten.
