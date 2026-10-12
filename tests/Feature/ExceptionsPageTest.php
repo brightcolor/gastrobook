@@ -5,8 +5,13 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Models\BlackoutPeriod;
+use App\Models\RestaurantTable;
+use App\Models\Room;
 use App\Models\SpecialOpeningHour;
+use App\Models\TableBlock;
 use Carbon\CarbonImmutable;
+use DOMDocument;
+use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\Concerns\CreatesTenants;
@@ -352,5 +357,135 @@ class ExceptionsPageTest extends TestCase
         $this->actingAs($manager)->get('/admin/settings/opening-hours')->assertOk()
             ->assertSee('trägst du unter')
             ->assertDontSee('<a href="'.route('admin.settings.exceptions.show').'"', false);
+    }
+
+    // --- Nachbesserung: Inaktives, Voreinstellung, Tischplan ---------------------------
+
+    public function test_editing_keeps_locks_and_limits_that_point_at_inactive_rooms_and_tables(): void
+    {
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 2], ['min' => 2, 'max' => 4]]);
+        $make = fn (array $attributes) => Room::factory()->create($attributes + ['location_id' => $setup['location']->id, 'tenant_id' => $setup['tenant']->id]);
+        $limitRoom = $make(['name' => 'Terrasse']);
+        $lockRoom = $make(['name' => 'Wintergarten']);
+        $cellar = $make(['name' => 'Keller']);
+        $cellarTable = RestaurantTable::factory()->create([
+            'tenant_id' => $setup['tenant']->id, 'location_id' => $setup['location']->id, 'room_id' => $cellar->id,
+            'name' => 'K1', 'min_capacity' => 2, 'max_capacity' => 6,
+        ]);
+        [$activeTable, $inactiveTable] = $setup['tables'];
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+        $this->actingAs($owner)->postJson('/admin/settings/exceptions', [
+            'from' => '2026-12-24', 'label' => 'Feier', 'effects' => ['limit', 'lock'],
+            'limit_covers' => 12, 'limit_room_id' => $limitRoom->id,
+            'lock_rooms' => [$lockRoom->id], 'lock_tables' => [$activeTable->id, $inactiveTable->id, $cellarTable->id],
+        ])->assertOk();
+        $key = 'g-'.BlackoutPeriod::where('location_id', $setup['location']->id)->value('exception_group');
+        // Erst nach dem Anlegen werden drei Räume und ein Tisch inaktiv; der Tisch im Keller bleibt aktiv.
+        foreach ([$limitRoom, $lockRoom, $cellar] as $room) {
+            $room->update(['is_active' => false]);
+        }
+        $inactiveTable->update(['is_active' => false]);
+
+        $content = (string) $this->actingAs($owner)->get('/admin/settings/exceptions')->assertOk()->getContent();
+        $prefix = preg_quote('ausnahme-'.$key, '/');
+
+        $this->assertMatchesRegularExpression('/id="'.$prefix.'-lock_rooms-'.$lockRoom->id.'"[^>]*checked/', $content);
+        foreach ([$activeTable, $inactiveTable, $cellarTable] as $table) {
+            $this->assertMatchesRegularExpression('/id="'.$prefix.'-lock_tables-'.$table->id.'"[^>]*checked/', $content);
+        }
+        $this->assertMatchesRegularExpression('/<option value="'.$limitRoom->id.'" selected>Nur: Terrasse \(inaktiv\)<\/option>/', $content);
+        $this->assertStringContainsString('Ganzer Raum „Wintergarten“ (inaktiv)', $content);
+        $this->assertStringContainsString('Tisch '.$inactiveTable->name.' · 2–4 Personen (inaktiv)', $content);
+        $this->assertStringContainsString('Tisch K1 · 2–6 Personen (inaktiv)', $content);
+        // Das Formular zum Anlegen bietet Inaktives nicht an.
+        $this->assertSame(1, preg_match('/<form id="form-ausnahme-neu".*?<\/form>/s', $content, $creating));
+        foreach (['lock_rooms-'.$lockRoom->id, 'lock_tables-'.$inactiveTable->id, 'lock_tables-'.$cellarTable->id, 'value="'.$limitRoom->id.'"'] as $needle) {
+            $this->assertStringNotContainsString($needle, $creating[0]);
+        }
+
+        // Unverändert gespeichert bleiben alle drei Verweise.
+        $this->actingAs($owner)->putJson(route('admin.settings.exceptions.update', $key), $this->fieldsOf($content, 'form-ausnahme-'.$key))->assertOk();
+
+        $limit = BlackoutPeriod::where('location_id', $setup['location']->id)->whereNotNull('reduce_covers_to')->sole();
+        $this->assertSame([$limitRoom->id, 12], [$limit->room_id, $limit->reduce_covers_to]);
+        $this->assertSame([$lockRoom->id], BlackoutPeriod::where('location_id', $setup['location']->id)->whereNull('reduce_covers_to')->pluck('room_id')->all());
+        $this->assertEqualsCanonicalizing(
+            [$activeTable->id, $inactiveTable->id, $cellarTable->id],
+            TableBlock::where('location_id', $setup['location']->id)->pluck('restaurant_table_id')->all(),
+        );
+    }
+
+    public function test_the_new_entry_form_marks_the_preselected_table_for_the_script(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $table = $setup['tables'][0];
+        $this->clearTenantContext();
+
+        $content = (string) $this->actingAs($owner)->get('/admin/settings/exceptions?tisch='.$table->id)->assertOk()->getContent();
+        $this->assertMatchesRegularExpression('/id="ausnahme-neu-effects-lock"[^>]*data-preset="tisch"/', $content);
+        $this->assertMatchesRegularExpression('/id="ausnahme-neu-lock_tables-'.$table->id.'"[^>]*data-preset="tisch"/', $content);
+
+        $plain = (string) $this->actingAs($owner)->get('/admin/settings/exceptions')->assertOk()->getContent();
+        $this->assertStringNotContainsString('data-preset', $plain);
+    }
+
+    public function test_the_popup_offers_the_lock_link_for_every_table_state(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $content = (string) $this->actingAs($owner)->get('/admin/floorplan')->assertOk()->getContent();
+
+        // Der Link hängt nach dem Zusammenbau des Fensters an, gleich für jeden Zustand; nur gesperrte Tische führen zur Liste.
+        $this->assertStringContainsString("const lockLink = t.status === 'blocked' ? 'view' : 'lock';", $content);
+        $this->assertStringNotContainsString("lockLink = 'lock';", $content);
+    }
+
+    /**
+     * Die Felder eines Formulars der Seite, wie ein Browser sie sendet: angehakte Kästchen, gewählte Optionen, alle
+     * anderen Felder mit ihrem Wert. Zeilenvorlagen (template) und die Steuerfelder _token und _method fehlen.
+     *
+     * @return array<string, mixed>
+     */
+    private function fieldsOf(string $html, string $formId): array
+    {
+        libxml_use_internal_errors(true);
+        $dom = new DOMDocument;
+        $dom->loadHTML('<?xml encoding="utf-8"?>'.$html);
+        libxml_clear_errors();
+        $xpath = new DOMXPath($dom);
+        $form = $xpath->query('//form[@id="'.$formId.'"]')->item(0);
+        $this->assertNotNull($form, 'Formular '.$formId.' fehlt.');
+
+        $pairs = [];
+        foreach ($xpath->query('.//input|.//select|.//textarea', $form) as $field) {
+            $name = $field->getAttribute('name');
+            if ($name === '' || in_array($name, ['_token', '_method'], true) || $xpath->query('ancestor::template', $field)->length > 0) {
+                continue;
+            }
+            if ($field->nodeName === 'select') {
+                $options = $xpath->query('.//option', $field);
+                $value = $options->length > 0 ? $options->item(0)->getAttribute('value') : '';
+                foreach ($options as $option) {
+                    if ($option->hasAttribute('selected')) {
+                        $value = $option->getAttribute('value');
+                    }
+                }
+            } elseif (in_array(strtolower($field->getAttribute('type')), ['checkbox', 'radio'], true)) {
+                if (! $field->hasAttribute('checked')) {
+                    continue;
+                }
+                $value = $field->getAttribute('value');
+            } else {
+                $value = $field->getAttribute('value');
+            }
+            $pairs[] = rawurlencode($name).'='.rawurlencode($value);
+        }
+        parse_str(implode('&', $pairs), $data);
+
+        return $data;
     }
 }

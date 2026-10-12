@@ -80,6 +80,7 @@
         @php
             $entry = $drawer['entry'];
             $drawerId = $drawer['id'];
+            $values = $entry['form'] ?? $blank;
         @endphp
         <x-drawer :id="$drawerId" :title="$entry === null ? 'Neue Ausnahme' : 'Ausnahme bearbeiten'"
                   :description="$entry === null ? 'Gilt für einen Tag oder einen Zeitraum.' : ($entry['label'] ?: ScheduleExceptionPeriod::text($entry['from'], $entry['until']))">
@@ -88,7 +89,9 @@
                 'action' => $entry === null ? route('admin.settings.exceptions.store') : route('admin.settings.exceptions.update', $entry['key']),
                 'method' => $entry === null ? 'POST' : 'PUT',
                 'key' => $entry['key'] ?? null,
-                'values' => $entry['form'] ?? $blank,
+                'values' => $values,
+                'rooms' => $roomsFor($values),
+                'preset' => $entry === null ? $presetTable : null,
             ])
             <x-slot:footer>
                 <div class="w-full space-y-1">

@@ -496,8 +496,6 @@
     function showPopup(t) {
         const pct = t.seats ? Math.round((t.occupied || 0) / t.seats * 100) : 0;
         let body;
-        // Link zur Seite Ausnahmen: 'lock' sperrt diesen Tisch, 'view' zeigt die bestehenden Sperren.
-        let lockLink = null;
         if (t.current) {
             const cur = t.current.party, full = cur >= t.seats;
             const tagBadges = (t.current.tags?.length)
@@ -525,10 +523,8 @@
                 <a href="/admin/reservations/${t.upcoming.id}" class="pp-btn pp-dark">Reservierung öffnen</a>`;
         } else if (t.status === 'blocked') {
             body = `<p class="pp-sub">Dieser Tisch ist aktuell gesperrt.</p>`;
-            lockLink = 'view';
         } else {
-            lockLink = 'lock';
-            body = `<p class="pp-sub" style="color:#047857">Frei.</p>
+            body =`<p class="pp-sub" style="color:#047857">Frei.</p>
                 <a href="{{ route('admin.reservations.create') }}?date=${dateInput.value}&time=${timeInput.value}&table_id=${t.id}" class="pp-btn pp-green">Hier reservieren</a>
                 <a href="{{ route('admin.walkins.index') }}" class="pp-btn pp-soft">Walk-in platzieren</a>`;
         }
@@ -542,9 +538,11 @@
         popup.classList.remove('hidden');
 
         popup.querySelector('.pp-x').addEventListener('click', () => popup.classList.add('hidden'));
-        // Mit den Rechten für Ausnahmen (data-lock-url): „Tisch sperren…“ öffnet die Seitenleiste mit diesem Tisch.
+        // Mit den Rechten für Ausnahmen (data-lock-url) hat jeder Tisch den Link, auch mit Reservierung: „Tisch sperren…“
+        // öffnet die Seitenleiste mit diesem Tisch, „Sperren ansehen…“ (Tisch gesperrt) die Liste der Ausnahmen.
         const lockUrl = popup.dataset.lockUrl;
-        if (lockUrl && lockLink) {
+        const lockLink = t.status === 'blocked' ? 'view' : 'lock';
+        if (lockUrl) {
             const link = document.createElement('a');
             link.className = 'pp-btn pp-soft';
             link.href = lockLink === 'lock' ? `${lockUrl}?tisch=${encodeURIComponent(t.id)}#ausnahme-neu` : lockUrl;

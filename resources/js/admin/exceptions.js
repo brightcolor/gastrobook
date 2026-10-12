@@ -15,6 +15,7 @@
 // (data-show-if="effects[]:hours") ein und aus; ihre Felder bleiben im Formular
 // und werden mitgesendet, der Server wertet nur die gewählten Wirkungen aus.
 // Texte stehen als data-text-* am Satz, damit sie zu Restaurant und Salon passen.
+// Elemente mit data-preset="tisch" sind aus ?tisch=… vorbelegt (siehe dropPreset).
 
 const EFFECTS_FIELD = 'effects[]';
 const EXCLUSIVE_EFFECT = 'closed';
@@ -133,14 +134,43 @@ function previewOpened(drawer) {
     });
 }
 
+// Vorbelegung aus der Adresse (?tisch=3): Der Server hakt „Räume oder Tische sperren“ und den Tisch an und markiert beide
+// mit data-preset="{Name des Parameters}". Sie gilt für das Öffnen über diese Adresse. Wer die Seitenleiste schließt, hat
+// sie verwendet oder verworfen: Parameter und Markierung verschwinden, auch aus dem Ausgangsstand des Formulars. Sonst
+// stellte „Abbrechen“ (form.reset) oder das Neuladen nach dem Speichern den Tisch wieder her, und die nächste Ausnahme
+// träfe einen Tisch, den niemand gewählt hat.
+function dropPreset(drawer) {
+    const items = [...drawer.querySelectorAll('[data-preset]')];
+    if (items.length === 0) return;
+    const url = new URL(window.location.href);
+    items.forEach((item) => {
+        url.searchParams.delete(item.dataset.preset);
+        item.defaultChecked = false;
+        item.checked = false;
+        item.removeAttribute('data-preset');
+    });
+    history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+    // Abschnitte, Seitenleiste und Vorschau sehen den neuen Stand.
+    drawer.querySelectorAll('form').forEach((form) => form.dispatchEvent(new Event('input', { bubbles: true })));
+}
+
 // drawer.js öffnet und schließt über das Attribut hidden; das gilt auch für den Aufruf über die Adresse (#ausnahme-neu).
 function watch(drawer) {
     if (watched.has(drawer) || !drawer.querySelector('form[data-preview-url]')) return;
     watched.add(drawer);
     new MutationObserver(() => {
-        if (!drawer.hidden) previewOpened(drawer);
+        if (drawer.hidden) {
+            dropPreset(drawer);
+        } else {
+            previewOpened(drawer);
+        }
     }).observe(drawer, { attributes: true, attributeFilter: ['hidden'] });
-    if (!drawer.hidden) previewOpened(drawer);
+    if (!drawer.hidden) {
+        previewOpened(drawer);
+    } else if (window.location.hash !== `#${drawer.id}`) {
+        // Die Seite kam mit ?tisch=… und die Seitenleiste bleibt zu: Die Vorbelegung bliebe für später stehen.
+        dropPreset(drawer);
+    }
 }
 
 export function initExceptions() {

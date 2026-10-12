@@ -2,6 +2,10 @@
      $prefix ist die Kennung der Seitenleiste ("ausnahme-neu", "ausnahme-g-…") und macht alle IDs eindeutig,
      $action und $method gehen an Anlegen oder Ändern, $key nennt beim Ändern den Eintrag (die Vorschau lässt dessen
      eigene Zeilen aus), $values trägt die Felder (Eintrag['form'] beim Ändern, Vorbelegung beim Anlegen).
+     $rooms nennt die Räume und Tische, die das Formular anbietet: die aktiven und die, auf die $values verweist;
+     inaktive tragen "(inaktiv)" und bleiben angehakt oder gewählt, damit Speichern keinen Verweis verliert.
+     $preset ist beim Anlegen die Nummer des Tisches aus ?tisch=…; die vorbelegten Kästchen tragen data-preset
+     (exceptions.js nimmt die Vorbelegung beim Schließen zurück).
      Die Abschnitte der Wirkungen bleiben im Formular und werden mitgesendet; der Server wertet nur die gewählten aus.
      novalidate: Der Server prüft und nennt jeden Fehler mit Ursache und nächstem Schritt. Die Prüfung des Browsers stoppte
      den Versand schon bei einem leeren Pflichtfeld in einem verborgenen Abschnitt, dessen Grund niemand sieht. --}}
@@ -41,7 +45,7 @@
         <legend class="mb-2 text-sm font-semibold text-stone-800">Was ist anders?</legend>
         @foreach($effects as $value => [$title, $summary])
             <label class="{{ $card }}">
-                <input type="checkbox" id="{{ $id('effects-'.$value) }}" name="effects[]" value="{{ $value }}" @checked($has($value)) class="mt-1 h-6 w-6 shrink-0">
+                <input type="checkbox" id="{{ $id('effects-'.$value) }}" name="effects[]" value="{{ $value }}" @checked($has($value)) @if($preset !== null && $value === 'lock') data-preset="tisch" @endif class="mt-1 h-6 w-6 shrink-0">
                 <span class="min-w-0 [overflow-wrap:anywhere]">
                     <span class="block font-semibold">{{ $title }}</span>
                     <span class="block text-[0.8125rem] text-stone-600">{{ $summary }}</span>
@@ -75,7 +79,7 @@
                 <select id="{{ $id('limit_room_id') }}" name="limit_room_id" class="w-full">
                     <option value="">Ganzer Betrieb</option>
                     @foreach($rooms as $room)
-                        <option value="{{ $room->id }}" @selected((int) $values['limit_room_id'] === (int) $room->id)>Nur: {{ $room->name }}</option>
+                        <option value="{{ $room->id }}" @selected((int) $values['limit_room_id'] === (int) $room->id)>Nur: {{ $room->name }}{{ $room->is_active ? '' : ' (inaktiv)' }}</option>
                     @endforeach
                 </select>
             </x-field>
@@ -100,12 +104,12 @@
                         <div class="space-y-2">
                             <div class="flex items-center gap-3">
                                 <input type="checkbox" id="{{ $id('lock_rooms-'.$room->id) }}" name="lock_rooms[]" value="{{ $room->id }}" @checked(in_array((int) $room->id, $values['lock_rooms'], true)) class="h-6 w-6 shrink-0">
-                                <label for="{{ $id('lock_rooms-'.$room->id) }}" class="min-w-0 text-sm font-semibold text-stone-800 [overflow-wrap:anywhere]">Ganzer Raum „{{ $room->name }}“</label>
+                                <label for="{{ $id('lock_rooms-'.$room->id) }}" class="min-w-0 text-sm font-semibold text-stone-800 [overflow-wrap:anywhere]">Ganzer Raum „{{ $room->name }}“{{ $room->is_active ? '' : ' (inaktiv)' }}</label>
                             </div>
                             @foreach($room->tables as $table)
                                 <div class="flex items-center gap-3 pl-9">
-                                    <input type="checkbox" id="{{ $id('lock_tables-'.$table->id) }}" name="lock_tables[]" value="{{ $table->id }}" @checked(in_array((int) $table->id, $values['lock_tables'], true)) class="h-6 w-6 shrink-0">
-                                    <label for="{{ $id('lock_tables-'.$table->id) }}" class="min-w-0 text-sm text-stone-800 [overflow-wrap:anywhere]">Tisch {{ $table->name }} · {{ $table->min_capacity }}–{{ $table->max_capacity }} Personen</label>
+                                    <input type="checkbox" id="{{ $id('lock_tables-'.$table->id) }}" name="lock_tables[]" value="{{ $table->id }}" @checked(in_array((int) $table->id, $values['lock_tables'], true)) @if($preset === (int) $table->id) data-preset="tisch" @endif class="h-6 w-6 shrink-0">
+                                    <label for="{{ $id('lock_tables-'.$table->id) }}" class="min-w-0 text-sm text-stone-800 [overflow-wrap:anywhere]">Tisch {{ $table->name }} · {{ $table->min_capacity }}–{{ $table->max_capacity }} Personen{{ $room->is_active && $table->is_active ? '' : ' (inaktiv)' }}</label>
                                 </div>
                             @endforeach
                         </div>

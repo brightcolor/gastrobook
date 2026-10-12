@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { initDrawers } from '../../resources/js/admin/drawer.js';
 import { initExceptions, syncEffects } from '../../resources/js/admin/exceptions.js';
 import { initAjaxForms } from '../../resources/js/admin/forms.js';
 import { initHours } from '../../resources/js/admin/hours.js';
@@ -366,5 +367,108 @@ describe('Vorschau', () => {
         await vi.advanceTimersByTimeAsync(1000);
 
         expect(fetchMock).not.toHaveBeenCalled();
+    });
+});
+
+// --- Tisch aus der Adresse (?tisch=…) ------------------------------------------
+
+// Seitenleiste zum Anlegen, wie der Server sie mit ?tisch=3 ausliefert: Sperre und Tisch sind angehakt und tragen data-preset.
+function presetDrawer(address) {
+    history.replaceState(null, '', address);
+    mount(`
+        <div id="ausnahme-neu" data-drawer hidden>
+            <button type="button" data-drawer-close>Abbrechen</button>
+            <form id="f" data-preview-url="/admin/settings/exceptions/preview" data-preview-delay="400">
+                <input type="date" name="from">
+                <input type="checkbox" id="e-lock" name="effects[]" value="lock" checked data-preset="tisch">
+                <div id="lock-section" data-show-if="effects[]:lock">
+                    <input type="checkbox" id="t-3" name="lock_tables[]" value="3" checked data-preset="tisch">
+                    <input type="checkbox" id="t-4" name="lock_tables[]" value="4">
+                </div>
+            </form>
+            <div data-effect-sentence data-text-start="Start"></div>
+        </div>`);
+    return document.getElementById('f');
+}
+
+const checked = () => [...document.querySelectorAll('#f input[type="checkbox"]:checked')].map((box) => box.id);
+
+describe('Tisch aus der Adresse', () => {
+    it('bleibt vorbelegt, solange die Seitenleiste offen ist', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ sentence: 'Satz.' })));
+        presetDrawer('/admin/settings/exceptions?tisch=3#ausnahme-neu');
+        initExceptions();
+
+        document.getElementById('ausnahme-neu').hidden = false;
+        await Promise.resolve();
+
+        expect(checked()).toEqual(['e-lock', 't-3']);
+        expect(window.location.search).toBe('?tisch=3');
+    });
+
+    it('verschwindet aus Adresse und Formular, sobald die Seitenleiste schließt', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ sentence: 'Satz.' })));
+        const f = presetDrawer('/admin/settings/exceptions?tisch=3&x=1#ausnahme-neu');
+        initExceptions();
+        const drawer = document.getElementById('ausnahme-neu');
+        drawer.hidden = false;
+        await Promise.resolve();
+
+        // Schließen setzt das Formular zurück (drawer.js) und blendet die Seitenleiste aus.
+        drawer.hidden = true;
+        f.reset();
+        await Promise.resolve();
+
+        expect(window.location.search).toBe('?x=1');
+        expect(window.location.hash).toBe('#ausnahme-neu');
+        expect(checked()).toEqual([]);
+        // Ein späteres Zurücksetzen (nächstes Schließen) stellt den Tisch nicht wieder her.
+        f.reset();
+        expect(checked()).toEqual([]);
+        expect(document.querySelector('[data-preset]')).toBeNull();
+    });
+
+    it('blendet nach dem Schließen die Sperre aus, die der Tisch angehakt hatte', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ sentence: 'Satz.' })));
+        const f = presetDrawer('/admin/settings/exceptions?tisch=3#ausnahme-neu');
+        initReveals();
+        initExceptions();
+        const drawer = document.getElementById('ausnahme-neu');
+        drawer.hidden = false;
+        await Promise.resolve();
+        expect(document.getElementById('lock-section').hidden).toBe(false);
+
+        drawer.hidden = true;
+        f.reset();
+        await Promise.resolve();
+
+        expect(document.getElementById('lock-section').hidden).toBe(true);
+    });
+
+    it('wird übergangen, wenn die Seite bei geschlossener Seitenleiste geladen wurde', async () => {
+        presetDrawer('/admin/settings/exceptions?tisch=3');
+
+        initExceptions();
+
+        expect(window.location.search).toBe('');
+        expect(checked()).toEqual([]);
+        document.getElementById('f').reset();
+        expect(checked()).toEqual([]);
+    });
+
+    it('endet mit drawer.js: Abbrechen entfernt Hash und Parameter und stellt nichts wieder her', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ sentence: 'Satz.' })));
+        presetDrawer('/admin/settings/exceptions?tisch=3#ausnahme-neu');
+        initExceptions();
+        initDrawers();
+        expect(document.getElementById('ausnahme-neu').hidden).toBe(false);
+        expect(checked()).toEqual(['e-lock', 't-3']);
+
+        document.querySelector('[data-drawer-close]').click();
+        await Promise.resolve();
+
+        expect(document.getElementById('ausnahme-neu').hidden).toBe(true);
+        expect(window.location.search + window.location.hash).toBe('');
+        expect(checked()).toEqual([]);
     });
 });

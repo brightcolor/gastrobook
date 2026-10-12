@@ -50,16 +50,19 @@ class ExceptionsController extends Controller
     {
         $location = $this->location();
         $tenant = $this->context->tenant();
-        abort_if($tenant === null, 404);
+        abort_if($tenant === null, 404, __('Es ist kein Betrieb gewählt. Bitte neu anmelden und die Seite neu laden.'));
         $salon = $tenant->isSalon();
         $entries = $this->exceptions->entries($location);
         $rooms = $salon ? collect() : $this->rooms($location);
+        $presetTable = $this->presetTable($request, $this->offered($rooms, $this->blank(null)));
 
         return view('admin.settings.exceptions', [
             'upcoming' => $entries['upcoming'],
             'past' => $entries['past'],
-            'rooms' => $rooms,
-            'blank' => $this->blank($this->presetTable($request, $rooms)),
+            'blank' => $this->blank($presetTable),
+            'presetTable' => $presetTable,
+            // Räume und Tische, die ein Formular anbietet: die aktiven und die, auf die seine Werte verweisen.
+            'roomsFor' => fn (array $values): Collection => $this->offered($rooms, $values),
             'salon' => $salon,
             'limits' => (array) config('swayy.exceptions'),
             'previewDelay' => (int) config('swayy.ui.preview_delay_ms'),
@@ -128,27 +131,62 @@ class ExceptionsController extends Controller
     }
 
     /**
-     * Räume des Standorts mit ihren aktiven Tischen, in der Reihenfolge von
-     * Räume & Tische.
+     * Alle Räume des Standorts mit allen Tischen (ohne gelöschte), in der
+     * Reihenfolge von Räume & Tische. Welche davon ein Formular anbietet,
+     * entscheidet offered().
      *
      * @return Collection<int, Room>
      */
     private function rooms(Location $location): Collection
     {
-        $rooms = $this->inOrder($location->rooms()
-            ->where('is_active', true)
-            ->with(['tables' => fn ($query) => $query->where('is_active', true)])
-            ->get());
+        $rooms = $this->inOrder($location->rooms()->with('tables')->get());
         $rooms->each(fn (Room $room) => $room->setRelation('tables', $this->inOrder($room->tables)));
 
         return $rooms;
     }
 
     /**
+     * Die Räume und Tische, die ein Formular anbietet: die aktiven Tische
+     * aktiver Räume und alles, worauf die Werte des Formulars verweisen (gesperrte
+     * Räume und Tische, der Raum der Gästegrenze). Ein Verweis auf etwas
+     * Inaktives bleibt so auswählbar; fehlte er im Formular, ginge er beim
+     * Speichern verloren, und eine Grenze für einen Raum gälte danach für den
+     * ganzen Betrieb. Jede Antwort trägt eigene Kopien der Räume.
+     *
+     * @param  Collection<int, Room>  $rooms  aus rooms()
+     * @param  array<string, mixed>  $values  Felder des Formulars (blank() oder Eintrag['form'])
+     * @return Collection<int, Room>
+     */
+    private function offered(Collection $rooms, array $values): Collection
+    {
+        $roomIds = array_map('intval', array_filter(
+            [...(array) ($values['lock_rooms'] ?? []), $values['limit_room_id'] ?? null],
+            fn ($id) => $id !== null,
+        ));
+        $tableIds = array_map('intval', (array) ($values['lock_tables'] ?? []));
+
+        return $rooms
+            ->map(function (Room $room) use ($roomIds, $tableIds): ?Room {
+                $tables = $room->tables->filter(
+                    fn (RestaurantTable $table) => ($room->is_active && $table->is_active) || in_array((int) $table->id, $tableIds, true),
+                )->values();
+                if (! $room->is_active && $tables->isEmpty() && ! in_array((int) $room->id, $roomIds, true)) {
+                    return null;
+                }
+                $copy = clone $room;
+                $copy->setRelation('tables', $tables);
+
+                return $copy;
+            })
+            ->filter()
+            ->values();
+    }
+
+    /**
      * Die Nummer des Tisches aus ?tisch={id}, wenn das Formular ihn anbietet
      * (ein aktiver Tisch dieses Standorts), sonst null.
      *
-     * @param  Collection<int, Room>  $rooms
+     * @param  Collection<int, Room>  $rooms  aus offered()
      */
     private function presetTable(Request $request, Collection $rooms): ?int
     {
