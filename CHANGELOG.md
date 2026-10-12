@@ -102,6 +102,30 @@
 - Neue Spalte `exception_group` in `special_opening_hours`,
   `blackout_periods` und `table_blocks`. Die Migration lässt sich mehrfach
   ausführen.
+- Hinweise zum Update für Betriebe und Betreiber:
+  - Öffnungszeiten: Eine Woche mit sich überschneidenden Zeitfenstern weist die
+    Seite beim nächsten Speichern mit einer Meldung ab. Sie nennt das Fenster und
+    das Fenster, mit dem es sich überschneidet, auch über Mitternacht und von
+    Sonntag zu Montag. Gleiche Uhrzeit bei „Öffnet“ und „Schließt“ ergibt ein
+    Fenster von 24 Stunden.
+  - Ausnahmen: Alte Sondertage, Sperrzeiten und Tischsperren erscheinen als
+    einzelne Einträge unter „Platz & Zeiten › Ausnahmen“. Die Zeilen eines
+    Sondertags am selben Datum, etwa Mittag und Abend aus dem alten Formular,
+    bilden einen Eintrag; Bearbeiten ersetzt sie durch eine Ausnahme. Eine ältere
+    Sperre, die durchgehend über mehrere Tage läuft, lässt sich löschen und neu
+    anlegen.
+  - In der Zählweise „Nach Personen“ vergibt Swayy keine Tische. Die Ausnahmen
+    bieten dort „Weniger Gäste“ für den ganzen Betrieb an; Sperren von Räumen und
+    Tischen wirken in den Zählweisen „Nach Tischen“ und „Beides“. Bestehende
+    Einträge mit Raum oder Tisch tragen in der Liste einen Hinweis.
+  - Browser-Tabs, die vor dem Update offen waren, melden beim Speichern einen
+    Fehler: Die alten Speicherwege `/admin/settings/booking-rules`,
+    `/admin/settings/special-hours`, `/admin/settings/blackouts`,
+    `/admin/settings/table-blocks` und `/admin/settings/logo` sind entfallen.
+    Die Seite neu zu laden führt auf die neue Oberfläche.
+  - Die PHP-Erweiterung `intl` ist Voraussetzung (`ext-intl` in
+    `composer.json`). Das Docker-Image bringt sie mit; bei einer eigenen
+    Installation zeigt `php -m`, ob sie geladen ist.
 - Eingabegrenzen und Sortierung: Die Felder eines Standorts (Name, Telefon,
   E-Mail, Straße, PLZ, Ort) lesen ihre Höchstlängen aus den Einstellungen und
   tragen sie als `maxlength`. Das Kürzel eines Standorts passt auch bei 255
