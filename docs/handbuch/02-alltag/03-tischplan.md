@@ -88,9 +88,11 @@ Ein Tisch wackelt, wird lackiert oder ist an dem Abend für etwas anderes
 reserviert? Du sperrst ihn auf zwei Wegen:
 
 - Im Tischplan klickst du den Tisch an und wählst im Fenster **„Tisch
-  sperren…“**. Die Seitenleiste öffnet sich mit diesem Tisch schon angehakt.
+  sperren…“**. Der Link steht bei jedem Tisch, auch bei einem mit Reservierung.
+  Die Seitenleiste öffnet sich mit diesem Tisch schon angehakt.
   Ist der Tisch bereits gesperrt, heißt der Link **„Sperren ansehen…“** und
-  führt zur Liste.
+  führt zur Liste. In der Zählweise „Nach Personen“ vergibt Swayy keine Tische;
+  dort fehlt der Link, ebenso unter Räume & Tische.
 - Unter **Einstellungen › Platz & Zeiten › Ausnahmen** legst du eine Ausnahme an,
   wählst „Räume oder Tische sperren“ und hakst die Tische an. Dieselbe
   Ausnahme sperrt auch mehrere Tische oder einen ganzen Raum.

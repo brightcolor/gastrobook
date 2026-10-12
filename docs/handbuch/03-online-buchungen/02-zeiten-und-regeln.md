@@ -74,7 +74,11 @@ Mit **Ausnahme anlegen** öffnet sich die Seitenleiste:
     den ganzen Betrieb oder nur für einen Raum, optional in einem Zeitfenster
     des Tages. Gut, wenn eine Gesellschaft die halbe Küche bindet.
   - **Räume oder Tische sperren** (Restaurant): Du hakst ganze Räume oder
-    einzelne Tische an, optional mit Uhrzeiten.
+    einzelne Tische an, optional mit Uhrzeiten. Sperren wirken in den Zählweisen
+    „Nach Tischen“ und „Beides“, denn dort vergibt Swayy Tische. In „Nach
+    Personen“ fehlen diese Karte und die Wahl eines Raums bei „Weniger Gäste“;
+    die Grenze gilt dann für den ganzen Betrieb (Zählweise unter *Kapazität &
+    Dauer*).
 - **Uhrzeiten** bei „Weniger Gäste“ und beim Sperren: Beginn und Ende, beide
   leer für den ganzen Tag.
 
@@ -85,8 +89,11 @@ deinen Eingaben und zeigt Fehler, bevor du speicherst.
 **Gruppen:** Eine Ausnahme mit mehreren Wirkungen, etwa Betriebsferien mit
 „Geschlossen“ und gesperrter Terrasse, bleibt ein Eintrag. Du bearbeitest und
 löschst sie gemeinsam. Ältere Einträge aus der Zeit vor dieser Seite (frühere
-Sondertage und Sperren) stehen einzeln in der Liste. Sie lassen sich löschen, und
-wo das Formular sie abbilden kann, auch bearbeiten.
+Sondertage und Sperren) stehen einzeln in der Liste; die Zeilen eines alten
+Sondertags am selben Datum, etwa Mittag und Abend, bilden einen Eintrag. Sie
+lassen sich löschen, und wo das Formular sie abbilden kann, auch bearbeiten.
+Trägt ein älterer Eintrag Räume oder Tische, während die Zählweise „Nach
+Personen“ gilt, steht in der Liste ein Hinweis dazu.
 
 **Bestehende Reservierungen bleiben.** Eine Ausnahme storniert nichts. Liegen im
 Zeitraum schon Reservierungen (im Salon Termine), nennt die Meldung nach dem
