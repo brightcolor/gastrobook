@@ -159,6 +159,11 @@
     </div>
 @endif
 
+@if($tenant && $settingsMode)
+    {{-- Alte Sprungmarken der früheren Einstellungsseite → Adresse der neuen Seite (resources/js/admin/settings-anchors.js) --}}
+    <div hidden data-settings-anchors="{{ json_encode($nav->legacyAnchors($user, $tenant, $location), JSON_FORCE_OBJECT) }}"></div>
+@endif
+
 @stack('drawers')
 
 {{-- Hinweise („Gespeichert“, Fehler); resources/js/admin/toast.js --}}

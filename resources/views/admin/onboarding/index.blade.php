@@ -9,15 +9,16 @@
 </head>
 <body class="min-h-screen bg-gradient-to-br from-stone-50 to-teal-50/30">
 @php
-    $isSalon  = $tenant->isSalon();
-    $typeName = $isSalon ? 'Salon / Dienstleister' : 'Restaurant / Café';
+    $typeName = $salon ? 'Salon / Dienstleister' : 'Restaurant / Café';
+    // Adressen im Skript mit Schrägstrichen, sonst wie @json: Tags, Anführungszeichen und & bleiben maskiert.
+    $jsonUrl  = JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES;
     $weekdays = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
     $csrf     = csrf_token();
 
     $steps = [
         ['id'=>'type',    'label'=>'Betriebstyp',          'icon'=>'🏷',  'optional'=>false],
         ['id'=>'hours',   'label'=>'Öffnungszeiten',        'icon'=>'🕐',  'optional'=>false],
-        ['id'=>'setup',   'label'=>$isSalon?'Team & Leistungen':'Räume & Tische', 'icon'=>$isSalon?'💇':'🪑', 'optional'=>false],
+        ['id'=>'setup',   'label'=>$salon?'Team & Leistungen':'Räume & Tische', 'icon'=>$salon?'💇':'🪑', 'optional'=>false],
         ['id'=>'rules',   'label'=>'Buchungsregeln',         'icon'=>'⚙️',  'optional'=>true],
         ['id'=>'branding','label'=>'Logo & Farbe',           'icon'=>'🎨',  'optional'=>true],
         ['id'=>'done',    'label'=>'Fertig',                 'icon'=>'✅',  'optional'=>false],
@@ -128,7 +129,7 @@
                                 <span class="text-stone-400">–</span>
                                 <input type="time" name="hours[0][closes_at]" value="22:00" class="rounded-lg border-stone-200">
                                 <input type="text"  name="hours[0][service_name]" placeholder="Service (optional)" class="w-28 rounded-lg border-stone-200">
-                                <button type="button" onclick="this.closest('.hour-row').remove()" class="text-red-400 hover:text-red-600">✕</button>
+                                <button type="button" data-ob-remove-hour aria-label="Zeitfenster entfernen" class="text-red-400 hover:text-red-600">✕</button>
                             </div>
                         </div>
                         <button type="button" id="obAddHour" class="mt-3 text-sm text-teal-700 underline">+ Weiteren Tag hinzufügen</button>
@@ -146,7 +147,7 @@
                 {{-- STEP 2: Räume & Tische / Team & Leistungen (PFLICHT)--}}
                 {{-- ════════════════════════════════════════════════════ --}}
                 <div class="ob-step hidden" data-step="2">
-                    @if(!$isSalon)
+                    @if(!$salon)
                     {{-- RESTAURANT --}}
                     <h1 class="mb-1 text-2xl font-black">Erster Raum & Tisch</h1>
                     <p class="mb-6 text-stone-500">Lege mindestens einen Raum und einen Tisch an. Du kannst später weitere im Tischplan hinzufügen.</p>
@@ -246,26 +247,35 @@
 
                     <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
                         <div class="grid grid-cols-2 gap-4 text-sm">
+                            @unless($salon)
                             <div>
-                                <label class="mb-1 block text-xs font-semibold text-stone-500">Min. Personen online</label>
-                                <input name="min_party_online" id="obMinParty" type="number" value="1" min="1" max="50" class="w-full rounded-lg border-stone-200">
+                                <label for="obMinParty" class="mb-1 block text-xs font-semibold text-stone-500">Min. Personen online</label>
+                                <input name="min_party_online" id="obMinParty" type="number" value="{{ $settings->min_party_online }}" min="1" max="{{ $limits['party_online_max'] }}" class="w-full rounded-lg border-stone-200">
                             </div>
                             <div>
-                                <label class="mb-1 block text-xs font-semibold text-stone-500">Max. Personen online</label>
-                                <input name="max_party_online" id="obMaxParty" type="number" value="10" min="1" max="100" class="w-full rounded-lg border-stone-200">
+                                <label for="obMaxParty" class="mb-1 block text-xs font-semibold text-stone-500">Max. Personen online</label>
+                                <input name="max_party_online" id="obMaxParty" type="number" value="{{ $settings->max_party_online }}" min="1" max="{{ $limits['party_online_max'] }}" class="w-full rounded-lg border-stone-200">
+                            </div>
+                            @endunless
+                            <div>
+                                <label for="obMinLead" class="mb-1 block text-xs font-semibold text-stone-500">Mindestvorlauf (Min.)</label>
+                                <input name="min_lead_minutes" id="obMinLead" type="number" value="{{ $settings->min_lead_minutes }}" min="0" max="{{ $limits['lead_max_minutes'] }}" class="w-full rounded-lg border-stone-200">
                             </div>
                             <div>
-                                <label class="mb-1 block text-xs font-semibold text-stone-500">Mindestvorlauf (Min.)</label>
-                                <input name="min_lead_minutes" id="obMinLead" type="number" value="60" min="0" class="w-full rounded-lg border-stone-200">
+                                <label for="obMaxAdvance" class="mb-1 block text-xs font-semibold text-stone-500">Max. Vorausbuchung (Tage)</label>
+                                <input name="max_advance_days" id="obMaxAdvance" type="number" value="{{ $settings->max_advance_days }}" min="1" max="{{ $limits['advance_max_days'] }}" class="w-full rounded-lg border-stone-200">
                             </div>
-                            <div>
-                                <label class="mb-1 block text-xs font-semibold text-stone-500">Max. Vorausbuchung (Tage)</label>
-                                <input name="max_advance_days" id="obMaxAdvance" type="number" value="60" min="1" max="730" class="w-full rounded-lg border-stone-200">
+                            @unless($salon)
+                            <div class="col-span-2">
+                                <label for="obDuration" class="mb-1 block text-xs font-semibold text-stone-500">Übliche Besuchsdauer (Min.)</label>
+                                <input name="default_duration_minutes" id="obDuration" type="number" value="{{ $settings->default_duration_minutes }}" min="{{ $limits['duration_min'] }}" max="{{ $limits['duration_max'] }}" aria-describedby="obDurationHelp" class="w-full rounded-lg border-stone-200 sm:w-1/2">
+                                <p id="obDurationHelp" class="mt-1 text-xs text-stone-500">So lange bleibt ein Tisch je Buchung belegt. Unter Kapazität &amp; Dauer legst du später Zeiten je Gruppengröße fest.</p>
                             </div>
+                            @endunless
                         </div>
                         <div class="mt-4 space-y-2 text-sm">
-                            <label class="flex items-center gap-2"><input id="obAutoConfirm" type="checkbox" checked> Online-Reservierungen automatisch bestätigen</label>
-                            <label class="flex items-center gap-2"><input id="obEmailConfirm" type="checkbox"> E-Mail-Bestätigung durch Gast verlangen</label>
+                            <label class="flex items-center gap-2"><input id="obAutoConfirm" type="checkbox" @checked($settings->auto_confirm)> Online-Reservierungen automatisch bestätigen</label>
+                            <label class="flex items-center gap-2"><input id="obEmailConfirm" type="checkbox" @checked($settings->require_email_confirmation)> E-Mail-Bestätigung durch Gast verlangen</label>
                         </div>
                     </div>
 
@@ -366,19 +376,20 @@
 <script>
 (function () {
     const CSRF    = @json($csrf);
-    const IS_SALON = @json($isSalon);
+    const IS_SALON = @json($salon);
     const STEPS_COUNT = 6;
 
     // ── Routes ──────────────────────────────────────────────────────────────
-    const ROUTE_TYPE    = @json(route('admin.settings.tenant-type'));
-    const ROUTE_HOURS   = @json(route('admin.settings.opening-hours'));
-    const ROUTE_ROOMS   = @json(route('admin.settings.rooms.store'));
-    const ROUTE_TABLES  = @json(route('admin.settings.tables.store'));
-    const ROUTE_STAFF   = @json(route('admin.staff.store'));
-    const ROUTE_SERVICE = @json(route('admin.services.store'));
-    const ROUTE_RULES   = @json(route('admin.settings.booking-rules'));
-    const ROUTE_BRANDING= @json(route('admin.settings.branding'));
-    const ROUTE_LOGO    = @json(route('admin.settings.logo.upload'));
+    const ROUTE_TYPE    = @json(route('admin.settings.tenant-type'), $jsonUrl);
+    const ROUTE_HOURS   = @json(route('admin.settings.opening-hours'), $jsonUrl);
+    const ROUTE_ROOMS   = @json(route('admin.settings.rooms.store'), $jsonUrl);
+    const ROUTE_TABLES  = @json(route('admin.settings.tables.store'), $jsonUrl);
+    const ROUTE_STATE   = @json(route('admin.floorplan.state'), $jsonUrl);
+    const ROUTE_STAFF   = @json(route('admin.staff.store'), $jsonUrl);
+    const ROUTE_SERVICE = @json(route('admin.services.store'), $jsonUrl);
+    const ROUTE_RULES   = @json(route('admin.onboarding.rules'), $jsonUrl);
+    const ROUTE_BRANDING= @json(route('admin.settings.branding'), $jsonUrl);
+    const ROUTE_LOGO    = @json(route('admin.locations.logo.store', $location), $jsonUrl);
 
     // ── State ────────────────────────────────────────────────────────────────
     let currentStep = 0;
@@ -504,15 +515,21 @@
             <span class="text-stone-400">–</span>
             <input type="time" name="hours[${i}][closes_at]" value="22:00" class="rounded-lg border-stone-200">
             <input type="text" name="hours[${i}][service_name]" placeholder="Service (optional)" class="w-28 rounded-lg border-stone-200">
-            <button type="button" onclick="this.closest('.hour-row').remove()" class="text-red-400 hover:text-red-600">✕</button>`;
+            <button type="button" data-ob-remove-hour aria-label="Zeitfenster entfernen" class="text-red-400 hover:text-red-600">✕</button>`;
         container.appendChild(div);
+    });
+    // Entfernen für vorhandene und neue Zeilen über den Container
+    document.getElementById('obHoursContainer')?.addEventListener('click', (e) => {
+        const remove = e.target.closest('[data-ob-remove-hour]');
+        if (remove) remove.closest('.hour-row')?.remove();
     });
 
     async function saveStep1(btn) {
         const rows = document.querySelectorAll('#obHoursContainer .hour-row');
         if (!rows.length) { showError('Bitte füge mindestens ein Zeitfenster hinzu.'); return; }
 
-        const body = { _method: 'PUT' };
+        // hours_sent wie auf der Seite Öffnungszeiten: Die gesendete Woche ersetzt die gespeicherte.
+        const body = { _method: 'PUT', hours_sent: '1' };
         rows.forEach((row, idx) => {
             row.querySelectorAll('[name]').forEach(el => {
                 // Normalize key: hours[timestamp][field] → hours[idx][field]
@@ -560,12 +577,8 @@
 
         if (!tableName) { btn.disabled = false; btn.textContent = 'Speichern & Weiter →'; showError('Bitte gib einen Tischnamen ein.'); return; }
 
-        // Find room_id — get from API since we don't always have it
-        // Try fetching the room we just created by name
-        const roomResp = await fetch('/admin/settings', { headers: { Accept: 'text/html' } });
-        // Actually just use 0 as placeholder; the backend assigns room to location automatically.
-        // Better: re-fetch rooms to get ID.
-        const roomsResp = await fetch('/admin/floorplan/state', { headers: { Accept: 'application/json' } });
+        // Die ID des neuen Raums steht im Zustand des Tischplans, sonst gilt die Antwort des Anlegens.
+        const roomsResp = await fetch(ROUTE_STATE, { headers: { Accept: 'application/json' } });
         let roomId = createdRoomId;
         if (roomsResp.ok) {
             const stateData = await roomsResp.json();
@@ -632,44 +645,22 @@
     }
 
     // ── Step 3: Buchungsregeln (optional) ────────────────────────────────────
+    // Gesendet werden nur die Felder des Schritts; alle übrigen Einstellungen des Standorts bleiben.
     async function saveStep3(btn) {
-        // Collect required fields — fill defaults for fields not on the wizard
+        const value = (id) => document.getElementById(id)?.value ?? '';
         const body = {
             _method: 'PUT',
-            slot_interval_minutes: '30',
-            default_duration_minutes: '90',
-            buffer_minutes: '0',
-            min_lead_minutes: document.getElementById('obMinLead')?.value || '60',
-            max_advance_days: document.getElementById('obMaxAdvance')?.value || '60',
-            min_party_online: document.getElementById('obMinParty')?.value || '1',
-            max_party_online: document.getElementById('obMaxParty')?.value || '10',
-            // Feldname und Werte muessen zur Validierung der Zielroute passen
-            // (booking_confirmation_mode, nicht auto_confirm/request_only) - sonst
-            // scheitert dieser Schritt bei JEDEM neuen Betrieb mit 422.
+            min_lead_minutes: value('obMinLead'),
+            max_advance_days: value('obMaxAdvance'),
             booking_confirmation_mode: document.getElementById('obAutoConfirm')?.checked ? 'auto' : 'manual',
-            capacity_mode: 'table',
-            max_covers_per_slot: '',
-            // Die Vorgaben aus der Datenbank spiegeln, nicht stillschweigend
-            // ausschalten: Der Assistent hat diese Schalter gar nicht im Formular.
-            waitlist_enabled: '1',
-            walkins_enabled: '1',
-            cancellation_deadline_minutes: '120',
-            modification_deadline_minutes: '120',
-            reminder_enabled: '1',
-            reminder_hours_before: '24',
-            sms_reminder_enabled: '',
-            gap_optimization_enabled: '',
-            public_floorplan_enabled: '',
-            refund_mode: 'off',
-            refund_percent: '0',
-            refund_processing: 'immediate',
-            require_email_confirmation: document.getElementById('obEmailConfirm')?.checked ? '1' : '',
-            confetti_on_booking: '1',
-            feedback_enabled: '1',
-            feedback_hours_after: '18',
-            feedback_redirect_min_score: '4',
-            guest_address: 'Sie',
+            require_email_confirmation: document.getElementById('obEmailConfirm')?.checked ? '1' : '0',
         };
+        // Salons buchen nach Leistung und Person: Gruppengröße und Besuchsdauer gehören zum Restaurant.
+        if (!IS_SALON) {
+            body.min_party_online = value('obMinParty');
+            body.max_party_online = value('obMaxParty');
+            body.default_duration_minutes = value('obDuration');
+        }
         btn.disabled = true; btn.textContent = '…';
         const { ok, json } = await put(ROUTE_RULES, body);
         btn.disabled = false; btn.textContent = 'Speichern & Weiter →';

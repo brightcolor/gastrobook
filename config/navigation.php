@@ -21,6 +21,13 @@ use App\Support\EnvSetting;
 |                    zeigt (1–10); Umgebungsvariable SWAYY_NAV_HEADING_MIN_ITEMS
 |   search_examples  zwei Begriffe, die der Hinweis „passt keine Einstellung“
 |                    als Beispiel nennt
+|   legacy_anchors   Marken der früheren Sammelseite (#zeiten, #raeume …) mit
+|                    dem Schlüssel der Seite, die den Bereich übernommen hat.
+|                    Mehrere Ziele stehen durch | getrennt, das erste für Rechte
+|                    und Betriebsart passende gilt; # hängt ein Sprungziel an
+|                    (booking-page#popup). Das Layout legt die Zuordnung auf
+|                    Einstellungsseiten ab, resources/js/admin/settings-anchors.js
+|                    leitet alte Links und Lesezeichen weiter.
 |
 | Eine Gruppe trägt label (Überschrift, null = keine), label_salon (Überschrift
 | für Salon-Betriebe) und items.
@@ -56,6 +63,17 @@ return [
 
     'search_examples' => ['Öffnungszeiten', 'Anzahlung'],
 
+    // Marken der früheren Sammelseite → Schlüssel der Seite (siehe oben).
+    'legacy_anchors' => [
+        'allgemein' => 'general',
+        'buchungsregeln' => 'booking-rules',
+        'zeiten' => 'opening-hours',
+        'raeume' => 'rooms|services',
+        'zahlungen' => 'payment-providers',
+        'integrationen' => 'newsletter',
+        'widget' => 'booking-page#popup',
+    ],
+
     'main' => [
         ['label' => null, 'items' => [
             ['key' => 'dashboard', 'label' => 'Übersicht', 'route' => 'admin.dashboard', 'icon' => 'dashboard', 'mobile_bar' => true],
@@ -83,7 +101,7 @@ return [
 
     'settings' => [
         ['label' => 'Betrieb', 'items' => [
-            ['key' => 'general', 'label' => 'Allgemein', 'route' => 'admin.settings.general.show', 'scope' => 'tenant', 'can' => ['tables.manage', 'tenant.settings.manage'],
+            ['key' => 'general', 'label' => 'Allgemein', 'route' => 'admin.settings.general.show', 'scope' => 'tenant', 'can' => ['tenant.settings.manage'],
                 'keywords' => ['Betriebsname', 'Betriebstyp', 'Restaurant', 'Salon', 'Markenfarbe', 'Impressum', 'Datenschutz', 'AGB']],
             ['key' => 'locations', 'label' => 'Standorte', 'route' => 'admin.locations.index', 'scope' => 'tenant', 'can' => ['locations.manage'],
                 'keywords' => ['Standort', 'Neuer Standort' => 'standort-neu', 'Adresse', 'Zeitzone', 'Telefon', 'Logo', 'Begrüßung']],
@@ -97,9 +115,9 @@ return [
                 'keywords' => ['Export' => 'export', 'Sicherung' => 'export', 'Import' => 'import', 'Umzug' => 'import', 'Betrieb löschen' => 'betrieb-loeschen']],
         ]],
         ['label' => 'Platz & Zeiten', 'items' => [
-            ['key' => 'opening-hours', 'label' => 'Öffnungszeiten', 'route' => 'admin.settings.opening-hours.show', 'scope' => 'location', 'can' => ['tables.manage', 'opening_hours.manage'],
+            ['key' => 'opening-hours', 'label' => 'Öffnungszeiten', 'route' => 'admin.settings.opening-hours.show', 'scope' => 'location', 'can' => ['opening_hours.manage'],
                 'keywords' => ['Öffnungszeiten' => 'woche', 'Ruhetag' => 'woche', 'Zeitfenster' => 'woche', 'Saison' => 'saison', 'Buchbare Saison' => 'saison']],
-            ['key' => 'exceptions', 'label' => 'Ausnahmen', 'route' => 'admin.settings.exceptions.show', 'scope' => 'location', 'can' => ['tables.manage', 'special_hours.manage', 'blackouts.manage'],
+            ['key' => 'exceptions', 'label' => 'Ausnahmen', 'route' => 'admin.settings.exceptions.show', 'scope' => 'location', 'can' => ['special_hours.manage', 'blackouts.manage'],
                 'keywords' => ['Sonderzeiten' => 'ausnahme-neu', 'Feiertag' => 'ausnahme-neu', 'Schließtag' => 'ausnahme-neu', 'Betriebsferien' => 'ausnahme-neu', 'Sperrzeit' => 'ausnahme-neu'],
                 'keywords_restaurant' => ['Tisch sperren' => 'ausnahme-neu', 'Weniger Gäste' => 'ausnahme-neu', 'Raum sperren' => 'ausnahme-neu']],
             ['key' => 'rooms', 'label' => 'Räume & Tische', 'route' => 'admin.settings.rooms.index', 'scope' => 'location', 'can' => ['tables.manage'], 'only' => 'restaurant',
@@ -108,41 +126,41 @@ return [
                 'keywords' => ['Leistung', 'Neue Leistung' => 'leistung-neu', 'Dauer', 'Preis']],
             ['key' => 'staff', 'label' => 'Mitarbeiter', 'route' => 'admin.staff.index', 'scope' => 'location', 'can' => ['tables.manage'], 'only' => 'salon',
                 'keywords' => ['Mitarbeiter', 'Neue Person' => 'person-neu', 'Arbeitszeiten', 'Abwesenheit', 'Urlaub']],
-            ['key' => 'capacity', 'label' => 'Kapazität & Dauer', 'route' => 'admin.settings.capacity.show', 'scope' => 'location', 'can' => ['tables.manage', 'opening_hours.manage'],
+            ['key' => 'capacity', 'label' => 'Kapazität & Dauer', 'route' => 'admin.settings.capacity.show', 'scope' => 'location', 'can' => ['opening_hours.manage'],
                 'keywords' => ['Takt' => 'takt', 'Slot-Intervall' => 'takt', 'Puffer' => 'takt', 'Lückenoptimierung' => 'takt'],
                 'keywords_restaurant' => ['Kapazität' => 'kapazitaet', 'Gäste gleichzeitig' => 'kapazitaet', 'Besuchsdauer' => 'takt', 'Tischzeit' => 'tischzeiten']],
         ]],
         ['label' => 'Buchungen', 'items' => [
-            ['key' => 'booking-rules', 'label' => 'Buchungsregeln', 'route' => 'admin.settings.rules.show', 'scope' => 'location', 'can' => ['tables.manage', 'opening_hours.manage'],
+            ['key' => 'booking-rules', 'label' => 'Buchungsregeln', 'route' => 'admin.settings.rules.show', 'scope' => 'location', 'can' => ['opening_hours.manage'],
                 'keywords' => ['Vorlauf' => 'zeitraum', 'Vorausbuchung' => 'zeitraum', 'Stornofrist' => 'fristen', 'Umbuchungsfrist' => 'fristen', 'Bestätigung' => 'bestaetigung', 'E-Mail-Bestätigung' => 'bestaetigung', 'Warteliste' => 'warteliste'],
                 'keywords_restaurant' => ['Personen online' => 'gruppen', 'Große Gruppen' => 'gruppen', 'Walk-ins' => 'warteliste']],
-            ['key' => 'booking-form', 'label' => 'Buchungsformular', 'route' => 'admin.settings.booking-form.show', 'scope' => 'location', 'can' => ['tables.manage', 'tenant.settings.manage'],
+            ['key' => 'booking-form', 'label' => 'Buchungsformular', 'route' => 'admin.settings.booking-form.show', 'scope' => 'location', 'can' => ['tenant.settings.manage'],
                 'keywords' => ['Formularfelder' => 'felder'],
                 'keywords_restaurant' => ['Pflichtfeld' => 'felder', 'Telefon' => 'felder', 'Anlass' => 'felder', 'Allergien' => 'felder']],
-            ['key' => 'booking-page', 'label' => 'Buchungsseite & Widget', 'route' => 'admin.settings.booking-page.show', 'scope' => 'location', 'can' => ['tables.manage'],
+            ['key' => 'booking-page', 'label' => 'Buchungsseite & Widget', 'route' => 'admin.settings.booking-page.show', 'scope' => 'location', 'can' => ['opening_hours.manage'],
                 'keywords' => ['Buchungsseite' => 'buchungsseite', 'Konfetti' => 'buchungsseite', 'Website-Widget' => 'popup', 'Popup' => 'popup', 'Einbinden' => 'eingebettet', 'Direktlink' => 'direktlink'],
                 'keywords_restaurant' => ['Öffentlicher Tischplan' => 'buchungsseite']],
             ['key' => 'tags', 'label' => 'Tags', 'route' => 'admin.settings.tags.show', 'scope' => 'tenant', 'can' => ['tables.manage'],
                 'keywords' => ['Tags', 'Markierung', 'VIP', 'Allergie', 'Neuer Tag' => 'tag-neu']],
         ]],
         ['label' => 'Gästekommunikation', 'label_salon' => 'Kundenkommunikation', 'items' => [
-            ['key' => 'notifications', 'label' => 'Benachrichtigungen', 'route' => 'admin.settings.notifications.show', 'scope' => 'location', 'can' => ['tables.manage', 'opening_hours.manage'],
+            ['key' => 'notifications', 'label' => 'Benachrichtigungen', 'route' => 'admin.settings.notifications.show', 'scope' => 'location', 'can' => ['opening_hours.manage'],
                 'keywords' => ['Erinnerung' => 'erinnerung', 'Bestätigungsmail' => 'bestaetigung', 'Feedback' => 'feedback', 'Benachrichtigung an den Betrieb' => 'betrieb', 'Anrede' => 'anrede', 'du' => 'anrede', 'Sie' => 'anrede']],
             ['key' => 'templates', 'label' => 'Vorlagen', 'route' => 'admin.templates.index', 'scope' => 'tenant', 'can' => ['templates.manage'],
                 'keywords' => ['Vorlagen', 'Mailtext', 'Nachrichtentext', 'Platzhalter' => 'platzhalter', 'Erinnerungstext' => 'vorlage-reservation_reminder', 'Bestätigungstext' => 'vorlage-reservation_confirmed', 'Feedbacktext' => 'vorlage-feedback_request', 'Text der Absage' => 'vorlage-reservation_rejected', 'Text zur Anzahlung' => 'vorlage-payment_pending']],
-            ['key' => 'sender', 'label' => 'Absender & Antworten', 'route' => 'admin.settings.sender.show', 'scope' => 'tenant', 'can' => ['tables.manage', 'tenant.settings.manage'],
+            ['key' => 'sender', 'label' => 'Absender & Antworten', 'route' => 'admin.settings.sender.show', 'scope' => 'tenant', 'can' => ['tenant.settings.manage'],
                 'keywords' => ['Absendername' => 'absender', 'Antwortadresse' => 'antworten', 'Antwort über Swayy' => 'antworten', 'Reply-To' => 'antworten']],
-            ['key' => 'sms', 'label' => 'SMS-Versand', 'route' => 'admin.settings.sms.show', 'scope' => 'tenant', 'can' => ['tables.manage', 'integrations.manage'],
+            ['key' => 'sms', 'label' => 'SMS-Versand', 'route' => 'admin.settings.sms.show', 'scope' => 'tenant', 'can' => ['integrations.manage'],
                 'keywords' => ['SMS' => 'seven', 'seven.io' => 'seven', 'Absenderkennung' => 'seven', 'API-Key' => 'seven']],
         ]],
         ['label' => 'Zahlungen', 'items' => [
-            ['key' => 'payment-providers', 'label' => 'Zahlungsanbieter', 'route' => 'admin.settings.payment-providers.show', 'scope' => 'tenant', 'can' => ['tables.manage', 'integrations.manage'],
+            ['key' => 'payment-providers', 'label' => 'Zahlungsanbieter', 'route' => 'admin.settings.payment-providers.show', 'scope' => 'tenant', 'can' => ['integrations.manage'],
                 'keywords' => ['Stripe' => 'stripe', 'PayPal' => 'paypal']],
-            ['key' => 'deposits', 'label' => 'Anzahlungen', 'route' => 'admin.settings.deposits.show', 'scope' => 'location', 'can' => ['tables.manage', 'payments.manage'],
+            ['key' => 'deposits', 'label' => 'Anzahlungen', 'route' => 'admin.settings.deposits.show', 'scope' => 'location', 'can' => ['payments.manage'],
                 'keywords' => ['Anzahlung' => 'regeln', 'No-Show-Schutz' => 'regeln', 'Rückerstattung' => 'erstattung', 'Erstattungsregeln' => 'erstattung']],
         ]],
         ['label' => 'Verbindungen', 'items' => [
-            ['key' => 'newsletter', 'label' => 'Newsletter', 'route' => 'admin.settings.newsletter.show', 'scope' => 'tenant', 'can' => ['tables.manage', 'integrations.manage'],
+            ['key' => 'newsletter', 'label' => 'Newsletter', 'route' => 'admin.settings.newsletter.show', 'scope' => 'tenant', 'can' => ['integrations.manage'],
                 'keywords' => ['Newsletter' => 'mailwizz', 'MailWizz' => 'mailwizz', 'Listen-UID' => 'mailwizz', 'API-URL' => 'mailwizz', 'Einwilligung' => 'mailwizz']],
             ['key' => 'api', 'label' => 'API-Schlüssel', 'route' => 'admin.api-tokens.index', 'scope' => 'tenant', 'can' => ['api_tokens.manage'],
                 'keywords' => ['API', 'Schlüssel', 'Token', 'Neuer Schlüssel' => 'schluessel-neu', 'Rechte' => 'schluessel-neu', 'Zugriff für Programme' => 'schluessel-neu']],

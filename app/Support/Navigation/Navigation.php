@@ -105,6 +105,41 @@ final class Navigation
         return null;
     }
 
+    /**
+     * Alte Sprungmarken der früheren Einstellungsseite (config legacy_anchors)
+     * mit der Adresse der Seite, die den Bereich übernommen hat. Aufgenommen
+     * wird nur ein Ziel, das der Benutzer öffnen darf (Rechte, Betriebstyp wie
+     * bei settings()); nennt eine Marke mehrere Ziele, gilt das erste erlaubte.
+     * Ein Sprungziel (#popup) hängt an der Adresse.
+     *
+     * @return array<string, string> Marke ohne # => Adresse
+     */
+    public function legacyAnchors(User $user, Tenant $tenant, ?Location $location): array
+    {
+        $items = [];
+        foreach ((array) ($this->config['settings'] ?? []) as $group) {
+            foreach ((array) ($group['items'] ?? []) as $item) {
+                $items[(string) $item['key']] = $item;
+            }
+        }
+
+        $map = [];
+        foreach ((array) ($this->config['legacy_anchors'] ?? []) as $anchor => $targets) {
+            foreach (explode('|', (string) $targets) as $target) {
+                [$key, $fragment] = array_pad(explode('#', $target, 2), 2, null);
+                $item = $items[$key] ?? null;
+                if ($item === null || ! $this->visible($item, $user, $tenant, $location)) {
+                    continue;
+                }
+
+                $map[(string) $anchor] = route((string) $item['route']).($fragment !== null ? '#'.$fragment : '');
+                break;
+            }
+        }
+
+        return $map;
+    }
+
     public function isSettingsRoute(?string $currentRoute): bool
     {
         if ($currentRoute === null) {

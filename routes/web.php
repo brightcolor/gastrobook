@@ -35,6 +35,7 @@ use App\Http\Controllers\Admin\Settings\OpeningHoursController;
 use App\Http\Controllers\Admin\Settings\PaymentProvidersController;
 use App\Http\Controllers\Admin\Settings\RoomsController;
 use App\Http\Controllers\Admin\Settings\SenderController;
+use App\Http\Controllers\Admin\Settings\SettingsEntryController;
 use App\Http\Controllers\Admin\Settings\SettingsMenuController;
 use App\Http\Controllers\Admin\Settings\SmsController;
 use App\Http\Controllers\Admin\Settings\TagSettingsController;
@@ -367,6 +368,9 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
     // Onboarding wizard (new tenants only)
     Route::get('/onboarding', [OnboardingController::class, 'show'])->name('onboarding.show');
     Route::post('/onboarding/complete', [OnboardingController::class, 'complete'])->name('onboarding.complete');
+    // Schritt „Buchungsregeln“ des Assistenten: schreibt nur die Felder des Schritts.
+    Route::put('/onboarding/rules', [OnboardingController::class, 'updateRules'])
+        ->middleware('permission:opening_hours.manage')->name('onboarding.rules');
 
     // Billing / SEPA direct debit (tenant subscription)
     Route::middleware('permission:billing.manage')->group(function () {
@@ -386,125 +390,134 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
     Route::delete('/account', [AccountController::class, 'destroy'])->name('account.destroy');
     Route::delete('/account/tenant', [AccountController::class, 'destroyTenant'])->name('account.tenant.destroy');
 
-    // Einstieg in die Einstellungen (Smartphone); prüft selbst, ob eine Seite erlaubt ist.
+    // Einstellungen. „/settings“ leitet auf die erste erlaubte Seite, „/settings/menu“ listet die erlaubten Seiten
+    // (Smartphone); beide prüfen selbst, ob eine Seite erlaubt ist.
+    Route::get('/settings', SettingsEntryController::class)->name('settings.index');
     Route::get('/settings/menu', SettingsMenuController::class)->name('settings.menu');
 
     // Daten (Export, Import, Betrieb löschen): nur Inhaber; prüft der Controller selbst.
     Route::get('/settings/data', [DataController::class, 'show'])->name('settings.data.show');
 
-    // Settings (rooms, tables, hours, booking rules)
-    Route::middleware('permission:tables.manage')->group(function () {
-        Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
-        Route::put('/settings/booking-rules', [SettingsController::class, 'updateBookingRules'])
-            ->middleware('permission:opening_hours.manage')->name('settings.booking-rules');
-        Route::get('/settings/rooms', [RoomsController::class, 'index'])->name('settings.rooms.index');
-        Route::post('/settings/rooms', [RoomsController::class, 'storeRoom'])
-            ->middleware('permission:rooms.manage')->name('settings.rooms.store');
-        Route::put('/settings/rooms/{room}', [RoomsController::class, 'updateRoom'])
-            ->middleware('permission:rooms.manage')->name('settings.rooms.update');
-        Route::delete('/settings/rooms/{room}', [RoomsController::class, 'deleteRoom'])
-            ->middleware('permission:rooms.manage')->name('settings.rooms.delete');
-        Route::post('/settings/tables', [RoomsController::class, 'storeTable'])->name('settings.tables.store');
-        Route::put('/settings/tables/{table}', [RoomsController::class, 'updateTable'])->name('settings.tables.update');
-        Route::delete('/settings/tables/{table}', [RoomsController::class, 'deleteTable'])->name('settings.tables.delete');
-        Route::post('/settings/combinations', [RoomsController::class, 'storeCombination'])->name('settings.combinations.store');
-        Route::put('/settings/combinations/{combination}', [RoomsController::class, 'updateCombination'])->name('settings.combinations.update');
-        Route::delete('/settings/combinations/{combination}', [RoomsController::class, 'deleteCombination'])->name('settings.combinations.delete');
-        Route::get('/settings/booking-form', [BookingFormController::class, 'show'])
-            ->middleware('permission:tenant.settings.manage')->name('settings.booking-form.show');
-        Route::put('/settings/field-rules', [BookingFormController::class, 'update'])
-            ->middleware('permission:tenant.settings.manage')->name('settings.field-rules');
-        Route::post('/settings/logo', [SettingsController::class, 'uploadLogo'])
-            ->middleware('permission:tenant.settings.manage')->name('settings.logo.upload');
-        Route::delete('/settings/logo', [SettingsController::class, 'deleteLogo'])
-            ->middleware('permission:tenant.settings.manage')->name('settings.logo.delete');
-        Route::get('/settings/newsletter', [NewsletterController::class, 'show'])
-            ->middleware('permission:integrations.manage')->name('settings.newsletter.show');
-        Route::put('/settings/mailwizz', [NewsletterController::class, 'update'])
-            ->middleware('permission:integrations.manage')->name('settings.mailwizz');
-        Route::get('/settings/payment-providers', [PaymentProvidersController::class, 'show'])
-            ->middleware('permission:integrations.manage')->name('settings.payment-providers.show');
-        Route::put('/settings/stripe', [PaymentProvidersController::class, 'updateStripe'])
-            ->middleware('permission:integrations.manage')->name('settings.stripe');
-        Route::put('/settings/paypal', [PaymentProvidersController::class, 'updatePaypal'])
-            ->middleware('permission:integrations.manage')->name('settings.paypal');
-        Route::put('/settings/sms', [SmsController::class, 'update'])
-            ->middleware('permission:integrations.manage')->name('settings.sms');
-        Route::get('/settings/deposits', [DepositsController::class, 'show'])
-            ->middleware('permission:payments.manage')->name('settings.deposits.show');
-        Route::post('/settings/deposit-rules', [DepositsController::class, 'store'])
-            ->middleware('permission:payments.manage')->name('settings.deposit-rules.store');
-        Route::put('/settings/deposit-rules/{rule}', [DepositsController::class, 'update'])
-            ->middleware('permission:payments.manage')->name('settings.deposit-rules.update');
-        Route::delete('/settings/deposit-rules/{rule}', [DepositsController::class, 'destroy'])
-            ->middleware('permission:payments.manage')->name('settings.deposit-rules.delete');
-        Route::put('/settings/refunds', [DepositsController::class, 'updateRefunds'])
-            ->middleware('permission:opening_hours.manage')->name('settings.refunds');
-        Route::get('/settings/opening-hours', [OpeningHoursController::class, 'show'])
-            ->middleware('permission:opening_hours.manage')->name('settings.opening-hours.show');
-        Route::put('/settings/opening-hours', [OpeningHoursController::class, 'update'])
-            ->middleware('permission:opening_hours.manage')->name('settings.opening-hours');
-        Route::post('/settings/opening-hours/preview', [OpeningHoursController::class, 'preview'])
-            ->middleware('permission:opening_hours.manage')->name('settings.opening-hours.preview');
-        Route::post('/settings/special-hours', [SettingsController::class, 'storeSpecialHours'])
-            ->middleware('permission:special_hours.manage')->name('settings.special-hours');
-        Route::delete('/settings/special-hours/{special}', [SettingsController::class, 'deleteSpecialHours'])
-            ->middleware('permission:special_hours.manage')->name('settings.special-hours.delete');
-        Route::post('/settings/blackouts', [SettingsController::class, 'storeBlackout'])
-            ->middleware('permission:blackouts.manage')->name('settings.blackouts.store');
-        Route::delete('/settings/blackouts/{blackout}', [SettingsController::class, 'deleteBlackout'])
-            ->middleware('permission:blackouts.manage')->name('settings.blackouts.delete');
-        Route::get('/settings/exceptions', [ExceptionsController::class, 'show'])
-            ->middleware(['permission:special_hours.manage', 'permission:blackouts.manage'])->name('settings.exceptions.show');
-        Route::post('/settings/exceptions/preview', [ExceptionsController::class, 'preview'])
-            ->middleware(['permission:special_hours.manage', 'permission:blackouts.manage'])->name('settings.exceptions.preview');
-        Route::post('/settings/exceptions', [ExceptionsController::class, 'store'])
-            ->middleware(['permission:special_hours.manage', 'permission:blackouts.manage'])->name('settings.exceptions.store');
-        Route::put('/settings/exceptions/{key}', [ExceptionsController::class, 'update'])
-            ->where('key', ScheduleExceptionRules::KEY_PATTERN)
-            ->middleware(['permission:special_hours.manage', 'permission:blackouts.manage'])->name('settings.exceptions.update');
-        Route::delete('/settings/exceptions/{key}', [ExceptionsController::class, 'destroy'])
-            ->where('key', ScheduleExceptionRules::KEY_PATTERN)
-            ->middleware(['permission:special_hours.manage', 'permission:blackouts.manage'])->name('settings.exceptions.destroy');
-        Route::post('/settings/seasons', [OpeningHoursController::class, 'storeSeason'])
-            ->middleware('permission:blackouts.manage')->name('settings.seasons.store');
-        Route::delete('/settings/seasons/{season}', [OpeningHoursController::class, 'deleteSeason'])
-            ->middleware('permission:blackouts.manage')->name('settings.seasons.delete');
-        Route::post('/settings/table-blocks', [SettingsController::class, 'storeTableBlock'])
-            ->middleware('permission:blackouts.manage')->name('settings.table-blocks.store');
-        Route::delete('/settings/table-blocks/{block}', [SettingsController::class, 'deleteTableBlock'])
-            ->middleware('permission:blackouts.manage')->name('settings.table-blocks.delete');
-        Route::get('/settings/general', [GeneralController::class, 'show'])
-            ->middleware('permission:tenant.settings.manage')->name('settings.general.show');
-        Route::put('/settings/general', [GeneralController::class, 'update'])
-            ->middleware('permission:tenant.settings.manage')->name('settings.general');
-        Route::put('/settings/tenant-type', [GeneralController::class, 'updateTenantType'])
-            ->middleware('permission:tenant.settings.manage')->name('settings.tenant-type');
-        Route::put('/settings/branding', [GeneralController::class, 'updateBranding'])
-            ->middleware('permission:tenant.settings.manage')->name('settings.branding');
-        Route::get('/settings/sender', [SenderController::class, 'show'])
-            ->middleware('permission:tenant.settings.manage')->name('settings.sender.show');
-        Route::put('/settings/guest-mail', [SenderController::class, 'update'])
-            ->middleware('permission:tenant.settings.manage')->name('settings.guest-mail');
-        Route::get('/settings/capacity', [CapacityController::class, 'show'])
-            ->middleware('permission:opening_hours.manage')->name('settings.capacity.show');
-        Route::put('/settings/capacity', [CapacityController::class, 'update'])
-            ->middleware('permission:opening_hours.manage')->name('settings.capacity');
-        Route::get('/settings/rules', [BookingRulesController::class, 'show'])
-            ->middleware('permission:opening_hours.manage')->name('settings.rules.show');
-        Route::put('/settings/rules', [BookingRulesController::class, 'update'])
-            ->middleware('permission:opening_hours.manage')->name('settings.rules');
-        Route::get('/settings/booking-page', [BookingPageController::class, 'show'])->name('settings.booking-page.show');
-        Route::put('/settings/booking-page', [BookingPageController::class, 'update'])
-            ->middleware('permission:opening_hours.manage')->name('settings.booking-page');
-        Route::get('/settings/tags', TagSettingsController::class)->name('settings.tags.show');
-        Route::get('/settings/notifications', [NotificationsController::class, 'show'])
-            ->middleware('permission:opening_hours.manage')->name('settings.notifications.show');
-        Route::put('/settings/notifications', [NotificationsController::class, 'update'])
-            ->middleware('permission:opening_hours.manage')->name('settings.notifications');
-        Route::get('/settings/sms', [SmsController::class, 'show'])
-            ->middleware('permission:integrations.manage')->name('settings.sms.show');
-    });
+    // Jede Seite und jeder Speicherweg trägt die Rechte selbst; config/navigation.php („can“) nennt dieselben.
+    // Räume & Tische und Tags hängen an tables.manage, ihrem eigenen Recht.
+    Route::put('/settings/booking-rules', [SettingsController::class, 'updateBookingRules'])
+        ->middleware('permission:opening_hours.manage')->name('settings.booking-rules');
+    Route::get('/settings/rooms', [RoomsController::class, 'index'])
+        ->middleware('permission:tables.manage')->name('settings.rooms.index');
+    Route::post('/settings/rooms', [RoomsController::class, 'storeRoom'])
+        ->middleware('permission:rooms.manage')->name('settings.rooms.store');
+    Route::put('/settings/rooms/{room}', [RoomsController::class, 'updateRoom'])
+        ->middleware('permission:rooms.manage')->name('settings.rooms.update');
+    Route::delete('/settings/rooms/{room}', [RoomsController::class, 'deleteRoom'])
+        ->middleware('permission:rooms.manage')->name('settings.rooms.delete');
+    Route::post('/settings/tables', [RoomsController::class, 'storeTable'])
+        ->middleware('permission:tables.manage')->name('settings.tables.store');
+    Route::put('/settings/tables/{table}', [RoomsController::class, 'updateTable'])
+        ->middleware('permission:tables.manage')->name('settings.tables.update');
+    Route::delete('/settings/tables/{table}', [RoomsController::class, 'deleteTable'])
+        ->middleware('permission:tables.manage')->name('settings.tables.delete');
+    Route::post('/settings/combinations', [RoomsController::class, 'storeCombination'])
+        ->middleware('permission:tables.manage')->name('settings.combinations.store');
+    Route::put('/settings/combinations/{combination}', [RoomsController::class, 'updateCombination'])
+        ->middleware('permission:tables.manage')->name('settings.combinations.update');
+    Route::delete('/settings/combinations/{combination}', [RoomsController::class, 'deleteCombination'])
+        ->middleware('permission:tables.manage')->name('settings.combinations.delete');
+    Route::get('/settings/booking-form', [BookingFormController::class, 'show'])
+        ->middleware('permission:tenant.settings.manage')->name('settings.booking-form.show');
+    Route::put('/settings/field-rules', [BookingFormController::class, 'update'])
+        ->middleware('permission:tenant.settings.manage')->name('settings.field-rules');
+    Route::post('/settings/logo', [SettingsController::class, 'uploadLogo'])
+        ->middleware('permission:tenant.settings.manage')->name('settings.logo.upload');
+    Route::delete('/settings/logo', [SettingsController::class, 'deleteLogo'])
+        ->middleware('permission:tenant.settings.manage')->name('settings.logo.delete');
+    Route::get('/settings/newsletter', [NewsletterController::class, 'show'])
+        ->middleware('permission:integrations.manage')->name('settings.newsletter.show');
+    Route::put('/settings/mailwizz', [NewsletterController::class, 'update'])
+        ->middleware('permission:integrations.manage')->name('settings.mailwizz');
+    Route::get('/settings/payment-providers', [PaymentProvidersController::class, 'show'])
+        ->middleware('permission:integrations.manage')->name('settings.payment-providers.show');
+    Route::put('/settings/stripe', [PaymentProvidersController::class, 'updateStripe'])
+        ->middleware('permission:integrations.manage')->name('settings.stripe');
+    Route::put('/settings/paypal', [PaymentProvidersController::class, 'updatePaypal'])
+        ->middleware('permission:integrations.manage')->name('settings.paypal');
+    Route::put('/settings/sms', [SmsController::class, 'update'])
+        ->middleware('permission:integrations.manage')->name('settings.sms');
+    Route::get('/settings/deposits', [DepositsController::class, 'show'])
+        ->middleware('permission:payments.manage')->name('settings.deposits.show');
+    Route::post('/settings/deposit-rules', [DepositsController::class, 'store'])
+        ->middleware('permission:payments.manage')->name('settings.deposit-rules.store');
+    Route::put('/settings/deposit-rules/{rule}', [DepositsController::class, 'update'])
+        ->middleware('permission:payments.manage')->name('settings.deposit-rules.update');
+    Route::delete('/settings/deposit-rules/{rule}', [DepositsController::class, 'destroy'])
+        ->middleware('permission:payments.manage')->name('settings.deposit-rules.delete');
+    Route::put('/settings/refunds', [DepositsController::class, 'updateRefunds'])
+        ->middleware('permission:opening_hours.manage')->name('settings.refunds');
+    Route::get('/settings/opening-hours', [OpeningHoursController::class, 'show'])
+        ->middleware('permission:opening_hours.manage')->name('settings.opening-hours.show');
+    Route::put('/settings/opening-hours', [OpeningHoursController::class, 'update'])
+        ->middleware('permission:opening_hours.manage')->name('settings.opening-hours');
+    Route::post('/settings/opening-hours/preview', [OpeningHoursController::class, 'preview'])
+        ->middleware('permission:opening_hours.manage')->name('settings.opening-hours.preview');
+    Route::post('/settings/special-hours', [SettingsController::class, 'storeSpecialHours'])
+        ->middleware('permission:special_hours.manage')->name('settings.special-hours');
+    Route::delete('/settings/special-hours/{special}', [SettingsController::class, 'deleteSpecialHours'])
+        ->middleware('permission:special_hours.manage')->name('settings.special-hours.delete');
+    Route::post('/settings/blackouts', [SettingsController::class, 'storeBlackout'])
+        ->middleware('permission:blackouts.manage')->name('settings.blackouts.store');
+    Route::delete('/settings/blackouts/{blackout}', [SettingsController::class, 'deleteBlackout'])
+        ->middleware('permission:blackouts.manage')->name('settings.blackouts.delete');
+    Route::get('/settings/exceptions', [ExceptionsController::class, 'show'])
+        ->middleware(['permission:special_hours.manage', 'permission:blackouts.manage'])->name('settings.exceptions.show');
+    Route::post('/settings/exceptions/preview', [ExceptionsController::class, 'preview'])
+        ->middleware(['permission:special_hours.manage', 'permission:blackouts.manage'])->name('settings.exceptions.preview');
+    Route::post('/settings/exceptions', [ExceptionsController::class, 'store'])
+        ->middleware(['permission:special_hours.manage', 'permission:blackouts.manage'])->name('settings.exceptions.store');
+    Route::put('/settings/exceptions/{key}', [ExceptionsController::class, 'update'])
+        ->where('key', ScheduleExceptionRules::KEY_PATTERN)
+        ->middleware(['permission:special_hours.manage', 'permission:blackouts.manage'])->name('settings.exceptions.update');
+    Route::delete('/settings/exceptions/{key}', [ExceptionsController::class, 'destroy'])
+        ->where('key', ScheduleExceptionRules::KEY_PATTERN)
+        ->middleware(['permission:special_hours.manage', 'permission:blackouts.manage'])->name('settings.exceptions.destroy');
+    Route::post('/settings/seasons', [OpeningHoursController::class, 'storeSeason'])
+        ->middleware('permission:blackouts.manage')->name('settings.seasons.store');
+    Route::delete('/settings/seasons/{season}', [OpeningHoursController::class, 'deleteSeason'])
+        ->middleware('permission:blackouts.manage')->name('settings.seasons.delete');
+    Route::post('/settings/table-blocks', [SettingsController::class, 'storeTableBlock'])
+        ->middleware('permission:blackouts.manage')->name('settings.table-blocks.store');
+    Route::delete('/settings/table-blocks/{block}', [SettingsController::class, 'deleteTableBlock'])
+        ->middleware('permission:blackouts.manage')->name('settings.table-blocks.delete');
+    Route::get('/settings/general', [GeneralController::class, 'show'])
+        ->middleware('permission:tenant.settings.manage')->name('settings.general.show');
+    Route::put('/settings/general', [GeneralController::class, 'update'])
+        ->middleware('permission:tenant.settings.manage')->name('settings.general');
+    Route::put('/settings/tenant-type', [GeneralController::class, 'updateTenantType'])
+        ->middleware('permission:tenant.settings.manage')->name('settings.tenant-type');
+    Route::put('/settings/branding', [GeneralController::class, 'updateBranding'])
+        ->middleware('permission:tenant.settings.manage')->name('settings.branding');
+    Route::get('/settings/sender', [SenderController::class, 'show'])
+        ->middleware('permission:tenant.settings.manage')->name('settings.sender.show');
+    Route::put('/settings/guest-mail', [SenderController::class, 'update'])
+        ->middleware('permission:tenant.settings.manage')->name('settings.guest-mail');
+    Route::get('/settings/capacity', [CapacityController::class, 'show'])
+        ->middleware('permission:opening_hours.manage')->name('settings.capacity.show');
+    Route::put('/settings/capacity', [CapacityController::class, 'update'])
+        ->middleware('permission:opening_hours.manage')->name('settings.capacity');
+    Route::get('/settings/rules', [BookingRulesController::class, 'show'])
+        ->middleware('permission:opening_hours.manage')->name('settings.rules.show');
+    Route::put('/settings/rules', [BookingRulesController::class, 'update'])
+        ->middleware('permission:opening_hours.manage')->name('settings.rules');
+    Route::get('/settings/booking-page', [BookingPageController::class, 'show'])
+        ->middleware('permission:opening_hours.manage')->name('settings.booking-page.show');
+    Route::put('/settings/booking-page', [BookingPageController::class, 'update'])
+        ->middleware('permission:opening_hours.manage')->name('settings.booking-page');
+    Route::get('/settings/tags', TagSettingsController::class)
+        ->middleware('permission:tables.manage')->name('settings.tags.show');
+    Route::get('/settings/notifications', [NotificationsController::class, 'show'])
+        ->middleware('permission:opening_hours.manage')->name('settings.notifications.show');
+    Route::put('/settings/notifications', [NotificationsController::class, 'update'])
+        ->middleware('permission:opening_hours.manage')->name('settings.notifications');
+    Route::get('/settings/sms', [SmsController::class, 'show'])
+        ->middleware('permission:integrations.manage')->name('settings.sms.show');
 
     // Salon: Leistungen
     Route::middleware(['permission:tables.manage'])->group(function () {

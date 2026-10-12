@@ -10,9 +10,12 @@ import { initAutosubmit, initMoreSheet, initRail, initSettingsSearch } from './n
 import { initReveals } from './reveal.js';
 import { initRows } from './rows.js';
 import { initSaveBar } from './savebar.js';
+import { initSettingsAnchors } from './settings-anchors.js';
 import { initWidgetBuilder } from './widget.js';
 
 export function initAdmin() {
+    // Zuerst: Eine alte Sprungmarke führt auf die neue Seite, bevor die übrigen Bausteine ihr Ziel suchen.
+    initSettingsAnchors();
     initRail();
     initMoreSheet();
     initAutosubmit();

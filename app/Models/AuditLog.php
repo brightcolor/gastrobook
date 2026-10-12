@@ -341,6 +341,7 @@ class AuditLog extends Model
         'exception.created' => 'Ausnahme angelegt',
         'exception.updated' => 'Ausnahme geändert',
         'exception.deleted' => 'Ausnahme gelöscht',
+        'onboarding.rules_updated' => 'Einrichtung: Buchungsregeln gespeichert',
     ];
 
     /** @var array<string, string> Praefix der Aktion => Gegenstand */
@@ -358,6 +359,7 @@ class AuditLog extends Model
         'marketing_campaign' => 'Marketing-Kampagne', 'table_block' => 'Tischsperre',
         'account' => 'Konto', 'season' => 'Saison', 'exception' => 'Ausnahmen',
         'auth' => 'Anmeldung', 'support' => 'Support', 'provisioning' => 'Kundenpanel',
+        'onboarding' => 'Einrichtung',
     ];
 
     /** @var array<string, string> Endung der Aktion => Taetigkeit */
