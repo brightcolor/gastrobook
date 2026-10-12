@@ -11,6 +11,7 @@ use App\Models\OpeningHour;
 use App\Models\SeasonPeriod;
 use App\Support\OpeningHoursRules;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Concerns\CreatesTenants;
 use Tests\Concerns\ReadsSwayyConfig;
@@ -637,6 +638,27 @@ class OpeningHoursPageTest extends TestCase
             'SWAYY_OPENING_HOURS_WINDOWS_PER_DAY_MAX', 'SWAYY_OPENING_HOURS_NAME_MAX', 'SWAYY_OPENING_HOURS_SEASON_LABEL_MAX',
             'SWAYY_OPENING_HOURS_PREVIEW_GROUPS_MAX', 'SWAYY_UI_PREVIEW_DELAY_MS',
         ]);
+    }
+
+    public function test_a_week_save_locks_the_location_like_the_exceptions_do_on_postgresql(): void
+    {
+        if (DB::connection()->getDriverName() !== 'pgsql') {
+            $this->markTestSkipped('Die Sperre "for no key update" gibt es nur unter PostgreSQL.');
+        }
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        DB::enableQueryLog();
+        $this->actingAs($owner)->putJson('/admin/settings/opening-hours', ['hours' => [['weekday' => 1, 'opens_at' => '11:00', 'closes_at' => '14:00']]])->assertOk();
+        $queries = array_column(DB::getQueryLog(), 'query');
+
+        // Dieselbe Sperre wie bei den Ausnahmen (Location::lockRow): Beide Speicherungen laufen nacheinander,
+        // und neue Reservierungen des Standorts warten nicht auf die Fremdschlüsselprüfung.
+        $locks = array_values(array_filter($queries, fn (string $sql) => str_contains($sql, 'for no key update')));
+        $this->assertCount(1, $locks);
+        $this->assertStringContainsString('"locations"', $locks[0]);
+        $this->assertSame([], array_filter($queries, fn (string $sql) => str_contains($sql, '"locations"') && str_ends_with(trim($sql), 'for update')));
     }
 
     public function test_the_largest_allowed_values_are_stored_and_read_back(): void

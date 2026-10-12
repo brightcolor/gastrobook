@@ -6,7 +6,6 @@ namespace App\Http\Controllers\Admin\Settings;
 
 use App\Http\Controllers\Admin\Settings\Concerns\RespondsToSettingsForms;
 use App\Http\Controllers\Controller;
-use App\Models\Location;
 use App\Models\OpeningHour;
 use App\Models\SeasonPeriod;
 use App\Services\AuditLogger;
@@ -91,7 +90,7 @@ class OpeningHoursController extends Controller
 
         DB::transaction(function () use ($location, $hours) {
             // Die Sperre auf den Standort lässt zwei gleichzeitige Speicherungen nacheinander laufen.
-            Location::whereKey($location->id)->lockForUpdate()->first();
+            $location->lockRow();
             $location->openingHours()->delete();
             foreach ($hours as $hour) {
                 OpeningHour::create([

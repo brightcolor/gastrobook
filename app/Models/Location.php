@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 class Location extends Model
 {
@@ -89,5 +90,29 @@ class Location extends Model
             'tenant_id' => $this->tenant_id,
             'location_id' => $this->id,
         ]);
+    }
+
+    /**
+     * Sperrt die Zeile dieses Standorts bis zum Ende der laufenden Transaktion.
+     * Zwei gleichzeitige Speicherungen seiner Zeiten (Öffnungszeiten, Ausnahmen)
+     * laufen so nacheinander: Die zweite sieht danach die Zeilen der ersten.
+     * Die Sperre auf den Zeilen der Gruppe allein reichte nicht, denn sie läuft
+     * ins Leere, sobald die erste Speicherung diese Zeilen gelöscht hat.
+     */
+    public function lockRow(): void
+    {
+        static::query()->whereKey($this->getKey())->lock(self::rowLock(DB::getDriverName()))->first();
+    }
+
+    /**
+     * Die Art der Sperre auf der Zeile eines Standorts je Datenbank. Unter
+     * PostgreSQL "for no key update": Sie schließt eine zweite Speicherung aus,
+     * hält aber die Fremdschlüsselprüfung anderer Zeilen des Standorts
+     * (Reservierungen) nicht auf; "for update" hielte jede neue Reservierung an,
+     * bis die Speicherung beendet ist. Sonst die übliche Zeilensperre.
+     */
+    public static function rowLock(string $driver): string|bool
+    {
+        return $driver === 'pgsql' ? 'for no key update' : true;
     }
 }

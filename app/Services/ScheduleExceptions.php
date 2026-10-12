@@ -118,7 +118,7 @@ final class ScheduleExceptions
         $effects = array_values(array_intersect(ScheduleExceptionRules::EFFECTS, (array) ($data['effects'] ?? [])));
 
         return DB::transaction(function () use ($location, $data, $key, $userId, $effects) {
-            $this->lock($location);
+            $location->lockRow();
 
             $group = (string) Str::uuid();
             if ($key !== null) {
@@ -155,7 +155,7 @@ final class ScheduleExceptions
     public function delete(Location $location, string $key): bool
     {
         return DB::transaction(function () use ($location, $key) {
-            $this->lock($location);
+            $location->lockRow();
 
             $bundle = $this->bundle($location, $key, lock: true);
             if ($bundle === null) {
@@ -639,25 +639,6 @@ final class ScheduleExceptions
     }
 
     // --- Schreiben --------------------------------------------------------------
-
-    /**
-     * Zwei gleichzeitige Speicherungen eines Standorts laufen nacheinander:
-     * Die zweite sieht danach die Zeilen der ersten und ersetzt sie.
-     * Allein die Sperre auf den Zeilen der Gruppe reicht dafür nicht, denn sie
-     * läuft ins Leere, sobald die erste Speicherung diese Zeilen gelöscht hat.
-     *
-     * Unter PostgreSQL ist es eine Sperre "for no key update": Sie schließt
-     * eine zweite Speicherung (auch die der Öffnungszeiten, die "for update"
-     * nimmt) aus, hält aber die Fremdschlüsselprüfung anderer Zeilen des
-     * Standorts nicht auf. "for update" hielte jede neue Reservierung des
-     * Standorts an, bis die Speicherung beendet ist.
-     */
-    private function lock(Location $location): void
-    {
-        Location::query()->whereKey($location->id)
-            ->lock(DB::getDriverName() === 'pgsql' ? 'for no key update' : true)
-            ->first();
-    }
 
     /**
      * @param  Bundle  $bundle
