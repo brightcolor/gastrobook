@@ -350,7 +350,7 @@
                             <code id="obBookingUrl" class="flex-1 overflow-x-auto rounded-lg bg-stone-50 px-3 py-2 text-xs text-teal-700 ring-1 ring-stone-200">
                                 {{ route('booking.landing', $tenant->slug) }}
                             </code>
-                            <button onclick="navigator.clipboard.writeText(document.getElementById('obBookingUrl').textContent.trim()).then(()=>{this.textContent='✓';setTimeout(()=>{this.textContent='Kopieren'},1500)})"
+                            <button type="button" id="obCopyUrl"
                                     class="shrink-0 rounded-lg bg-stone-800 px-3 py-2 text-xs font-semibold text-white hover:bg-stone-700">Kopieren</button>
                         </div>
                         <div class="mt-3 flex flex-wrap gap-3 text-sm">
@@ -711,6 +711,20 @@
         markDone(4);
         goTo(5);
     }
+
+    // ── Step 5: Adresse der Buchungsseite kopieren ───────────────────────────
+    const COPY_RESET_MS = 1500;
+    document.getElementById('obCopyUrl')?.addEventListener('click', async function () {
+        const button = this;
+        try {
+            await navigator.clipboard.writeText(document.getElementById('obBookingUrl').textContent.trim());
+        } catch {
+            showError('Kopieren hat nicht geklappt. Bitte die Adresse markieren und mit Strg+C (Mac: ⌘+C) kopieren.');
+            return;
+        }
+        button.textContent = '✓';
+        setTimeout(() => { button.textContent = 'Kopieren'; }, COPY_RESET_MS);
+    });
 
     // ── Button wiring ────────────────────────────────────────────────────────
     document.querySelectorAll('.ob-next').forEach(btn => {

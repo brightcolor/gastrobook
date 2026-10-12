@@ -11,13 +11,14 @@ namespace App\Support;
 final class NotificationSettingRules
 {
     /**
-     * @param  bool  $switchesRequired  true: Die Schalter sind Pflicht (x-checkbox sendet ohne Haken eine 0). false: Ein fehlender Schalter gilt als aus.
+     * Die Schalter sind Pflicht: x-checkbox sendet ohne Haken eine 0.
+     *
      * @return array<string, list<mixed>>
      */
-    public static function rules(bool $switchesRequired = true): array
+    public static function rules(): array
     {
         $limits = (array) config('swayy.notifications');
-        $switch = $switchesRequired ? ['required', 'boolean'] : ['nullable', 'boolean'];
+        $switch = ['required', 'boolean'];
 
         return [
             'guest_address' => ['required', 'in:du,Sie'],

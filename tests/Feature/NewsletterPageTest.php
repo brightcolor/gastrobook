@@ -11,12 +11,13 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Tests\Concerns\CreatesTenants;
+use Tests\Concerns\ReadsCheckboxes;
 use Tests\Concerns\ReadsSwayyConfig;
 use Tests\TestCase;
 
 class NewsletterPageTest extends TestCase
 {
-    use CreatesTenants, ReadsSwayyConfig, RefreshDatabase;
+    use CreatesTenants, ReadsCheckboxes, ReadsSwayyConfig, RefreshDatabase;
 
     private const URL = 'https://93.184.216.34/api';
 
@@ -286,6 +287,29 @@ class NewsletterPageTest extends TestCase
 
         $this->assertMatchesRegularExpression('/<input type="hidden" name="enabled" value="0">\s*<input id="f-enabled" type="checkbox" name="enabled" value="1"[^>]*>/', $html);
         $this->assertStringContainsString('Speichern und Verbindung testen', $html);
+    }
+
+    /**
+     * Eine neue Anbindung startet eingeschaltet, ein Fehler beim Test schaltet die Übertragung nicht aus; nur
+     * ausdrücklich ausgeschaltet bleibt das Kästchen leer. Sonst schaltete jedes Speichern sie mit der 0 davor aus.
+     */
+    public function test_the_switch_is_checked_unless_the_sync_was_switched_off(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+        $checked = fn () => $this->checkboxIsChecked((string) $this->actingAs($owner)->get('/admin/settings/newsletter')->assertOk()->getContent(), 'f-enabled');
+
+        $this->assertTrue($checked(), 'neue Anbindung');
+
+        $connection = $this->connect($setup['tenant']->id, 'error');
+        $this->assertTrue($checked(), 'Fehler beim letzten Test');
+
+        $connection->update(['status' => 'connected']);
+        $this->assertTrue($checked(), 'verbunden');
+
+        $connection->update(['status' => 'disconnected']);
+        $this->assertFalse($checked(), 'ausgeschaltet');
     }
 
     public function test_the_change_is_logged_with_readable_field_names(): void

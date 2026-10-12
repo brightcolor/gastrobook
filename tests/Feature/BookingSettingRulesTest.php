@@ -289,14 +289,20 @@ class BookingSettingRulesTest extends TestCase
         }
     }
 
-    public function test_a_reversed_range_names_the_fix_and_the_old_page_keeps_one_key(): void
+    public function test_the_confirmation_mode_sets_the_two_columns(): void
+    {
+        $this->assertSame(['auto_confirm' => true, 'request_only' => false], BookingSettingRules::confirmationColumns('auto'));
+        $this->assertSame(['auto_confirm' => false, 'request_only' => false], BookingSettingRules::confirmationColumns('manual'));
+    }
+
+    public function test_a_reversed_range_names_the_fix_at_its_row(): void
     {
         try {
-            BookingSettingRules::durationRules([0 => ['min_party' => '4', 'max_party' => '2', 'duration' => '90']], atField: false);
+            BookingSettingRules::durationRules([0 => ['min_party' => '4', 'max_party' => '2', 'duration' => '90']]);
             $this->fail('Die vertauschte Spanne ging durch.');
         } catch (ValidationException $e) {
             $this->assertSame(
-                ['duration_rules' => ['Bei „4 bis 2 Personen“ ist die Bis-Zahl kleiner als die Ab-Zahl. Bitte die Zahlen tauschen.']],
+                ['duration_rules.0.max_party' => ['Bei „4 bis 2 Personen“ ist die Bis-Zahl kleiner als die Ab-Zahl. Bitte die Zahlen tauschen.']],
                 $e->errors(),
             );
         }

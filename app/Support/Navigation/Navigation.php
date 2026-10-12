@@ -88,6 +88,12 @@ final class Navigation
         return array_slice($items, 0, max(0, (int) $this->config['mobile_bar_max']));
     }
 
+    /** Meldung der 403, wenn der Benutzer keine Einstellungsseite öffnen darf (Einstieg und Menü). */
+    public static function noSettingsAccessMessage(): string
+    {
+        return __('Für die Einstellungen fehlt die Berechtigung. Bitte einen Administrator des Betriebs fragen.');
+    }
+
     /**
      * Adresse der ersten erlaubten Einstellungsseite; die übrigen Einträge
      * werden dafür nicht geprüft.

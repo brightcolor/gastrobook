@@ -9,12 +9,13 @@ use App\Models\IntegrationConnection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Tests\Concerns\CreatesTenants;
+use Tests\Concerns\ReadsCheckboxes;
 use Tests\Concerns\ReadsSwayyConfig;
 use Tests\TestCase;
 
 class PaymentProvidersPageTest extends TestCase
 {
-    use CreatesTenants, ReadsSwayyConfig, RefreshDatabase;
+    use CreatesTenants, ReadsCheckboxes, ReadsSwayyConfig, RefreshDatabase;
 
     /**
      * @param  array<string, mixed>  $credentials
@@ -57,6 +58,40 @@ class PaymentProvidersPageTest extends TestCase
             ->assertDontSee('paypal-secret-geheim')
             ->assertDontSee('onsubmit', false);
         $this->assertMatchesRegularExpression('/data-nav-key="payment-providers"[^>]*aria-current="page"/', (string) $response->getContent());
+    }
+
+    /**
+     * Eine neue Anbindung startet eingeschaltet, ein Fehler beim Test schaltet den Anbieter nicht aus; nur
+     * ausdrücklich ausgeschaltet bleibt das Kästchen leer. Beide Anbieter haben ihr eigenes Kästchen.
+     */
+    public function test_the_switches_are_checked_unless_the_provider_was_switched_off(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+        $page = fn () => (string) $this->actingAs($owner)->get('/admin/settings/payment-providers')->assertOk()->getContent();
+
+        $html = $page();
+        $this->assertTrue($this->checkboxIsChecked($html, 'f-stripe-enabled'), 'Stripe, neue Anbindung');
+        $this->assertTrue($this->checkboxIsChecked($html, 'f-paypal-enabled'), 'PayPal, neue Anbindung');
+
+        $stripe = $this->connect($setup['tenant']->id, 'stripe', ['secret_key' => 'sk', 'webhook_secret' => 'wh'], 'error');
+        $paypal = $this->connect($setup['tenant']->id, 'paypal', ['client_id' => 'cid', 'secret' => 'sec', 'mode' => 'live'], 'error');
+        $html = $page();
+        $this->assertTrue($this->checkboxIsChecked($html, 'f-stripe-enabled'), 'Stripe, Fehler beim letzten Test');
+        $this->assertTrue($this->checkboxIsChecked($html, 'f-paypal-enabled'), 'PayPal, Fehler beim letzten Test');
+
+        // Jeder Anbieter folgt seinem eigenen Zustand.
+        $stripe->update(['status' => 'disconnected']);
+        $html = $page();
+        $this->assertFalse($this->checkboxIsChecked($html, 'f-stripe-enabled'), 'Stripe, ausgeschaltet');
+        $this->assertTrue($this->checkboxIsChecked($html, 'f-paypal-enabled'), 'PayPal, weiter eingeschaltet');
+
+        $stripe->update(['status' => 'connected']);
+        $paypal->update(['status' => 'disconnected']);
+        $html = $page();
+        $this->assertTrue($this->checkboxIsChecked($html, 'f-stripe-enabled'), 'Stripe, verbunden');
+        $this->assertFalse($this->checkboxIsChecked($html, 'f-paypal-enabled'), 'PayPal, ausgeschaltet');
     }
 
     public function test_empty_secrets_keep_the_stored_ones(): void

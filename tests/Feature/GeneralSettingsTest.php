@@ -12,62 +12,13 @@ class GeneralSettingsTest extends TestCase
 {
     use CreatesTenants, RefreshDatabase;
 
-    public function test_business_name_and_location_master_data_can_be_saved(): void
-    {
-        $setup = $this->createTenantSetup();
-        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
-        $originalSlug = $setup['location']->slug;
-        $this->clearTenantContext();
-
-        $this->actingAs($admin)->put('/admin/settings/general', [
-            'business_name' => 'Trattoria Aurora GmbH',
-            'location_name' => 'Aurora am Markt',
-            'timezone' => 'Europe/Vienna',
-            'phone' => '+49 30 123456',
-            'email' => 'hallo@aurora.test',
-            'address_line1' => 'Marktplatz 1',
-            'postal_code' => '10115',
-            'city' => 'Berlin',
-            'public_intro' => 'Herzlich willkommen!',
-        ])->assertRedirect();
-
-        $this->assertSame('Trattoria Aurora GmbH', $setup['tenant']->fresh()->name);
-
-        $loc = $setup['location']->fresh();
-        $this->assertSame('Aurora am Markt', $loc->name);
-        $this->assertSame('Europe/Vienna', $loc->timezone);
-        $this->assertSame('+49 30 123456', $loc->phone);
-        $this->assertSame('hallo@aurora.test', $loc->email);
-        $this->assertSame('Berlin', $loc->city);
-        // Slug stays stable so booking links keep working.
-        $this->assertSame($originalSlug, $loc->slug);
-    }
-
-    public function test_the_intro_limit_of_the_combined_page_comes_from_the_settings(): void
-    {
-        config(['swayy.locations.intro_max' => 150]);
-        $setup = $this->createTenantSetup();
-        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
-        $this->clearTenantContext();
-        $data = ['business_name' => 'Beispiel Gastro', 'location_name' => 'Mitte', 'timezone' => 'Europe/Berlin'];
-
-        $this->actingAs($admin)->putJson('/admin/settings/general', $data + ['public_intro' => str_repeat('a', 151)])
-            ->assertStatus(422)
-            ->assertJsonPath('errors.public_intro.0', 'Die Begrüßung ist zu lang. Bitte auf höchstens 150 Zeichen kürzen.');
-
-        $this->actingAs($admin)->putJson('/admin/settings/general', $data + ['public_intro' => str_repeat('a', 150)])
-            ->assertOk();
-    }
-
     public function test_business_name_is_required(): void
     {
         $setup = $this->createTenantSetup();
         $admin = $this->createMember($setup['tenant'], 'tenant_admin');
         $this->clearTenantContext();
 
-        $this->actingAs($admin)->put('/admin/settings/general', [
-            'business_name' => '', 'location_name' => 'X', 'timezone' => 'Europe/Berlin',
-        ])->assertSessionHasErrors('business_name');
+        $this->actingAs($admin)->put('/admin/settings/general', ['business_name' => ''])->assertSessionHasErrors('business_name');
     }
 
     public function test_staff_cannot_edit_master_data(): void
@@ -76,9 +27,7 @@ class GeneralSettingsTest extends TestCase
         $staff = $this->createMember($setup['tenant'], 'staff');
         $this->clearTenantContext();
 
-        $this->actingAs($staff)->put('/admin/settings/general', [
-            'business_name' => 'Hack', 'location_name' => 'X', 'timezone' => 'Europe/Berlin',
-        ])->assertForbidden();
+        $this->actingAs($staff)->put('/admin/settings/general', ['business_name' => 'Hack'])->assertForbidden();
     }
 
     public function test_relay_cannot_be_enabled_without_domain(): void

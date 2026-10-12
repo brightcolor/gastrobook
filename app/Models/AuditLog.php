@@ -150,7 +150,7 @@ class AuditLog extends Model
         'key' => 'Vorlage',
         // 'type' auch bei Marketing-Kampagnen, deshalb allgemein
         'type' => 'Art',
-        // Allgemein (GeneralController, mit Standortdaten)
+        // Frühere Einträge „Standort: Stammdaten geändert“ (location.general_updated) tragen diese Felder
         'business_name' => 'Name des Betriebs',
         'location_name' => 'Name des Standorts',
         // Kapazität & Dauer (CapacityController)
@@ -305,6 +305,7 @@ class AuditLog extends Model
         'integration.sms_updated' => 'SMS-Anbindung geändert',
         'integration.stripe_updated' => 'Stripe-Anbindung geändert',
         'location.field_rules_updated' => 'Standort: Feldregeln geändert',
+        // Schrieb die Seite Allgemein mit Standortdaten; die Einträge stehen weiter im Protokoll.
         'location.general_updated' => 'Standort: Stammdaten geändert',
         'tenant.general_updated' => 'Betrieb: Stammdaten geändert',
         // Schrieb die frühere Sammelseite der Einstellungen; ihre Einträge stehen weiter im Protokoll.

@@ -100,6 +100,18 @@ final class BookingSettingRules
     }
 
     /**
+     * Die Spalten zum Bestätigungsmodus („auto“ oder „manual“): Online-Buchungen
+     * bestätigt Swayy sofort oder der Betrieb gibt sie von Hand frei. Die
+     * Seiten kennen nur diese beiden Modi, deshalb steht request_only auf false.
+     *
+     * @return array{auto_confirm: bool, request_only: bool}
+     */
+    public static function confirmationColumns(string $mode): array
+    {
+        return ['auto_confirm' => $mode === 'auto', 'request_only' => false];
+    }
+
+    /**
      * Meldungen der Prüfung. Sie nennen die Einstellung und den nächsten
      * Schritt. Ein leeres Pflichtfeld kommt vor, wenn ein Zahlenfeld
      * leer bleibt oder die Seite älter ist als die Einstellung; die Meldung
@@ -179,13 +191,12 @@ final class BookingSettingRules
      * passende Regel; Überschneidungen werden deshalb abgelehnt, sonst griffe
      * eine Regel weiter unten still nie. Leere Zeilen fallen weg.
      *
-     * $atField: Der Fehler nennt das Feld der Zeile („duration_rules.n2.min_party“),
-     * sonst steht er unter „duration_rules“.
+     * Ein Fehler nennt das Feld der Zeile („duration_rules.n2.min_party“).
      *
      * @param  array<int|string, mixed>  $rows
      * @return list<array{min_party: int, max_party: int, duration: int}>
      */
-    public static function durationRules(array $rows, bool $atField = true): array
+    public static function durationRules(array $rows): array
     {
         $rules = [];
 
@@ -201,12 +212,12 @@ final class BookingSettingRules
 
             if ($min < 1 || $max < 1 || $duration < 1) {
                 $field = $min < 1 ? 'min_party' : ($max < 1 ? 'max_party' : 'duration');
-                self::fail($atField ? "duration_rules.{$key}.{$field}" : 'duration_rules',
+                self::fail("duration_rules.{$key}.{$field}",
                     __('Bitte bei jeder Tischzeit „Ab“, „Bis“ und Minuten ausfüllen oder die Zeile entfernen.'));
             }
 
             if ($max < $min) {
-                self::fail($atField ? "duration_rules.{$key}.max_party" : 'duration_rules',
+                self::fail("duration_rules.{$key}.max_party",
                     __('Bei „:min bis :max Personen“ ist die Bis-Zahl kleiner als die Ab-Zahl. Bitte die Zahlen tauschen.', ['min' => $min, 'max' => $max]));
             }
 
@@ -218,7 +229,7 @@ final class BookingSettingRules
         foreach ($rules as $i => $rule) {
             $previous = $rules[$i - 1] ?? null;
             if ($previous !== null && $rule['min_party'] <= $previous['max_party']) {
-                self::fail($atField ? "duration_rules.{$rule['key']}.min_party" : 'duration_rules', __(
+                self::fail("duration_rules.{$rule['key']}.min_party", __(
                     'Die Gruppengrößen überschneiden sich: „:a“ und „:b“. Jede Gruppengröße darf nur in einer Regel vorkommen.',
                     ['a' => $previous['min_party'].'–'.$previous['max_party'], 'b' => $rule['min_party'].'–'.$rule['max_party']],
                 ));

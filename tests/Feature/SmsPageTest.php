@@ -10,12 +10,13 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Tests\Concerns\CreatesTenants;
+use Tests\Concerns\ReadsCheckboxes;
 use Tests\Concerns\ReadsSwayyConfig;
 use Tests\TestCase;
 
 class SmsPageTest extends TestCase
 {
-    use CreatesTenants, ReadsSwayyConfig, RefreshDatabase;
+    use CreatesTenants, ReadsCheckboxes, ReadsSwayyConfig, RefreshDatabase;
 
     /**
      * @param  array<string, mixed>  $credentials
@@ -54,6 +55,29 @@ class SmsPageTest extends TestCase
             ->assertSee('value="Trattoria"', false)
             ->assertDontSee('geheimer-sms-schluessel');
         $this->assertMatchesRegularExpression('/data-nav-key="sms"[^>]*aria-current="page"/', (string) $response->getContent());
+    }
+
+    /**
+     * Eine neue Anbindung startet eingeschaltet, ein Fehler beim Test schaltet den Versand nicht aus; nur
+     * ausdrücklich ausgeschaltet bleibt das Kästchen leer.
+     */
+    public function test_the_switch_is_checked_unless_the_sending_was_switched_off(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+        $checked = fn () => $this->checkboxIsChecked((string) $this->actingAs($owner)->get('/admin/settings/sms')->assertOk()->getContent(), 'f-enabled');
+
+        $this->assertTrue($checked(), 'neue Anbindung');
+
+        $connection = $this->connect($setup['tenant']->id, 'error');
+        $this->assertTrue($checked(), 'Fehler beim letzten Test');
+
+        $connection->update(['status' => 'connected']);
+        $this->assertTrue($checked(), 'verbunden');
+
+        $connection->update(['status' => 'disconnected']);
+        $this->assertFalse($checked(), 'ausgeschaltet');
     }
 
     public function test_an_empty_key_keeps_the_stored_one(): void

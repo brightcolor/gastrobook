@@ -189,6 +189,46 @@ class SenderPageTest extends TestCase
         $this->assertFalse($setup['tenant']->fresh()->mail_relay_enabled);
     }
 
+    public function test_a_missing_relay_switch_keeps_the_stored_state(): void
+    {
+        config(['swayy.guest_mail_relay.domain' => 'antwort.example.test']);
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+        $save = fn (array $extra) => $this->actingAs($owner)->putJson('/admin/settings/guest-mail', ['mail_from_name' => 'Trattoria', 'mail_reply_to' => ''] + $extra)->assertOk();
+
+        // Eingeschaltet bleibt eingeschaltet, ausgeschaltet bleibt ausgeschaltet.
+        $setup['tenant']->update(['mail_relay_enabled' => true]);
+        $save([]);
+        $this->assertTrue($setup['tenant']->fresh()->mail_relay_enabled);
+        $setup['tenant']->update(['mail_relay_enabled' => false]);
+        $save([]);
+        $this->assertFalse($setup['tenant']->fresh()->mail_relay_enabled);
+
+        // Ein ausdrücklicher Wert gilt: 1 schaltet ein, 0 schaltet aus.
+        $save(['mail_relay_enabled' => '1']);
+        $this->assertTrue($setup['tenant']->fresh()->mail_relay_enabled);
+        $save(['mail_relay_enabled' => '0']);
+        $this->assertFalse($setup['tenant']->fresh()->mail_relay_enabled);
+        $this->assertSame('Trattoria', $setup['tenant']->fresh()->mail_from_name);
+    }
+
+    public function test_a_missing_relay_switch_does_not_fail_without_a_domain(): void
+    {
+        config(['swayy.guest_mail_relay.domain' => '']);
+        $setup = $this->createTenantSetup();
+        $setup['tenant']->update(['mail_relay_enabled' => true]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        // Der Betreiber hat die Domain entfernt. Speichern ohne Schalter ändert den Zustand nicht und scheitert nicht.
+        $this->actingAs($owner)->putJson('/admin/settings/guest-mail', ['mail_from_name' => 'Neu', 'mail_reply_to' => ''])->assertOk();
+
+        $tenant = $setup['tenant']->fresh();
+        $this->assertSame('Neu', $tenant->mail_from_name);
+        $this->assertTrue($tenant->mail_relay_enabled);
+    }
+
     public function test_empty_fields_are_saved_as_empty(): void
     {
         $setup = $this->createTenantSetup();

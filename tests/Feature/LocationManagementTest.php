@@ -158,6 +158,17 @@ class LocationManagementTest extends TestCase
             ->assertJsonPath('errors.timezone.0', 'Bitte eine Zeitzone aus der Liste wählen.');
     }
 
+    public function test_a_missing_timezone_names_the_field(): void
+    {
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 4]]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->putJson("/admin/locations/{$setup['location']->id}", ['name' => 'Hafen'])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.timezone.0', 'Bitte eine Zeitzone aus der Liste wählen.');
+    }
+
     public function test_json_validation_names_the_field_and_the_length_limit(): void
     {
         $setup = $this->createTenantSetup([['min' => 1, 'max' => 4]]);
@@ -183,7 +194,9 @@ class LocationManagementTest extends TestCase
 
         $this->actingAs($owner)->putJson("/admin/locations/{$setup['location']->id}", [
             'name' => 'Am Markt',
-            'timezone' => 'Europe/Berlin',
+            'timezone' => 'Europe/Vienna',
+            'phone' => '+49 30 123456',
+            'email' => 'hallo@aurora.test',
             'address_line1' => 'Marktplatz 1',
             'postal_code' => '12345',
             'city' => 'Musterstadt',
@@ -192,6 +205,8 @@ class LocationManagementTest extends TestCase
 
         $fresh = $setup['location']->fresh();
         $this->assertSame('Am Markt', $fresh->name);
+        $this->assertSame('Europe/Vienna', $fresh->timezone);
+        $this->assertSame(['+49 30 123456', 'hallo@aurora.test'], [$fresh->phone, $fresh->email]);
         $this->assertSame('Direkt am Markt.', $fresh->public_intro);
         $this->assertSame('Musterstadt', $fresh->city);
         $this->assertSame($slug, $fresh->slug);

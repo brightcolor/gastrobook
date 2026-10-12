@@ -67,8 +67,7 @@ class OnboardingController extends Controller
         $values = [
             'min_lead_minutes' => (int) $validated['min_lead_minutes'],
             'max_advance_days' => (int) $validated['max_advance_days'],
-            'auto_confirm' => $validated['booking_confirmation_mode'] === 'auto',
-            'request_only' => false,
+            ...BookingSettingRules::confirmationColumns($validated['booking_confirmation_mode']),
             'require_email_confirmation' => $request->boolean('require_email_confirmation'),
         ];
         if (! $salon) {

@@ -66,8 +66,10 @@ class OnboardingRulesTest extends TestCase
             ->assertDontSee("fetch('/admin/settings'", false)
             // Die Woche aus dem Assistenten ersetzt die gespeicherte, auch eine leere (gleicher Vertrag wie die Seite Öffnungszeiten).
             ->assertSee("hours_sent: '1'", false)
-            // Die Zeilen der Öffnungszeiten entfernt ein Handler am Container, kein Inline-Handler am Knopf.
-            ->assertDontSee("this.closest('.hour-row')", false);
+            // Alle Knöpfe des Assistenten (Zeilen der Öffnungszeiten entfernen, Adresse kopieren) hängen über Skript an.
+            ->assertSee('id="obCopyUrl"', false)
+            ->assertSee('data-ob-remove-hour', false)
+            ->assertDontSee('onclick=', false);
     }
 
     public function test_the_wizard_shows_the_stored_values_and_the_limits_of_the_settings(): void

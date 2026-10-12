@@ -60,7 +60,7 @@ class SenderController extends Controller
         $validated = $request->validate([
             'mail_from_name' => ['nullable', 'string', 'max:'.$nameMax, 'not_regex:/[<>@\r\n"]/'],
             'mail_reply_to' => ['nullable', 'email:rfc', 'max:'.$replyMax],
-            // Ein fehlender Schalter gilt als „aus“.
+            // Die Seite sendet immer eine 0 vor dem Kästchen. Fehlt der Schalter, bleibt der gespeicherte Zustand.
             'mail_relay_enabled' => ['nullable', 'boolean'],
         ], [
             'mail_from_name.string' => __('Der Absendername muss ein Text sein. Bitte neu eintragen.'),
@@ -72,9 +72,11 @@ class SenderController extends Controller
         ]);
 
         // Die Swayy-Antwortadresse lässt sich nur aktivieren, wenn die Domain
-        // eingerichtet ist, sonst zeigte sie ins Leere.
-        $relayOn = $request->boolean('mail_relay_enabled');
-        if ($relayOn && ! GuestReplyAddress::isConfigured()) {
+        // eingerichtet ist, sonst zeigte sie ins Leere. Ein fehlender Schalter
+        // lässt den gespeicherten Zustand stehen, auch ohne Domain.
+        $sent = $request->filled('mail_relay_enabled');
+        $relayOn = $sent ? $request->boolean('mail_relay_enabled') : (bool) $tenant->mail_relay_enabled;
+        if ($sent && $relayOn && ! GuestReplyAddress::isConfigured()) {
             return $this->failed($request, 'mail_relay_enabled', __('Die Antwortadresse über Swayy ist noch nicht eingerichtet (es fehlt die Domain). Bitte wende dich an den Betreiber, bevor du sie aktivierst.'));
         }
 

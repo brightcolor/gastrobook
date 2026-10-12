@@ -37,17 +37,13 @@ class GeneralController extends Controller
     }
 
     /**
-     * Stammdaten des Betriebs. Nennt die Anfrage auch location_name, folgen
-     * die Standortdaten (Name, Zeitzone, Adresse, Begrüßung); die Seite
-     * „Allgemein“ sendet sie nicht, dann bleibt der Standort unverändert.
+     * Stammdaten des Betriebs: Name und Rechtslinks. Die Daten der Standorte
+     * (Name, Zeitzone, Adresse, Begrüßung) speichert LocationController.
      */
     public function update(Request $request)
     {
         $tenant = $this->context->tenant();
         abort_if($tenant === null, 404);
-        // Den aktuellen Standort braucht nur eine Anfrage, die seine Daten mitschickt.
-        $location = $request->has('location_name') ? $this->context->location() : null;
-        abort_if($request->has('location_name') && $location === null, 404);
 
         $validated = $request->validate([
             'business_name' => ['required', 'string', 'max:120'],
@@ -56,16 +52,6 @@ class GeneralController extends Controller
             'imprint_url' => ['nullable', 'url', 'max:255'],
             'privacy_url' => ['nullable', 'url', 'max:255'],
             'terms_url' => ['nullable', 'url', 'max:255'],
-            'location_name' => ['sometimes', 'required', 'string', 'max:120'],
-            'timezone' => ['required_with:location_name', 'timezone'],
-            'phone' => ['nullable', 'string', 'max:40'],
-            'email' => ['nullable', 'email:rfc', 'max:200'],
-            'address_line1' => ['nullable', 'string', 'max:200'],
-            'postal_code' => ['nullable', 'string', 'max:20'],
-            'city' => ['nullable', 'string', 'max:100'],
-            'public_intro' => ['nullable', 'string', 'max:'.(int) config('swayy.locations.intro_max')],
-        ], [
-            'public_intro.max' => __('Die Begrüßung ist zu lang. Bitte auf höchstens :max Zeichen kürzen.'),
         ]);
 
         $tenantValues = [
@@ -77,29 +63,11 @@ class GeneralController extends Controller
         $old = $tenant->only(array_keys($tenantValues));
         $tenant->update($tenantValues);
 
-        if (! $request->has('location_name')) {
-            $this->audit->log('tenant.general_updated', $tenant, $old, $tenantValues);
+        $this->audit->log('tenant.general_updated', $tenant, $old, $tenantValues);
 
-            // reload bei neuem Namen: Seitenleiste und Kopfzeile der Verwaltung
-            // zeigen den Betriebsnamen.
-            return $this->saved($request, __('Stammdaten gespeichert.'), reload: $tenant->wasChanged('name'));
-        }
-
-        // Slug stays fixed on rename so existing booking links keep working.
-        $location->update([
-            'name' => $validated['location_name'],
-            'timezone' => $validated['timezone'],
-            'phone' => $validated['phone'] ?? null,
-            'email' => $validated['email'] ?? null,
-            'address_line1' => $validated['address_line1'] ?? null,
-            'postal_code' => $validated['postal_code'] ?? null,
-            'city' => $validated['city'] ?? null,
-            'public_intro' => $validated['public_intro'] ?? null,
-        ]);
-
-        $this->audit->log('location.general_updated', $location, null, $validated);
-
-        return $this->saved($request, __('Stammdaten gespeichert.'), reload: true);
+        // reload bei neuem Namen: Seitenleiste und Kopfzeile der Verwaltung
+        // zeigen den Betriebsnamen.
+        return $this->saved($request, __('Stammdaten gespeichert.'), reload: $tenant->wasChanged('name'));
     }
 
     public function updateBranding(Request $request)

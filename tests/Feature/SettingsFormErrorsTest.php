@@ -47,7 +47,7 @@ class SettingsFormErrorsTest extends TestCase
     {
         return [
             'Stammdaten' => ['PUT', '/admin/settings/general',
-                ['business_name' => '', 'location_name' => 'Hauptstandort', 'timezone' => 'Europe/Berlin'],
+                ['business_name' => ''],
                 'business_name', 'Bitte den Namen des Betriebs eintragen.'],
             'Betriebstyp' => ['PUT', '/admin/settings/tenant-type',
                 ['type' => 'hotel'],

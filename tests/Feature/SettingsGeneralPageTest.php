@@ -111,18 +111,6 @@ class SettingsGeneralPageTest extends TestCase
             ->assertJsonMissingPath('reload');
     }
 
-    public function test_a_location_name_without_timezone_names_the_missing_field(): void
-    {
-        $setup = $this->createTenantSetup();
-        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
-        $this->clearTenantContext();
-
-        $this->actingAs($owner)
-            ->putJson('/admin/settings/general', ['business_name' => 'Nordlicht Events', 'location_name' => 'Hafen'])
-            ->assertStatus(422)
-            ->assertJsonValidationErrors('timezone');
-    }
-
     public function test_the_type_cards_describe_each_business_type(): void
     {
         $setup = $this->createTenantSetup();

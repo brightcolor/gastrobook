@@ -219,7 +219,7 @@ class NavigationTest extends TestCase
             'settings' => (array) config('navigation.settings'),
         ]);
 
-        // Der Inhaber darf die Seite Allgemein: Das erste Ziel gilt, ohne Sprungziel.
+        // Der Inhaber darf die Seite Allgemein: Das erste Ziel gilt, die Adresse endet mit dem Pfad der Seite.
         $this->assertSame([
             'alt' => route('admin.settings.general.show'),
             'allein' => route('admin.settings.general.show'),

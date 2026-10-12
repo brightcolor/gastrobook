@@ -26,7 +26,7 @@ class SettingsEntryController extends Controller
         abort_if($tenant === null, 404);
 
         $url = Navigation::forRequest($request)->firstSettingsUrl($request->user(), $tenant, $this->context->location());
-        abort_if($url === null, 403, __('Für die Einstellungen fehlt die Berechtigung. Bitte einen Administrator des Betriebs fragen.'));
+        abort_if($url === null, 403, Navigation::noSettingsAccessMessage());
 
         return redirect()->to($url);
     }

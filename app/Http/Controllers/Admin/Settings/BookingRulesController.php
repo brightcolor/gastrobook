@@ -57,8 +57,7 @@ class BookingRulesController extends Controller
             'max_advance_days' => (int) $validated['max_advance_days'],
             'cancellation_deadline_minutes' => (int) $validated['cancellation_deadline_minutes'],
             'modification_deadline_minutes' => (int) $validated['modification_deadline_minutes'],
-            'auto_confirm' => $validated['booking_confirmation_mode'] === 'auto',
-            'request_only' => false,
+            ...BookingSettingRules::confirmationColumns($validated['booking_confirmation_mode']),
             'require_email_confirmation' => $request->boolean('require_email_confirmation'),
             'waitlist_enabled' => $request->boolean('waitlist_enabled'),
         ];
