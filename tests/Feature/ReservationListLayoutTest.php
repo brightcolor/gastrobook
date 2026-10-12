@@ -263,6 +263,29 @@ class ReservationListLayoutTest extends TestCase
         $this->assertStringContainsString('Der Tag konnte nicht angelegt werden. Bitte die Seite neu laden und es noch einmal versuchen.', $html);
     }
 
+    public function test_a_failed_tag_save_is_reported_with_the_cause_and_the_next_step(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $reservation = $this->reservationAt($setup);
+        $this->clearTenantContext();
+
+        $html = (string) $this->actingAs($owner)->get('/admin/reservations/'.$reservation->id)->assertOk()->getContent();
+
+        // Die Meldung steht außerhalb der Auswahl und ist auch bei geschlossener Auswahl zu sehen (Entfernen mit ✕).
+        $this->assertMatchesRegularExpression('/<p id="tagSyncError" role="alert" class="[^"]*"><\/p>.*?<div id="tagPicker"/s', $html);
+        // Eine Antwort mit Fehler zeigt den Text der Antwort, ein Netzwerkfehler einen eigenen Satz mit dem nächsten Schritt.
+        $this->assertStringContainsString('if (!res.ok) {', $html);
+        $this->assertStringContainsString('syncFailed(failureText(res, await readJson(res), syncFailedText));', $html);
+        $this->assertStringContainsString('syncFailed(syncNetworkText);', $html);
+        // Das Skript bekommt die Texte als JSON; die Umlaute stehen dort maskiert.
+        foreach (['Die Änderung konnte nicht gespeichert werden. Bitte die Verbindung prüfen und erneut versuchen.', 'Die Änderung konnte nicht gespeichert werden. Bitte die Seite neu laden und es noch einmal versuchen.'] as $text) {
+            $this->assertStringContainsString(substr((string) json_encode($text), 1, -1), $html);
+        }
+        // Nach einem Fehler zeigt die Seite wieder den Stand, den der Server bestätigt hat.
+        $this->assertStringContainsString('activeTags = [...savedTags];', $html);
+    }
+
     public function test_the_remove_buttons_of_tags_are_named_and_large_enough(): void
     {
         $setup = $this->createTenantSetup();

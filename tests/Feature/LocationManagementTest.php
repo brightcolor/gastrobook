@@ -8,11 +8,12 @@ use App\Models\Location;
 use App\Models\Plan;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\CreatesTenants;
+use Tests\Concerns\ReadsSwayyConfig;
 use Tests\TestCase;
 
 class LocationManagementTest extends TestCase
 {
-    use CreatesTenants, RefreshDatabase;
+    use CreatesTenants, ReadsSwayyConfig, RefreshDatabase;
 
     public function test_owner_can_add_a_second_location(): void
     {
@@ -307,6 +308,88 @@ class LocationManagementTest extends TestCase
         $this->actingAs($owner)->putJson("/admin/locations/{$setup['location']->id}", [
             'name' => 'Mitte', 'timezone' => 'Europe/Berlin', 'public_intro' => str_repeat('a', 120),
         ])->assertOk();
+    }
+
+    public function test_the_field_limits_come_from_the_settings(): void
+    {
+        $limits = ['name' => 30, 'address_line1' => 50, 'postal_code' => 8, 'city' => 25, 'phone' => 15, 'email' => 60];
+        config([
+            'swayy.locations.name_max' => 30, 'swayy.locations.address_max' => 50, 'swayy.locations.postal_code_max' => 8,
+            'swayy.locations.city_max' => 25, 'swayy.locations.phone_max' => 15, 'swayy.locations.email_max' => 60,
+        ]);
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 4]]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $id = $setup['location']->id;
+        $this->clearTenantContext();
+
+        $html = (string) $this->actingAs($owner)->get('/admin/locations')->assertOk()->getContent();
+        foreach ($limits as $field => $max) {
+            $this->assertSame(1, preg_match('/<input\b[^>]*\bid="loc-'.$id.'-'.$field.'"[^>]*>/', $html, $input), "Das Feld {$field} fehlt.");
+            $this->assertStringContainsString('maxlength="'.$max.'"', $input[0], "{$field} trägt nicht maxlength {$max}.");
+        }
+
+        $valid = ['name' => 'Mitte', 'timezone' => 'Europe/Berlin'];
+        $attributes = ['name' => 'Name', 'address_line1' => 'Straße und Hausnummer', 'postal_code' => 'PLZ', 'city' => 'Ort', 'phone' => 'Telefon', 'email' => 'E-Mail'];
+        foreach ($limits as $field => $max) {
+            // Eine E-Mail-Adresse bleibt auch am Limit gültig: Der lokale Teil füllt auf.
+            $atLimit = $field === 'email' ? str_repeat('a', $max - 12).'@example.com' : str_repeat('ä', $max);
+            $tooLong = $field === 'email' ? str_repeat('a', $max - 11).'@example.com' : str_repeat('ä', $max + 1);
+
+            $this->actingAs($owner)->putJson("/admin/locations/{$id}", [$field => $tooLong] + $valid)
+                ->assertStatus(422)
+                ->assertJsonPath("errors.{$field}.0", "{$attributes[$field]} ist zu lang. Bitte auf höchstens {$max} Zeichen kürzen.");
+            $this->actingAs($owner)->putJson("/admin/locations/{$id}", [$field => $atLimit] + $valid)->assertOk();
+        }
+    }
+
+    public function test_the_field_limits_default_to_the_former_values_and_stay_within_the_columns(): void
+    {
+        $keys = ['name_max', 'phone_max', 'email_max', 'address_max', 'postal_code_max', 'city_max'];
+        $variables = ['SWAYY_LOCATION_NAME_MAX', 'SWAYY_LOCATION_PHONE_MAX', 'SWAYY_LOCATION_EMAIL_MAX', 'SWAYY_LOCATION_ADDRESS_MAX', 'SWAYY_LOCATION_POSTAL_CODE_MAX', 'SWAYY_LOCATION_CITY_MAX'];
+
+        [$config] = $this->swayyConfig([]);
+        $this->assertSame(
+            ['name_max' => 120, 'phone_max' => 40, 'email_max' => 200, 'address_max' => 200, 'postal_code_max' => 20, 'city_max' => 100],
+            array_intersect_key($config['locations'], array_flip($keys)),
+        );
+
+        // locations.name, phone, email, address_line1, postal_code und city sind varchar(255).
+        [$config, $warnings] = $this->swayyConfig(array_fill_keys($variables, '9999'));
+        foreach ($keys as $key) {
+            $this->assertSame(255, $config['locations'][$key]);
+        }
+        foreach ($variables as $variable) {
+            $this->assertStringContainsString($variable, $warnings);
+        }
+
+        [$config] = $this->swayyConfig(array_fill_keys($variables, '1'));
+        $this->assertSame(
+            ['name_max' => 10, 'phone_max' => 10, 'email_max' => 30, 'address_max' => 20, 'postal_code_max' => 5, 'city_max' => 10],
+            array_intersect_key($config['locations'], array_flip($keys)),
+        );
+
+        $this->assertDocumentedInEnvExample($variables);
+    }
+
+    public function test_the_slug_of_a_longest_name_fits_its_column(): void
+    {
+        config(['swayy.locations.name_max' => 255]);
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 4]]);
+        $setup['tenant']->update(['plan_id' => Plan::factory()->create(['limits' => ['max_locations' => 5]])->id]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        // Aus jedem „ä“ wird im Kürzel „ae“: Der Name hat 255 Zeichen, das ungekürzte Kürzel 510.
+        $name = str_repeat('ä', 255);
+        foreach ([1, 2] as $_) {
+            $this->actingAs($owner)->postJson('/admin/locations', ['name' => $name, 'timezone' => 'Europe/Berlin'])->assertOk();
+        }
+
+        $slugs = Location::withoutGlobalScopes()->where('tenant_id', $setup['tenant']->id)->where('name', $name)->pluck('slug');
+        $this->assertCount(2, $slugs);
+        foreach ($slugs as $slug) {
+            $this->assertLessThanOrEqual(255, strlen($slug));
+        }
     }
 
     public function test_a_rejected_form_keeps_the_input_and_marks_the_fields(): void

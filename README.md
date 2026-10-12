@@ -58,7 +58,7 @@ docker compose exec app php artisan db:seed
 
 Alle Daten liegen als **Bind-Mounts** im Projektordner: `./storage` (App-Dateien), `./docker/data/postgres`, `./docker/data/redis` — einfach zu sichern, einfach zu migrieren.
 
-**Ohne Docker (PHP 8.3–8.5 + Composer + Node 20+):**
+**Ohne Docker (PHP 8.3–8.5 + Composer + Node 22 oder 24):**
 
 ```bash
 composer install && cp .env.example .env && php artisan key:generate
@@ -262,7 +262,7 @@ Rollenvergabe (`App\Support\RoleAssignment`): Inhaber und SaaS-Admins vergeben j
 
 ## Lokales Setup
 
-Voraussetzungen: PHP 8.3, 8.4 oder 8.5 (intl, zip, gd, sqlite), Composer, Node 20+ — die CI testet alle drei Versionen.
+Voraussetzungen: PHP 8.3, 8.4 oder 8.5 (intl, zip, gd, sqlite), Composer, Node 22 oder 24 (`.nvmrc` nennt 22; `engines` in `package.json` verlangt mindestens 22.22.2 bzw. 24.15.0) — die CI testet alle drei PHP-Versionen.
 
 ```bash
 git clone <repo> gastrobook && cd gastrobook
@@ -415,6 +415,12 @@ Die Navigation kommt aus einer Quelle, [`config/navigation.php`](config/navigati
 |---|---|---|
 | `SWAYY_DEFAULT_TIMEZONE` | `Europe/Berlin` | Zeitzone, die „Neuer Standort“ vorschlägt (gültige Zeitzone) |
 | `SWAYY_LOCATION_INTRO_MAX` | `1000` | Längste Begrüßung auf der Buchungsseite in Zeichen (100 bis 5000) |
+| `SWAYY_LOCATION_NAME_MAX` | `120` | Längster Name eines Standorts in Zeichen (10 bis 255; die Spalte fasst 255) |
+| `SWAYY_LOCATION_PHONE_MAX` | `40` | Längste Telefonnummer eines Standorts in Zeichen (10 bis 255) |
+| `SWAYY_LOCATION_EMAIL_MAX` | `200` | Längste E-Mail-Adresse eines Standorts in Zeichen (30 bis 255) |
+| `SWAYY_LOCATION_ADDRESS_MAX` | `200` | Längste Angabe unter „Straße und Hausnummer“ in Zeichen (20 bis 255) |
+| `SWAYY_LOCATION_POSTAL_CODE_MAX` | `20` | Längste PLZ in Zeichen (5 bis 255) |
+| `SWAYY_LOCATION_CITY_MAX` | `100` | Längster Ort in Zeichen (10 bis 255) |
 | `SWAYY_LOGO_MAX_KB` | `3072` | Größte Datei für ein Standort-Logo in KB (64 bis 10240) |
 | `SWAYY_LOGO_TYPES` | `jpg,jpeg,png,webp` | Erlaubte Dateiendungen für Logos, durch Komma getrennt (`jpg`, `jpeg`, `png`, `webp`, `gif`) |
 | `SWAYY_LOGO_DIRECTORY` | `logos` | Ordner für Logos auf dem Speicher „public“ (Kleinbuchstaben, Ziffern, `-` und `_`) |

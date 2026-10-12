@@ -13,6 +13,7 @@ use App\Models\Room;
 use App\Models\TableCombination;
 use App\Services\AuditLogger;
 use App\Services\PlanLimitService;
+use App\Support\NameOrder;
 use App\Support\PlanLimitMessage;
 use App\Support\ScheduleExceptionRules;
 use App\Support\TableRules;
@@ -400,9 +401,7 @@ class RoomsController extends Controller
      */
     private function inOrder(Collection $items): Collection
     {
-        return $items
-            ->sort(fn ($a, $b) => (($a->sort_order ?? 0) <=> ($b->sort_order ?? 0)) ?: strnatcasecmp((string) $a->name, (string) $b->name))
-            ->values();
+        return NameOrder::inOrder($items);
     }
 
     /**

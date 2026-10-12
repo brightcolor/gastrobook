@@ -43,7 +43,10 @@
     `SWAYY_AUDIT_PER_PAGE`, `SWAYY_AUDIT_SEARCH_MAX`, `SWAYY_IMPORT_MAX_KB`.
   - Standorte:
     `SWAYY_DEFAULT_TIMEZONE`, `SWAYY_LOCATION_INTRO_MAX`, `SWAYY_LOGO_MAX_KB`,
-    `SWAYY_LOGO_TYPES`, `SWAYY_LOGO_DIRECTORY`.
+    `SWAYY_LOGO_TYPES`, `SWAYY_LOGO_DIRECTORY`, `SWAYY_LOCATION_NAME_MAX`,
+    `SWAYY_LOCATION_PHONE_MAX`, `SWAYY_LOCATION_EMAIL_MAX`,
+    `SWAYY_LOCATION_ADDRESS_MAX`, `SWAYY_LOCATION_POSTAL_CODE_MAX`,
+    `SWAYY_LOCATION_CITY_MAX`.
   - Öffnungszeiten und Ausnahmen:
     `SWAYY_OPENING_HOURS_WINDOWS_PER_DAY_MAX`, `SWAYY_OPENING_HOURS_NAME_MAX`,
     `SWAYY_OPENING_HOURS_SEASON_LABEL_MAX`,
@@ -98,6 +101,31 @@
 - Neue Spalte `exception_group` in `special_opening_hours`,
   `blackout_periods` und `table_blocks`. Die Migration lässt sich mehrfach
   ausführen.
+- Eingabegrenzen und Sortierung: Die Felder eines Standorts (Name, Telefon,
+  E-Mail, Straße, PLZ, Ort) lesen ihre Höchstlängen aus den Einstellungen und
+  tragen sie als `maxlength`. Das Kürzel eines Standorts passt auch bei 255
+  Zeichen in seine Spalte. Räume, Tische, Kombinationen, Leistungen und
+  Mitarbeiter stehen in Namensreihenfolge mit Umlauten und Zahlen („Älteste“
+  zwischen „Abend“ und „Bart“, „T2“ vor „T10“).
+- Öffnungszeiten und Ausnahmen prüfen die Zahl der Zeilen vor der Prüfung der
+  Überschneidung. Eine Woche nimmt höchstens das Siebenfache der Fenster je Tag
+  an; eine größere Liste weist die Seite mit Ursache und nächstem Schritt ab.
+- Fehlertexte: Das Reservierungsdetail zeigt die Meldung des Servers oder einen
+  Satz zur Verbindung, wenn das Speichern der Tags scheitert. Die Meldung zum
+  Überbuchen nennt den nächsten Schritt. Der Einrichtungsassistent nennt beim
+  Kopieren der Adresse die Ursache.
+- Protokoll in den Worten des Betriebs: Ein Salon liest „Termin“ und „Kunde“
+  in Einträgen, Bereichsauswahl und Suche.
+- Der Vorlageneditor zeigt den Standardtext in der Anrede des gewählten
+  Standorts und nennt sie in der Seitenleiste.
+- Die Lizenzseite hat das Layout der Fehlerseiten, spricht mit „du“ und nennt
+  die Supportadresse aus `SWAYY_SUPPORT_EMAIL`. Dieselbe Adresse steht in den
+  übrigen Seiten, die bisher `info@swayy.de` trugen. Die Seite 402 führt
+  Plattform-Administratoren zurück in die Plattform.
+- Der Containerstart meldet einen Fehler des Schritts „Oberadmin anlegen“ mit
+  der Ursache aus der Ausgabe des Befehls und läuft weiter.
+- Node-Version: `.nvmrc` nennt 22, `engines` in `package.json` verlangt
+  ^22.22.2 oder ^24.15.0.
 
 ### Neues Mail-Design
 

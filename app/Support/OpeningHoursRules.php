@@ -11,7 +11,11 @@ namespace App\Support;
  * Die Grenzen stehen in config/swayy.php (opening_hours.*).
  *
  * Neben den Regeln für einzelne Felder prüft after() die Fenster eines Tages
- * gegeneinander: gleiche Uhrzeit, zu viele Fenster, Überschneidung.
+ * gegeneinander: gleiche Uhrzeit, zu viele Fenster, Überschneidung. Eine
+ * Liste, die mehr Zeilen hat als die Woche (das Siebenfache der Fenster je
+ * Tag) oder der Tag zulässt, weist schon die Regel für die Liste ab, und
+ * after() prüft sie nicht weiter: Die Prüfung der Überschneidung vergleicht
+ * Paare und wächst quadratisch mit der Zahl der Zeilen.
  */
 final class OpeningHoursRules
 {
@@ -28,7 +32,7 @@ final class OpeningHoursRules
      */
     public static function rules(): array
     {
-        return ['hours' => ['present', 'array'], 'hours.*' => ['array']] + self::fieldRules('hours.*.', withWeekday: true);
+        return ['hours' => ['present', 'array', 'max:'.self::weekLimit()], 'hours.*' => ['array']] + self::fieldRules('hours.*.', withWeekday: true);
     }
 
     /**
@@ -40,7 +44,7 @@ final class OpeningHoursRules
     {
         return [
             'weekday' => ['required', 'integer', 'between:0,6'],
-            'windows' => ['present', 'array'],
+            'windows' => ['present', 'array', 'max:'.self::dayLimit()],
             'windows.*' => ['array'],
         ] + self::fieldRules('windows.*.', withWeekday: false);
     }
@@ -64,6 +68,9 @@ final class OpeningHoursRules
                 ? __('Die Öffnungszeiten fehlen in der Anfrage. Bitte die Seite neu laden und noch einmal speichern.')
                 : __('Die Zeitfenster fehlen in der Anfrage. Bitte die Seite neu laden.'),
             "{$prefix}.array" => $format,
+            "{$prefix}.max" => $prefix === 'hours'
+                ? __('Die Woche hat zu viele Zeitfenster (höchstens :max). Bitte Fenster zusammenlegen und erneut speichern.')
+                : __('Der Tag hat zu viele Zeitfenster (höchstens :max). Bitte Fenster zusammenlegen.'),
             "{$prefix}.*.array" => __('Ein Zeitfenster hat ein unbekanntes Format. Bitte die Seite neu laden und noch einmal speichern.'),
             "{$prefix}.*.opens_at.required" => __('Bitte bei jedem Zeitfenster eintragen, wann es beginnt.'),
             "{$prefix}.*.opens_at.date_format" => $time,
@@ -88,6 +95,9 @@ final class OpeningHoursRules
      * Uhrzeit meldet schon die Prüfung der einzelnen Felder.
      *
      * - Öffnen und Schließen zur selben Uhrzeit: Fehler am Schließen.
+     * - Mehr Zeilen als die Woche (7 × opening_hours.windows_per_day_max) oder,
+     *   bei $sameDay, der Tag zulässt: ein Fehler an der Liste ($prefix), sonst
+     *   nichts. Die Gruppierung und die Prüfung der Überschneidung entfallen.
      * - Mehr Fenster als opening_hours.windows_per_day_max an einem Tag:
      *   Fehler am ersten überzähligen Fenster.
      * - Überschneidung auf der Zeitachse: Ein Fenster über Mitternacht endet am
@@ -103,7 +113,14 @@ final class OpeningHoursRules
      */
     public static function after(array $rows, string $prefix = 'hours', bool $sameDay = false, ?int $maxWindows = null): array
     {
-        $max = $maxWindows ?? (int) config('swayy.opening_hours.windows_per_day_max');
+        $max = $maxWindows ?? self::dayLimit();
+
+        // Laravel führt die Prüfung nach den Regeln auch aus, wenn eine Regel schon abgewiesen hat.
+        $rowLimit = $sameDay ? $max : self::weekOf($max);
+        if (count($rows) > $rowLimit) {
+            return [$prefix => self::tooMany($prefix, $rowLimit)];
+        }
+
         $errors = [];
 
         /** @var array<int, list<array{key: array-key, day: int, opens: ?int, closes: ?int}>> $days */
@@ -180,6 +197,31 @@ final class OpeningHoursRules
         }
 
         return $messages;
+    }
+
+    /** Höchstzahl der Fenster an einem Tag (opening_hours.windows_per_day_max). */
+    private static function dayLimit(): int
+    {
+        return (int) config('swayy.opening_hours.windows_per_day_max');
+    }
+
+    /** Höchstzahl der Fenster einer Woche. */
+    private static function weekLimit(): int
+    {
+        return self::weekOf(self::dayLimit());
+    }
+
+    /** Das Siebenfache einer Tagesgrenze; die Grenze PHP_INT_MAX („prüft der Aufrufer selbst“) bleibt, wie sie ist. */
+    private static function weekOf(int $perDay): int
+    {
+        return $perDay > intdiv(PHP_INT_MAX, 7) ? PHP_INT_MAX : 7 * $perDay;
+    }
+
+    private static function tooMany(string $prefix, int $limit): string
+    {
+        return $prefix === 'hours'
+            ? __('Die Woche hat zu viele Zeitfenster (höchstens :max). Bitte Fenster zusammenlegen und erneut speichern.', ['max' => $limit])
+            : __('Der Tag hat zu viele Zeitfenster (höchstens :max). Bitte Fenster zusammenlegen.', ['max' => $limit]);
     }
 
     /**

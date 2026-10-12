@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -385,6 +386,62 @@ class ErrorPagesTest extends TestCase
         $this->actingAs($host)->getJson('/admin/settings/capacity')
             ->assertForbidden()
             ->assertJsonStructure(['message']);
+    }
+
+    public function test_the_402_page_offers_platform_administrators_the_way_back(): void
+    {
+        $setup = $this->createTenantSetup();
+        $setup['tenant']->update(['status' => 'suspended']);
+        $platform = User::factory()->create(['saas_role' => 'support_admin', 'current_tenant_id' => $setup['tenant']->id]);
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($platform)->get('/admin')
+            ->assertStatus(402)
+            ->assertSee('Zur Plattform')
+            ->assertSee('href="'.url('/saas').'"', false)
+            ->assertSee('Als Plattform-Administrator änderst du den Zustand des Betriebs in der Plattform unter „Betriebe“.')
+            // Die übrigen Wege bleiben, und der Knopf „Zur Startseite“ tritt hinter die Plattform zurück.
+            ->assertSee('href="'.route('logout.confirm').'"', false);
+
+        // Wer zum Betrieb gehört, sieht die Sperre als 403 und hat keinen Weg in die Plattform.
+        $this->actingAs($owner)->get('/admin')
+            ->assertForbidden()
+            ->assertDontSee('Zur Plattform')
+            ->assertDontSee('href="'.url('/saas').'"', false)
+            ->assertDontSee('Plattform-Administrator');
+    }
+
+    public function test_the_remaining_pages_name_the_support_address_of_the_settings(): void
+    {
+        config(['swayy.support.email' => 'hilfe@example.test']);
+
+        $locked = view('provisioning.locked', ['tenant' => new Tenant(['name' => 'Beispielbetrieb', 'status' => 'cancelled']), 'label' => 'gekündigt', 'panelUrl' => ''])->render();
+        $this->assertStringContainsString('schreib uns an hilfe@example.test, solange die Daten noch da sind.', $locked);
+        $this->assertStringContainsString('href="mailto:hilfe@example.test"', $locked);
+        $this->assertStringContainsString('Fragen an hilfe@example.test', $locked);
+
+        $already = view('admin.trial.confirm-already')->render();
+        $this->assertStringContainsString('href="mailto:hilfe@example.test"', $already);
+
+        $confirmed = view('admin.trial.confirmed', ['billingRequest' => (object) ['contact_name' => 'Frau Beispiel']])->render();
+        $this->assertStringContainsString('href="mailto:hilfe@example.test"', $confirmed);
+
+        foreach ([$locked, $already, $confirmed] as $html) {
+            $this->assertStringNotContainsString('info@swayy.de', $html);
+        }
+    }
+
+    public function test_the_billing_way_back_names_the_support_address_of_the_settings(): void
+    {
+        config(['swayy.support.email' => 'hilfe@example.test']);
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->get('/admin/tarif')
+            ->assertRedirect(route('admin.dashboard'))
+            ->assertSessionHas('error', 'Tarif und Rechnungen für diesen Betrieb führt der Kundenbereich noch nicht. Schreib uns an hilfe@example.test, wenn du deinen Tarif ändern möchtest.');
     }
 
     public function test_the_support_address_is_a_documented_setting_with_a_default(): void

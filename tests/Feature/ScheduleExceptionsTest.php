@@ -383,12 +383,37 @@ class ScheduleExceptionsTest extends TestCase
         $this->assertSame('Die Bezeichnung darf höchstens 20 Zeichen haben. Bitte kürzer fassen.', $errors['label'][0]);
         $this->assertSame('Die Höchstzahl der Gäste darf höchstens 50 betragen. Bitte eine kleinere Zahl eintragen.', $errors['limit_covers'][0]);
 
-        // Die Grenze für Fenster prüft erst, wenn die einzelnen Felder stimmen.
+        // Die Grenze für Fenster gilt schon bei der Prüfung der Felder und wirkt allein auf windows.
         $windows = $this->actingAs($owner)->postJson('/admin/settings/exceptions', [
             'from' => '2026-11-04', 'effects' => ['hours'],
             'windows' => [['opens_at' => '10:00', 'closes_at' => '11:00'], ['opens_at' => '12:00', 'closes_at' => '13:00'], ['opens_at' => '14:00', 'closes_at' => '15:00']],
         ])->assertStatus(422);
         $this->assertSame('Höchstens 2 Zeitfenster. Bitte Fenster zusammenlegen.', $windows->json('errors.windows.0'));
+    }
+
+    public function test_a_thousand_windows_are_refused_before_the_overlap_check(): void
+    {
+        [$setup, $owner] = $this->owner();
+        $windows = array_map(fn (int $i) => ['opens_at' => '10:00', 'closes_at' => '11:00'], range(1, 1000));
+
+        $response = $this->actingAs($owner)->postJson('/admin/settings/exceptions', [
+            'from' => '2026-11-04', 'effects' => ['hours'], 'windows' => $windows,
+        ])->assertStatus(422);
+
+        $this->assertSame(['windows'], array_keys($response->json('errors')));
+        $this->assertSame('Höchstens 6 Zeitfenster. Bitte Fenster zusammenlegen.', $response->json('errors.windows.0'));
+        $this->assertSame(0, SpecialOpeningHour::where('location_id', $setup['location']->id)->count());
+    }
+
+    public function test_after_returns_only_the_limit_error_for_an_oversized_window_list(): void
+    {
+        config(['swayy.exceptions.windows_max' => 3]);
+        [$setup] = $this->owner();
+        $windows = array_map(fn (int $i) => ['opens_at' => '10:00', 'closes_at' => '11:00'], range(1, 1000));
+
+        $errors = ScheduleExceptionRules::after($setup['location'], ['from' => '2026-11-04', 'effects' => ['hours'], 'windows' => $windows], false, CarbonImmutable::now('Europe/Berlin')->startOfDay());
+
+        $this->assertSame(['windows' => 'Höchstens 3 Zeitfenster. Bitte Fenster zusammenlegen.'], $errors);
     }
 
     public function test_every_rule_has_its_own_message(): void

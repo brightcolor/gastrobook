@@ -25,6 +25,9 @@ class LocationController extends Controller
 {
     use RespondsToSettingsForms;
 
+    /** Längstes Kürzel vor dem Zähler; die Spalte locations.slug ist varchar(255). */
+    private const SLUG_BASE_MAX = 240;
+
     public function __construct(
         private readonly TenantContext $context,
         private readonly AuditLogger $audit,
@@ -52,7 +55,7 @@ class LocationController extends Controller
             'canSeeBilling' => $request->user()->canInTenant('billing.manage', $tenant),
             'timezones' => DateTimeZone::listIdentifiers(),
             'defaultTimezone' => config('swayy.locations.default_timezone'),
-            'introMax' => (int) config('swayy.locations.intro_max'),
+            'fieldLimits' => $this->fieldLimits(),
             'logoAccept' => implode(',', array_map(fn (string $type) => '.'.$type, $types)),
             'logoHelp' => __('Als :types, bis :size.', [
                 'types' => LocationLogoController::typeList($types),
@@ -150,15 +153,37 @@ class LocationController extends Controller
      */
     private function rules(): array
     {
+        $max = $this->fieldLimits();
+
         return [
-            'name' => ['required', 'string', 'max:120'],
+            'name' => ['required', 'string', 'max:'.$max['name']],
             'timezone' => ['required', 'timezone'],
-            'phone' => ['nullable', 'string', 'max:40'],
-            'email' => ['nullable', 'email:rfc', 'max:200'],
-            'address_line1' => ['nullable', 'string', 'max:200'],
-            'postal_code' => ['nullable', 'string', 'max:20'],
-            'city' => ['nullable', 'string', 'max:100'],
-            'public_intro' => ['nullable', 'string', 'max:'.(int) config('swayy.locations.intro_max')],
+            'phone' => ['nullable', 'string', 'max:'.$max['phone']],
+            'email' => ['nullable', 'email:rfc', 'max:'.$max['email']],
+            'address_line1' => ['nullable', 'string', 'max:'.$max['address']],
+            'postal_code' => ['nullable', 'string', 'max:'.$max['postal_code']],
+            'city' => ['nullable', 'string', 'max:'.$max['city']],
+            'public_intro' => ['nullable', 'string', 'max:'.$max['intro']],
+        ];
+    }
+
+    /**
+     * Längste Eingaben der Felder in Zeichen (config/swayy.php, locations.*).
+     * Die Prüfung beim Speichern und das Attribut maxlength des Formulars
+     * lesen dieselben Werte.
+     *
+     * @return array{name: int, phone: int, email: int, address: int, postal_code: int, city: int, intro: int}
+     */
+    private function fieldLimits(): array
+    {
+        return [
+            'name' => (int) config('swayy.locations.name_max'),
+            'phone' => (int) config('swayy.locations.phone_max'),
+            'email' => (int) config('swayy.locations.email_max'),
+            'address' => (int) config('swayy.locations.address_max'),
+            'postal_code' => (int) config('swayy.locations.postal_code_max'),
+            'city' => (int) config('swayy.locations.city_max'),
+            'intro' => (int) config('swayy.locations.intro_max'),
         ];
     }
 
@@ -212,7 +237,9 @@ class LocationController extends Controller
 
     private function uniqueSlug(int $tenantId, string $name): string
     {
-        $base = Str::slug($name) ?: 'standort';
+        // Das Kürzel schreibt „ä“ als „ae“ und kann länger werden als der Name. Die Spalte slug fasst 255 Zeichen;
+        // die Kürzung lässt Platz für den Zähler („-2“).
+        $base = Str::limit(Str::slug($name), self::SLUG_BASE_MAX, '') ?: 'standort';
         $slug = $base;
         $i = 1;
         while (Location::withTrashed()

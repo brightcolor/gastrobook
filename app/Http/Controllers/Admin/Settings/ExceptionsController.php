@@ -11,6 +11,7 @@ use App\Models\RestaurantTable;
 use App\Models\Room;
 use App\Services\AuditLogger;
 use App\Services\ScheduleExceptions;
+use App\Support\NameOrder;
 use App\Support\ScheduleExceptionRules;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
@@ -224,9 +225,7 @@ class ExceptionsController extends Controller
      */
     private function inOrder(Collection $items): Collection
     {
-        return $items
-            ->sort(fn ($a, $b) => (($a->sort_order ?? 0) <=> ($b->sort_order ?? 0)) ?: strnatcasecmp((string) $a->name, (string) $b->name))
-            ->values();
+        return NameOrder::inOrder($items);
     }
 
     private function location(): Location

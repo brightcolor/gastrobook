@@ -48,9 +48,9 @@
             <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                 <div class="flex flex-wrap items-baseline gap-x-2">
                     @if($log->hasActionLabel())
-                        <h2 class="font-semibold text-stone-900">{{ $log->actionLabel() }}</h2>
+                        <h2 class="font-semibold text-stone-900">{{ $log->actionLabel($salon) }}</h2>
                     @else
-                        <h2 class="font-semibold text-stone-900">{{ $log->area() !== null ? $log->area().': ' : '' }}Aktion <code class="rounded bg-stone-100 px-1.5 py-0.5 text-[0.8125rem] font-medium text-stone-800 [overflow-wrap:anywhere]">{{ $log->action }}</code></h2>
+                        <h2 class="font-semibold text-stone-900">{{ $log->area($salon) !== null ? $log->area($salon).': ' : '' }}Aktion <code class="rounded bg-stone-100 px-1.5 py-0.5 text-[0.8125rem] font-medium text-stone-800 [overflow-wrap:anywhere]">{{ $log->action }}</code></h2>
                     @endif
                     @if($log->entity_id)
                         <span class="text-sm text-stone-600">Nr. {{ $log->entity_id }}</span>

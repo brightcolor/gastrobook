@@ -106,6 +106,76 @@ class OpeningHoursPageTest extends TestCase
         $this->assertStringContainsString('höchstens 2 Zeitfenster', $response->json('errors')['hours.2.opens_at'][0]);
     }
 
+    public function test_a_week_with_far_too_many_rows_is_refused_before_the_overlap_check(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        // Tausend gleiche Fenster überschnitten sich alle; die Prüfung der Überschneidung bekäme eine Million Paare.
+        $rows = array_map(fn (int $i) => ['weekday' => $i % 7, 'opens_at' => '10:00', 'closes_at' => '11:00'], range(1, 1000));
+
+        $response = $this->actingAs($owner)->putJson('/admin/settings/opening-hours', ['hours' => $rows])->assertStatus(422);
+
+        $errors = $response->json('errors');
+        $this->assertSame(['hours'], array_keys($errors));
+        $this->assertSame(['Die Woche hat zu viele Zeitfenster (höchstens 42). Bitte Fenster zusammenlegen und erneut speichern.'], $errors['hours']);
+        $this->assertSame(7, OpeningHour::where('location_id', $setup['location']->id)->count());
+    }
+
+    public function test_the_week_limit_is_seven_times_the_windows_per_day_setting(): void
+    {
+        config(['swayy.opening_hours.windows_per_day_max' => 2]);
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $week = function (int $count): array {
+            $rows = [];
+            foreach (range(0, 6) as $weekday) {
+                $rows[] = ['weekday' => $weekday, 'opens_at' => '08:00', 'closes_at' => '10:00'];
+                $rows[] = ['weekday' => $weekday, 'opens_at' => '12:00', 'closes_at' => '14:00'];
+            }
+
+            return array_slice(array_merge($rows, [['weekday' => 0, 'opens_at' => '16:00', 'closes_at' => '18:00']]), 0, $count);
+        };
+
+        $tooMany = $this->actingAs($owner)->putJson('/admin/settings/opening-hours', ['hours' => $week(15)])->assertStatus(422);
+        $this->assertSame(['hours'], array_keys($tooMany->json('errors')));
+        $this->assertSame('Die Woche hat zu viele Zeitfenster (höchstens 14). Bitte Fenster zusammenlegen und erneut speichern.', $tooMany->json('errors.hours.0'));
+
+        $this->actingAs($owner)->putJson('/admin/settings/opening-hours', ['hours' => $week(14)])->assertOk();
+        $this->assertSame(14, OpeningHour::where('location_id', $setup['location']->id)->count());
+    }
+
+    public function test_the_preview_refuses_more_windows_than_one_day_allows(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $windows = array_map(fn (int $i) => ['opens_at' => '10:00', 'closes_at' => '11:00'], range(1, 1000));
+
+        $response = $this->actingAs($owner)->postJson('/admin/settings/opening-hours/preview', ['weekday' => 2, 'windows' => $windows])->assertStatus(422);
+
+        $this->assertSame(['windows'], array_keys($response->json('errors')));
+        $this->assertSame('Der Tag hat zu viele Zeitfenster (höchstens 6). Bitte Fenster zusammenlegen.', $response->json('errors.windows.0'));
+    }
+
+    public function test_after_skips_the_grouping_and_the_overlap_check_for_an_oversized_list(): void
+    {
+        $rows = array_map(fn (int $i) => ['weekday' => $i % 7, 'opens_at' => '10:00', 'closes_at' => '11:00'], range(1, 1000));
+
+        $this->assertSame(
+            ['hours' => 'Die Woche hat zu viele Zeitfenster (höchstens 42). Bitte Fenster zusammenlegen und erneut speichern.'],
+            OpeningHoursRules::after($rows),
+        );
+        $this->assertSame(
+            ['windows' => 'Der Tag hat zu viele Zeitfenster (höchstens 6). Bitte Fenster zusammenlegen.'],
+            OpeningHoursRules::after($rows, 'windows', sameDay: true),
+        );
+    }
+
     public function test_seasons_are_listed_with_add_and_delete(): void
     {
         $setup = $this->createTenantSetup();

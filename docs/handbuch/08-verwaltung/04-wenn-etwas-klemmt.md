@@ -97,8 +97,8 @@ Nehmt euch das für zwei Wochen konsequent vor; danach stimmen die Zahlen.
 ## Fehlerseiten
 
 Wenn Swayy etwas nicht ausführen kann, zeigt es eine Seite mit der Ursache und
-dem nächsten Schritt. Unten steht ein **Fehlercode**. Nenne ihn dem Support, wenn du dich
-meldest.
+dem nächsten Schritt. Unten steht ein **Fehlercode**. Nenne ihn dem Support, wenn du
+dich meldest.
 
 | Code | Titel | Was es bedeutet | Was du tust |
 |---|---|---|---|

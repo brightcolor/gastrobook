@@ -212,6 +212,8 @@
                     + Tag
                 </button>
             </div>
+            {{-- Meldung, wenn das Speichern der Tags scheitert: Ursache und nächster Schritt, auch bei geschlossener Auswahl. --}}
+            <p id="tagSyncError" role="alert" class="text-[0.8125rem] text-red-700 [&:not(:empty)]:mt-2"></p>
             <div id="tagPicker" class="mt-3 hidden">
                 <div id="tagList" class="mb-2 flex flex-wrap gap-1.5 text-xs"></div>
                 <div class="flex gap-2">
@@ -327,8 +329,12 @@
     const problemTexts = window.SwayyAdmin?.problemTexts ?? {};
     const nameMissingText = @json(__('Bitte gib dem Tag einen Namen.'));
     const createFailedText = @json(__('Der Tag konnte nicht angelegt werden. Bitte die Seite neu laden und es noch einmal versuchen.'));
+    const syncFailedText = @json(__('Die Änderung konnte nicht gespeichert werden. Bitte die Seite neu laden und es noch einmal versuchen.'));
+    const syncNetworkText = @json(__('Die Änderung konnte nicht gespeichert werden. Bitte die Verbindung prüfen und erneut versuchen.'));
 
     let activeTags = @json($reservation->tags->pluck('id')->values());
+    // Stand, den der Server zuletzt bestätigt hat; nach einem Fehler zeigt die Seite wieder diesen Stand.
+    let savedTags = [...activeTags];
     let allTags = [];
 
     // Tag-Namen und Farben stammen aus Eingaben des Teams und kommen maskiert ins HTML.
@@ -340,12 +346,41 @@
         renderPicker();
     }
 
-    async function sync() {
-        await fetch(syncUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, Accept: 'application/json' },
-            body: JSON.stringify({ tag_ids: activeTags }),
-        });
+    // Die Speicherungen laufen nacheinander: Eine spätere Antwort überholt keine frühere.
+    let syncQueue = Promise.resolve();
+
+    function sync() {
+        syncQueue = syncQueue.then(saveTags);
+        return syncQueue;
+    }
+
+    async function saveTags() {
+        const sent = [...activeTags];
+        let res;
+        try {
+            res = await fetch(syncUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, Accept: 'application/json' },
+                body: JSON.stringify({ tag_ids: sent }),
+            });
+        } catch {
+            syncFailed(syncNetworkText);
+            return;
+        }
+        if (!res.ok) {
+            syncFailed(failureText(res, await readJson(res), syncFailedText));
+            return;
+        }
+        savedTags = sent;
+        document.getElementById('tagSyncError').textContent = '';
+    }
+
+    // Die Seite zeigt wieder den gespeicherten Stand und nennt die Ursache.
+    function syncFailed(text) {
+        activeTags = [...savedTags];
+        document.getElementById('tagSyncError').textContent = text;
+        renderPills();
+        renderPicker();
     }
 
     function renderPills() {
@@ -424,13 +459,13 @@
         }
     }
 
-    // Erste Meldung des Servers (Prüffehler oder message), sonst der Text zum Statuscode, zuletzt der allgemeine Text.
-    function failureText(res, body) {
+    // Erste Meldung des Servers (Prüffehler oder message), sonst der Text zum Statuscode, zuletzt der Rückfalltext.
+    function failureText(res, body, fallback = createFailedText) {
         const first = Object.values(body?.errors ?? {}).flat()[0];
         if (first) return first;
         if (body?.message) return body.message;
         const byStatus = problemTexts[res.status] || (res.status >= 500 ? problemTexts[500] : problemTexts.default) || '';
-        return byStatus.replace(':status', String(res.status)) || createFailedText;
+        return byStatus.replace(':status', String(res.status)) || fallback;
     }
 
     nameInput.addEventListener('input', clearNameFeedback);

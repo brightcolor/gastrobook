@@ -36,6 +36,41 @@ class TemplatesPageTest extends TestCase
         $this->assertMatchesRegularExpression('/data-nav-key="templates"[^>]*aria-current="page"/', (string) $response->getContent());
     }
 
+    public function test_the_standard_text_follows_the_form_of_address_of_the_chosen_location(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $setup['location']->settings()->update(['guest_address' => 'du']);
+        $this->clearTenantContext();
+
+        $informal = $this->actingAs($owner)->get('/admin/templates')->assertOk();
+
+        $informal->assertSee('wir haben deinen Tisch reserviert und freuen uns auf deinen Besuch.')
+            ->assertDontSee('wir haben Ihren Tisch reserviert')
+            ->assertSee('Der Standardtext in der Anrede „du“ (Standort „'.$setup['location']->name.'“).');
+
+        $setup['location']->settings()->update(['guest_address' => 'Sie']);
+
+        $formal = $this->actingAs($owner)->get('/admin/templates')->assertOk();
+
+        $formal->assertSee('wir haben Ihren Tisch reserviert und freuen uns auf Ihren Besuch.')
+            ->assertDontSee('wir haben deinen Tisch reserviert')
+            ->assertSee('Der Standardtext in der Anrede „Sie“ (Standort „'.$setup['location']->name.'“).');
+    }
+
+    public function test_a_custom_version_is_shown_as_saved_whatever_the_form_of_address(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $setup['location']->settings()->update(['guest_address' => 'du']);
+        NotificationTemplate::create(['tenant_id' => $setup['tenant']->id, 'location_id' => null, 'key' => 'reservation_confirmed', 'locale' => 'de', 'subject' => 'Eigener Betreff', 'body' => 'Eigener Text für {guest_name}', 'is_active' => true]);
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->get('/admin/templates')->assertOk()
+            ->assertSee('Eigener Text für {guest_name}')
+            ->assertSee('Deine Fassung. Sie gilt für alle Standorte.');
+    }
+
     public function test_saving_answers_with_json_for_the_drawer(): void
     {
         $setup = $this->createTenantSetup();

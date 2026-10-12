@@ -66,7 +66,7 @@ class AuditLogController extends Controller
             ->when($filters['user_id'] !== '', fn ($q) => $q->where('user_id', (int) $filters['user_id']))
             ->when($filters['from'] !== '', fn ($q) => $q->where('created_at', '>=', $filters['from']))
             ->when($filters['until'] !== '', fn ($q) => $q->where('created_at', '<=', $filters['until'].' 23:59:59'))
-            ->when($filters['q'] !== '', fn ($q) => $q->matchingText($filters['q']))
+            ->when($filters['q'] !== '', fn ($q) => $q->matchingText($filters['q'], $tenant->isSalon()))
             ->with('user')
             ->orderByDesc('created_at')
             ->paginate((int) config('swayy.audit.per_page'))
@@ -79,12 +79,12 @@ class AuditLogController extends Controller
         return view('admin.audit.index', [
             'logs' => $logs,
             'tz' => $tz,
-            'areas' => collect(AuditLog::SUBJECTS)->sortBy(fn (string $label) => Str::lower(Str::ascii($label)))->all(),
+            'areas' => collect(AuditLog::subjects($tenant->isSalon()))->sortBy(fn (string $label) => Str::lower(Str::ascii($label)))->all(),
             'area' => $area,
             'filters' => $filters,
             'searchMax' => $searchMax,
             'salon' => $tenant->isSalon(),
-            'entityLabel' => $byEntity ? (AuditLog::SUBJECTS[$entity] ?? $entity).' Nr. '.$entityId : null,
+            'entityLabel' => $byEntity ? (AuditLog::subjects($tenant->isSalon())[$entity] ?? $entity).' Nr. '.$entityId : null,
             'filtered' => $area !== '' || $byEntity || $filters['q'] !== '' || $filters['action'] !== '' || $filters['from'] !== '' || $filters['until'] !== '',
         ]);
     }

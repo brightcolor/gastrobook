@@ -225,6 +225,26 @@ class ServicesPageTest extends TestCase
         $this->assertSame(['Pflege 2', 'Pflege 10', 'Balayage'], array_keys($order));
     }
 
+    public function test_a_name_with_an_umlaut_stands_at_its_base_letter(): void
+    {
+        $setup = $this->salon();
+        $services = [
+            $this->service($setup, 'Bart'),
+            $this->service($setup, 'Älteste'),
+            $this->service($setup, 'Abend'),
+        ];
+        $this->clearTenantContext();
+
+        $main = $this->mainContent((string) $this->actingAs($setup['owner'])->get('/admin/services')->assertOk()->getContent());
+
+        $order = [];
+        foreach ($services as $service) {
+            $order[$service->name] = strpos($main, 'data-drawer-open="leistung-'.$service->id.'"');
+        }
+        asort($order);
+        $this->assertSame(['Abend', 'Älteste', 'Bart'], array_keys($order));
+    }
+
     public function test_the_page_uses_no_inline_handlers(): void
     {
         foreach (['index', 'partials/fields'] as $view) {

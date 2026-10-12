@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Services\LicenseService;
+use App\Services\LicenseStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\Concerns\CreatesTenants;
@@ -174,6 +175,71 @@ class LicenseTest extends TestCase
         $this->actingAs($admin)->get('/admin')
             ->assertStatus(402)
             ->assertSee('Lizenz abgelaufen');
+    }
+
+    public function test_the_license_page_uses_the_error_layout_in_du_with_the_support_address_of_the_settings(): void
+    {
+        config([
+            'license.self_hosted' => true,
+            'license.grace_days' => 14,
+            'swayy.support.email' => 'lizenz@example.test',
+            'license.file' => $this->writeTempLicense([
+                'id' => 'lic_layout',
+                'licensee' => 'X',
+                'email' => 'x@x.de',
+                'plan' => 'starter',
+                'max_tenants' => 1,
+                'max_locations' => 1,
+                'max_tables' => 20,
+                'max_users' => 3,
+                'features' => [],
+                'issued_at' => '2024-01-01',
+                'expires_at' => now()->subDays(20)->toDateString(),
+            ]),
+        ]);
+        Cache::forget('swayy.license.status');
+        $setup = $this->createTenantSetup();
+        $admin = $this->createMember($setup['tenant'], 'tenant_admin');
+        $this->clearTenantContext();
+
+        $response = $this->actingAs($admin)->get('/admin')->assertStatus(402);
+
+        // Die Seite hängt am Layout der Fehlerseiten: Fehlercode, Ursache und nächster Schritt.
+        $response->assertSee('Fehlercode 402')
+            ->assertSee('Lizenz abgelaufen')
+            ->assertSee('Die Swayy-Lizenz für diese Installation ist abgelaufen.')
+            ->assertSee('Lizenz-ID: lic_layout')
+            ->assertSee('href="mailto:lizenz@example.test"', false)
+            ->assertSee('Schreib uns an')
+            ->assertSee('Die Buchungsseite für deine Gäste ist weiterhin erreichbar.')
+            ->assertSee('Abmelden')
+            ->assertDontSee('Zur Übersicht')
+            ->assertDontSee('info@swayy.de')
+            ->assertDontSee('Ihre Lizenz')
+            ->assertDontSee('Bitte erneuern Sie')
+            ->assertDontSee('swayy.de/kontakt');
+        $this->assertMatchesRegularExpression('/<main id="main-content"/', (string) $response->getContent());
+    }
+
+    public function test_a_revoked_license_says_so_and_names_the_next_step(): void
+    {
+        config(['swayy.support.email' => 'lizenz@example.test']);
+
+        $html = view('errors.license_expired', ['status' => new LicenseStatus(valid: false, selfHosted: true, licenseId: 'lic_revoked', revoked: true)])->render();
+
+        $this->assertStringContainsString('<h1 class="text-2xl font-bold tracking-tight">Lizenz widerrufen</h1>', $html);
+        $this->assertStringContainsString('Diese Swayy-Lizenz wurde widerrufen.', $html);
+        $this->assertStringContainsString('Schreib uns an', $html);
+        $this->assertStringContainsString('mailto:lizenz@example.test', $html);
+        $this->assertStringContainsString('Lizenz-ID: lic_revoked', $html);
+        $this->assertStringNotContainsString('abgelaufen.', $html);
+    }
+
+    public function test_the_license_page_shows_no_id_when_the_license_has_none(): void
+    {
+        $html = view('errors.license_expired', ['status' => new LicenseStatus(valid: false, selfHosted: true)])->render();
+
+        $this->assertStringNotContainsString('Lizenz-ID', $html);
     }
 
     public function test_public_booking_page_still_works_when_hard_locked(): void

@@ -72,6 +72,19 @@ class OnboardingRulesTest extends TestCase
             ->assertDontSee('onclick=', false);
     }
 
+    public function test_the_copy_button_takes_its_delay_from_the_ui_settings_and_names_the_cause_of_a_failure(): void
+    {
+        config(['swayy.ui.toast_ms' => 5000]);
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+
+        $this->actingAs($owner)->get('/admin/onboarding')
+            ->assertSee('const COPY_RESET_MS = 5000;', false)
+            ->assertSee('Der Browser erlaubt den Zugriff auf die Zwischenablage nicht. Bitte die Adresse markieren und mit Strg+C (Mac: ⌘+C) kopieren.', false)
+            ->assertDontSee('COPY_RESET_MS = 1500', false);
+    }
+
     public function test_the_wizard_shows_the_stored_values_and_the_limits_of_the_settings(): void
     {
         config(['swayy.booking.duration_min' => 20, 'swayy.booking.duration_max' => 300, 'swayy.booking.advance_max_days' => 200, 'swayy.booking.lead_max_minutes' => 5000]);

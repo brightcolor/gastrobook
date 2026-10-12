@@ -128,6 +128,19 @@ final class ErrorPage
         }
     }
 
+    /**
+     * Ein Plattform-Administrator ist angemeldet. Er kommt über den Supportzugriff in einen Betrieb
+     * und findet von einer Sperrseite zurück in die Plattform.
+     */
+    public static function platformAdmin(): bool
+    {
+        try {
+            return auth()->user()?->isSaasAdmin() === true;
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
     public static function signedIn(): bool
     {
         try {

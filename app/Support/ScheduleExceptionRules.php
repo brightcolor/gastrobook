@@ -150,7 +150,7 @@ final class ScheduleExceptionRules
             'label' => ['nullable', 'string', 'max:'.(int) config('swayy.exceptions.label_max')],
             'effects' => ['present', 'array'],
             'effects.*' => ['string', 'in:'.implode(',', $salon ? self::SALON_EFFECTS : self::EFFECTS)],
-            'windows' => ['nullable', 'array'],
+            'windows' => ['nullable', 'array', 'max:'.(int) config('swayy.exceptions.windows_max')],
             'windows.*' => ['array'],
             'windows.*.opens_at' => ['required', 'date_format:H:i'],
             'windows.*.closes_at' => ['required', 'date_format:H:i'],
@@ -195,6 +195,7 @@ final class ScheduleExceptionRules
                 ? __('Diese Wirkung gibt es für Salons nicht. Bitte „Geschlossen“ oder „Andere Öffnungszeiten“ wählen.')
                 : __('Diese Wirkung ist unbekannt. Bitte die Seite neu laden.'),
             'windows.array' => $windows,
+            'windows.max' => __('Höchstens :max Zeitfenster. Bitte Fenster zusammenlegen.'),
             'windows.*.array' => __('Ein Zeitfenster hat ein unbekanntes Format. Bitte die Seite neu laden und noch einmal speichern.'),
             'windows.*.opens_at.required' => __('Bitte bei jedem Zeitfenster eintragen, wann es beginnt.'),
             'windows.*.opens_at.date_format' => $time,
@@ -301,9 +302,13 @@ final class ScheduleExceptionRules
             return;
         }
 
+        // Mehr Fenster als erlaubt weist schon rules() ab. Hier endet die Prüfung ebenfalls: Die Prüfung der
+        // Überschneidung vergleicht Paare und darf nie über eine übergroße Liste laufen.
         $max = (int) config('swayy.exceptions.windows_max');
         if (count($windows) > $max) {
             $errors['windows'] = __('Höchstens :max Zeitfenster. Bitte Fenster zusammenlegen.', ['max' => $max]);
+
+            return;
         }
 
         // Gleiche Uhrzeit und Überschneidung prüft die Öffnungszeiten-Regel auf der Zeitachse eines Datums.

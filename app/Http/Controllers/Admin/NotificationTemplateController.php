@@ -36,13 +36,16 @@ class NotificationTemplateController extends Controller
         $tenant = $this->context->tenant();
         abort_if($tenant === null, 404);
         $salon = $tenant->isSalon();
+        // Der Standardtext folgt der Anrede des gewählten Standorts; eine eigene Fassung gilt für alle Standorte, wie gespeichert.
+        $location = $this->context->location();
+        $address = ($location?->effectiveSettings()->du() ?? false) ? 'du' : 'Sie';
 
         $overrides = NotificationTemplate::where('locale', 'de')
             ->whereNull('location_id')
             ->get()
             ->keyBy('key');
 
-        $templates = collect(NotificationTemplateRenderer::defaults())
+        $templates = collect(NotificationTemplateRenderer::defaults($address))
             ->only(array_keys(TemplateLabels::LABELS))
             ->map(function (array $default, string $key) use ($overrides, $salon) {
                 $override = $overrides->get($key);
@@ -65,6 +68,8 @@ class NotificationTemplateController extends Controller
             )),
             'limits' => (array) config('swayy.templates'),
             'salon' => $salon,
+            'address' => $address,
+            'addressLocation' => $location?->name,
         ]);
     }
 

@@ -1,41 +1,31 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Lizenz abgelaufen – Swayy</title>
-    @vite(['resources/css/app.css'])
-    <style>
-        body { background: #fafaf9; font-family: system-ui, sans-serif; }
-    </style>
-</head>
-<body class="flex min-h-screen items-center justify-center bg-stone-50 px-4">
-<div class="mx-auto max-w-md text-center">
-    <div class="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-3xl">🔒</div>
-    <h1 class="mb-2 text-2xl font-extrabold tracking-tight text-stone-900">Lizenz abgelaufen</h1>
-    <p class="mb-6 text-stone-500">
-        @if($status->revoked)
-            Diese Swayy-Lizenz wurde widerrufen. Bitte kontaktieren Sie uns.
-        @else
-            Die Swayy-Lizenz für diese Installation ist abgelaufen.<br>
-            Bitte erneuern Sie Ihre Lizenz, um wieder Zugriff zu erhalten.
-        @endif
-    </p>
+@extends('errors.layout')
+@use('App\Support\ErrorPage')
 
-    @if($status->licenseId)
-        <p class="mb-6 rounded-xl bg-stone-100 px-4 py-3 font-mono text-xs text-stone-500">
-            Lizenz-ID: {{ $status->licenseId }}
-        </p>
+{{-- Sperrt die Verwaltung einer selbst betriebenen Installation (RequireValidLicense, Status 402): Die Lizenz fehlt, ist
+     abgelaufen oder widerrufen. Die Buchungsseiten bleiben offen. „Zur Übersicht“ führt wieder in diese Seite, deshalb fehlt
+     der Knopf; Startseite und Abmelden bleiben. Die Adresse für den Support kommt aus swayy.support.email. --}}
+@php
+    $support = ErrorPage::supportEmail();
+@endphp
+
+@section('code', '402')
+@section('title', $status->revoked ? 'Lizenz widerrufen' : 'Lizenz abgelaufen')
+@section('cause')
+    @if($status->revoked)
+        Diese Swayy-Lizenz wurde widerrufen.
+    @else
+        Die Swayy-Lizenz für diese Installation ist abgelaufen.
     @endif
-
-    <a href="https://swayy.de/kontakt"
-       class="inline-flex items-center gap-2 rounded-xl bg-stone-900 px-6 py-3 text-sm font-semibold text-white hover:bg-stone-700">
-        Lizenz erneuern →
-    </a>
-
-    <p class="mt-8 text-xs text-stone-400">
-        Die Buchungsseite für Ihre Gäste ist weiterhin erreichbar.
-    </p>
-</div>
-</body>
-</html>
+    @if($status->licenseId)
+        <span class="mt-2 block font-mono text-xs text-stone-600">Lizenz-ID: {{ $status->licenseId }}</span>
+    @endif
+@endsection
+@section('step')
+    Schreib uns an
+    <a href="mailto:{{ $support }}" class="font-semibold underline underline-offset-2">{{ $support }}</a>,
+    dann klären wir die Erneuerung. Die Buchungsseite für deine Gäste ist weiterhin erreichbar.
+@endsection
+@section('actions')
+    <a href="mailto:{{ $support }}" class="btn btn-primary">Lizenz erneuern</a>
+    @include('errors.partials.home-links', ['overview' => false, 'logout' => true])
+@endsection

@@ -364,6 +364,39 @@ class AuditLog extends Model
         'onboarding' => 'Einrichtung',
     ];
 
+    /**
+     * Bereiche in den Worten eines Salons: „Termin“ für die Reservierung, „Kunde“
+     * für den Gast. Was hier fehlt, heißt in beiden Betriebsarten gleich. Tische,
+     * Räume und Kombinationen gibt es im Salon nicht; Einträge aus der Zeit als
+     * Restaurant behalten ihre Wörter.
+     *
+     * @var array<string, string> Praefix der Aktion => Gegenstand
+     */
+    public const SALON_SUBJECTS = ['reservation' => 'Termin', 'guest' => 'Kunde', 'guests' => 'Kunden'];
+
+    /**
+     * Aktionsbezeichnungen in den Worten eines Salons; für jede Aktion aus
+     * ACTION_LABELS, die „Reservierung“ oder „Gast“ sagt. Ohne Eintrag gilt die
+     * Bezeichnung aus ACTION_LABELS oder der Satz aus Bereich und Tätigkeit.
+     *
+     * @var array<string, string>
+     */
+    public const SALON_ACTION_LABELS = [
+        'reservation.status_changed' => 'Termin: Status geändert',
+        'reservation.party_updated' => 'Termin: Personenzahl geändert',
+        'reservation.rescheduled' => 'Termin umgebucht',
+        'reservation.tags_updated' => 'Termin: Tags geändert',
+        'guest.anonymized' => 'Kunde anonymisiert',
+        'guest.data_export' => 'Kundendaten exportiert',
+        'guest.merged' => 'Kunden zusammengeführt',
+        'reservation.attachment_added' => 'Termin: Anhang hinzugefügt',
+        'reservation.attachment_deleted' => 'Termin: Anhang gelöscht',
+        'reservation.deposit_shortfall' => 'Termin: Anzahlung zu niedrig',
+        'reservation.note_added' => 'Termin: Notiz hinzugefügt',
+        'reservation.staff_assigned' => 'Termin: Person zugewiesen',
+        'tenant.guest_mail_updated' => 'Absender für Kundenmails geändert',
+    ];
+
     /** @var array<string, string> Endung der Aktion => Taetigkeit */
     public const VERBS = [
         'created' => 'angelegt', 'updated' => 'geändert', 'deleted' => 'gelöscht',
@@ -377,9 +410,12 @@ class AuditLog extends Model
     /** Zeichen, mit dem die Suche %, _ und das Zeichen selbst im Suchtext als gewöhnliche Zeichen kennzeichnet (LIKE … ESCAPE). */
     private const LIKE_ESCAPE = '!';
 
-    public function actionLabel(): string
+    /**
+     * @param  bool  $salon  wahr: die Worte eines Salons (Termin, Kunde); falsch: die eines Restaurants
+     */
+    public function actionLabel(bool $salon = false): string
     {
-        return self::labelFor($this->action);
+        return self::labelFor($this->action, $salon);
     }
 
     /**
@@ -391,18 +427,30 @@ class AuditLog extends Model
         return self::hasGermanLabel($this->action);
     }
 
-    public function area(): ?string
+    public function area(bool $salon = false): ?string
     {
-        return self::areaLabel($this->action);
+        return self::areaLabel($this->action, $salon);
+    }
+
+    /**
+     * Die Bereiche (Anfang des Aktionsnamens => Gegenstand) in den Worten der
+     * Betriebsart: für das Filterfeld, die Anzeige und die Suche.
+     *
+     * @return array<string, string>
+     */
+    public static function subjects(bool $salon = false): array
+    {
+        return $salon ? self::SALON_SUBJECTS + self::SUBJECTS : self::SUBJECTS;
     }
 
     /**
      * Der Bereich einer Aktion in Deutsch (Anfang des Namens, SUBJECTS), oder
-     * null, wenn der Anfang in keinem Bereich steht.
+     * null, wenn der Anfang in keinem Bereich steht. Mit $salon in den Worten
+     * eines Salons (SALON_SUBJECTS).
      */
-    public static function areaLabel(string $action): ?string
+    public static function areaLabel(string $action, bool $salon = false): ?string
     {
-        return self::SUBJECTS[Str::before($action, '.')] ?? null;
+        return self::subjects($salon)[Str::before($action, '.')] ?? null;
     }
 
     /**
@@ -413,15 +461,19 @@ class AuditLog extends Model
      * ("Tisch gelöscht"). Fehlt auch die Taetigkeit, nennt die Zeile den
      * Bereich und den technischen Namen ("Standort: Aktion location.xyz"),
      * damit ein Betreiber die Aktion findet. Die Ansicht setzt den Namen in
-     * <code>.
+     * <code>. Mit $salon sagt die Bezeichnung „Termin“ und „Kunde“
+     * (SALON_ACTION_LABELS, SALON_SUBJECTS).
      */
-    public static function labelFor(string $action): string
+    public static function labelFor(string $action, bool $salon = false): string
     {
+        if ($salon && isset(self::SALON_ACTION_LABELS[$action])) {
+            return self::SALON_ACTION_LABELS[$action];
+        }
         if (isset(self::ACTION_LABELS[$action])) {
             return self::ACTION_LABELS[$action];
         }
 
-        $area = self::areaLabel($action);
+        $area = self::areaLabel($action, $salon);
         $verb = self::verbOf($action);
 
         if ($area !== null && $verb !== null) {
@@ -617,7 +669,8 @@ class AuditLog extends Model
      * und neuen Werten. Groß- und Kleinschreibung zählt nicht; %, _ und das
      * Fluchtzeichen im Text suchen sich selbst. Die Abfrage ist vorher auf den
      * Betrieb eingegrenzt: Die Bezeichnungen kommen aus den Aktionen genau
-     * dieser Einträge.
+     * dieser Einträge. Mit $salon zählen die Worte eines Salons („Termin“); die
+     * Worte eines Restaurants („Reservierung“) finden dieselben Einträge.
      *
      * Die Werte stehen als JSON-Text in der Spalte; Umlaute erscheinen dort
      * als \uXXXX, Schrägstriche als \/ und Anführungszeichen als \".
@@ -627,7 +680,7 @@ class AuditLog extends Model
      *
      * @param  Builder<AuditLog>  $query
      */
-    public function scopeMatchingText(Builder $query, string $text): void
+    public function scopeMatchingText(Builder $query, string $text, bool $salon = false): void
     {
         $text = trim($text);
         if ($text === '') {
@@ -635,7 +688,8 @@ class AuditLog extends Model
         }
 
         $labelled = $query->clone()->reorder()->distinct()->pluck('action')
-            ->filter(fn (mixed $action): bool => mb_stripos(self::labelFor((string) $action), $text) !== false)
+            ->filter(fn (mixed $action): bool => mb_stripos(self::labelFor((string) $action), $text) !== false
+                || ($salon && mb_stripos(self::labelFor((string) $action, salon: true), $text) !== false))
             ->values()
             ->all();
 

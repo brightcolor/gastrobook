@@ -713,13 +713,14 @@
     }
 
     // ── Step 5: Adresse der Buchungsseite kopieren ───────────────────────────
-    const COPY_RESET_MS = 1500;
+    // Wie lange das Häkchen nach dem Kopieren steht: dieselbe Dauer wie ein Hinweis der Verwaltung (swayy.ui.toast_ms).
+    const COPY_RESET_MS = @json((int) config('swayy.ui.toast_ms'));
     document.getElementById('obCopyUrl')?.addEventListener('click', async function () {
         const button = this;
         try {
             await navigator.clipboard.writeText(document.getElementById('obBookingUrl').textContent.trim());
         } catch {
-            showError('Kopieren hat nicht geklappt. Bitte die Adresse markieren und mit Strg+C (Mac: ⌘+C) kopieren.');
+            showError('Der Browser erlaubt den Zugriff auf die Zwischenablage nicht. Bitte die Adresse markieren und mit Strg+C (Mac: ⌘+C) kopieren.');
             return;
         }
         button.textContent = '✓';

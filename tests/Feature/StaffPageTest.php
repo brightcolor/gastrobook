@@ -301,6 +301,23 @@ class StaffPageTest extends TestCase
         $this->assertSame(['Anna', 'Team 2', 'Team 10', 'Zoe'], array_keys($order));
     }
 
+    public function test_a_name_with_an_umlaut_stands_at_its_base_letter(): void
+    {
+        $setup = $this->salon();
+        $setup['member']->update(['name' => 'Bert']);
+        $people = [$setup['member'], $this->person($setup, 'Änne'), $this->person($setup, 'Abel')];
+        $this->clearTenantContext();
+
+        $main = $this->mainContent((string) $this->actingAs($setup['owner'])->get('/admin/staff')->assertOk()->getContent());
+
+        $order = [];
+        foreach ($people as $member) {
+            $order[$member->fresh()->name] = strpos($main, 'data-drawer-open="person-'.$member->id.'"');
+        }
+        asort($order);
+        $this->assertSame(['Abel', 'Änne', 'Bert'], array_keys($order));
+    }
+
     public function test_the_list_names_a_running_and_an_upcoming_absence(): void
     {
         $setup = $this->salon();

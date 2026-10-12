@@ -398,11 +398,22 @@ return [
     | default_timezone: Zeitzone, die das Formular „Neuer Standort“ vorschlägt
     | und die gilt, solange kein Standort gewählt ist (etwa im Protokoll).
     | intro_max: längste Begrüßung auf der Buchungsseite in Zeichen (100–5000).
+    | name_max, phone_max, email_max, address_max, postal_code_max, city_max:
+    | längste Eingabe der Felder Name, Telefon, E-Mail, Straße und Hausnummer,
+    | PLZ und Ort in Zeichen. Die Spalten der Tabelle locations sind varchar(255),
+    | deshalb endet jede Grenze bei 255. LocationController prüft mit diesen Werten,
+    | und die Felder des Formulars tragen sie als maxlength.
     |
     */
     'locations' => [
         'default_timezone' => EnvSetting::timezone('SWAYY_DEFAULT_TIMEZONE', default: 'Europe/Berlin'),
         'intro_max' => EnvSetting::integer('SWAYY_LOCATION_INTRO_MAX', default: 1000, min: 100, max: 5000),
+        'name_max' => EnvSetting::integer('SWAYY_LOCATION_NAME_MAX', default: 120, min: 10, max: 255),
+        'phone_max' => EnvSetting::integer('SWAYY_LOCATION_PHONE_MAX', default: 40, min: 10, max: 255),
+        'email_max' => EnvSetting::integer('SWAYY_LOCATION_EMAIL_MAX', default: 200, min: 30, max: 255),
+        'address_max' => EnvSetting::integer('SWAYY_LOCATION_ADDRESS_MAX', default: 200, min: 20, max: 255),
+        'postal_code_max' => EnvSetting::integer('SWAYY_LOCATION_POSTAL_CODE_MAX', default: 20, min: 5, max: 255),
+        'city_max' => EnvSetting::integer('SWAYY_LOCATION_CITY_MAX', default: 100, min: 10, max: 255),
     ],
 
     /*

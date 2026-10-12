@@ -14,7 +14,7 @@
             Dieser Bestätigungslink wurde bereits genutzt. Ihre Anfrage ist eingegangen.
         </p>
         <p class="mt-4 text-sm text-stone-400">
-            Fragen? <a href="mailto:info@swayy.de" class="text-teal-600 hover:underline">info@swayy.de</a>
+            Fragen? <a href="mailto:{{ config('swayy.support.email') }}" class="text-teal-600 hover:underline">{{ config('swayy.support.email') }}</a>
         </p>
     </div>
 </div>

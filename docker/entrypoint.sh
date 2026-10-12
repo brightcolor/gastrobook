@@ -26,7 +26,24 @@ php artisan migrate --force
 # Non-critical setup: allowed to fail after the first successful run
 echo "[swayy] Running seeders (non-fatal)..."
 php artisan db:seed --class=PlanSeeder --force  || echo "[swayy] PlanSeeder already up-to-date"
-php artisan swayy:create-admin --if-missing      || echo "[swayy] Admin already exists"
+# BEGIN create-admin
+# Der Start bricht an diesem Schritt nie ab (set -e): Ausgabe und Ergebnis des Befehls werden ausdruecklich gelesen.
+# Ist ein Oberadmin vorhanden, schweigt der Befehl und endet mit 0. Ein Fehler (zum Beispiel ein zu schwaches
+# Passwort oder eine vergebene Adresse) steht mit seiner Ursache im Protokoll des Containers.
+admin_status=0
+admin_output=$(php artisan swayy:create-admin --if-missing 2>&1) || admin_status=$?
+if [ "$admin_status" -eq 0 ]; then
+    if [ -n "$admin_output" ]; then
+        echo "$admin_output"
+    fi
+else
+    echo "[swayy] Der Oberadmin konnte nicht angelegt werden (Ergebnis $admin_status). Der Befehl meldet:"
+    echo "$admin_output" | tail -n 20
+    echo "[swayy] Der Start läuft weiter. Bitte SWAYY_ADMIN_EMAIL und SWAYY_ADMIN_PASSWORD in der .env prüfen"
+    echo "[swayy] (Passwort mit Buchstaben und Ziffern in der Mindestlänge von SWAYY_PASSWORD_MIN_LENGTH, Adresse noch nicht vergeben)"
+    echo "[swayy] und den Oberadmin danach mit \"php artisan swayy:create-admin\" anlegen."
+fi
+# END create-admin
 php artisan swayy:install-legal                  || echo "[swayy] Legal pages already installed"
 
 echo "[swayy] Clearing stale caches (storage/ is a persistent volume and can still hold compiled views/config/routes from a previous image)..."

@@ -55,7 +55,7 @@
 @push('drawers')
     @foreach($templates as $t)
         <x-drawer :id="'vorlage-'.$t['key']" :title="$t['label']"
-                  :description="$t['customized'] ? 'Deine Fassung. Sie gilt für alle Standorte.' : 'Der Standardtext. Mit „Speichern“ legst du eine eigene Fassung an.'">
+                  :description="$t['customized'] ? 'Deine Fassung. Sie gilt für alle Standorte.' : 'Der Standardtext in der Anrede „'.$address.'“'.($addressLocation !== null ? ' (Standort „'.$addressLocation.'“)' : '').'. Mit „Speichern“ legst du eine eigene Fassung an, die für alle Standorte gilt.'">
             <form id="form-vorlage-{{ $t['key'] }}" method="POST" action="{{ route('admin.templates.update', $t['key']) }}" data-ajax class="space-y-5">
                 @csrf
                 @method('PUT')

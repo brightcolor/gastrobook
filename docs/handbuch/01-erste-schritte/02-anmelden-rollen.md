@@ -27,8 +27,8 @@ nur für Swayy verwendest.
 Nach dem Ändern bleibst du auf diesem Gerät angemeldet. Auf allen anderen
 Geräten meldest du dich mit dem neuen Passwort neu an. Stimmt das aktuelle
 Passwort nicht oder ist das neue zu kurz, nennt die Seite die Ursache und was du
-korrigierst. Bei vielen Versuchen in einer Minute zeigt Swayy die Fehlerseite „Zu viele
-Anfragen“ mit der Wartezeit.
+korrigierst. Bei vielen Versuchen in einer Minute zeigt Swayy die Fehlerseite
+„Zu viele Anfragen“ mit der Wartezeit.
 
 ## Mitarbeiter einladen
 

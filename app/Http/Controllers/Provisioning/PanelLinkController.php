@@ -54,7 +54,7 @@ class PanelLinkController extends Controller
         $schluessel = (array) config('provisioning.keys', []);
 
         if ($betrieb === null || ! $betrieb->hasContract() || $panel === '' || $schluessel === []) {
-            return redirect()->route('admin.dashboard')->with('error', __('Tarif und Rechnungen für diesen Betrieb führt der Kundenbereich noch nicht. Schreib uns an info@swayy.de, wenn du deinen Tarif ändern möchtest.'));
+            return redirect()->route('admin.dashboard')->with('error', __('Tarif und Rechnungen für diesen Betrieb führt der Kundenbereich noch nicht. Schreib uns an :email, wenn du deinen Tarif ändern möchtest.', ['email' => config('swayy.support.email')]));
         }
 
         // Nur der Inhaber bekommt die Anmeldung im Kundenbereich mit; alle

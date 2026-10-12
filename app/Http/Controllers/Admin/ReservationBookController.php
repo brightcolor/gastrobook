@@ -433,7 +433,7 @@ class ReservationBookController extends Controller
 
         $force = (bool) ($validated['force'] ?? false);
         if ($force && ! $request->user()->canInTenant('overbook.manual', $this->context->tenant(), $location)) {
-            abort(403, 'Überbuchung erfordert eine erweiterte Berechtigung.');
+            abort(403, __('Überbuchung erfordert eine erweiterte Berechtigung. Bitte das Häkchen „Verfügbarkeitsprüfung übergehen“ weglassen oder die Betriebsleitung bitten, die Reservierung anzulegen.'));
         }
 
         $startLocal = CarbonImmutable::parse($validated['date'].' '.$validated['time'], $location->timezone);

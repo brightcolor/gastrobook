@@ -6,7 +6,7 @@ namespace Tests\Concerns;
 
 /**
  * Liest aus dem HTML einer Seite, ob ein Kästchen angehakt ist. Maßgeblich ist
- * das Attribut checked am Kästchen selbst, nicht das versteckte Feld davor.
+ * das Attribut checked am Kästchen selbst.
  */
 trait ReadsCheckboxes
 {
