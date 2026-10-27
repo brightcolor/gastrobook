@@ -1,5 +1,46 @@
 # Changelog
 
+## [1.137.0] – 2026-10-27
+
+### Reservierungsbuch: Reservierungen wieder freigeben und in der Übersicht bearbeiten
+
+Ein Kunde fragte, wie sich eine stornierte Reservierung nachträglich wieder
+freigeben und ändern lässt. Stornieren, Ablehnen und die Absage des Gastes waren
+Endstationen, und Datum und Uhrzeit konnte nur der Gast über seinen Link ändern.
+Das Team half sich mit Neuanlegen und Stornieren; der Gast bekam dabei die
+Stornomail.
+
+- **Wieder freigeben.** Stornierte, abgelehnte und vom Gast abgesagte
+  Reservierungen gehen in „Bestätigt“ zurück (`ReservationStatus::transitions()`,
+  nur für das Team; Gast, System und Schnittstelle bleiben bei den bisherigen
+  Regeln, ein später Zahlungseingang belebt nichts wieder). Vorher prüft
+  `ReservationLifecycleService::claimForReopen`: Zeit nicht vorbei, keine
+  Rückerstattung der Anzahlung, Öffnungs- und Sperrzeiten, Platz. Die alten
+  Tische bleiben, wenn sie frei sind, sonst vergibt Swayy neu; im Salon prüft es
+  die Mitarbeiterin. Passt nichts mehr, bleibt der Status, und die Meldung nennt
+  den Grund. Überbuchen gibt es nur mit dem Recht `overbook.manual` und einem
+  Haken. Der Stornozeitpunkt entfällt, die Absage des Gastes fällt aus dem
+  Zähler im Gastprofil, der Gast bekommt die Bestätigung (abwählbar). Die
+  Sammelaktion überspringt das Freigeben.
+- **Bearbeiten.** Neue Route `admin.reservations.reschedule` (Recht
+  `reservations.update`) ändert Datum, Uhrzeit und im Restaurant die Personenzahl
+  aktiver Reservierungen. `reschedule()` kennt dafür Team-Regeln: ohne Vorlauf,
+  Vorausbuchungsgrenze und Online-Personengrenzen (`online => false` in
+  `checkExact`), Meldungen an das Team statt an den Gast (`reasonMessage`),
+  gewählte Tische bleiben, solange sie frei sind (`currentTablesIfFree`). Die
+  Gastmail lässt sich abwählen. Der Weg des Gastes ist unverändert.
+- **Oberfläche.** In der Liste steht in der Spalte „Aktionen“ „Bearbeiten“
+  (Dialog mit Datum, Uhrzeit, Personen) und bei stornierten Zeilen „Wieder
+  freigeben“ (Dialog mit Hinweisen und Haken). Die Detailseite hat dieselben
+  Formulare; „Bestätigen“ der Aktionsliste weicht dort dem Formular zum
+  Freigeben.
+- Handbuch: *Das Reservierungsbuch* (neue Abschnitte „Eine Reservierung ändern“
+  und „Wieder freigeben“), Verweise bei den Fristen.
+- Tests: `ReservationReopenAndEditTest` (22 Tests, 71 Prüfungen). Die
+  überschreibende Methode in `PaymentSafetyNetTest` trägt die zwei neuen
+  optionalen Parameter von `transition()`.
+- Keine Migration, keine neue Einstellung.
+
 ## [1.136.0] – 2026-10-12
 
 ### Newsletter: Leerer Haken bei einer weiteren Buchung lässt die Einwilligung stehen
