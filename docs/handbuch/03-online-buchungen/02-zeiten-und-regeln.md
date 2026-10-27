@@ -166,7 +166,9 @@ Gruppen“ eine Mailadresse an. Gruppen darüber sehen auf der Buchungsseite die
 Adresse. Lässt du das Feld leer, entfällt der Hinweis.
 
 **Stornofrist und Umbuchungsfrist** – bis wann der Gast selbst darf. Danach geht
-es nur noch über euch.
+es nur noch über euch: Im Reservierungsbuch ändert **Bearbeiten** Datum, Uhrzeit und
+Personenzahl, und **Wieder freigeben** holt eine stornierte Reservierung zurück
+(siehe *Das Reservierungsbuch*).
 
 **Bestätigung** – „Sofort bestätigen“ oder „Von Hand freigeben“, dazu das
 Kästchen „E-Mail-Adresse bestätigen lassen“. Siehe *Einrichtung*. Die

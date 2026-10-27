@@ -62,9 +62,14 @@ enum ReservationStatus: string
             self::Waitlisted->value => [self::WaitlistOffered->value, self::Confirmed->value, self::CancelledByGuest->value, self::Expired->value],
             self::WaitlistOffered->value => [self::Confirmed->value, self::Waitlisted->value, self::CancelledByGuest->value, self::Expired->value],
             self::Completed->value => [],
-            self::CancelledByGuest->value => [],
-            self::CancelledByRestaurant->value => [],
-            self::Rejected->value => [],
+            // Wieder freigeben: Wer eine Reservierung versehentlich storniert oder
+            // abgelehnt hat, oder wem der Gast doch noch zusagt, holt sie zurueck.
+            // Der Statuswechsel selbst prueft dabei Platz, Tische und Anzahlung
+            // (ReservationLifecycleService::claimForReopen) und gilt nur fuer das
+            // Team, nicht fuer Gast, System oder Schnittstelle.
+            self::CancelledByGuest->value => [self::Confirmed->value],
+            self::CancelledByRestaurant->value => [self::Confirmed->value],
+            self::Rejected->value => [self::Confirmed->value],
             self::NoShow->value => [self::Completed->value], // correction: guest showed up after all
             self::Expired->value => [],
         ];
@@ -78,6 +83,14 @@ enum ReservationStatus: string
     public function isActive(): bool
     {
         return in_array($this->value, self::activeStatuses(), true);
+    }
+
+    /**
+     * Storniert oder abgelehnt, aber noch zurueckholbar ("Wieder freigeben").
+     */
+    public function isReopenable(): bool
+    {
+        return in_array($this, [self::CancelledByGuest, self::CancelledByRestaurant, self::Rejected], true);
     }
 
     public function label(): string

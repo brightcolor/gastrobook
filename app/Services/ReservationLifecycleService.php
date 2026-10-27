@@ -7,6 +7,7 @@ use App\Mail\Layout\GuestText;
 use App\Mail\Layout\MailFrameFactory;
 use App\Models\Location;
 use App\Models\NotificationLog;
+use App\Models\Refund;
 use App\Models\Reservation;
 use App\Models\ReservationStatusHistory;
 use App\Models\RestaurantTable;
@@ -323,6 +324,8 @@ class ReservationLifecycleService
         ?string $reason = null,
         ?string $note = null,
         ?CarbonInterface $seatedAt = null,
+        bool $allowConflict = false,
+        bool $notifyGuest = true,
     ): Reservation {
         if (! $reservation->status->canTransitionTo($to)) {
             throw ValidationException::withMessages([
@@ -332,7 +335,7 @@ class ReservationLifecycleService
             ]);
         }
 
-        return DB::transaction(function () use ($reservation, $to, $actor, $actorType, $reason, $note, $seatedAt) {
+        return DB::transaction(function () use ($reservation, $to, $actor, $actorType, $reason, $note, $seatedAt, $allowConflict, $notifyGuest) {
             // Der Ausgangsstatus wird INNERHALB der Transaktion unter Sperre
             // frisch gelesen. Vorher stammte er aus dem uebergebenen Objekt und
             // war womoeglich Minuten alt: Der Fristablauf las "wartet auf
@@ -350,6 +353,23 @@ class ReservationLifecycleService
                     ]),
                 ]);
             }
+
+            // Wieder freigeben (storniert, abgelehnt oder vom Gast abgesagt ->
+            // bestaetigt): nur durch das Team. Fuer Gast, System und Schnittstelle
+            // bleibt es beim Verbot von frueher - ein spaeter Zahlungseingang oder
+            // ein erneuter Aufruf darf keine beendete Buchung wiederbeleben.
+            $reopen = $from->isReopenable() && $to === ReservationStatus::Confirmed;
+            if ($reopen && $actorType !== 'user') {
+                throw ValidationException::withMessages([
+                    'status' => __('Statuswechsel von :from nach :to ist nicht erlaubt.', [
+                        'from' => $from->value, 'to' => $to->value,
+                    ]),
+                ]);
+            }
+            // Prueft Platz und Anzahlung und liefert die Tische, die die Buchung
+            // danach haelt. Wirft eine verstaendliche Meldung, wenn sie nicht
+            // mehr passt - dann bleibt der Status, wie er ist.
+            $reopenTables = $reopen ? $this->claimForReopen($reservation, $allowConflict) : null;
 
             $updates = ['status' => $to];
 
@@ -371,6 +391,11 @@ class ReservationLifecycleService
             // dauerhaft als "war da" im Verlauf.
             if ($from === ReservationStatus::Seated && $to !== ReservationStatus::Completed) {
                 $updates['seated_at'] = null;
+            }
+
+            // Wieder freigegeben: Der Stornozeitpunkt gilt nicht mehr.
+            if ($reopen) {
+                $updates['cancelled_at'] = null;
             }
 
             // When an admin manually confirms a reservation that previously
@@ -397,6 +422,10 @@ class ReservationLifecycleService
 
             $reservation->update($updates);
 
+            if ($reopenTables !== null) {
+                $reservation->tables()->sync($reopenTables);
+            }
+
             ReservationStatusHistory::create([
                 'tenant_id' => $reservation->tenant_id,
                 'reservation_id' => $reservation->id,
@@ -420,6 +449,14 @@ class ReservationLifecycleService
                     $guest->decrement('no_show_count');
                 }
 
+                // Dasselbe fuer "Gast hat doch nicht abgesagt": Die Absage wurde
+                // mitgezaehlt (siehe unten) und faellt mit der Freigabe wieder weg.
+                if ($reopen
+                    && $from === ReservationStatus::CancelledByGuest
+                    && $guest->cancellation_count > 0) {
+                    $guest->decrement('cancellation_count');
+                }
+
                 match ($to) {
                     ReservationStatus::Completed => $this->guests->registerVisit($guest, $reservation->party_size),
                     ReservationStatus::NoShow => $guest->increment('no_show_count'),
@@ -441,12 +478,12 @@ class ReservationLifecycleService
 
             $tenant = $reservation->tenant()->first();
 
-            DB::afterCommit(function () use ($reservation, $tenant, $webhookEvent, $to) {
+            DB::afterCommit(function () use ($reservation, $tenant, $webhookEvent, $to, $notifyGuest) {
                 if ($tenant !== null) {
                     $this->webhooks->dispatch($tenant, $webhookEvent, $this->webhookPayload($reservation));
                 }
 
-                if ($reservation->guest_email_snapshot) {
+                if ($reservation->guest_email_snapshot && $notifyGuest) {
                     $templateKey = match ($to) {
                         ReservationStatus::Confirmed => 'reservation_confirmed',
                         ReservationStatus::CancelledByGuest, ReservationStatus::CancelledByRestaurant => 'reservation_cancelled',
@@ -574,7 +611,7 @@ class ReservationLifecycleService
      * duration, re-checks availability (tables for restaurants, staff for salons)
      * and reassigns tables when needed.
      */
-    public function reschedule(Reservation $reservation, CarbonImmutable $newStartLocal, ?int $newPartySize = null, ?User $actor = null, string $actorType = 'guest'): Reservation
+    public function reschedule(Reservation $reservation, CarbonImmutable $newStartLocal, ?int $newPartySize = null, ?User $actor = null, string $actorType = 'guest', bool $notifyGuest = true): Reservation
     {
         $location = $reservation->location()->withoutGlobalScope('tenant')->first();
         $partySize = $newPartySize ?? $reservation->party_size;
@@ -599,7 +636,12 @@ class ReservationLifecycleService
             }
         }
 
-        return DB::transaction(function () use ($reservation, $location, $newStartLocal, $startUtc, $endUtc, $duration, $partySize, $actor, $actorType) {
+        // Das Team verschiebt mit den Regeln des Teams: ohne Vorlauf und
+        // Vorausbuchungsgrenze (siehe oben), ohne Online-Personengrenzen und mit
+        // Meldungen an das Team statt an den Gast.
+        $istGast = $actorType === 'guest';
+
+        return DB::transaction(function () use ($reservation, $location, $newStartLocal, $startUtc, $endUtc, $duration, $partySize, $actor, $actorType, $istGast, $notifyGuest) {
             $tableIds = null;
 
             // Dieselbe Sperre wie bei der Neuanlage. Ohne sie pruefen zwei
@@ -619,7 +661,7 @@ class ReservationLifecycleService
             $blockReason = $this->availability->bookingBlockReason($location, $newStartLocal, $startUtc, $endUtc, [], $platz);
             if ($blockReason !== null) {
                 throw ValidationException::withMessages([
-                    'time' => $this->availabilityMessage($blockReason),
+                    'time' => $this->reasonMessage($blockReason, $actorType),
                 ]);
             }
 
@@ -637,7 +679,9 @@ class ReservationLifecycleService
                     $reservation->id,
                 );
                 if (! $available) {
-                    throw ValidationException::withMessages(['time' => __('Dieser Zeitpunkt ist leider gerade vergeben – bitte wählen Sie eine andere Zeit.')]);
+                    throw ValidationException::withMessages(['time' => $istGast
+                        ? __('Dieser Zeitpunkt ist leider gerade vergeben – bitte wählen Sie eine andere Zeit.')
+                        : __('Die Person ist zu dieser Zeit nicht verfügbar. Wähle eine andere Zeit.')]);
                 }
             } else {
                 // Dieselbe Pruefung wie bei der Neuanlage statt eines Nachbaus:
@@ -646,12 +690,12 @@ class ReservationLifecycleService
                 // und jede Umbuchung lief ins Leere.
                 $check = $this->availability->checkExact($location, $newStartLocal, $partySize, [
                     'duration' => $duration,
-                    'online' => true,
+                    'online' => $istGast,
                     'exclude_reservation_id' => $reservation->id,
                 ]);
                 if (! $check['available']) {
                     throw ValidationException::withMessages([
-                        'time' => $this->availabilityMessage($check['reason']),
+                        'time' => $this->reasonMessage((string) $check['reason'], $actorType),
                     ]);
                 }
 
@@ -660,13 +704,24 @@ class ReservationLifecycleService
                 // eine vorhandene Zuordnung ab.
                 $tableIds = $check['table_ids'] !== [] ? $check['table_ids'] : null;
 
+                // Das Team hat die Tische von Hand gewaehlt (oder eine Gruppe
+                // zusammengestellt): Sie bleiben, solange sie zur neuen Zeit frei
+                // sind und fuer die Personenzahl reichen. Nur die Automatik fuer
+                // den Gast darf sie neu verteilen.
+                if (! $istGast && $tableIds !== null) {
+                    $behalten = $this->currentTablesIfFree($reservation, $location, $startUtc, $endUtc, $partySize);
+                    if ($behalten !== null) {
+                        $tableIds = $behalten;
+                    }
+                }
+
                 if ($tableIds !== null) {
                     // The picked table may sit in a room that is blocked for this
                     // window even though the location as a whole is open.
                     $roomBlock = $this->availability->bookingBlockReason($location, $newStartLocal, $startUtc, $endUtc, $tableIds, $platz);
                     if ($roomBlock !== null) {
                         throw ValidationException::withMessages([
-                            'time' => $this->availabilityMessage($roomBlock),
+                            'time' => $this->reasonMessage($roomBlock, $actorType),
                         ]);
                     }
                 }
@@ -705,9 +760,9 @@ class ReservationLifecycleService
                 'end_at' => $endUtc->toIso8601String(),
             ], null, $actor, $reservation->tenant_id);
 
-            DB::afterCommit(function () use ($reservation, $location, $anzahlung) {
+            DB::afterCommit(function () use ($reservation, $location, $anzahlung, $notifyGuest) {
                 $this->webhooks->dispatch($location->tenant, 'reservation.updated', $this->webhookPayload($reservation));
-                if ($reservation->guest_email_snapshot) {
+                if ($reservation->guest_email_snapshot && $notifyGuest) {
                     // Verlangt der neue Zeitpunkt eine Anzahlung, die vorher
                     // keine war, ist die Zahlungsaufforderung die richtige
                     // Nachricht - eine Bestaetigung waere schlicht falsch.
@@ -1070,6 +1125,151 @@ class ReservationLifecycleService
             'location_id' => $reservation->location_id,
             'guest_name' => $reservation->guest_name_snapshot,
         ];
+    }
+
+    /**
+     * Die Tische, die eine Reservierung schon hat, wenn sie im Fenster frei sind
+     * (mit Pufferzeit, wie die Automatik) und fuer die Personenzahl reichen;
+     * sonst null.
+     *
+     * @return array<int>|null
+     */
+    private function currentTablesIfFree(Reservation $reservation, Location $location, CarbonImmutable $startUtc, CarbonImmutable $endUtc, int $partySize): ?array
+    {
+        $tische = $reservation->tables()->get();
+        if ($tische->isEmpty()) {
+            return null;
+        }
+
+        $kapazitaet = (int) $tische->sum(fn ($t) => $t->max_capacity + $t->extra_capacity);
+        if ($kapazitaet > 0 && $partySize > $kapazitaet) {
+            return null;
+        }
+
+        $ids = $tische->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $puffer = (int) $location->effectiveSettings()->buffer_minutes;
+        $belegt = $this->tableAssignment->busyTableIds(
+            $location,
+            $startUtc->subMinutes($puffer),
+            $endUtc->addMinutes($puffer),
+            $reservation->id
+        );
+
+        return array_intersect($ids, $belegt) === [] ? $ids : null;
+    }
+
+    /**
+     * Wieder freigeben: Darf die Reservierung ihren Platz zurueckbekommen, und
+     * welche Tische haelt sie dann?
+     *
+     * Laeuft in der Transaktion des Statuswechsels, unter derselben Sperre wie
+     * Neuanlage und Umbuchung. Die alten Tische bleiben, wenn sie im Fenster frei
+     * sind; sonst sucht die Tischvergabe neu. Mit $allowConflict (Recht
+     * "overbook.manual", entschieden im Controller) gelten Belegung und
+     * Oeffnungszeiten nicht, die bisherigen Tische bleiben.
+     *
+     * @return array<int>|null null = die Zuordnung bleibt, wie sie ist (Salon, Platzmodus, Ueberbuchen)
+     *
+     * @throws ValidationException wenn sie nicht mehr passt; dann aendert sich nichts
+     */
+    private function claimForReopen(Reservation $reservation, bool $allowConflict): ?array
+    {
+        $location = $reservation->location()->withoutGlobalScope('tenant')->first();
+        if ($location === null) {
+            throw ValidationException::withMessages([
+                'status' => __('Der Standort dieser Reservierung wurde nicht gefunden. Bitte lege eine neue Reservierung an.'),
+            ]);
+        }
+
+        if (CarbonImmutable::parse($reservation->end_at)->lte(CarbonImmutable::now())) {
+            throw ValidationException::withMessages([
+                'status' => __('Die Reservierung liegt in der Vergangenheit und lässt sich nicht mehr freigeben. Bitte lege eine neue Reservierung an.'),
+            ]);
+        }
+
+        // Eine Rueckerstattung der Anzahlung (laufend, genehmigt, ausgezahlt)
+        // wuerde mit der Freigabe ins Leere laufen: Der Gast haette sein Geld
+        // zurueck und die Buchung ihren Platz. Dann ist die Neuanlage der Weg,
+        // weil sie die Anzahlung neu verlangt.
+        $erstattet = in_array($reservation->payment_status, ['refunded', 'partially_refunded'], true)
+            || Refund::withoutGlobalScopes()
+                ->where('reservation_id', $reservation->id)
+                ->whereNotIn('status', ['rejected', 'failed'])
+                ->exists();
+        if ($erstattet) {
+            throw ValidationException::withMessages([
+                'status' => __('Für die Anzahlung dieser Reservierung läuft oder lief eine Rückerstattung. Bitte lege eine neue Reservierung an, damit die Anzahlung neu verlangt wird.'),
+            ]);
+        }
+
+        $startLocal = CarbonImmutable::parse($reservation->localStart());
+        $startUtc = CarbonImmutable::parse($reservation->start_at)->utc();
+        $endUtc = CarbonImmutable::parse($reservation->end_at)->utc();
+
+        $this->lockSlot($location, $startLocal);
+
+        if ($allowConflict) {
+            return null;
+        }
+
+        $platz = ['party_size' => (int) $reservation->party_size, 'exclude_reservation_id' => $reservation->id];
+        $grund = $this->availability->bookingBlockReason($location, $startLocal, $startUtc, $endUtc, [], $platz);
+        if ($grund !== null) {
+            throw ValidationException::withMessages(['status' => $this->reasonMessage($grund, 'user')]);
+        }
+
+        if ($reservation->staff_member_id) {
+            $staff = StaffMember::withoutGlobalScope('tenant')->find($reservation->staff_member_id);
+            $dauer = (int) $reservation->start_at->diffInMinutes($reservation->end_at);
+            $frei = $staff !== null && $this->salonAvailability->canStaffTake($staff, $dauer, $startUtc, $location, $reservation->id);
+            if (! $frei) {
+                throw ValidationException::withMessages([
+                    'status' => __('Die Person ist zu dieser Zeit nicht mehr verfügbar. Verschiebe die Reservierung oder lege eine neue an.'),
+                ]);
+            }
+
+            return null;
+        }
+
+        $behalten = $this->currentTablesIfFree($reservation, $location, $startUtc, $endUtc, (int) $reservation->party_size);
+        if ($behalten !== null) {
+            $raumGrund = $this->availability->bookingBlockReason($location, $startLocal, $startUtc, $endUtc, $behalten, $platz);
+            if ($raumGrund === null) {
+                return $behalten;
+            }
+        }
+
+        $dauer = (int) $reservation->start_at->diffInMinutes($reservation->end_at);
+        $check = $this->availability->checkExact($location, $startLocal, (int) $reservation->party_size, [
+            'duration' => $dauer,
+            'online' => false,
+            'exclude_reservation_id' => $reservation->id,
+        ]);
+        if (! $check['available']) {
+            throw ValidationException::withMessages(['status' => $this->reasonMessage((string) $check['reason'], 'user')]);
+        }
+
+        // Im Platzmodus kommen bewusst keine Tische zurueck: Zuordnung bleibt.
+        return $check['table_ids'] !== [] ? $check['table_ids'] : null;
+    }
+
+    /**
+     * Die Meldung zu einem Ablehnungsgrund, passend zum Leser: Gaeste bekommen
+     * die oeffentliche Formulierung, das Team eine, die sagt, was es tun kann.
+     */
+    public function reasonMessage(string $reason, string $actorType): string
+    {
+        if ($actorType === 'guest') {
+            return $this->availabilityMessage($reason);
+        }
+
+        return match ($reason) {
+            'blackout' => __('In diesem Zeitraum ist eine Sperrzeit eingetragen. Wähle eine andere Zeit oder nimm die Sperrzeit heraus.'),
+            'outside_opening_hours' => __('Zu dieser Uhrzeit hat der Betrieb nicht geöffnet. Wähle eine Zeit innerhalb der Öffnungszeiten.'),
+            'covers_full' => __('Zu dieser Zeit sind alle Plätze vergeben. Wähle eine andere Zeit oder gib Plätze frei.'),
+            'no_table' => __('Zu dieser Zeit ist kein passender Tisch frei. Wähle eine andere Zeit oder Personenzahl oder gib einen Tisch frei.'),
+            default => __('Zu dieser Zeit ist kein Platz mehr frei. Wähle eine andere Zeit.'),
+        };
     }
 
     /**

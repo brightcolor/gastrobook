@@ -30,6 +30,7 @@ fehlen Buchungen!").
 | **Status** | Der Bearbeitungsstand |
 | **Quelle** | Woher die Buchung kam |
 | **Gebucht** | Wann die Buchung bei euch eingegangen ist |
+| **Aktionen** | Der nächste Schritt für diese Zeile: Bestätigen, Angekommen, Auschecken, dazu **Bearbeiten** für aktive Buchungen und **Wieder freigeben** für stornierte oder abgelehnte |
 
 Die Spalte **Gebucht** ist nützlicher, als sie klingt: Sie zeigt, was langfristig
 geplant war und was kurzfristig reinkam. Wer im August fünf Adventssonntage
@@ -65,6 +66,48 @@ Swayy erlaubt nur sinnvolle Übergänge – aus „Ausgecheckt" wird nichts mehr
 Disziplin. Er speist die Stammgast-Erkennung und den No-Show-Hinweis auf dem
 Board.
 
+## Eine Reservierung ändern
+
+In der Liste und auf der Detailseite steht bei jeder aktiven Buchung der Knopf
+**Bearbeiten**. Er ändert **Datum, Uhrzeit und Personenzahl** (im Salon nur Datum
+und Uhrzeit). Swayy prüft dabei wie beim Gast Öffnungszeiten, Sperrzeiten und
+freie Tische. Euer Vorlauf und die Online-Grenzen für Gäste gelten dafür nicht:
+Das Team darf auch kurzfristig und für größere Gruppen verschieben.
+
+- **Die Tische bleiben**, wenn sie zur neuen Zeit noch frei sind und für die
+  Personenzahl reichen. Sonst wählt Swayy einen anderen passenden Tisch. Gibt es
+  keinen, bleibt die Buchung unverändert, und du siehst den Grund.
+- **Der Gast bekommt eine E-Mail** mit den neuen Angaben, wenn eine Adresse
+  hinterlegt ist. Das Häkchen „Gast per E-Mail informieren“ lässt sich vorher
+  abwählen, etwa nach einem Telefonat.
+- Bearbeiten geht, solange die Gäste noch nicht am Tisch sitzen. Für Tische und
+  Personenzahl im laufenden Betrieb gibt es weiter das Live-Board und die
+  Detailseite („Tisch wechseln“).
+
+## Wieder freigeben
+
+Versehentlich storniert, doch noch abgelehnt oder hat der Gast nach der Absage
+wieder zugesagt? Bei **stornierten**, **abgelehnten** und **vom Gast abgesagten**
+Reservierungen steht statt „Bearbeiten“ der Knopf **Wieder freigeben**.
+
+Er bestätigt die Reservierung erneut und belegt ihre bisherigen Tische. Vorher
+prüft Swayy, ob der Platz noch frei ist:
+
+- Sind die alten Tische frei, bleiben sie. Sind sie inzwischen vergeben, nimmt
+  Swayy einen anderen passenden Tisch.
+- Ist nichts mehr frei, bleibt die Reservierung, wie sie ist, und die Meldung
+  sagt, woran es liegt. Wer das Recht zum **Überbuchen** hat, kann das Häkchen
+  „Verfügbarkeitsprüfung übergehen“ setzen; das steht dann im Verlauf.
+- Der Gast bekommt die Bestätigung per E-Mail, außer du wählst das Häkchen ab.
+- Eine Reservierung, deren Zeit schon vorbei ist, lässt sich nicht freigeben,
+  ebenso keine, deren Anzahlung zurückerstattet wird oder wurde. Dann legst du
+  eine neue Reservierung an; sie verlangt die Anzahlung neu.
+- Hatte der Gast selbst abgesagt, fällt die Absage wieder aus seinem Profil weg.
+
+Wieder freigegeben ist die Reservierung „Bestätigt“; danach ändert **Bearbeiten**
+Datum, Uhrzeit oder Personenzahl. In der Sammelaktion gibt es das Freigeben nicht,
+weil Swayy es für jede Buchung einzeln prüft.
+
 ## Mehrere auf einmal
 
 Über die Auswahlkästchen kannst du mehrere Buchungen markieren und gemeinsam
@@ -77,7 +120,7 @@ Ein Klick auf eine Buchung zeigt alles:
 - Datum, Zeit, Personen, Quelle, Tisch, Kontaktdaten, Anlass
 - **Gastnotiz** (was der Gast selbst geschrieben hat) und **Allergien** – Letztere
   farblich hervorgehoben, weil sie in die Küche müssen
-- **Tisch wechseln**, **Personenzahl ändern**, **Tags** vergeben
+- **Termin ändern** (Datum, Uhrzeit, Personenzahl), **Wieder freigeben** bei stornierten Buchungen, **Tisch wechseln**, **Tags** vergeben
 - **Anhänge**: PDF oder Bild an die Buchung hängen – die abgestimmte Menüfolge,
   eine Tischskizze, ein unterschriebener Vertrag fürs Event. Nur fürs Team
   sichtbar, der Gast sieht davon nichts.

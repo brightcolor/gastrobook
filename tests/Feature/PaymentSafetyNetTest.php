@@ -487,7 +487,7 @@ class PaymentSafetyNetTest extends TestCase
         $this->app->bind(ReservationLifecycleService::class, function ($app) {
             return new class(...array_values($this->lifecycleDependencies($app))) extends ReservationLifecycleService
             {
-                public function transition(Reservation $reservation, ReservationStatus $to, ?User $actor = null, string $actorType = 'user', ?string $reason = null, ?string $note = null, ?CarbonInterface $seatedAt = null): Reservation
+                public function transition(Reservation $reservation, ReservationStatus $to, ?User $actor = null, string $actorType = 'user', ?string $reason = null, ?string $note = null, ?CarbonInterface $seatedAt = null, bool $allowConflict = false, bool $notifyGuest = true): Reservation
                 {
                     throw new \RuntimeException('Bestaetigung faellt aus.');
                 }
