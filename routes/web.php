@@ -256,6 +256,8 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
         Route::post('/reservations/{reservation}/transition', [ReservationBookController::class, 'transition'])->name('reservations.transition');
         Route::post('/reservations/{reservation}/party', [ReservationBookController::class, 'updateParty'])
             ->middleware('permission:reservations.update')->name('reservations.party');
+        Route::post('/reservations/{reservation}/reschedule', [ReservationBookController::class, 'reschedule'])
+            ->middleware('permission:reservations.update')->name('reservations.reschedule');
         Route::post('/reservations/{reservation}/tables', [ReservationBookController::class, 'moveTable'])
             ->middleware('permission:tables.assign')->name('reservations.tables');
         Route::post('/reservations/{reservation}/tags', [TagController::class, 'syncReservation'])

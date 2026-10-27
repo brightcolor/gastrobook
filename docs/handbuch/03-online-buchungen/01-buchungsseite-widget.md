@@ -105,7 +105,8 @@ eingestellt hast. Beim Umbuchen prüft Swayy alles noch einmal: Öffnungszeiten,
 Ausnahmen, freie Tische.
 
 Das spart Anrufe. Wer das nicht will, stellt die Fristen auf 0 – dann muss jede
-Änderung über euch laufen.
+Änderung über euch laufen, im Reservierungsbuch mit **Bearbeiten** (Datum, Uhrzeit,
+Personenzahl) und **Wieder freigeben** (stornierte Buchung zurückholen).
 
 ## Kundenkonto per Anmeldelink
 

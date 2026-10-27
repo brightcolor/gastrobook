@@ -208,15 +208,18 @@
                 <th class="px-4 py-3">Status<span class="tip" tabindex="0" data-tip="Der Bearbeitungsstand: Anfrage wartet auf deine Bestätigung · Bestätigt ist zugesagt · Da sitzt gerade am Tisch · Abgeschlossen ist gegangen · No-Show ist nicht erschienen.">?</span></th>
                 <th class="px-4 py-3">Quelle<span class="tip" tabindex="0" data-tip="Woher die Buchung kam – über deine Buchungsseite, von euch selbst eingetragen, als Laufgast oder aus der Warteliste.">?</span></th>
                 <th class="px-4 py-3">Gebucht<span class="tip" tabindex="0" data-tip="Wann die Reservierung bei euch eingegangen ist. Hilft bei Rückfragen und zeigt, wie kurzfristig gebucht wurde.">?</span></th>
-                <th class="px-4 py-3">Aktionen<span class="tip tip-left" tabindex="0" data-tip="Bringt die Reservierung einen Schritt weiter. „Bestätigen“ sagt dem Gast per E-Mail zu, „Ablehnen“ sagt ab. „Angekommen“ markiert, dass die Gäste da sind. „No-Show“ hält fest, dass niemand kam; das zählt beim Gast mit und kann eine Anzahlung einbehalten. „Auschecken“ gibt den Tisch wieder frei.">?</span></th>
+                <th class="px-4 py-3">Aktionen<span class="tip tip-left" tabindex="0" data-tip="Bringt die Reservierung einen Schritt weiter. „Bestätigen“ sagt dem Gast per E-Mail zu, „Ablehnen“ sagt ab. „Angekommen“ markiert, dass die Gäste da sind. „No-Show“ hält fest, dass niemand kam; das zählt beim Gast mit und kann eine Anzahlung einbehalten. „Auschecken“ gibt den Tisch wieder frei. „Bearbeiten“ ändert Datum, Uhrzeit und Personenzahl; die Tische bleiben, wenn sie dann noch frei sind. „Wieder freigeben“ holt eine stornierte oder abgelehnte Reservierung zurück, sofern ihr Platz noch frei ist.">?</span></th>
             </tr>
         </thead>
         <tbody role="rowgroup" class="divide-y divide-stone-50 max-md:block max-md:divide-stone-200 [&>tr:hover]:bg-stone-50/70">
             @forelse($reservations as $r)
                 @php
                     $tableNames = $r->tables->pluck('name')->implode(', ');
+                    // Bearbeiten: solange die Gäste noch nicht am Tisch sitzen. Wieder freigeben: storniert, abgelehnt oder vom Gast abgesagt.
+                    $bearbeitbar = $canUpdate && in_array($r->status->value, ['requested', 'pending_confirmation', 'payment_pending', 'confirmed'], true);
+                    $freigebbar = $canUpdate && $r->status->isReopenable();
                     // Dieselben Stati wie in der Aktionsliste dieser Zeile: Ohne Aktion entfällt die zweite Zeile am Smartphone.
-                    $hasActions = in_array($r->status->value, ['requested', 'confirmed', 'seated'], true);
+                    $hasActions = in_array($r->status->value, ['requested', 'confirmed', 'seated'], true) || $bearbeitbar || $freigebbar;
                 @endphp
                 {{-- Unter 768 px: Raster aus Auswahl, Gast mit Kurzzeile, Status und darunter den Aktionen. --}}
                 <tr role="row" class="hover:bg-stone-50 max-md:grid max-md:grid-cols-[auto_minmax(0,1fr)_auto] max-md:items-start max-md:gap-x-3 max-md:gap-y-2 max-md:px-3 max-md:py-3">
@@ -276,6 +279,23 @@
                                     <button class="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 max-md:min-h-10">✓ Auschecken</button>
                                 </form>
                             @endif
+                            @if($bearbeitbar)
+                                <button type="button" data-edit-open
+                                        data-action="{{ route('admin.reservations.reschedule', $r) }}"
+                                        data-name="{{ $r->guest_name_snapshot }}"
+                                        data-date="{{ $r->localStart()->format('Y-m-d') }}"
+                                        data-time="{{ $r->localStart()->format('H:i') }}"
+                                        data-party="{{ $r->party_size }}"
+                                        data-email="{{ $r->guest_email_snapshot ? '1' : '0' }}"
+                                        class="rounded-lg bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-700 hover:bg-stone-200 max-md:min-h-10 max-md:px-3">Bearbeiten</button>
+                            @elseif($freigebbar)
+                                <button type="button" data-reopen-open
+                                        data-action="{{ route('admin.reservations.transition', $r) }}"
+                                        data-name="{{ $r->guest_name_snapshot }}"
+                                        data-when="{{ $r->localDayLabel() }} {{ $r->localStart()->format('H:i') }} Uhr, {{ $r->party_size }} Pers."
+                                        data-email="{{ $r->guest_email_snapshot ? '1' : '0' }}"
+                                        class="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-700 max-md:min-h-10 max-md:px-3">Wieder freigeben</button>
+                            @endif
                         </div>
                     </td>
                 </tr>
@@ -330,6 +350,117 @@
     sync();
 })();
 </script>
+
+@if($canUpdate)
+{{-- Bearbeiten und Wieder freigeben: je ein Dialog für die ganze Liste, die Knöpfe der Zeilen füllen ihn. Gesendet wird als gewöhnliches Formular, die Seite lädt mit Filtern neu. --}}
+<dialog id="editDialog" aria-labelledby="editTitle" class="w-[calc(100%-2rem)] max-w-md rounded-2xl p-0 text-stone-900 shadow-2xl backdrop:bg-stone-900/40">
+    <form id="editForm" method="POST" action="" class="space-y-4 p-5">
+        @csrf
+        <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+                <h2 id="editTitle" class="text-lg font-semibold">Reservierung bearbeiten</h2>
+                <p id="editWho" class="mt-1 text-sm text-stone-600 [overflow-wrap:anywhere]"></p>
+            </div>
+            <button type="button" data-dialog-close aria-label="Schließen"
+                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-2xl leading-none text-stone-600 hover:bg-stone-100 hover:text-stone-900">×</button>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+            <label class="block text-sm font-semibold">Datum
+                <input type="date" name="date" required class="mt-1 w-full rounded-lg border-stone-200 text-sm font-normal"></label>
+            <label class="block text-sm font-semibold">Uhrzeit
+                <input type="time" name="time" required class="mt-1 w-full rounded-lg border-stone-200 text-sm font-normal"></label>
+        </div>
+        @unless($isSalon)
+            <label class="block text-sm font-semibold">Personen
+                <input type="number" name="party_size" min="1" max="100" required class="mt-1 w-32 rounded-lg border-stone-200 text-sm font-normal"></label>
+        @endunless
+        <div id="editNotify">
+            <input type="hidden" name="notify" value="0">
+            <label class="flex min-h-8 items-center gap-2 text-sm"><input type="checkbox" name="notify" value="1" checked class="rounded"> Gast per E-Mail informieren</label>
+        </div>
+        <p class="text-xs text-stone-600">Swayy prüft Öffnungszeiten, Sperrzeiten und freie Tische. Die gewählten Tische bleiben, wenn sie zur neuen Zeit noch frei sind; sonst wählt Swayy neu. Klappt das nicht, bleibt alles, wie es war, und du siehst den Grund.</p>
+        <div class="flex flex-wrap justify-end gap-2 border-t border-stone-200 pt-4">
+            <button type="button" data-dialog-close class="btn btn-secondary">Abbrechen</button>
+            <button class="btn btn-primary">Speichern</button>
+        </div>
+    </form>
+</dialog>
+
+<dialog id="reopenDialog" aria-labelledby="reopenTitle" class="w-[calc(100%-2rem)] max-w-md rounded-2xl p-0 text-stone-900 shadow-2xl backdrop:bg-stone-900/40">
+    <form id="reopenForm" method="POST" action="" class="space-y-4 p-5">
+        @csrf
+        <input type="hidden" name="status" value="confirmed">
+        <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+                <h2 id="reopenTitle" class="text-lg font-semibold">Reservierung wieder freigeben?</h2>
+                <p id="reopenWho" class="mt-1 text-sm text-stone-600 [overflow-wrap:anywhere]"></p>
+            </div>
+            <button type="button" data-dialog-close aria-label="Schließen"
+                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-2xl leading-none text-stone-600 hover:bg-stone-100 hover:text-stone-900">×</button>
+        </div>
+        <p class="text-sm">Die Reservierung wird bestätigt und belegt ihre Tische wieder. Ist der Platz inzwischen vergeben, bleibt sie storniert, und du siehst den Grund. Danach lässt sie sich mit „Bearbeiten“ ändern.</p>
+        <div id="reopenNotify">
+            <input type="hidden" name="notify" value="0">
+            <label class="flex min-h-8 items-center gap-2 text-sm"><input type="checkbox" name="notify" value="1" checked class="rounded"> Gast per E-Mail informieren (Bestätigung)</label>
+        </div>
+        @if($canOverbook)
+            <div>
+                <input type="hidden" name="force" value="0">
+                <label class="flex min-h-8 items-start gap-2 text-sm"><input type="checkbox" name="force" value="1" class="mt-0.5 rounded"> <span>Verfügbarkeitsprüfung übergehen (überbuchen). Das wird im Verlauf festgehalten.</span></label>
+            </div>
+        @endif
+        <div class="flex flex-wrap justify-end gap-2 border-t border-stone-200 pt-4">
+            <button type="button" data-dialog-close class="btn btn-secondary">Abbrechen</button>
+            <button class="btn btn-primary">Wieder freigeben</button>
+        </div>
+    </form>
+</dialog>
+
+<script>
+(function () {
+    const edit = document.getElementById('editDialog');
+    const reopen = document.getElementById('reopenDialog');
+    if (!edit || !reopen) return;
+
+    document.querySelectorAll('[data-dialog-close]').forEach((button) => {
+        button.addEventListener('click', () => button.closest('dialog').close());
+    });
+    // Ein Klick auf den abgedunkelten Rand schließt wie Escape; das Formular füllt den Dialog, ein Treffer auf ihn selbst ist also der Rand.
+    [edit, reopen].forEach((dialog) => dialog.addEventListener('click', (e) => { if (e.target === dialog) dialog.close(); }));
+
+    const dayLabel = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+
+    document.addEventListener('click', (e) => {
+        const toEdit = e.target.closest('[data-edit-open]');
+        if (toEdit) {
+            const form = document.getElementById('editForm');
+            const d = toEdit.dataset;
+            form.action = d.action;
+            form.elements.date.value = d.date;
+            form.elements.time.value = d.time;
+            if (form.elements.party_size) form.elements.party_size.value = d.party;
+            form.querySelector('input[type="checkbox"][name="notify"]').checked = true;
+            document.getElementById('editNotify').hidden = d.email !== '1';
+            document.getElementById('editWho').textContent = d.name + ' · bisher ' + dayLabel(d.date) + ', ' + d.time + ' Uhr';
+            edit.showModal();
+            return;
+        }
+        const toReopen = e.target.closest('[data-reopen-open]');
+        if (toReopen) {
+            const form = document.getElementById('reopenForm');
+            const d = toReopen.dataset;
+            form.action = d.action;
+            form.querySelector('input[type="checkbox"][name="notify"]').checked = true;
+            const force = form.querySelector('input[type="checkbox"][name="force"]');
+            if (force) force.checked = false;
+            document.getElementById('reopenNotify').hidden = d.email !== '1';
+            document.getElementById('reopenWho').textContent = d.name + ' · ' + d.when;
+            reopen.showModal();
+        }
+    });
+})();
+</script>
+@endif
 
 @endif {{-- /list view --}}
 @endsection

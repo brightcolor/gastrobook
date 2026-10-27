@@ -64,6 +64,8 @@
             <h2 class="mb-3 font-bold">Aktionen</h2>
             <div class="flex flex-wrap gap-2">
                 @foreach(\App\Enums\ReservationStatus::transitions()[$reservation->status->value] ?? [] as $target)
+                    {{-- Wieder freigeben hat unten ein eigenes Formular mit den Optionen (Gast informieren, überbuchen). --}}
+                    @continue($target === 'confirmed' && $reservation->status->isReopenable())
                     @php
                         $labels = [
                             'confirmed' => ['Bestätigen', 'bg-emerald-600 text-white'],
@@ -97,6 +99,49 @@
                     @endif
                 @endforeach
             </div>
+
+            {{-- Wieder freigeben: storniert, abgelehnt oder vom Gast abgesagt --}}
+            @if($canEditReservation && $reservation->status->isReopenable())
+                <form method="POST" action="{{ route('admin.reservations.transition', $reservation) }}" class="mt-4 space-y-3 rounded-xl bg-emerald-50 p-4">
+                    @csrf
+                    <input type="hidden" name="status" value="confirmed">
+                    <h3 class="font-semibold text-emerald-900">Wieder freigeben</h3>
+                    <p class="text-sm text-emerald-900">Bestätigt die Reservierung wieder und belegt ihre Tische. Ist der Platz inzwischen vergeben, bleibt sie, wie sie ist, und du siehst den Grund. Danach lässt sie sich hier ändern.</p>
+                    @if($reservation->guest_email_snapshot)
+                        <input type="hidden" name="notify" value="0">
+                        <label class="flex min-h-8 items-center gap-2 text-sm"><input type="checkbox" name="notify" value="1" checked class="rounded"> Gast per E-Mail informieren (Bestätigung)</label>
+                    @endif
+                    @if($canOverbook)
+                        <input type="hidden" name="force" value="0">
+                        <label class="flex min-h-8 items-start gap-2 text-sm"><input type="checkbox" name="force" value="1" class="mt-0.5 rounded"> <span>Verfügbarkeitsprüfung übergehen (überbuchen). Das wird im Verlauf festgehalten.</span></label>
+                    @endif
+                    <button class="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white">Wieder freigeben</button>
+                </form>
+            @endif
+
+            {{-- Termin ändern: Datum, Uhrzeit, Personenzahl --}}
+            @if($canEditReservation && in_array($reservation->status->value, ['requested', 'pending_confirmation', 'payment_pending', 'confirmed'], true))
+                @php($terminSalon = (bool) $reservation->location?->tenant?->isSalon())
+                <form method="POST" action="{{ route('admin.reservations.reschedule', $reservation) }}" class="mt-4 flex flex-wrap items-end gap-3 border-t border-stone-100 pt-4">
+                    @csrf
+                    <div class="w-full text-xs font-semibold text-stone-500">Termin ändern<span class="tip" tabindex="0" data-tip="Ändert Datum, Uhrzeit und Personenzahl. Swayy prüft Öffnungszeiten, Sperrzeiten und freie Tische. Die Tische bleiben, wenn sie zur neuen Zeit noch frei sind. Klappt es nicht, bleibt alles, wie es war.">?</span></div>
+                    <label class="block text-sm font-semibold">Datum
+                        <input type="date" name="date" value="{{ $reservation->localStart()->format('Y-m-d') }}" required class="mt-1 block rounded-lg border-stone-200 text-sm font-normal"></label>
+                    <label class="block text-sm font-semibold">Uhrzeit
+                        <input type="time" name="time" value="{{ $reservation->localStart()->format('H:i') }}" required class="mt-1 block rounded-lg border-stone-200 text-sm font-normal"></label>
+                    @unless($terminSalon)
+                        <label class="block text-sm font-semibold">Personen
+                            <input type="number" name="party_size" value="{{ $reservation->party_size }}" min="1" max="100" required class="mt-1 block w-24 rounded-lg border-stone-200 text-sm font-normal"></label>
+                    @endunless
+                    @if($reservation->guest_email_snapshot)
+                        <div>
+                            <input type="hidden" name="notify" value="0">
+                            <label class="flex min-h-10 items-center gap-2 text-sm"><input type="checkbox" name="notify" value="1" checked class="rounded"> Gast per E-Mail informieren</label>
+                        </div>
+                    @endif
+                    <button class="rounded-xl bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white">Termin ändern</button>
+                </form>
+            @endif
 
             {{-- Table change --}}
             <form method="POST" action="{{ route('admin.reservations.tables', $reservation) }}" class="mt-4 flex flex-wrap items-end gap-2 border-t border-stone-100 pt-4">

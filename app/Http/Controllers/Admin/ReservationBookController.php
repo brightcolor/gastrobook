@@ -91,6 +91,10 @@ class ReservationBookController extends Controller
             'rangeLabel' => $this->rangeLabel($from, $to, $preset),
             // Wie die Route zu reservierungen.create: Wer sie nicht öffnen darf, bekommt keinen Knopf dorthin.
             'canCreate' => $request->user()->canInTenant('reservations.create', $this->context->tenant(), $location),
+            // Bearbeiten und Wieder freigeben: Die Knöpfe stehen nur dort, wo auch die Route erreichbar ist.
+            'canUpdate' => $request->user()->canInTenant('reservations.update', $this->context->tenant(), $location),
+            'canOverbook' => $request->user()->canInTenant('overbook.manual', $this->context->tenant(), $location),
+            'isSalon' => (bool) $this->context->tenant()?->isSalon(),
             'rooms' => $location->rooms()->orderBy('sort_order')->get(),
             'statuses' => ReservationStatus::cases(),
             'timeline' => $request->input('view') === 'timeline' ? $this->timelineData($location, $from) : null,
@@ -300,6 +304,7 @@ class ReservationBookController extends Controller
             'location' => $reservation->location()->withoutGlobalScope('tenant')->first()
                 ?? $this->context->location(),
             'canEditReservation' => request()->user()->canInTenant('reservations.update', $this->context->tenant()),
+            'canOverbook' => request()->user()->canInTenant('overbook.manual', $this->context->tenant(), $reservation->location()->withoutGlobalScope('tenant')->first()),
             'canSeeAudit' => request()->user()->canInTenant('audit.view', $this->context->tenant()),
         ]);
     }
@@ -518,6 +523,10 @@ class ReservationBookController extends Controller
             'status' => ['required', 'string', Rule::enum(ReservationStatus::class)],
             'reason' => ['nullable', 'string', 'max:255'],
             'seated_at' => ['nullable', 'date_format:H:i'],
+            // Wieder freigeben: Gast per Mail informieren (Vorgabe ja) und die
+            // Verfuegbarkeitspruefung uebergehen (nur mit dem Recht dazu).
+            'notify' => ['nullable', 'boolean'],
+            'force' => ['nullable', 'boolean'],
         ]);
 
         $target = ReservationStatus::from($validated['status']);
@@ -556,7 +565,26 @@ class ReservationBookController extends Controller
             abort(403);
         }
 
-        $this->lifecycle->transition($reservation, $target, $request->user(), 'user', $validated['reason'] ?? null, null, $seatedAt);
+        $reopen = $reservation->status->isReopenable() && $target === ReservationStatus::Confirmed;
+        $force = $reopen && (bool) ($validated['force'] ?? false);
+        if ($force && ! $request->user()->canInTenant('overbook.manual', $this->context->tenant(), $this->context->location())) {
+            abort(403, __('Überbuchen erfordert eine erweiterte Berechtigung. Bitte das Häkchen „Verfügbarkeitsprüfung übergehen“ weglassen oder die Betriebsleitung fragen.'));
+        }
+        // Ohne Angabe bekommt der Gast die Mail: Eine Bestaetigung ist die
+        // Nachricht, die er nach der Absage erwartet.
+        $notify = ! $reopen || (bool) ($validated['notify'] ?? true);
+
+        $this->lifecycle->transition(
+            $reservation,
+            $target,
+            $request->user(),
+            'user',
+            $validated['reason'] ?? ($reopen ? 'Wieder freigegeben' : null),
+            null,
+            $seatedAt,
+            $force,
+            $notify,
+        );
 
         // Staff cancellation → request a deposit refund per the location's policy
         if (in_array($target, [
@@ -581,7 +609,7 @@ class ReservationBookController extends Controller
             ]);
         }
 
-        $message = __('Status geändert.');
+        $message = $reopen ? __('Reservierung wieder freigegeben.') : __('Status geändert.');
         if ($forfeited !== null) {
             $message .= ' '.__('Die Anzahlung von :amount wurde einbehalten.', [
                 'amount' => number_format($forfeited / 100, 2, ',', '.').' '.($reservation->currency ?: 'EUR'),
@@ -624,6 +652,14 @@ class ReservationBookController extends Controller
             $this->authorizeReservation($reservation);
 
             if (! $reservation->status->canTransitionTo($target)) {
+                $skipped++;
+
+                continue;
+            }
+
+            // Wieder freigeben braucht je Reservierung eine Platzpruefung und
+            // eine Rueckmeldung, was nicht passt: nur einzeln, nie in der Sammelaktion.
+            if ($target === ReservationStatus::Confirmed && $reservation->status->isReopenable()) {
                 $skipped++;
 
                 continue;
@@ -723,6 +759,66 @@ class ReservationBookController extends Controller
         }
 
         return back()->with('success', __('Tisch geändert.'));
+    }
+
+    /**
+     * Datum, Uhrzeit und (im Restaurant) Personenzahl einer Reservierung ändern:
+     * die Umbuchung durch das Team. Sie prüft wie die des Gastes Öffnungszeiten,
+     * Sperrzeiten und freie Tische, kennt aber weder dessen Fristen noch den
+     * Vorlauf; die gewählten Tische bleiben, solange sie frei sind.
+     */
+    public function reschedule(Request $request, Reservation $reservation)
+    {
+        $this->authorizeReservation($reservation);
+
+        $validated = $request->validate([
+            'date' => ['required', 'date_format:Y-m-d'],
+            'time' => ['required', 'date_format:H:i'],
+            'party_size' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'notify' => ['nullable', 'boolean'],
+        ]);
+
+        $verschiebbar = [
+            ReservationStatus::Requested,
+            ReservationStatus::PendingConfirmation,
+            ReservationStatus::PaymentPending,
+            ReservationStatus::Confirmed,
+        ];
+        if (! in_array($reservation->status, $verschiebbar, true)) {
+            return back()->withErrors(['status' => $reservation->status->isReopenable()
+                ? __('Diese Reservierung hat den Status „:status“. Gib sie zuerst wieder frei, dann lässt sie sich ändern.', ['status' => $reservation->status->label()])
+                : __('Eine Reservierung im Status „:status“ lässt sich nicht mehr verschieben.', ['status' => $reservation->status->label()])]);
+        }
+
+        $tz = $reservation->timezone ?: ($this->context->location()?->timezone ?? config('app.timezone'));
+        $neuerStart = CarbonImmutable::parse($validated['date'].' '.$validated['time'], $tz);
+        // Im Salon gibt es keine Personenzahl, die sich ändern ließe.
+        $neuePersonen = $this->context->tenant()->isSalon() || empty($validated['party_size'])
+            ? null
+            : (int) $validated['party_size'];
+
+        $unveraendert = $neuerStart->equalTo($reservation->localStart())
+            && ($neuePersonen === null || $neuePersonen === (int) $reservation->party_size);
+        if ($unveraendert) {
+            return back()->withErrors(['time' => __('Datum, Uhrzeit und Personenzahl sind unverändert. Ändere mindestens eine Angabe.')]);
+        }
+
+        $this->lifecycle->reschedule(
+            $reservation,
+            $neuerStart,
+            $neuePersonen,
+            $request->user(),
+            'user',
+            (bool) ($validated['notify'] ?? true),
+        );
+
+        if ($request->wantsJson()) {
+            return response()->json(['ok' => true]);
+        }
+
+        return back()->with('success', __('Reservierung geändert: :wann Uhr.', [
+            'wann' => $neuerStart->translatedFormat('D, d.m.').' '.$neuerStart->format('H:i'),
+        ]));
     }
 
     public function export(Request $request): StreamedResponse
