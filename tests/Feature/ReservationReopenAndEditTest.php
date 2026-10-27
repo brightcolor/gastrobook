@@ -381,7 +381,7 @@ class ReservationReopenAndEditTest extends TestCase
     {
         Mail::fake();
         $setup = $this->createTenantSetup();
-        $setup['location']->settings()->update(['max_party_online' => 4, 'min_lead_minutes' => 100000]);
+        $setup['location']->settings()->update(['max_party_online' => 4, 'min_lead_minutes' => 10000]);
         $admin = $this->createMember($setup['tenant'], 'tenant_admin');
         $admin->forceFill(['current_location_id' => $setup['location']->id])->save();
         $reservation = $this->book($setup);
