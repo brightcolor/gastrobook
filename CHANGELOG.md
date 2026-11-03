@@ -1,5 +1,35 @@
 # Changelog
 
+## [1.137.1] – 2026-11-03
+
+### Sperrzeit-Meldung nennt dem Team Raum, Zeitraum und Grund
+
+Beim Anlegen einer Reservierung im Adminbereich kam bei einer Sperrzeit die
+Gast-Meldung „Zu diesem Zeitpunkt sind wir leider geschlossen. Bitte wählen Sie
+einen anderen Tag.“ Das stimmte oft nicht: War nur ein einzelner Raum gesperrt,
+waren die übrigen Räume frei, und das Team musste die passende Sperrzeit selbst
+suchen.
+
+- **Neue Meldung für das Team.** `ReservationLifecycleService::teamBlockMessage`
+  nennt bei einer Sperrzeit, ob ein Raum („Der Raum „…“ ist … gesperrt.“) oder
+  der ganze Betrieb gesperrt ist, den Zeitraum (am selben Tag „am … von … bis …
+  Uhr“, sonst „vom … bis …“), den eingetragenen Grund und den Weg zur Sperrzeit
+  unter Einstellungen › Ausnahmen. Bei einem Raum schlägt sie Tische in einem
+  anderen Raum vor. Andere Ablehnungsgründe behalten die bisherige Team-Meldung.
+- **Wo sie erscheint.** Anlegen im Adminbereich (`create()` mit angemeldeter
+  Person und einer Quelle außer `online`), Umbuchen durch das Team, Wieder-
+  freigeben einer Reservierung und Walk-ins. Online-Buchungen und die
+  Schnittstelle ohne angemeldete Person zeigen weiter die Gast-Meldung, ohne
+  den internen Grund.
+- **Eine Abfrage für Prüfung und Meldung.**
+  `ReservationAvailabilityService::blockingBlackout` liefert die Sperrzeit, an
+  der ein Zeitraum scheitert: zuerst eine für den ganzen Betrieb, sonst eine
+  für den Raum eines gewählten Tisches. `bookingBlockReason` und die
+  Slot-Prüfung nutzen dieselben Abfragen, damit Prüfung und Meldung nicht
+  auseinanderlaufen.
+- Tests: `BlackoutMessageTest` (Raum, ganzer Betrieb über mehrere Tage, ohne
+  Grund, Schnittstelle, Online-Buchung, Umbuchen durch das Team).
+
 ## [1.137.0] – 2026-10-27
 
 ### Reservierungsbuch: Reservierungen wieder freigeben und in der Übersicht bearbeiten
