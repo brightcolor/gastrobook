@@ -110,7 +110,7 @@ class WalkInController extends Controller
             );
 
             if ($grund !== null) {
-                $message = $this->lifecycle->availabilityMessage($grund);
+                $message = $this->lifecycle->teamBlockMessage($grund, $location, $nowUtc, $endeUtc, [$table->id]);
 
                 return $request->wantsJson()
                     ? response()->json(['message' => $message], 422)

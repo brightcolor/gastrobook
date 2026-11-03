@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ReservationStatus;
+use App\Models\BlackoutPeriod;
 use App\Models\Location;
 use Carbon\CarbonImmutable;
 
@@ -230,13 +231,7 @@ class ReservationAvailabilityService
         }
 
         // Location-wide full blackout.
-        $fullBlackout = $location->blackoutPeriods()
-            ->whereNull('room_id')
-            ->whereNull('reduce_covers_to')
-            ->where('starts_at', '<', $endUtc)
-            ->where('ends_at', '>', $startUtc)
-            ->exists();
-        if ($fullBlackout) {
+        if ($this->locationBlackout($location, $startUtc, $endUtc) !== null) {
             return 'blackout';
         }
 
@@ -246,17 +241,8 @@ class ReservationAvailabilityService
         }
 
         // Room-specific blackout covering any of the chosen tables.
-        if ($tableIds !== []) {
-            $blockedRooms = $location->blackoutPeriods()
-                ->whereNotNull('room_id')
-                ->whereNull('reduce_covers_to')
-                ->where('starts_at', '<', $endUtc)
-                ->where('ends_at', '>', $startUtc)
-                ->pluck('room_id')
-                ->all();
-            if ($blockedRooms !== [] && $location->tables()->whereIn('id', $tableIds)->whereIn('room_id', $blockedRooms)->exists()) {
-                return 'blackout';
-            }
+        if ($this->roomBlackout($location, $startUtc, $endUtc, $tableIds) !== null) {
+            return 'blackout';
         }
 
         // Platzlimit. Es steckte bisher nur in checkSlotDetailed, also im Weg
@@ -283,6 +269,47 @@ class ReservationAvailabilityService
         }
 
         return null;
+    }
+
+    /**
+     * Die Sperrzeit, an der ein Zeitraum scheitert: zuerst eine für den ganzen
+     * Betrieb, sonst eine für den Raum eines gewählten Tisches. Gezählt werden
+     * nur vollständige Sperren; eine Sperrzeit mit "Max. Gäste" begrenzt nur.
+     * Die Meldung an das Team nennt daraus Raum, Zeitraum und Grund.
+     *
+     * @param  array<int>  $tableIds
+     */
+    public function blockingBlackout(Location $location, CarbonImmutable $startUtc, CarbonImmutable $endUtc, array $tableIds = []): ?BlackoutPeriod
+    {
+        return $this->locationBlackout($location, $startUtc, $endUtc)
+            ?? $this->roomBlackout($location, $startUtc, $endUtc, $tableIds);
+    }
+
+    private function locationBlackout(Location $location, CarbonImmutable $startUtc, CarbonImmutable $endUtc): ?BlackoutPeriod
+    {
+        return $location->blackoutPeriods()
+            ->whereNull('room_id')
+            ->whereNull('reduce_covers_to')
+            ->where('starts_at', '<', $endUtc)
+            ->where('ends_at', '>', $startUtc)
+            ->orderBy('starts_at')
+            ->first();
+    }
+
+    /** @param  array<int>  $tableIds */
+    private function roomBlackout(Location $location, CarbonImmutable $startUtc, CarbonImmutable $endUtc, array $tableIds): ?BlackoutPeriod
+    {
+        if ($tableIds === []) {
+            return null;
+        }
+
+        return $location->blackoutPeriods()
+            ->whereNull('reduce_covers_to')
+            ->where('starts_at', '<', $endUtc)
+            ->where('ends_at', '>', $startUtc)
+            ->whereIn('room_id', $location->tables()->whereIn('id', $tableIds)->select('room_id'))
+            ->orderBy('starts_at')
+            ->first();
     }
 
     /**
@@ -380,13 +407,7 @@ class ReservationAvailabilityService
         }
 
         // Location-wide blackout (room_id null, no reduced capacity = full block)
-        $fullBlackout = $location->blackoutPeriods()
-            ->whereNull('room_id')
-            ->whereNull('reduce_covers_to')
-            ->where('starts_at', '<', $endUtc)
-            ->where('ends_at', '>', $startUtc)
-            ->exists();
-        if ($fullBlackout) {
+        if ($this->locationBlackout($location, $startUtc, $endUtc) !== null) {
             return [false, 'blackout', []];
         }
 

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\ReservationStatus;
 use App\Mail\Layout\GuestText;
 use App\Mail\Layout\MailFrameFactory;
+use App\Models\BlackoutPeriod;
 use App\Models\Location;
 use App\Models\NotificationLog;
 use App\Models\Refund;
@@ -67,6 +68,11 @@ class ReservationLifecycleService
         return DB::transaction(function () use ($location, $data, $actor, $online, $settings, $startLocal, $startUtc, $endUtc, $duration) {
             $tableIds = $data['table_ids'] ?? [];
 
+            // Bucht das Team im Adminbereich, nennt die Ablehnung die genaue
+            // Sperrzeit. Online-Buchungen und die API ohne angemeldete Person
+            // bekommen die Gast-Formulierung, ohne internen Grund.
+            $forTeam = $actor !== null && ! $online;
+
             // Die Sperre steht bewusst VOR der Ausnahme: Der Salon-Pfad
             // ueberspringt zwar die Tischsuche, braucht aber dieselbe
             // Serialisierung – sonst pruefen zwei gleichzeitige Anfragen beide
@@ -115,7 +121,9 @@ class ReservationLifecycleService
                     ]);
                     if (! $check['available']) {
                         throw ValidationException::withMessages([
-                            'start_at' => $this->availabilityMessage($check['reason']),
+                            'start_at' => $forTeam
+                                ? $this->teamBlockMessage((string) $check['reason'], $location, $startUtc, $endUtc)
+                                : $this->availabilityMessage($check['reason']),
                         ]);
                     }
                     $tableIds = $check['table_ids'];
@@ -132,7 +140,9 @@ class ReservationLifecycleService
                     ]);
                     if ($blockReason !== null) {
                         throw ValidationException::withMessages([
-                            'start_at' => $this->availabilityMessage($blockReason),
+                            'start_at' => $forTeam
+                                ? $this->teamBlockMessage($blockReason, $location, $startUtc, $endUtc, $tableIds)
+                                : $this->availabilityMessage($blockReason),
                         ]);
                     }
 
@@ -661,7 +671,9 @@ class ReservationLifecycleService
             $blockReason = $this->availability->bookingBlockReason($location, $newStartLocal, $startUtc, $endUtc, [], $platz);
             if ($blockReason !== null) {
                 throw ValidationException::withMessages([
-                    'time' => $this->reasonMessage($blockReason, $actorType),
+                    'time' => $istGast
+                        ? $this->availabilityMessage($blockReason)
+                        : $this->teamBlockMessage($blockReason, $location, $startUtc, $endUtc),
                 ]);
             }
 
@@ -695,7 +707,9 @@ class ReservationLifecycleService
                 ]);
                 if (! $check['available']) {
                     throw ValidationException::withMessages([
-                        'time' => $this->reasonMessage((string) $check['reason'], $actorType),
+                        'time' => $istGast
+                            ? $this->availabilityMessage((string) $check['reason'])
+                            : $this->teamBlockMessage((string) $check['reason'], $location, $startUtc, $endUtc),
                     ]);
                 }
 
@@ -721,7 +735,9 @@ class ReservationLifecycleService
                     $roomBlock = $this->availability->bookingBlockReason($location, $newStartLocal, $startUtc, $endUtc, $tableIds, $platz);
                     if ($roomBlock !== null) {
                         throw ValidationException::withMessages([
-                            'time' => $this->reasonMessage($roomBlock, $actorType),
+                            'time' => $istGast
+                                ? $this->availabilityMessage($roomBlock)
+                                : $this->teamBlockMessage($roomBlock, $location, $startUtc, $endUtc, $tableIds),
                         ]);
                     }
                 }
@@ -1215,7 +1231,7 @@ class ReservationLifecycleService
         $platz = ['party_size' => (int) $reservation->party_size, 'exclude_reservation_id' => $reservation->id];
         $grund = $this->availability->bookingBlockReason($location, $startLocal, $startUtc, $endUtc, [], $platz);
         if ($grund !== null) {
-            throw ValidationException::withMessages(['status' => $this->reasonMessage($grund, 'user')]);
+            throw ValidationException::withMessages(['status' => $this->teamBlockMessage($grund, $location, $startUtc, $endUtc)]);
         }
 
         if ($reservation->staff_member_id) {
@@ -1246,7 +1262,7 @@ class ReservationLifecycleService
             'exclude_reservation_id' => $reservation->id,
         ]);
         if (! $check['available']) {
-            throw ValidationException::withMessages(['status' => $this->reasonMessage((string) $check['reason'], 'user')]);
+            throw ValidationException::withMessages(['status' => $this->teamBlockMessage((string) $check['reason'], $location, $startUtc, $endUtc)]);
         }
 
         // Im Platzmodus kommen bewusst keine Tische zurueck: Zuordnung bleibt.
@@ -1264,12 +1280,61 @@ class ReservationLifecycleService
         }
 
         return match ($reason) {
-            'blackout' => __('In diesem Zeitraum ist eine Sperrzeit eingetragen. Wähle eine andere Zeit oder nimm die Sperrzeit heraus.'),
+            'blackout' => __('In diesem Zeitraum ist eine Sperrzeit eingetragen. Wähle eine andere Zeit oder nimm die Sperrzeit unter Einstellungen › Ausnahmen heraus.'),
             'outside_opening_hours' => __('Zu dieser Uhrzeit hat der Betrieb nicht geöffnet. Wähle eine Zeit innerhalb der Öffnungszeiten.'),
             'covers_full' => __('Zu dieser Zeit sind alle Plätze vergeben. Wähle eine andere Zeit oder gib Plätze frei.'),
             'no_table' => __('Zu dieser Zeit ist kein passender Tisch frei. Wähle eine andere Zeit oder Personenzahl oder gib einen Tisch frei.'),
             default => __('Zu dieser Zeit ist kein Platz mehr frei. Wähle eine andere Zeit.'),
         };
+    }
+
+    /**
+     * Die Meldung für das Team, wenn eine Prüfung einen Zeitraum ablehnt. Bei
+     * einer Sperrzeit nennt sie Raum oder Betrieb, Zeitraum und Grund. Die
+     * allgemeine Formulierung ließ offen, welche Sperre greift - und sagte bei
+     * einem einzelnen gesperrten Raum, der ganze Betrieb sei geschlossen.
+     *
+     * @param  array<int>  $tableIds  gewählte Tische, für Sperrzeiten eines Raums
+     */
+    public function teamBlockMessage(string $reason, Location $location, CarbonImmutable $startUtc, CarbonImmutable $endUtc, array $tableIds = []): string
+    {
+        if ($reason === 'blackout') {
+            $blackout = $this->availability->blockingBlackout($location, $startUtc, $endUtc, $tableIds);
+            if ($blackout !== null) {
+                return $this->blackoutMessage($blackout, $location->timezone);
+            }
+        }
+
+        return $this->reasonMessage($reason, 'user');
+    }
+
+    private function blackoutMessage(BlackoutPeriod $blackout, string $tz): string
+    {
+        $from = CarbonImmutable::instance($blackout->starts_at)->setTimezone($tz);
+        $until = CarbonImmutable::instance($blackout->ends_at)->setTimezone($tz);
+
+        $period = $from->isSameDay($until)
+            ? __('am :day von :from bis :until Uhr', ['day' => $from->format('d.m.Y'), 'from' => $from->format('H:i'), 'until' => $until->format('H:i')])
+            : __('vom :from Uhr bis :until Uhr', ['from' => $from->format('d.m.Y, H:i'), 'until' => $until->format('d.m.Y, H:i')]);
+
+        $roomName = $blackout->room_id !== null
+            ? $blackout->room()->withoutGlobalScopes()->value('name')
+            : null;
+
+        $parts = [$roomName !== null
+            ? __('Der Raum „:room“ ist :period gesperrt.', ['room' => $roomName, 'period' => $period])
+            : __('Der ganze Betrieb ist :period gesperrt.', ['period' => $period])];
+
+        $reason = rtrim(trim((string) $blackout->reason), '.!?');
+        if ($reason !== '') {
+            $parts[] = __('Grund: :reason.', ['reason' => $reason]);
+        }
+
+        $parts[] = $roomName !== null
+            ? __('Wähle eine andere Zeit, Tische in einem anderen Raum oder nimm die Sperrzeit unter Einstellungen › Ausnahmen heraus.')
+            : __('Wähle eine andere Zeit oder nimm die Sperrzeit unter Einstellungen › Ausnahmen heraus.');
+
+        return implode(' ', $parts);
     }
 
     /**
