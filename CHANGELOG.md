@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.138.1] – 2026-11-25
+
+### Kein widersprüchlicher Hinweis bei vergebenem Wunschtisch
+
+- War der Wunschtisch beim Absenden schon vergeben oder gehalten, stand unter
+  dem Formular zusätzlich „Dieser Zeitpunkt ist leider nicht mehr verfügbar“,
+  und als Alternative wurde genau die gewählte Uhrzeit angeboten. Ist die
+  Uhrzeit mit einem anderen Tisch weiter buchbar, entfällt dieser Hinweis
+  jetzt. Der Gast liest nur die Meldung zum Tisch und sieht im Tischplan die
+  freien Tische. Ist die Uhrzeit wirklich ausgebucht, schlägt Swayy wie bisher
+  andere Zeiten vor.
+
 ## [1.138.0] – 2026-11-25
 
 ### Tisch beim Buchen halten, Tisch löschen während einer Buchung
