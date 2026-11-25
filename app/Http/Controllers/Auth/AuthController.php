@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Location;
 use App\Models\Tenant;
 use App\Services\AuditLogger;
+use App\Support\ContactFieldRules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -21,7 +22,7 @@ class AuthController extends Controller
     public function login(Request $request, AuditLogger $audit)
     {
         $credentials = $request->validate([
-            'email' => ['required', 'email'],
+            'email' => ['required', 'email', ContactFieldRules::emailMax()],
             'password' => ['required', 'string'],
         ]);
 

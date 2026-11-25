@@ -8,6 +8,7 @@ use App\Models\Tag;
 use App\Services\AuditLogger;
 use App\Services\GuestMergeService;
 use App\Services\GuestPrivacyService;
+use App\Support\ContactFieldRules;
 use App\Support\Csv;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
@@ -130,8 +131,8 @@ class GuestController extends Controller
         $validated = $request->validate([
             'first_name' => ['nullable', 'string', 'max:80'],
             'last_name' => ['required', 'string', 'max:80'],
-            'email' => ['nullable', 'email:rfc'],
-            'phone' => ['nullable', 'string', 'max:40'],
+            'email' => ['nullable', 'email:rfc', ContactFieldRules::emailMax()],
+            'phone' => ['nullable', 'string', ContactFieldRules::phoneMax()],
             'birthday' => ['nullable', 'date'],
             'preferences' => ['nullable', 'string', 'max:1000'],
             'allergies' => ['nullable', 'string', 'max:500'],

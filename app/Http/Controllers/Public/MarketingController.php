@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\ContactRequestMail;
 use App\Models\Plan;
 use App\Services\LegalDocumentStatus;
+use App\Support\ContactFieldRules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -73,7 +74,7 @@ class MarketingController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:120'],
-            'email' => ['required', 'email:rfc', 'max:255'],
+            'email' => ['required', 'email:rfc', ContactFieldRules::emailMax()],
             'message' => ['required', 'string', 'max:5000'],
         ]);
 

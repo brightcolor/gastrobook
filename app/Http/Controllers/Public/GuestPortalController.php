@@ -12,6 +12,7 @@ use App\Models\Reservation;
 use App\Models\Tenant;
 use App\Services\GuestAuthService;
 use App\Services\ReservationLifecycleService;
+use App\Support\ContactFieldRules;
 use Illuminate\Http\Request;
 
 class GuestPortalController extends Controller
@@ -26,7 +27,7 @@ class GuestPortalController extends Controller
     public function sendLink(Request $request, string $tenantSlug)
     {
         $tenant = $this->tenant($tenantSlug);
-        $request->validate(['email' => ['required', 'email:rfc']]);
+        $request->validate(['email' => ['required', 'email:rfc', ContactFieldRules::emailMax()]]);
 
         if (! $request->filled('website')) { // honeypot
             $this->auth->sendMagicLink($tenant, $request->input('email'));

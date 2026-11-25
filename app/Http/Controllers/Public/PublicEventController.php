@@ -9,6 +9,7 @@ use App\Models\Location;
 use App\Models\Tenant;
 use App\Services\EventBookingService;
 use App\Services\Payments\PaymentProviderManager;
+use App\Support\ContactFieldRules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -77,8 +78,8 @@ class PublicEventController extends Controller
         $validated = $request->validate([
             'ticket_count' => ['required', 'integer', 'min:1', 'max:50'],
             'name' => ['required', 'string', 'max:120'],
-            'email' => ['required', 'email:rfc'],
-            'phone' => ['nullable', 'string', 'max:40'],
+            'email' => ['required', 'email:rfc', ContactFieldRules::emailMax()],
+            'phone' => ['nullable', 'string', ContactFieldRules::phoneMax()],
             'note' => ['nullable', 'string', 'max:1000'],
             'privacy_accepted' => ['accepted'],
             'newsletter' => ['nullable', 'boolean'],

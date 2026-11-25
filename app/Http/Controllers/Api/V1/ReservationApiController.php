@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Location;
 use App\Models\Reservation;
 use App\Services\ReservationLifecycleService;
+use App\Support\ContactFieldRules;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 
@@ -55,8 +56,8 @@ class ReservationApiController extends Controller
             'time' => ['required', 'date_format:H:i'],
             'party_size' => ['required', 'integer', 'min:1', 'max:100'],
             'guest_name' => ['required', 'string', 'max:120'],
-            'guest_email' => ['nullable', 'email:rfc'],
-            'guest_phone' => ['nullable', 'string', 'max:40'],
+            'guest_email' => ['nullable', 'email:rfc', ContactFieldRules::emailMax()],
+            'guest_phone' => ['nullable', 'string', ContactFieldRules::phoneMax()],
             'note' => ['nullable', 'string', 'max:1000'],
             'source' => ['nullable', 'in:api,phone_assistant'],
         ]);

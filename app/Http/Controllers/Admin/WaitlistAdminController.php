@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\WaitlistEntry;
 use App\Models\WaitlistOffer;
 use App\Services\WaitlistService;
+use App\Support\ContactFieldRules;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -49,8 +50,8 @@ class WaitlistAdminController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:120'],
-            'email' => ['nullable', 'email:rfc'],
-            'phone' => ['nullable', 'string', 'max:40'],
+            'email' => ['nullable', 'email:rfc', ContactFieldRules::emailMax()],
+            'phone' => ['nullable', 'string', ContactFieldRules::phoneMax()],
             'party_size' => ['required', 'integer', 'min:1', 'max:100'],
             'date' => ['required', 'date_format:Y-m-d'],
             'time' => ['nullable', 'date_format:H:i'],

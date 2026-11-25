@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Saas;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Support\ContactFieldRules;
 use App\Support\PasswordPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -45,7 +46,7 @@ class SaasUserController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:120'],
-            'email' => ['required', 'email:rfc', 'max:200', 'unique:users,email'],
+            'email' => ['required', 'email:rfc', ContactFieldRules::emailMax(), 'unique:users,email'],
             'password' => ['required', 'string', PasswordPolicy::rule()],
             'saas_role' => ['nullable', Rule::in(self::SAAS_ROLES)],
         ]);

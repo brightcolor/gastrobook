@@ -11,6 +11,7 @@ use App\Models\TenantUser;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\LegalDocumentStatus;
+use App\Support\ContactFieldRules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -78,7 +79,7 @@ class SaasTenantController extends Controller
             'name' => ['required', 'string', 'max:120'],
             'plan_id' => ['required', 'exists:plans,id'],
             'owner_name' => ['required', 'string', 'max:120'],
-            'owner_email' => ['required', 'email:rfc'],
+            'owner_email' => ['required', 'email:rfc', ContactFieldRules::emailMax()],
             'location_name' => ['required', 'string', 'max:120'],
             'timezone' => ['nullable', 'timezone'],
         ]);

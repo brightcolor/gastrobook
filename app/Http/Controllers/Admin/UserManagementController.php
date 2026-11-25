@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Rules\AssignableRole;
 use App\Services\AuditLogger;
 use App\Services\PlanLimitService;
+use App\Support\ContactFieldRules;
 use App\Support\RoleAssignment;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
@@ -74,7 +75,7 @@ class UserManagementController extends Controller
         }
 
         $validated = $request->validate([
-            'email' => ['required', 'email:rfc', 'max:200'],
+            'email' => ['required', 'email:rfc', ContactFieldRules::emailMax()],
             'role' => ['required', new AssignableRole($request->user(), $tenant)],
             'all_locations' => ['nullable', 'boolean'],
             'location_ids' => ['nullable', 'array'],
