@@ -114,6 +114,10 @@ Route::middleware('throttle:booking')->group(function () {
         ->middleware('cap:booking')->name('events.store');
 });
 
+// Tisch beim Buchen halten: eigene Drosselung, denn ein Gast hält bei jeder Wahl einer Uhrzeit oder eines Tisches neu.
+Route::post('/book/{tenantSlug}/{locationSlug}/hold', [PublicBookingController::class, 'hold'])
+    ->middleware('throttle:booking-hold')->name('booking.hold');
+
 Route::get('/event-booking/{code}/{token}', [PublicEventController::class, 'manage'])
     ->middleware('throttle:booking-slots')->name('events.manage');
 Route::post('/event-booking/{code}/{token}/cancel', [PublicEventController::class, 'cancel'])

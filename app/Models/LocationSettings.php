@@ -20,7 +20,7 @@ class LocationSettings extends Model
         'waitlist_enabled', 'walkins_enabled',
         'cancellation_deadline_minutes', 'modification_deadline_minutes',
         'field_rules', 'reminder_enabled', 'reminder_hours_before', 'sms_reminder_enabled',
-        'gap_optimization_enabled', 'public_floorplan_enabled',
+        'gap_optimization_enabled', 'public_floorplan_enabled', 'table_hold_enabled', 'table_hold_minutes',
         'refund_mode', 'refund_percent', 'refund_processing', 'require_email_confirmation',
         'confetti_on_booking', 'guest_address',
         'owner_notification_enabled', 'owner_notification_email',
@@ -48,6 +48,7 @@ class LocationSettings extends Model
         'sms_reminder_enabled' => false,
         'gap_optimization_enabled' => false,
         'public_floorplan_enabled' => false,
+        'table_hold_enabled' => false,
         'refund_mode' => 'off',
         'refund_percent' => 100,
         'refund_processing' => 'immediate',
@@ -73,6 +74,8 @@ class LocationSettings extends Model
             'sms_reminder_enabled' => 'boolean',
             'gap_optimization_enabled' => 'boolean',
             'public_floorplan_enabled' => 'boolean',
+            'table_hold_enabled' => 'boolean',
+            'table_hold_minutes' => 'integer',
             'require_email_confirmation' => 'boolean',
             'confetti_on_booking' => 'boolean',
             'feedback_enabled' => 'boolean',
@@ -92,6 +95,22 @@ class LocationSettings extends Model
     public function du(): bool
     {
         return $this->guest_address === 'du';
+    }
+
+    /**
+     * So viele Minuten hält Swayy einen Tisch für einen Gast, der eine Uhrzeit gewählt hat; null = das Halten ist aus.
+     * Nur Restaurants, die nach Tischen zählen: Im Modus „Nach Personen“ gibt es keinen Tisch zu halten. Ohne eigenen
+     * Wert gilt die Vorgabe aus config/swayy.php (booking.hold_default_minutes).
+     */
+    public function tableHoldMinutes(): ?int
+    {
+        if (! $this->table_hold_enabled || $this->capacity_mode === 'person') {
+            return null;
+        }
+
+        $minutes = $this->table_hold_minutes ?? (int) config('swayy.booking.hold_default_minutes');
+
+        return max(1, min((int) config('swayy.booking.hold_max_minutes'), (int) $minutes));
     }
 
     /**
