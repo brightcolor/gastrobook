@@ -33,6 +33,12 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
 
+        // Tisch beim Buchen halten: je Adresse und Minute (swayy.booking.hold_per_minute). So hält niemand im
+        // Sekundentakt alle Tische eines Betriebs fest.
+        RateLimiter::for('booking-hold', function (Request $request) {
+            return Limit::perMinute((int) config('swayy.booking.hold_per_minute'))->by($request->ip());
+        });
+
         RateLimiter::for('booking-slots', function (Request $request) {
             return Limit::perMinute(60)->by($request->ip());
         });

@@ -64,6 +64,10 @@ final class BookingSettingRules
             'duration_rules.*.min_party' => ['nullable', 'integer', 'min:1', 'max:'.$limits['rule_party_max']],
             'duration_rules.*.max_party' => ['nullable', 'integer', 'min:1', 'max:'.$limits['rule_party_max']],
             'duration_rules.*.duration' => ['nullable', 'integer', 'min:'.$limits['rule_duration_min'], 'max:'.$limits['rule_duration_max']],
+            // Tisch beim Buchen halten. „sometimes“: Die Seite sendet den Schalter immer (x-checkbox schickt ohne Haken
+            // eine 0); ältere Aufrufer ohne das Feld lassen die Einstellung, wie sie ist.
+            'table_hold_enabled' => ['sometimes', 'boolean'],
+            'table_hold_minutes' => ['nullable', 'required_if_accepted:table_hold_enabled', 'integer', 'min:1', 'max:'.$limits['hold_max_minutes']],
         ];
     }
 
@@ -130,6 +134,9 @@ final class BookingSettingRules
             // Gespeicherte Regeln aus der Zeit vor der Grenze von 100 Personen landen hier.
             'duration_rules.*.min_party.max' => __('Die Buchungswege nehmen Gruppen bis :max Personen an. Bitte bei „:attribute“ höchstens :max eintragen oder die Zeile entfernen.'),
             'duration_rules.*.max_party.max' => __('Die Buchungswege nehmen Gruppen bis :max Personen an. Bitte bei „:attribute“ höchstens :max eintragen oder die Zeile entfernen.'),
+            'table_hold_minutes.required_if_accepted' => __('Bitte bei „Haltezeit“ eintragen, wie viele Minuten der Tisch gehalten wird, oder das Halten ausschalten.'),
+            'table_hold_minutes.min' => __('Die Haltezeit beträgt mindestens :min Minute. Bitte einen größeren Wert eintragen.'),
+            'table_hold_minutes.max' => __('Die Haltezeit beträgt höchstens :max Minuten. Bitte einen kleineren Wert eintragen.'),
             'max_party_online.gte' => __('Die größte Gruppe ist kleiner als die kleinste. Bitte bei „Größte Gruppe“ mindestens :value eintragen.'),
         ];
 
@@ -167,6 +174,8 @@ final class BookingSettingRules
             'capacity_mode' => __('Zählweise'),
             'max_covers_per_slot' => __('Höchstens gleichzeitig'),
             'gap_optimization_enabled' => __('Lückenoptimierung'),
+            'table_hold_enabled' => __('Tisch beim Buchen halten'),
+            'table_hold_minutes' => __('Haltezeit'),
             'duration_rules' => __('Tischzeiten'),
             'duration_rules.*.min_party' => __('Ab Personen'),
             'duration_rules.*.max_party' => __('Bis Personen'),

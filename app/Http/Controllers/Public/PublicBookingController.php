@@ -8,6 +8,7 @@ use App\Jobs\ExpireUnpaidReservations;
 use App\Models\Event;
 use App\Models\FloorZone;
 use App\Models\Location;
+use App\Models\LocationSettings;
 use App\Models\PaymentIntent;
 use App\Models\Reservation;
 use App\Models\RestaurantTable;
@@ -22,6 +23,7 @@ use App\Services\ReservationLifecycleService;
 use App\Services\SalonAvailabilityService;
 use App\Services\SeasonService;
 use App\Services\TableAssignmentService;
+use App\Services\TableHolds;
 use App\Services\WaitlistService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -29,6 +31,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
@@ -43,6 +46,7 @@ class PublicBookingController extends Controller
         private readonly RefundService $refunds,
         private readonly GuestAuthService $guestAuth,
         private readonly SeasonService $seasons,
+        private readonly TableHolds $holds,
     ) {}
 
     /**
@@ -169,6 +173,8 @@ class PublicBookingController extends Controller
             'storeUrl' => $storeUrl ?: route('booking.store', [$tenant->slug, $location->slug]),
             'dateMin' => $dateMin,
             'dateMax' => $dateMax,
+            // Tisch beim Buchen halten: Minuten oder null (aus, Salon, Modus „Nach Personen“).
+            'holdMinutes' => $tenant->isSalon() ? null : $location->effectiveSettings()->tableHoldMinutes(),
         ];
 
         if ($tenant->isSalon()) {
@@ -214,10 +220,14 @@ class PublicBookingController extends Controller
         $validated = $request->validate([
             'date' => ['required', 'date_format:Y-m-d'],
             'party_size' => ['required', 'integer', 'min:1', 'max:100'],
+            'hold' => ['nullable', 'string', 'max:64'],
         ]);
 
         $localDate = CarbonImmutable::parse($validated['date'], $location->timezone)->startOfDay();
-        $slots = $this->availability->slotsFor($location, $localDate, (int) $validated['party_size']);
+        // Mit der Kennung des Gastes: Den Tisch, den er gerade hält, sieht er weiter als frei.
+        $slots = $this->availability->slotsFor($location, $localDate, (int) $validated['party_size'], [
+            'hold_token' => $validated['hold'] ?? null,
+        ]);
 
         $available = array_values(array_filter($slots, fn ($s) => $s['available']));
 
@@ -415,6 +425,7 @@ class PublicBookingController extends Controller
             'date' => ['required', 'date_format:Y-m-d'],
             'time' => ['required', 'date_format:H:i'],
             'party_size' => ['required', 'integer', 'min:1', 'max:100'],
+            'hold' => ['nullable', 'string', 'max:64'],
         ]);
 
         $partySize = (int) $validated['party_size'];
@@ -426,6 +437,10 @@ class PublicBookingController extends Controller
         $windowEnd = $startUtc->addMinutes($duration + $buffer);
 
         $busy = $this->tableAssignment->busyTableIds($location, $windowStart, $windowEnd, null);
+        // Tische, die andere Gäste gerade halten, zeigt der Plan als belegt; den eigenen als frei.
+        if ($settings->table_hold_enabled) {
+            $busy = array_merge($busy, $this->holds->heldTableIds($location, $windowStart, $windowEnd, $validated['hold'] ?? null));
+        }
 
         $zonesByRoom = FloorZone::where('location_id', $location->id)
             ->orderBy('sort_order')
@@ -489,6 +504,121 @@ class PublicBookingController extends Controller
         return response()->json(['rooms' => $rooms]);
     }
 
+    /**
+     * POST /book/{tenant}/{location}/hold — hält den Tisch für die gewählte Uhrzeit, während der Gast seine Angaben
+     * einträgt (Einstellung „Tisch beim Buchen halten“).
+     *
+     * Hat der Gast im Tischplan einen Tisch gewählt, hält Swayy diesen, sonst den Tisch, den die Zuteilung jetzt nehmen
+     * würde. Ist nichts frei, antwortet die Seite mit held=false; der Gast bucht trotzdem, und das Absenden prüft erneut.
+     * Ein neues Halten mit derselben Kennung ersetzt das alte, etwa wenn der Gast eine andere Uhrzeit wählt.
+     */
+    public function hold(Request $request, string $tenantSlug, string $locationSlug): JsonResponse
+    {
+        [$tenant, $location] = $this->resolve($tenantSlug, $locationSlug);
+        abort_if($tenant->isSalon(), 404);
+
+        $settings = $location->effectiveSettings();
+        $minutes = $settings->tableHoldMinutes();
+        if ($minutes === null) {
+            return response()->json(['held' => false]);
+        }
+
+        $today = CarbonImmutable::now($location->timezone)->toDateString();
+        $validated = $request->validate([
+            'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:'.$today],
+            'slot_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:'.$today],
+            'time' => ['required', 'date_format:H:i'],
+            'party_size' => ['required', 'integer', 'min:'.$settings->min_party_online, 'max:'.$settings->max_party_online],
+            'table_id' => ['nullable', 'integer'],
+            'hold' => ['nullable', 'string', 'max:64'],
+        ], [
+            'date.*' => __('Das Datum fehlt oder liegt in der Vergangenheit. Bitte den Tag neu wählen.'),
+            'slot_date.*' => __('Das Datum fehlt oder liegt in der Vergangenheit. Bitte den Tag neu wählen.'),
+            'time.*' => __('Die Uhrzeit fehlt. Bitte eine Uhrzeit wählen.'),
+            'party_size.*' => __('Die Personenzahl passt nicht zu den Online-Buchungen dieses Betriebs. Bitte die Personenzahl neu wählen.'),
+        ]);
+
+        $token = $this->holds->validToken($validated['hold'] ?? null) ? $validated['hold'] : null;
+        $partySize = (int) $validated['party_size'];
+        $startLocal = CarbonImmutable::parse(($validated['slot_date'] ?? $validated['date']).' '.$validated['time'], $location->timezone);
+        $startUtc = $startLocal->utc();
+        $endUtc = $startUtc->addMinutes($settings->durationFor($partySize));
+        $tableId = ! empty($validated['table_id']) && $settings->public_floorplan_enabled ? (int) $validated['table_id'] : null;
+
+        $hold = DB::transaction(function () use ($location, $settings, $token, $partySize, $startLocal, $startUtc, $endUtc, $tableId, $minutes) {
+            // Dieselbe Tagessperre wie das Buchen: Zwei Gäste halten so nicht gleichzeitig denselben Tisch, und eine
+            // Buchung, die gerade läuft, sieht das Halten erst, wenn es feststeht.
+            $this->lifecycle->lockSlot($location, $startLocal);
+
+            if ($tableId === null) {
+                $check = $this->availability->checkExact($location, $startLocal, $partySize, ['online' => true, 'hold_token' => $token]);
+                $tableIds = $check['available'] ? $check['table_ids'] : [];
+            } else {
+                $tableIds = $this->freeChosenTable($location, $settings, $tableId, $partySize, $startLocal, $startUtc, $endUtc, $token);
+            }
+
+            if ($tableIds === []) {
+                // Nichts zu halten: Ein altes Halten derselben Kennung gilt nicht mehr für die neue Wahl.
+                $this->holds->release($location, $token);
+
+                return null;
+            }
+
+            return $this->holds->hold($location, $token, $tableIds, $startUtc, $endUtc, $minutes);
+        });
+
+        if ($hold === null) {
+            return response()->json(['held' => false]);
+        }
+
+        return response()->json([
+            'held' => true,
+            'hold' => $hold->token,
+            'until' => $hold->expires_at->copy()->setTimezone($location->timezone)->format('H:i'),
+            'seconds' => max(0, (int) now()->diffInSeconds($hold->expires_at, false)),
+        ]);
+    }
+
+    /**
+     * Der im Tischplan gewählte Tisch, wenn er für die Gruppe passt, online buchbar ist und im Zeitraum niemand sonst ihn
+     * belegt oder hält; sonst eine leere Liste.
+     *
+     * @return array<int, int>
+     */
+    private function freeChosenTable(
+        Location $location,
+        LocationSettings $settings,
+        int $tableId,
+        int $partySize,
+        CarbonImmutable $startLocal,
+        CarbonImmutable $startUtc,
+        CarbonImmutable $endUtc,
+        ?string $token,
+    ): array {
+        $table = $location->tables()->where('is_active', true)->where('online_bookable', true)->whereKey($tableId)->first();
+        if ($table === null || $partySize < $table->min_capacity || $partySize > $table->max_capacity) {
+            return [];
+        }
+
+        $blocked = $this->availability->bookingBlockReason($location, $startLocal, $startUtc, $endUtc, [$table->id], [
+            'online' => true,
+            'party_size' => $partySize,
+        ]);
+        if ($blocked !== null) {
+            return [];
+        }
+
+        $buffer = (int) $settings->buffer_minutes;
+        $windowStart = $startUtc->subMinutes($buffer);
+        $windowEnd = $endUtc->addMinutes($buffer);
+        $busy = array_merge(
+            $this->tableAssignment->busyTableIds($location, $windowStart, $windowEnd, null),
+            $this->holds->heldTableIds($location, $windowStart, $windowEnd, $token),
+        );
+
+        return in_array((int) $table->id, $busy, true) ? [] : [(int) $table->id];
+    }
+
     public function store(Request $request, string $tenantSlug, string $locationSlug)
     {
         [$tenant, $location] = $this->resolve($tenantSlug, $locationSlug);
@@ -520,6 +650,8 @@ class PublicBookingController extends Controller
             // Das Datum des angeklickten Slots. Weicht nur bei Fenstern ueber
             // Mitternacht vom Datum im Kalender ab - dann aber entscheidend.
             'slot_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:'.CarbonImmutable::now($location->timezone)->toDateString()],
+            // Kennung des gehaltenen Tisches (hold()). Eine ungültige Kennung zählt wie keine.
+            'hold_token' => ['nullable', 'string', 'max:64'],
         ];
         foreach (['email' => 'email:rfc', 'phone' => 'string|max:40'] as $field => $rule) {
             $fieldRule = $settings->fieldRule($field);
@@ -581,6 +713,7 @@ class PublicBookingController extends Controller
                 'occasion' => $validated['occasion'] ?? null,
                 'table_ids' => $tableIds,
                 'table_chosen_by_guest' => $tableIds !== [],
+                'hold_token' => $validated['hold_token'] ?? null,
                 'email_confirmation_required' => $needsConfirm,
                 // Ohne array_filter: Ein NICHT gesetzter Haken faellt sonst aus
                 // dem Array, und der Widerruf wird nie verbucht - der Gast

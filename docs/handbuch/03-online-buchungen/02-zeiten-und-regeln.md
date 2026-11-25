@@ -150,6 +150,30 @@ Im Restaurant wählst du unter „Wie Swayy die Plätze zählt“ die Zählweise
 - **Beides**: Es braucht einen passenden Tisch, und die Höchstzahl gilt
   zusätzlich.
 
+### Tisch beim Buchen halten
+
+Wählt ein Gast auf der Buchungsseite eine Uhrzeit, kann Swayy den passenden Tisch
+für ihn festhalten, während er Name und Kontaktdaten einträgt. Hat er im
+Tischplan einen Tisch angeklickt, hält Swayy genau diesen. Andere Gäste sehen den
+Tisch in dieser Zeit als belegt. Der Gast liest auf der Seite, bis wann der Tisch
+für ihn gehalten wird.
+
+- Eingeschaltet wird das Halten unter „Tisch beim Buchen halten“. Ab Werk ist es
+  aus.
+- Die **Haltezeit** legt fest, wie viele Minuten der Tisch gehalten wird. Die
+  Vorgabe sind 3 Minuten, höchstens sind 15 möglich.
+- Läuft die Zeit ab, kann der Gast trotzdem buchen, solange der Tisch noch frei
+  ist.
+- Beim Absenden prüft Swayy immer, ob der Tisch frei ist. Hat ihn inzwischen
+  jemand anderes gebucht oder wurde er gelöscht, erfährt der Gast das vor der
+  Bestätigung und wählt einen anderen Tisch oder eine andere Uhrzeit.
+- Buchungen im Adminbereich sind vom Halten nicht betroffen. Das Halten gilt
+  nur, wenn Swayy nach Tischen zählt oder beides nutzt.
+
+Ein Tisch mit einer kommenden Reservierung lässt sich nicht löschen. Swayy nennt
+dann die Reservierungen, die zuerst an einen anderen Tisch gelegt oder storniert
+werden müssen.
+
 ## 5. Buchungsregeln
 
 **Einstellungen › Buchungen › Buchungsregeln.** Was sie bewirken:

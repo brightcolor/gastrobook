@@ -21,12 +21,15 @@ class ReservationAvailabilityService
         private readonly TimeSlotService $timeSlots,
         private readonly TableAssignmentService $tableAssignment,
         private readonly SeasonService $seasons,
+        private readonly TableHolds $holds,
     ) {}
 
     /**
      * All slots for a local date with availability flags.
      *
-     * @param  array{online?: bool}  $options
+     * `hold_token`: Die Kennung des Gastes, der gerade bucht. Seine eigenen gehaltenen Tische zählen für ihn als frei.
+     *
+     * @param  array{online?: bool, hold_token?: ?string}  $options
      * @return array<int, array{time: string, date: string, start_utc: string, available: bool, reason: ?string}>
      */
     public function slotsFor(Location $location, CarbonImmutable $localDate, int $partySize, array $options = []): array
@@ -53,7 +56,7 @@ class ReservationAvailabilityService
             $startUtc = $startLocal->utc();
             $endUtc = $startUtc->addMinutes($duration);
 
-            [$available, $reason] = $this->checkSlot($location, $startLocal, $startUtc, $endUtc, $partySize, $online, $nowLocal);
+            [$available, $reason] = $this->checkSlot($location, $startLocal, $startUtc, $endUtc, $partySize, $online, $nowLocal, $options['hold_token'] ?? null);
 
             $results[] = [
                 'time' => $startLocal->format('H:i'),
@@ -370,10 +373,10 @@ class ReservationAvailabilityService
         CarbonImmutable $endUtc,
         int $partySize,
         bool $online,
-        CarbonImmutable $nowLocal
+        CarbonImmutable $nowLocal,
+        ?string $holdToken = null
     ): array {
-        [$available, $reason] = [true, null];
-        [$available, $reason] = $this->checkSlotDetailed($location, $startLocal, $startUtc, $endUtc, $partySize, $online, $nowLocal, []);
+        [$available, $reason] = $this->checkSlotDetailed($location, $startLocal, $startUtc, $endUtc, $partySize, $online, $nowLocal, ['hold_token' => $holdToken]);
 
         return [$available, $reason];
     }
@@ -444,14 +447,28 @@ class ReservationAvailabilityService
             return [true, null, []];
         }
 
+        // Zugesagt, aber noch nicht gebucht - siehe findTables(). Dazu auf der
+        // Buchungsseite die Tische, die andere Gaeste gerade halten, waehrend
+        // sie ihre Angaben eintragen (TableHolds). Mit Puffer wie eine
+        // Reservierung. Das Team bucht davon unberuehrt.
+        $busyTableIds = array_map('intval', $options['busy_table_ids'] ?? []);
+        if ($online && $settings->table_hold_enabled) {
+            $buffer = (int) $settings->buffer_minutes;
+            $busyTableIds = array_merge($busyTableIds, $this->holds->heldTableIds(
+                $location,
+                $startUtc->subMinutes($buffer),
+                $endUtc->addMinutes($buffer),
+                $options['hold_token'] ?? null,
+            ));
+        }
+
         // table / hybrid: need an actual table
         $assignment = $this->tableAssignment->findTables($location, $startUtc, $endUtc, $partySize, [
             'online' => $online,
             'accessible' => $options['accessible'] ?? false,
             'room_id' => $options['room_id'] ?? null,
             'exclude_reservation_id' => $options['exclude_reservation_id'] ?? null,
-            // Zugesagt, aber noch nicht gebucht - siehe findTables().
-            'busy_table_ids' => $options['busy_table_ids'] ?? [],
+            'busy_table_ids' => $busyTableIds,
         ]);
 
         if ($assignment === null) {

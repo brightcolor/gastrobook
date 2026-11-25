@@ -98,6 +98,22 @@
                          help="Ohne Eintrag gilt keine Höchstzahl." />
             </div>
         </x-settings.section>
+
+        @php($holdOn = (bool) old('table_hold_enabled', $settings->table_hold_enabled))
+        <x-settings.section id="halten" title="Tisch beim Buchen halten">
+            <x-slot:description>
+                <p>Wählt ein Gast auf der Buchungsseite eine Uhrzeit, hält Swayy den passenden Tisch für ihn fest, während er seine Angaben einträgt. Andere Gäste sehen den Tisch so lange als belegt.</p>
+                <p>Läuft die Zeit ab, kann der Gast trotzdem buchen, solange der Tisch noch frei ist. Beim Absenden prüft Swayy immer, ob der Tisch frei ist. Buchungen im Adminbereich sind davon nicht betroffen.</p>
+                <p>Gilt, wenn Swayy nach Tischen zählt oder beides nutzt.</p>
+            </x-slot:description>
+            <x-checkbox name="table_hold_enabled" label="Tisch beim Buchen halten" :checked="(bool) $settings->table_hold_enabled"
+                        help="Vorgabe: aus." />
+            <div data-show-if="table_hold_enabled:1" @unless($holdOn) hidden @endunless>
+                <x-field name="table_hold_minutes" label="Haltezeit" type="number" unit="Min." class="max-w-48"
+                         :value="$settings->table_hold_minutes ?? $limits['hold_default_minutes']" min="1" :max="$limits['hold_max_minutes']"
+                         :help="'So lange bleibt der Tisch für den Gast reserviert, höchstens '.$limits['hold_max_minutes'].' Minuten.'" />
+            </div>
+        </x-settings.section>
     @endunless
 </form>
 @endsection

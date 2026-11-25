@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.138.0] – 2026-11-25
+
+### Tisch beim Buchen halten, Tisch löschen während einer Buchung
+
+- **Tisch beim Buchen halten (neue Einstellung, ab Werk aus).** Unter
+  Einstellungen › Platz & Zeiten › Kapazität & Dauer hält Swayy auf Wunsch den
+  Tisch für einen Gast fest, sobald er eine Uhrzeit wählt. Hat er im Tischplan
+  einen Tisch angeklickt, hält Swayy genau diesen. Andere Gäste sehen ihn so
+  lange als belegt, der Gast liest „Wir halten den Tisch bis 19:42 Uhr für Sie.“
+  Die Haltezeit ist einstellbar (Vorgabe 3 Minuten, höchstens 15). Läuft sie ab,
+  bucht der Gast trotzdem, solange der Tisch frei ist. Buchungen im
+  Adminbereich bleiben unberührt. Vorgabe, Grenze und Drosselung stehen in
+  `SWAYY_BOOKING_HOLD_*`.
+- **Gelöschter Tisch während einer Buchung.** Die Buchung liest die Tische vor
+  dem Speichern unter einer Sperre. Wird ein Tisch genau in diesem Moment
+  gelöscht, erfährt der Gast vor der Bestätigung: „Der gewählte Tisch steht
+  leider nicht mehr zur Verfügung.“ Vorher konnte die Buchung auf dem
+  gelöschten Tisch landen. Umgekehrt lehnt das Löschen einen Tisch mit
+  kommender Reservierung weiter ab und nennt sie.
+- **Klarere Meldung für Gäste.** Ist der gewählte Tisch beim Absenden schon
+  vergeben, heißt es jetzt „Der gewählte Tisch ist zu dieser Zeit leider nicht
+  mehr frei. Bitte wählen Sie einen anderen Tisch oder eine andere Uhrzeit.“,
+  in der Anrede des Betriebs.
+
 ## [1.137.2] – 2026-11-25
 
 ### Abhängigkeiten aktualisiert

@@ -35,6 +35,7 @@ class ReservationLifecycleService
         private readonly WebhookDispatchService $webhooks,
         private readonly AuditLogger $audit,
         private readonly GuestMailSender $mailSender,
+        private readonly TableHolds $holds,
     ) {}
 
     /**
@@ -50,7 +51,7 @@ class ReservationLifecycleService
      *     consents?: array<string,bool>, ip?: ?string, event_id?: ?int,
      *     skip_availability_check?: bool, duration_minutes?: ?int,
      *     service_id?: ?int, service_ids?: array<int>, staff_member_id?: ?int,
-     *     ad_hoc?: bool, allow_staff_conflict?: bool,
+     *     ad_hoc?: bool, allow_staff_conflict?: bool, hold_token?: ?string,
      * } $data
      */
     public function create(Location $location, array $data, ?User $actor = null): Reservation
@@ -118,6 +119,8 @@ class ReservationLifecycleService
                         'online' => $online,
                         'room_id' => $data['room_id'] ?? null,
                         'ad_hoc' => $adHoc,
+                        // Die eigenen gehaltenen Tische des Gastes zählen für ihn als frei.
+                        'hold_token' => $data['hold_token'] ?? null,
                     ]);
                     if (! $check['available']) {
                         throw ValidationException::withMessages([
@@ -157,10 +160,21 @@ class ReservationLifecycleService
                         $endUtc->addMinutes($puffer),
                         null
                     );
+                    // Auf der Buchungsseite zählen auch Tische, die andere Gäste gerade halten.
+                    if ($online && $settings->table_hold_enabled) {
+                        $busy = array_merge($busy, $this->holds->heldTableIds(
+                            $location,
+                            $startUtc->subMinutes($puffer),
+                            $endUtc->addMinutes($puffer),
+                            $data['hold_token'] ?? null,
+                        ));
+                    }
                     $conflicts = array_intersect($tableIds, $busy);
                     if ($conflicts !== []) {
                         throw ValidationException::withMessages([
-                            'table_ids' => __('Mindestens ein gewählter Tisch ist in diesem Zeitraum bereits belegt.'),
+                            'table_ids' => $forTeam
+                                ? __('Mindestens ein gewählter Tisch ist in diesem Zeitraum bereits belegt.')
+                                : $this->tableGoneMessage($location, false),
                         ]);
                     }
                 }
@@ -266,7 +280,17 @@ class ReservationLifecycleService
             ]);
 
             if ($tableIds !== []) {
+                $this->lockChosenTables($location, $tableIds, match (true) {
+                    $forTeam => $this->teamTableGoneMessage(),
+                    (bool) ($data['table_chosen_by_guest'] ?? false) => $this->tableGoneMessage($location, true),
+                    default => $this->availabilityMessage('no_table'),
+                });
                 $reservation->tables()->sync($tableIds);
+            }
+
+            // Gebucht: Das Halten ist erfüllt und gibt seine Tische frei.
+            if ($online) {
+                $this->holds->release($location, $data['hold_token'] ?? null);
             }
 
             // Mehrere Leistungen: Reihenfolge und Werte zum Zeitpunkt der Buchung stehen mit dem Termin fest, solange die
@@ -433,6 +457,7 @@ class ReservationLifecycleService
             $reservation->update($updates);
 
             if ($reopenTables !== null) {
+                $this->lockChosenTables($reservation->location()->withoutGlobalScope('tenant')->firstOrFail(), $reopenTables, $this->teamTableGoneMessage());
                 $reservation->tables()->sync($reopenTables);
             }
 
@@ -560,6 +585,7 @@ class ReservationLifecycleService
             }
 
             $old = $reservation->tables()->pluck('restaurant_tables.id')->all();
+            $this->lockChosenTables($location, $tableIds, $this->teamTableGoneMessage());
             $reservation->tables()->sync($tableIds);
 
             $this->audit->log(
@@ -758,6 +784,7 @@ class ReservationLifecycleService
                 'party_size' => $partySize,
             ] + $anzahlung);
             if ($tableIds !== null) {
+                $this->lockChosenTables($location, $tableIds, $istGast ? $this->availabilityMessage('no_table') : $this->teamTableGoneMessage());
                 $reservation->tables()->sync($tableIds);
             }
 
@@ -1071,6 +1098,63 @@ class ReservationLifecycleService
     }
 
     /**
+     * Liest die Tische einer Buchung unter einer geteilten Zeilensperre (FOR SHARE) und lehnt ab, wenn einer davon
+     * inzwischen gelöscht wurde.
+     *
+     * Ein Tisch bleibt beim Löschen als Eintrag erhalten (Soft Delete); die Zuordnung hielte also auch auf einen
+     * gelöschten Tisch. Das Löschen (RoomsController::deleteTable) sperrt die Zeile mit FOR UPDATE und zählt dann die
+     * kommenden Reservierungen. Beide Sperren schließen einander aus: Hat die Buchung den Tisch zuerst gesperrt, zählt das
+     * Löschen ihre Reservierung mit und lehnt ab; hat das Löschen zuerst festgeschrieben, findet die Buchung den Tisch
+     * nicht mehr und sagt das dem Gast, bevor er eine Bestätigung sieht.
+     *
+     * Gesperrt wird in der Reihenfolge der Kennungen: Zwei Buchungen mit denselben Tischen sperren in derselben
+     * Reihenfolge.
+     *
+     * @param  array<int>  $tableIds
+     * @param  string  $message  die Meldung, wenn ein Tisch fehlt, passend zum Leser (Gast oder Team)
+     */
+    private function lockChosenTables(Location $location, array $tableIds, string $message): void
+    {
+        $ids = collect($tableIds)->map(fn ($id) => (int) $id)->unique()->sort()->values();
+        if ($ids->isEmpty()) {
+            return;
+        }
+
+        $found = RestaurantTable::withoutGlobalScope('tenant')
+            ->where('location_id', $location->id)
+            ->whereIn('id', $ids)
+            ->orderBy('id')
+            ->sharedLock()
+            ->pluck('id');
+
+        if ($found->count() < $ids->count()) {
+            throw ValidationException::withMessages(['table_ids' => $message]);
+        }
+    }
+
+    private function teamTableGoneMessage(): string
+    {
+        return __('Mindestens ein gewählter Tisch wurde gerade gelöscht. Bitte die Tische neu wählen.');
+    }
+
+    /**
+     * Die Meldung an den Gast, wenn sein Tisch beim Absenden nicht mehr frei ist, in der Anrede des Betriebs.
+     *
+     * @param  bool  $deleted  der Tisch wurde gelöscht (sonst: inzwischen belegt)
+     */
+    private function tableGoneMessage(Location $location, bool $deleted): string
+    {
+        $du = $location->effectiveSettings()->du();
+        $first = $deleted
+            ? __('Der gewählte Tisch steht leider nicht mehr zur Verfügung.')
+            : __('Der gewählte Tisch ist zu dieser Zeit leider nicht mehr frei.');
+
+        return $first.' '.($du
+            ? __('Bitte wähle einen anderen Tisch oder eine andere Uhrzeit.')
+            : __('Bitte wählen Sie einen anderen Tisch oder eine andere Uhrzeit.'));
+    }
+
+    /**
      * Serialisiert konkurrierende Buchungsversuche desselben Standorts an
      * einem Betriebstag.
      *
@@ -1082,7 +1166,7 @@ class ReservationLifecycleService
      * Der Betriebstag statt des Kalendertags, damit ein Fenster ueber
      * Mitternacht nicht in zwei Sperren zerfaellt.
      */
-    private function lockSlot(Location $location, CarbonImmutable $startLocal): void
+    public function lockSlot(Location $location, CarbonImmutable $startLocal): void
     {
         if (DB::getDriverName() !== 'pgsql') {
             return;

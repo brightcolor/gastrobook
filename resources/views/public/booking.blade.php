@@ -3,6 +3,10 @@
 @section('content')
 @php
     $du = $settings->guest_address === 'du';
+    // Hinweis zum gehaltenen Tisch (Tisch beim Buchen halten), in der Anrede des Betriebs.
+    $holdTexts = $du
+        ? ['held' => 'Wir halten den Tisch bis :until Uhr für dich.', 'expired' => 'Die Haltezeit ist abgelaufen. Du kannst trotzdem buchen, solange der Tisch frei ist.']
+        : ['held' => 'Wir halten den Tisch bis :until Uhr für Sie.', 'expired' => 'Die Haltezeit ist abgelaufen. Sie können trotzdem buchen, solange der Tisch frei ist.'];
 @endphp
 
 <style>
@@ -505,6 +509,8 @@ details > summary::-webkit-details-marker { display: none; }
                          Mitternacht gehört „00:30" zum Folgetag, nicht zum Tag im
                          Kalender daneben. --}}
                     <input type="hidden" name="slot_date" id="slotDateInput" value="{{ old('slot_date') }}">
+                    {{-- Kennung des gehaltenen Tisches (Einstellung „Tisch beim Buchen halten“). --}}
+                    <input type="hidden" name="hold_token" id="holdToken" value="{{ old('hold_token') }}">
                     <div id="alternatives" class="hidden rounded-xl bg-amber-50 p-3 text-sm text-amber-900"></div>
                     @error('time')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
 
@@ -550,6 +556,9 @@ details > summary::-webkit-details-marker { display: none; }
                     <span class="text-sm font-semibold">{{ $du ? 'Deine' : 'Ihre' }} Angaben</span>
                 </div>
                 <div class="sp-body space-y-4 px-5 pb-6 sm:px-6">
+                    @if($holdMinutes)
+                    <p id="holdNotice" class="hidden rounded-xl bg-brand/5 px-4 py-3 text-sm font-medium text-stone-700" role="status" aria-live="polite"></p>
+                    @endif
                     <div>
                         <label for="name" class="mb-1.5 block text-sm font-semibold">Name *</label>
                         <input type="text" name="name" id="name" required value="{{ old('name') }}" autocomplete="name"
@@ -674,6 +683,12 @@ details > summary::-webkit-details-marker { display: none; }
     (function () {
         const slotsUrl      = @json(route('booking.slots', [$tenant->slug, $location->slug]));
         const floorplanUrl  = @json(route('booking.floorplan', [$tenant->slug, $location->slug]));
+        // Tisch beim Buchen halten: nur, wenn der Betrieb es eingeschaltet hat.
+        const holdUrl       = @json($holdMinutes ? route('booking.hold', [$tenant->slug, $location->slug]) : null);
+        const holdTexts     = @json($holdTexts);
+        const holdInput     = document.getElementById('holdToken');
+        const holdNotice    = document.getElementById('holdNotice');
+        let holdTimer = null;
         const waitlistUrl   = @json(route('booking.waitlist', [$tenant->slug, $location->slug]));
         const partyInput    = document.getElementById('partySize');
         const dateInput     = document.getElementById('date');
@@ -724,7 +739,42 @@ details > summary::-webkit-details-marker { display: none; }
         function editStep(n) {
             stepState('sp' + n, 'active');
             for (let i = n + 1; i <= 3; i++) stepState('sp' + i, 'locked');
-            if (n <= 2) { timeInput.value = ''; resetFp(); }
+            if (n <= 2) { timeInput.value = ''; resetFp(); showHold(null); }
+        }
+
+        // Hinweis zum gehaltenen Tisch. null blendet ihn aus.
+        function showHold(text) {
+            if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+            if (!holdNotice) return;
+            holdNotice.textContent = text || '';
+            holdNotice.classList.toggle('hidden', !text);
+        }
+
+        // Hält den Tisch für die gewählte Uhrzeit (und den gewählten Tisch). Klappt es nicht, bucht der Gast
+        // trotzdem: Das Absenden prüft ohnehin, ob der Tisch frei ist. Deshalb ohne Fehlermeldung.
+        async function requestHold() {
+            if (!holdUrl || !timeInput.value) return;
+            try {
+                const res = await fetch(holdUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('input[name=_token]')?.value },
+                    body: JSON.stringify({
+                        date: dateInput.value, slot_date: (slotDateInput && slotDateInput.value) || null, time: timeInput.value,
+                        party_size: partyInput.value, table_id: (tableIdInput && tableIdInput.value) || null, hold: holdInput.value || null,
+                    }),
+                });
+                const data = res.ok ? await res.json() : {};
+                if (!data.held) { showHold(null); return; }
+                holdInput.value = data.hold;
+                showHold(holdTexts.held.replace(':until', data.until));
+                holdTimer = setTimeout(() => showHold(holdTexts.expired), Math.max(0, data.seconds) * 1000);
+            } catch (e) {
+                showHold(null);
+            }
+        }
+
+        function holdParam() {
+            return holdInput && holdInput.value ? '&hold=' + encodeURIComponent(holdInput.value) : '';
         }
         window.editStep = editStep;
 
@@ -801,7 +851,8 @@ details > summary::-webkit-details-marker { display: none; }
                 sp2Summary.textContent = fmtDate(echtesDatum) + ' · ' + time + ' Uhr';
                 stepState('sp2', 'done');
                 stepState('sp3', 'active');
-                loadFp();
+                // Erst halten, dann den Tischplan laden: Er zeigt den eigenen gehaltenen Tisch dann als frei.
+                requestHold().then(loadFp);
             });
             return btn;
         }
@@ -860,7 +911,7 @@ details > summary::-webkit-details-marker { display: none; }
             timeInput.value = '';
             if (slotDateInput) slotDateInput.value = '';
             try {
-                const res = await fetch(slotsUrl + '?date=' + dateInput.value + '&party_size=' + partyInput.value, {headers: {Accept: 'application/json'}});
+                const res = await fetch(slotsUrl + '?date=' + dateInput.value + '&party_size=' + partyInput.value + holdParam(), {headers: {Accept: 'application/json'}});
                 const data = await res.json();
                 slotContainer.innerHTML = '';
                 if (!data.slots || !data.slots.length) {
@@ -1006,7 +1057,7 @@ details > summary::-webkit-details-marker { display: none; }
             tableIdInput.value = '';
             activeZoneFilter = null;
             try {
-                const res = await fetch(floorplanUrl + '?date=' + ((slotDateInput && slotDateInput.value) || dateInput.value) + '&time=' + timeInput.value + '&party_size=' + partyInput.value, {headers: {Accept: 'application/json'}});
+                const res = await fetch(floorplanUrl + '?date=' + ((slotDateInput && slotDateInput.value) || dateInput.value) + '&time=' + timeInput.value + '&party_size=' + partyInput.value + holdParam(), {headers: {Accept: 'application/json'}});
                 const data = await res.json();
                 fpRooms = data.rooms || [];
                 if (!fpRooms.length) { fpSection.classList.add('hidden'); return; }
@@ -1172,6 +1223,8 @@ details > summary::-webkit-details-marker { display: none; }
                         fpCanvas.querySelectorAll('button').forEach(b => b.style.outline = '');
                         tableIdInput.value = was ? '' : t.id;
                         if (!was) { el.style.outline = '3px solid var(--brand)'; el.style.outlineOffset = '2px'; }
+                        // Den gewählten Tisch halten; ohne Wahl wieder den Tisch der Zuteilung.
+                        requestHold();
                     });
                 } else {
                     el.disabled = true;

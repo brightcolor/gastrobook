@@ -8,6 +8,7 @@ use App\Support\EnvSetting;
 // Kleinster und größter Wert eines Paares stehen unabhängig in der .env. Der
 // größte Wert liegt nie unter dem kleinsten, sonst lehnte das Feld jeden Wert ab.
 $bookingDurationMin = EnvSetting::integer('SWAYY_BOOKING_DURATION_MIN', default: 30, min: 5, max: 240);
+$bookingHoldMax = EnvSetting::integer('SWAYY_BOOKING_HOLD_MAX_MINUTES', default: 15, min: 1, max: 60);
 $bookingRuleDurationMin = EnvSetting::integer('SWAYY_BOOKING_RULE_DURATION_MIN', default: 15, min: 5, max: 240);
 $serviceDurationMin = EnvSetting::integer('SWAYY_SERVICE_DURATION_MIN', default: 5, min: 1, max: 60);
 // Die Kennung aus Buchstaben ist nie länger als die längste Kennung überhaupt.
@@ -466,6 +467,11 @@ return [
         // Spalten cancellation_deadline_minutes und modification_deadline_minutes (smallint): höchstens 32767.
         'deadline_max_minutes' => EnvSetting::integer('SWAYY_BOOKING_DEADLINE_MAX', default: 20160, min: 0, max: 32767),
         'party_online_max' => EnvSetting::integer('SWAYY_BOOKING_PARTY_ONLINE_MAX', default: 100, min: 1, max: 100),
+        // Tisch beim Buchen halten (Kapazität & Dauer): Vorgabe und längste Haltezeit in Minuten, dazu wie oft eine
+        // Adresse je Minute einen Platz halten darf. Ein Platz kann so nicht im Sekundentakt für alle anderen verschwinden.
+        'hold_max_minutes' => $bookingHoldMax,
+        'hold_default_minutes' => min($bookingHoldMax, EnvSetting::integer('SWAYY_BOOKING_HOLD_DEFAULT_MINUTES', default: 3, min: 1, max: 60)),
+        'hold_per_minute' => EnvSetting::integer('SWAYY_BOOKING_HOLD_PER_MINUTE', default: 10, min: 1, max: 120),
     ],
 
     /*

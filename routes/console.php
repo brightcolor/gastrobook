@@ -5,6 +5,7 @@ use App\Jobs\ExpireUnconfirmedReservations;
 use App\Jobs\ExpireUnpaidReservations;
 use App\Jobs\ProcessScheduledRefunds;
 use App\Jobs\PruneProvisioningRecords;
+use App\Jobs\PruneTableHolds;
 use App\Jobs\PruneUnansweredFeedback;
 use App\Jobs\RunRetentionPolicies;
 use App\Jobs\SendFeedbackRequests;
@@ -19,6 +20,8 @@ Schedule::job(new ProcessScheduledRefunds)->everyFifteenMinutes();
 // Als Job, nicht als Schedule::call: Ein call laeuft IM Scheduler-Prozess und
 // haelt ihn so lange auf, wie er dauert. Beide Aufgaben laden ohne Obergrenze.
 Schedule::job(new ExpireStaleWaitlistOffers)->everyTenMinutes();
+// Abgelaufene gehaltene Tische (Tisch beim Buchen halten); sie zählen schon nicht mehr, der Lauf räumt nur auf.
+Schedule::job(new PruneTableHolds)->hourly();
 Schedule::job(new RunRetentionPolicies)->dailyAt('03:30');
 Schedule::job(new PruneUnansweredFeedback)->dailyAt('03:45');
 Schedule::job(new SendTrialExpiryWarnings)->dailyAt('08:00');

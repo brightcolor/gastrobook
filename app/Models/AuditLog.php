@@ -164,6 +164,8 @@ class AuditLog extends Model
         'capacity_mode' => 'Zählweise',
         'max_covers_per_slot' => 'Höchstens gleichzeitig (Gäste)',
         'gap_optimization_enabled' => 'Lückenoptimierung',
+        'table_hold_enabled' => 'Tisch beim Buchen halten',
+        'table_hold_minutes' => 'Haltezeit (Min.)',
         'duration_rules' => 'Tischzeiten',
         // Buchungsregeln (BookingRulesController)
         'min_lead_minutes' => 'Mindestvorlauf (Min.)',

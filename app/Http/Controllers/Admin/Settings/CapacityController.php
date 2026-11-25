@@ -75,6 +75,13 @@ class CapacityController extends Controller
                 'max_covers_per_slot' => isset($validated['max_covers_per_slot']) ? (int) $validated['max_covers_per_slot'] : null,
                 'duration_rules' => BookingSettingRules::durationRules((array) $request->input('duration_rules', [])),
             ];
+            if ($request->has('table_hold_enabled')) {
+                $values['table_hold_enabled'] = $request->boolean('table_hold_enabled');
+                // Ausgeschaltet bleibt die eingetragene Zahl stehen, damit sie beim Wiedereinschalten da ist.
+                if (isset($validated['table_hold_minutes'])) {
+                    $values['table_hold_minutes'] = (int) $validated['table_hold_minutes'];
+                }
+            }
         }
 
         $old = $settings->only(array_keys($values));

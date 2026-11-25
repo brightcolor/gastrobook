@@ -243,6 +243,13 @@ class CapCaptchaTest extends TestCase
         // Signatur im Link, nur Abmelden möglich.
         'POST marketing/abmelden/{guest}',
 
+        // Tisch beim Buchen halten: läuft bei jeder Wahl einer Uhrzeit, bevor der
+        // Gast das Formular mit der Prüfung abschickt. Speichert keine Angaben zur
+        // Person und verschickt nichts; das Halten läuft nach wenigen Minuten ab.
+        // Geschützt durch die eigene Drosselung (throttle:booking-hold), und die
+        // Buchung selbst verlangt die Prüfung weiter.
+        'POST book/{tenantSlug}/{locationSlug}/hold',
+
         // Ends a session, costs nothing and sends nothing.
         'POST konto/{tenantSlug}/logout',
 
