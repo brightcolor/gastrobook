@@ -148,6 +148,7 @@ class Reservation extends Model
         return $this->belongsTo(StaffMember::class);
     }
 
+    /** @return BelongsToMany<RestaurantTable, $this> */
     public function tables(): BelongsToMany
     {
         return $this->belongsToMany(RestaurantTable::class, 'reservation_tables');

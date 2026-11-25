@@ -30,6 +30,7 @@ class TableCombination extends Model
         return $this->belongsTo(Location::class);
     }
 
+    /** @return BelongsToMany<RestaurantTable, $this> */
     public function tables(): BelongsToMany
     {
         return $this->belongsToMany(RestaurantTable::class, 'table_combination_items');
