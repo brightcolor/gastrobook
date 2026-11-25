@@ -102,15 +102,40 @@ class TableHoldTest extends TestCase
         $setup = $this->restaurant();
         $token = $this->holdAt($setup)->json('hold');
 
+        // Die Uhrzeit ist ausgebucht: Der Gast bekommt andere Zeiten vorgeschlagen.
         $this->book($setup, 'Zweiter')
             ->assertRedirect($setup['url'])
-            ->assertSessionHasErrors('start_at');
+            ->assertSessionHasErrors('start_at')
+            ->assertSessionHas('alternatives', fn (array $alt) => ! in_array('19:00', $alt['same_day'], true) && $alt['same_day'] !== []);
         $this->assertSame(0, Reservation::withoutGlobalScopes()->count());
 
         $this->book($setup, 'Erster', $token)->assertRedirect();
         $this->assertSame(1, Reservation::withoutGlobalScopes()->count());
         // Gebucht: Das Halten ist erfüllt und verschwindet.
         $this->assertSame(0, TableHold::count());
+    }
+
+    public function test_a_taken_chosen_table_gives_no_contradicting_time_hint(): void
+    {
+        $setup = $this->createTenantSetup([['min' => 1, 'max' => 4], ['min' => 1, 'max' => 4]]);
+        $setup['location']->settings->update(['table_hold_enabled' => true, 'table_hold_minutes' => 3, 'public_floorplan_enabled' => true]);
+        $setup['url'] = '/book/'.$setup['tenant']->slug.'/'.$setup['location']->slug;
+        $this->clearTenantContext();
+        $chosen = $setup['tables'][0]->id;
+
+        $this->holdAt($setup, '19:00', ['table_id' => $chosen])->assertJsonPath('held', true);
+
+        // Der zweite Gast will denselben Tisch. 19:00 bleibt mit dem anderen
+        // Tisch buchbar, deshalb gibt es nur die Meldung zum Tisch und keinen
+        // Hinweis, die Uhrzeit sei nicht mehr verfügbar.
+        $this->from($setup['url'])->post($setup['url'], [
+            'date' => $this->day, 'time' => '19:00', 'party_size' => 2, 'table_id' => $chosen,
+            'name' => 'Zweiter', 'email' => 'zweiter@example.test', 'phone' => '+49 170 0000000', 'privacy_accepted' => '1',
+        ])
+            ->assertRedirect($setup['url'])
+            ->assertSessionHasErrors('table_ids')
+            ->assertSessionMissing('alternatives');
+        $this->assertSame(0, Reservation::withoutGlobalScopes()->count());
     }
 
     public function test_after_the_hold_time_others_can_book_again(): void

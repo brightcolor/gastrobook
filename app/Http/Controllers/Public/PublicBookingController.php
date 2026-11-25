@@ -726,13 +726,20 @@ class PublicBookingController extends Controller
                 'ip' => $request->ip(),
             ]);
         } catch (ValidationException $e) {
-            $desired = $startLocal;
-            $alternatives = $this->availability->alternatives($location, $desired, (int) $validated['party_size']);
+            $alternatives = $this->availability->alternatives($location, $startLocal, (int) $validated['party_size']);
+            $response = back()->withErrors($e->errors())->withInput();
 
-            return back()
-                ->withErrors($e->errors())
-                ->withInput()
-                ->with('alternatives', $alternatives);
+            // Ist die gewuenschte Uhrzeit selbst noch buchbar, lag der Fehler
+            // woanders, etwa am Wunschtisch, den inzwischen ein anderer Gast
+            // haelt oder gebucht hat. Der Hinweis "Dieser Zeitpunkt ist nicht
+            // mehr verfuegbar" samt derselben Uhrzeit als Alternative wuerde
+            // der Meldung zum Tisch widersprechen; der Tischplan zeigt die
+            // freien Tische ohnehin.
+            if (in_array($startLocal->format('H:i'), $alternatives['same_day'] ?? [], true)) {
+                return $response;
+            }
+
+            return $response->with('alternatives', $alternatives);
         }
 
         if ($needsConfirm && $reservation->guest) {
