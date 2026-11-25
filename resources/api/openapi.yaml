@@ -131,7 +131,7 @@ paths:
                 time: { type: string, pattern: '^\d{2}:\d{2}$', example: "19:00" }
                 party_size: { type: integer, minimum: 1, maximum: 100 }
                 guest_name: { type: string, maxLength: 120 }
-                guest_email: { type: [string, "null"], format: email }
+                guest_email: { type: [string, "null"], format: email, maxLength: 254 }
                 guest_phone: { type: [string, "null"], maxLength: 40 }
                 note: { type: [string, "null"], maxLength: 1000 }
                 source:

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Models\User;
+use App\Support\ContactFieldRules;
 use App\Support\PasswordPolicy;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
@@ -51,7 +52,7 @@ class CreateSuperAdmin extends Command
         $validator = Validator::make(
             ['email' => $email, 'password' => $password, 'name' => $name],
             [
-                'email' => ['required', 'email', $existing && $this->option('force') ? 'string' : 'unique:users,email'],
+                'email' => ['required', 'email', ContactFieldRules::emailMax(), $existing && $this->option('force') ? 'string' : 'unique:users,email'],
                 'password' => ['required', 'string', PasswordPolicy::rule()],
                 'name' => ['required', 'string', 'max:120'],
             ]

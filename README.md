@@ -469,6 +469,8 @@ Die Navigation kommt aus einer Quelle, [`config/navigation.php`](config/navigati
 | `SWAYY_FEEDBACK_URL_MAX` | `255` | Längster Link zum Bewertungsportal in Zeichen (30 bis 255; die Spalte fasst 255) |
 | `SWAYY_FEEDBACK_LOOKBACK_GRACE_DAYS` | `7` | Tage Luft für Ausfälle von Scheduler oder Queue: Feedback-Anfragen gehen an Besuche, die höchstens `SWAYY_FEEDBACK_HOURS_MAX` Stunden (auf ganze Tage aufgerundet) plus diese Tage zurückliegen (0 bis 30) |
 | `SWAYY_OWNER_EMAIL_MAX` | `200` | Längste Adresse für die Info an den Betrieb in Zeichen (50 bis 255) |
+| `SWAYY_CONTACT_EMAIL_MAX` | `254` | Längste E-Mail-Adresse, die ein Formular annimmt: Buchung, Warteliste, Events, Gastbereich, Reservierungsbuch, Gästeprofil, Schnittstelle, Anmeldung, Registrierung, Einladungen, Rechnungsanfrage (30 bis 255; 254 ist die Höchstlänge nach RFC 5321) |
+| `SWAYY_CONTACT_PHONE_MAX` | `40` | Längste Telefonnummer eines Gasts oder einer Rechnungsanfrage in Zeichen (10 bis 255) |
 | `SWAYY_TEMPLATE_SUBJECT_MAX` | `200` | Längster Betreff einer Mailvorlage in Zeichen (20 bis 255) |
 | `SWAYY_TEMPLATE_BODY_MAX` | `5000` | Längster Text einer Mailvorlage in Zeichen (500 bis 20000) |
 | `SWAYY_SMS_SENDER_ID_MAX` | `16` | Längste Absenderkennung aus Ziffern (Rufnummer) beim SMS-Versand über seven.io (3 bis 16) |

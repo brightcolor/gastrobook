@@ -759,6 +759,27 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Kontaktfelder in Formularen
+    |--------------------------------------------------------------------------
+    |
+    | email_max: längste E-Mail-Adresse in Zeichen, die ein Formular annimmt
+    | (30–255). Gilt für Gäste (Buchung, Warteliste, Events, Gastbereich),
+    | Reservierungsbuch, Gästeprofil, Schnittstelle, Anmeldung, Registrierung,
+    | Einladungen, Rechnungsanfrage und Verwaltung. Vorgabe 254, die
+    | Höchstlänge einer Adresse nach RFC 5321; die Spalten fassen 255 Zeichen.
+    | Eigene Grenzen behalten Standortadresse, Info an den Betrieb und
+    | Antwortadresse der Gast-Mails.
+    | phone_max: längste Telefonnummer eines Gasts oder einer Rechnungsanfrage
+    | in Zeichen (10–255). Vorgabe 40.
+    |
+    */
+    'contact_fields' => [
+        'email_max' => EnvSetting::integer('SWAYY_CONTACT_EMAIL_MAX', default: 254, min: 30, max: 255),
+        'phone_max' => EnvSetting::integer('SWAYY_CONTACT_PHONE_MAX', default: 40, min: 10, max: 255),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Gestaltung der Mails
     |--------------------------------------------------------------------------
     |

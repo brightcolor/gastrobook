@@ -10,6 +10,7 @@ use App\Mail\BillingRequestOwnerMail;
 use App\Models\BillingRequest;
 use App\Models\Plan;
 use App\Services\AuditLogger;
+use App\Support\ContactFieldRules;
 use App\Support\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -50,7 +51,7 @@ class BillingRequestController extends Controller
 
         $data = $request->validate([
             'contact_name' => ['required', 'string', 'max:120'],
-            'contact_email' => ['required', 'email:rfc', 'max:200'],
+            'contact_email' => ['required', 'email:rfc', ContactFieldRules::emailMax()],
             'company_name' => ['nullable', 'string', 'max:150'],
             'address_line1' => ['required', 'string', 'max:200'],
             'address_line2' => ['nullable', 'string', 'max:200'],
@@ -58,7 +59,7 @@ class BillingRequestController extends Controller
             'city' => ['required', 'string', 'max:100'],
             'country' => ['required', 'string', 'size:2'],
             'vat_id' => ['nullable', 'string', 'max:50'],
-            'phone' => ['nullable', 'string', 'max:40'],
+            'phone' => ['nullable', 'string', ContactFieldRules::phoneMax()],
             'plan_key' => ['required', 'string', 'exists:plans,key'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);

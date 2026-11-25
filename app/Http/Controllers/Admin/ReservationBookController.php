@@ -13,6 +13,7 @@ use App\Services\ReservationAvailabilityService;
 use App\Services\ReservationLifecycleService;
 use App\Services\SalonAvailabilityService;
 use App\Services\TableAssignmentService;
+use App\Support\ContactFieldRules;
 use App\Support\Csv;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
@@ -413,8 +414,8 @@ class ReservationBookController extends Controller
             'party_size' => ['required', 'integer', 'min:1', 'max:100'],
             'duration_minutes' => ['nullable', 'integer', 'min:30', 'max:600'],
             'name' => ['required', 'string', 'max:120'],
-            'email' => ['nullable', 'email:rfc'],
-            'phone' => ['nullable', 'string', 'max:40'],
+            'email' => ['nullable', 'email:rfc', ContactFieldRules::emailMax()],
+            'phone' => ['nullable', 'string', ContactFieldRules::phoneMax()],
             'occasion' => ['nullable', 'string', 'max:120'],
             'note' => ['nullable', 'string', 'max:1000'],
             'internal_note' => ['nullable', 'string', 'max:1000'],

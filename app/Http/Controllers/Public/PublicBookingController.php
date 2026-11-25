@@ -25,6 +25,7 @@ use App\Services\SeasonService;
 use App\Services\TableAssignmentService;
 use App\Services\TableHolds;
 use App\Services\WaitlistService;
+use App\Support\ContactFieldRules;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -653,7 +654,7 @@ class PublicBookingController extends Controller
             // Kennung des gehaltenen Tisches (hold()). Eine ungültige Kennung zählt wie keine.
             'hold_token' => ['nullable', 'string', 'max:64'],
         ];
-        foreach (['email' => 'email:rfc', 'phone' => 'string|max:40'] as $field => $rule) {
+        foreach (['email' => 'email:rfc|'.ContactFieldRules::emailMax(), 'phone' => 'string|'.ContactFieldRules::phoneMax()] as $field => $rule) {
             $fieldRule = $settings->fieldRule($field);
             if ($fieldRule === 'required') {
                 $rules[$field] = array_merge(['required'], explode('|', $rule));
@@ -774,8 +775,8 @@ class PublicBookingController extends Controller
             'slot_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:'.CarbonImmutable::now($location->timezone)->toDateString()],
             'time' => ['required', 'date_format:H:i'],
             'name' => ['required', 'string', 'max:120'],
-            'email' => ['required', 'email:rfc'],
-            'phone' => ['nullable', 'string', 'max:40'],
+            'email' => ['required', 'email:rfc', ContactFieldRules::emailMax()],
+            'phone' => ['nullable', 'string', ContactFieldRules::phoneMax()],
             'note' => ['nullable', 'string', 'max:1000'],
             'privacy_accepted' => ['accepted'],
             'newsletter' => ['nullable', 'boolean'],
@@ -1089,8 +1090,8 @@ class PublicBookingController extends Controller
             'time' => ['nullable', 'date_format:H:i'],
             'party_size' => ['required', 'integer', 'min:'.$settings->min_party_online, 'max:'.$settings->max_party_online],
             'name' => ['required', 'string', 'max:120'],
-            'email' => ['required', 'email:rfc'],
-            'phone' => ['nullable', 'string', 'max:40'],
+            'email' => ['required', 'email:rfc', ContactFieldRules::emailMax()],
+            'phone' => ['nullable', 'string', ContactFieldRules::phoneMax()],
             'privacy_accepted' => ['accepted'],
         ]);
 

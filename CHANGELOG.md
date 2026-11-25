@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.138.2] – 2026-11-25
+
+### Längengrenzen für E-Mail-Adressen und Telefonnummern
+
+- **Überlange E-Mail-Adressen bekommen eine Meldung.** Buchung, Warteliste,
+  Events, Gastbereich, Reservierungsbuch, Gästeprofil, Schnittstelle,
+  Anmeldung und Passwort vergessen prüften die Länge der Adresse nicht. Eine
+  Adresse mit mehr als 255 Zeichen lief bis in die Datenbank und scheiterte
+  dort mit einem Fehler 500. Jetzt heißt es „E-Mail-Adresse darf höchstens
+  254 Zeichen lang sein.“, die Schnittstelle antwortet mit 422.
+- **Eine Einstellung für alle Formulare.** `SWAYY_CONTACT_EMAIL_MAX`
+  (Vorgabe 254, 30 bis 255) gilt überall, auch für Registrierung,
+  Einladungen, Rechnungsanfrage, Kontaktformular, die Adresse für große
+  Gruppen und die Verwaltung, die bisher feste Grenzen von 200 oder 255
+  hatten. `SWAYY_CONTACT_PHONE_MAX` (Vorgabe 40, 10 bis 255) ersetzt die
+  feste Grenze der Telefonfelder. Eigene Grenzen behalten Standortadresse,
+  Info an den Betrieb und Antwortadresse der Gast-Mails.
+
 ## [1.138.1] – 2026-11-25
 
 ### Kein widersprüchlicher Hinweis bei vergebenem Wunschtisch

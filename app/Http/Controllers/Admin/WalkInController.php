@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Services\ReservationAvailabilityService;
 use App\Services\ReservationLifecycleService;
 use App\Services\TableAssignmentService;
+use App\Support\ContactFieldRules;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -72,7 +73,7 @@ class WalkInController extends Controller
             'party_size' => ['required', 'integer', 'min:1', 'max:100'],
             'table_id' => ['required', 'integer'],
             'name' => ['nullable', 'string', 'max:120'],
-            'phone' => ['nullable', 'string', 'max:40'],
+            'phone' => ['nullable', 'string', ContactFieldRules::phoneMax()],
             'shared' => ['nullable', 'boolean'],
         ]);
 

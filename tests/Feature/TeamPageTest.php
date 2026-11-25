@@ -132,11 +132,19 @@ class TeamPageTest extends TestCase
         $owner = $this->createMember($setup['tenant'], 'tenant_owner');
         $this->clearTenantContext();
 
-        $email = 'person@'.str_repeat('abcdefghij.', 18).'test';
+        // Vorgabe aus swayy.contact_fields.email_max: 254 Zeichen.
+        $email = 'person@'.str_repeat('abcdefghij.', 22).'testen';
+        $this->assertSame(255, strlen($email));
 
         $this->actingAs($owner)->postJson('/admin/users/invite', ['email' => $email, 'role' => 'host', 'all_locations' => '1'])
             ->assertStatus(422)
-            ->assertJsonPath('errors.email.0', 'Die E-Mail-Adresse ist zu lang. Bitte höchstens 200 Zeichen verwenden.');
+            ->assertJsonPath('errors.email.0', 'Die E-Mail-Adresse ist zu lang. Bitte höchstens 254 Zeichen verwenden.');
+
+        // Die Grenze kommt aus der Einstellung.
+        config(['swayy.contact_fields.email_max' => 60]);
+        $this->actingAs($owner)->postJson('/admin/users/invite', ['email' => 'person@'.str_repeat('abcdefghij.', 4).'testen.dev', 'role' => 'host', 'all_locations' => '1'])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.email.0', 'Die E-Mail-Adresse ist zu lang. Bitte höchstens 60 Zeichen verwenden.');
 
         $this->assertSame(0, Invitation::withoutGlobalScopes()->count());
     }
@@ -147,8 +155,8 @@ class TeamPageTest extends TestCase
         $owner = $this->createMember($setup['tenant'], 'tenant_owner');
         $this->clearTenantContext();
 
-        $email = 'person@'.str_repeat('abcdefghij.', 17).'testen';
-        $this->assertSame(200, strlen($email));
+        $email = 'person@'.str_repeat('abcdefghij.', 22).'teste';
+        $this->assertSame(254, strlen($email));
 
         $this->actingAs($owner)->postJson('/admin/users/invite', ['email' => $email, 'role' => 'host', 'all_locations' => '1'])
             ->assertOk();

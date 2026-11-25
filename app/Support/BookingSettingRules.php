@@ -89,7 +89,7 @@ final class BookingSettingRules
             'max_advance_days' => ['required', 'integer', 'min:1', 'max:'.$limits['advance_max_days']],
             'min_party_online' => ['required', 'integer', 'min:1', 'max:'.$limits['party_online_max']],
             'max_party_online' => ['required', 'integer', 'min:1', 'max:'.$limits['party_online_max'], 'gte:min_party_online'],
-            'large_group_email' => ['nullable', 'email:rfc', 'max:200'],
+            'large_group_email' => ['nullable', 'email:rfc', ContactFieldRules::emailMax()],
             'cancellation_deadline_minutes' => ['required', 'integer', 'min:0', 'max:'.$limits['deadline_max_minutes']],
             'modification_deadline_minutes' => ['required', 'integer', 'min:0', 'max:'.$limits['deadline_max_minutes']],
             'booking_confirmation_mode' => ['required', 'in:auto,manual'],
