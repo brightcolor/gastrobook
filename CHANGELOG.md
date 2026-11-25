@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.137.2] – 2026-11-25
+
+### Abhängigkeiten aktualisiert
+
+Die offenen Dependabot-Vorschläge sind in einem Stand zusammengefasst und gemeinsam
+geprüft. Für Gäste und Team ändert sich nichts Sichtbares.
+
+- **PHP-Pakete.** Laravel 13.35 → 13.42, Sanctum 4.5, Tinker 3.2, Pint 1.32.3,
+  Pail 1.3, Larastan 3.15, Collision 8.9.6, Mockery 1.6.15.
+- **JavaScript-Pakete.** Vite 8.3.8, Vitest 5.1, jsdom 31, Tailwind CSS und
+  `@tailwindcss/vite` 4.3.5, laravel-vite-plugin 3.2.1, concurrently 10,
+  fontkit 3.
+- **GitHub Actions.** docker/build-push-action 7.4, docker/login-action 4.7,
+  setup-php 2.40, setup-node 7.1.
+- **Lockfile auf PHP 8.3 festgelegt.** `composer.json` setzt
+  `config.platform.php` auf 8.3.0. Die Anwendung verlangt PHP ^8.3, und die CI
+  prüft 8.3. Ohne diese Angabe hatte Dependabot phpunit 13 vorgeschlagen, das
+  PHP 8.4 braucht.
+- **Typangaben für Larastan 3.15.** Die Beziehungen `tables()` an
+  `Reservation` und `TableCombination` nennen ihr Zielmodell. Larastan erkennt
+  damit `withTrashed()` im Export.
+
 ## [1.137.1] – 2026-11-03
 
 ### Sperrzeit-Meldung nennt dem Team Raum, Zeitraum und Grund
