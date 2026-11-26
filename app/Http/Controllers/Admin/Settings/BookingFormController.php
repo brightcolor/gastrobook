@@ -72,6 +72,7 @@ class BookingFormController extends Controller
             'fields' => $fields,
             'choices' => $choices,
             'rules' => $this->shownRules($settings, $choices),
+            'emailConfirmation' => (bool) $settings->require_email_confirmation,
         ]);
     }
 

@@ -14,6 +14,7 @@ use App\Services\GuestAuthService;
 use App\Services\ReservationLifecycleService;
 use App\Support\ContactFieldRules;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class GuestPortalController extends Controller
 {
@@ -118,8 +119,32 @@ class GuestPortalController extends Controller
             $guest->update(['email_verified_at' => now()]);
         }
 
+        $location = $reservation?->location()->withoutGlobalScope('tenant')->first();
+        $settings = $location?->effectiveSettings();
+
+        // Erst der Klick macht aus der gehaltenen Buchung eine Anfrage
+        // (Freigabe von Hand) oder bestätigt sie sofort. Erst jetzt erfährt
+        // das Team davon.
+        $notifyTeam = false;
+        if ($reservation !== null && $settings !== null
+            && $reservation->status === ReservationStatus::PendingConfirmation) {
+            try {
+                app(ReservationLifecycleService::class)->transition(
+                    $reservation,
+                    $settings->freigabeVonHand() ? ReservationStatus::Requested : ReservationStatus::Confirmed,
+                    null, 'guest', 'email_confirmed'
+                );
+                $notifyTeam = true;
+            } catch (ValidationException) {
+                // Das Team hat inzwischen entschieden (abgelehnt, von Hand
+                // bestätigt) oder die Buchung ist verfallen. Die Seite zeigt
+                // den Stand.
+            }
+            $reservation->refresh();
+        }
+
+        // Buchungen von vor v1.139.0 warteten als Anfrage auf den Klick.
         if ($reservation !== null && $reservation->status === ReservationStatus::Requested) {
-            $settings = $reservation->location()->withoutGlobalScope('tenant')->first()?->effectiveSettings();
             if ($settings && ! $settings->freigabeVonHand()) {
                 app(ReservationLifecycleService::class)->transition(
                     $reservation, ReservationStatus::Confirmed, null, 'guest', 'email_confirmed'
@@ -164,6 +189,12 @@ class GuestPortalController extends Controller
             }
 
             app(ReservationLifecycleService::class)->sendGuestMail($reservation->refresh(), 'payment_pending');
+            // Beim Anlegen zurückgehalten wie jede Buchung, die auf den Klick wartet.
+            $notifyTeam = true;
+        }
+
+        if ($notifyTeam && $reservation !== null && $location !== null) {
+            app(ReservationLifecycleService::class)->sendOwnerNotification($reservation, $location);
         }
 
         return view('public.portal.verified', ['reservation' => $reservation]);

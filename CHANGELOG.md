@@ -1,5 +1,47 @@
 # Changelog
 
+## [1.139.0] – 2026-11-26
+
+### Erst der Klick im Bestätigungslink macht aus dem Wunsch eine Anfrage
+
+- **Neuer Wartestatus.** Verlangt ein Standort die Bestätigung der
+  E-Mail-Adresse, steht eine Online-Buchung bis zum Klick auf „Wartet auf
+  E-Mail-Bestätigung“ (`pending_confirmation`). Bisher stand sie sofort als
+  Anfrage im Buch und zählte bei „Offene Anfragen“ mit, obwohl der Gast seine
+  Adresse noch nicht bestätigt hatte. Der Tisch bleibt gehalten; verfällt der
+  Link, wird er wie bisher frei.
+- **Der Klick entscheidet den nächsten Schritt.** Bei sofortiger Bestätigung
+  ist die Reservierung damit fest, und der Gast bekommt die
+  Reservierungsbestätigung. Bei Freigabe von Hand wird die Buchung erst jetzt
+  zur Anfrage, der Gast bekommt die Eingangsbestätigung und nach der Freigabe
+  durch das Team die Reservierungsbestätigung.
+- **Die Mail „Neue Reservierung“ an den Betrieb kommt nach dem Klick.** Bisher
+  ging sie schon beim Anlegen raus und meldete bei sofortiger Bestätigung
+  fälschlich „wartet auf Ihre Bestätigung“. Mit Anzahlung kommt sie zusammen
+  mit der Zahlungsaufforderung.
+- **Der Gast liest vor dem Absenden, wie es weitergeht.** Über dem Knopf steht,
+  ob eine Mail mit Bestätigungslink kommt, wie lange der Link gilt und ob der
+  Betrieb die Anfrage noch prüft. Bei Freigabe von Hand heißt der Knopf
+  „Reservierung anfragen“ bzw. „Termin anfragen“.
+- **Ohne Adresse kein Durchschlupf.** Mit Bestätigung ist die E-Mail beim
+  Buchen Pflicht, auch wenn das Buchungsformular sie als freiwillig führt.
+  Bisher kam eine Buchung ohne Adresse ganz ohne Bestätigungslink durch.
+- **Ab Werk an.** Neue Standorte verlangen die Bestätigung der Adresse.
+  Gespeicherte Einstellungen bestehender Standorte bleiben unverändert;
+  Standorte ohne gespeicherte Buchungsregeln folgen der neuen Vorgabe.
+- Ein Bestätigungslink wird unter Sperre genau einmal eingelöst. Zwei
+  gleichzeitige Klicks gaben die Buchung bisher zweimal frei.
+- Die Bestätigungsseite zeigt den Wartestatus auch nach dem Neuladen, und die
+  Gültigkeit des Links kommt aus `SWAYY_GUEST_VERIFY_LINK_MINUTES` statt fest
+  „24 Stunden“.
+- Buchungen, die vor dieser Fassung als Anfrage auf den Klick warteten,
+  laufen unverändert weiter.
+- Schnittstelle und Webhooks: `reservation.created` meldet bei Buchungen mit
+  Bestätigungslink jetzt den Status `pending_confirmation`; der Klick löst
+  `reservation.updated` (Anfrage) oder `reservation.confirmed` aus.
+- Ohne Migration: Die neue Vorgabe steht im Modell `LocationSettings`, über
+  das jeder Standort angelegt wird. Gespeicherte Zeilen bleiben unverändert.
+
 ## [1.138.5] – 2026-11-26
 
 ### Gelöschte Räume nehmen ihre alten Tische nicht mehr mit

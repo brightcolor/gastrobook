@@ -76,6 +76,7 @@ ein: **Einstellungen › Buchungen › Buchungsregeln** und **Einstellungen › 
 | Vorausbuchung | wie weit im Voraus | 90 Tage | Buchungsregeln |
 | Kleinste und größte Gruppe | Gruppengröße online | 1 bis 8 | Buchungsregeln |
 | Bestätigung | „Sofort bestätigen“ oder „Von Hand freigeben“ | sofort | Buchungsregeln |
+| E-Mail-Adresse bestätigen lassen | Buchung gilt erst nach dem Klick im Bestätigungslink | an | Buchungsregeln |
 | Stornofrist | bis wann der Gast selbst absagen darf | 120 Minuten | Buchungsregeln |
 
 Die **Bestätigung** ist die folgenreichste Einstellung: Bei „Von Hand

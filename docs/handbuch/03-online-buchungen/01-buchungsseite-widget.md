@@ -76,25 +76,50 @@ pflegst, schick deiner Agentur den Code.
 ## Der Buchungsablauf danach
 
 Nach dem Absenden hängt der Ablauf von den Einstellungen unter **Einstellungen
-› Buchungen › Buchungsregeln**, Abschnitt „Bestätigung“, ab:
+› Buchungen › Buchungsregeln**, Abschnitt „Bestätigung“, ab. Über dem Knopf
+zum Absenden steht für den Gast schon vorher, wie es weitergeht: ob eine Mail mit
+Bestätigungslink kommt und ob ihr die Anfrage noch prüft. Gebt ihr von Hand frei,
+heißt der Knopf „Reservierung anfragen“ (Salon: „Termin anfragen“).
+
+**Mit „E-Mail-Adresse bestätigen lassen“** (ab Werk an) läuft es so:
+
+1. Der Gast schickt seinen Wunsch ab und bekommt eine Mail mit einem
+   Bestätigungslink. Der Tisch ist so lange für ihn gehalten. Im Board und im
+   Reservierungsbuch steht die Buchung als **„Wartet auf E-Mail-Bestätigung“**;
+   für euch gibt es dabei noch nichts zu tun, und ihr bekommt noch keine Mail.
+2. Der Gast klickt auf den Link.
+   - Bei **Sofort bestätigen** ist die Reservierung damit fest. Der Gast
+     bekommt die Bestätigung mit Storno- und Änderungslink.
+   - Bei **Von Hand freigeben** wird die Buchung erst jetzt zur **Anfrage**. Der
+     Gast bekommt eine Eingangsbestätigung, ihr entscheidet im Board, und mit
+     eurer Freigabe bekommt er die Reservierungsbestätigung.
+3. Mit dem Klick geht auch die Mail „Neue Reservierung“ an euch, wenn unter
+   **Einstellungen › Gästekommunikation › Benachrichtigungen** „Bei jeder neuen
+   Reservierung eine Mail an den Betrieb“ an ist.
+
+Das gilt für **jede** Buchung, auch bei Gästen, die schon oft da waren. Die
+E-Mail-Adresse ist dabei beim Buchen immer Pflicht, auch wenn ihr sie im
+Buchungsformular als freiwillig eingestellt habt.
+
+Das kostet den Gast einen Klick und ist das beste Mittel gegen zwei Ärgernisse:
+Fantasieadressen, und Gäste, die **auf Vorrat reservieren** – wer sich vier
+Adventssonntage freihalten will, muss vier Mails öffnen. Erfahrungsgemäß
+bleiben dann ein oder zwei übrig, die wirklich gewollt sind.
+
+Kommt der Klick nicht, solange der Link gilt (standardmäßig 24 Stunden), wird
+der Tisch **automatisch wieder frei**. Ihr müsst nichts nachhalten.
+
+**Ohne „E-Mail-Adresse bestätigen lassen“:**
 
 - **Sofort bestätigen** → die Buchung steht fest, der Gast bekommt sofort die
   Bestätigung mit Storno- und Änderungslink.
-- **Von Hand freigeben** → es wird eine **Anfrage**, der Gast bekommt eine
-  Eingangsbestätigung, und ihr entscheidet im Board.
-- **E-Mail-Adresse bestätigen lassen** (optional) → der Gast bekommt eine Mail und
-  muss auf den Link darin klicken. Erst dann ist der Tisch reserviert. Das gilt
-  für **jede** Buchung, auch bei Gästen, die schon oft da waren.
+- **Von Hand freigeben** → es wird sofort eine **Anfrage**, der Gast bekommt
+  eine Eingangsbestätigung, und ihr entscheidet im Board.
 
-  Das kostet einen Schritt, ist aber das beste Mittel gegen zwei Ärgernisse:
-  Fantasieadressen, und Gäste, die **auf Vorrat reservieren** – wer sich vier
-  Adventssonntage freihalten will, muss vier Mails öffnen. Erfahrungsgemäß
-  bleiben dann ein oder zwei übrig, die wirklich gewollt sind.
-
-  Kommt der Klick nicht innerhalb von 24 Stunden, wird der Tisch **automatisch
-  wieder frei**. Ihr müsst nichts nachhalten.
-- **Anzahlung fällig** (wenn eine Regel greift) → die Buchung wartet auf die
-  Zahlung, siehe *Anzahlungen*.
+**Anzahlung fällig** (wenn eine Regel greift) → die Buchung wartet auf die
+Zahlung, siehe *Anzahlungen*. Mit Bestätigungslink kommt die
+Zahlungsaufforderung erst nach dem Klick, und erst dann beginnt die
+Zahlungsfrist.
 
 ## Was der Gast danach selbst kann
 

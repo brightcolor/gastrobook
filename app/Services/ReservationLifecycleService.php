@@ -205,9 +205,12 @@ class ReservationLifecycleService
             } elseif ($online && $settings->freigabeVonHand()) {
                 $status = ReservationStatus::Requested;
             }
-            // Hold the booking until the guest confirms their email (once)
+            // Die Buchung wartet auf den Klick in der Bestätigungsmail. Erst
+            // der Klick macht daraus eine Anfrage (Freigabe von Hand) oder eine
+            // bestätigte Reservierung, siehe GuestPortalController::verify().
+            // Der Tisch bleibt so lange gehalten.
             if ($emailConfirm) {
-                $status = ReservationStatus::Requested;
+                $status = ReservationStatus::PendingConfirmation;
             }
 
             // Deposit / no-show protection
@@ -340,7 +343,12 @@ class ReservationLifecycleService
                         $this->sendGuestMail($reservation, $templateKey);
                     }
                 }
-                $this->sendOwnerNotification($reservation, $location);
+                // Wartet die Buchung noch auf den Klick des Gastes, ist sie
+                // noch keine Anfrage. Das Team erfährt davon, sobald die
+                // Adresse bestätigt ist (GuestPortalController::verify()).
+                if (! $emailConfirm) {
+                    $this->sendOwnerNotification($reservation, $location);
+                }
             });
 
             return $reservation;

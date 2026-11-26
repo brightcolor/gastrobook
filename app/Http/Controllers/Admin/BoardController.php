@@ -381,9 +381,10 @@ class BoardController extends Controller
             'created_ts' => $r->created_at?->getTimestamp(),
             'minutes_to_start' => $minutesToStart,
             'overdue' => $status === ReservationStatus::Confirmed->value && $minutesToStart < -5,
+            // Eine Buchung, die auf den Klick des Gastes wartet, braucht vom
+            // Team nichts: Sie wird erst mit der bestätigten Adresse zur Anfrage.
             'needs_action' => in_array($status, [
                 ReservationStatus::Requested->value,
-                ReservationStatus::PendingConfirmation->value,
                 ReservationStatus::PaymentPending->value,
             ], true),
             'actions' => $this->actionsFor($r->status),
@@ -399,8 +400,10 @@ class BoardController extends Controller
     private function actionsFor(ReservationStatus $status): array
     {
         return match ($status) {
-            ReservationStatus::Requested,
-            ReservationStatus::PendingConfirmation => [
+            // Wartet die Buchung auf die E-Mail-Bestätigung des Gastes, gibt
+            // es nichts freizugeben. Die Detailseite bleibt für Sonderfälle.
+            ReservationStatus::PendingConfirmation => [],
+            ReservationStatus::Requested => [
                 ['label' => 'Bestätigen', 'status' => ReservationStatus::Confirmed->value, 'style' => 'primary'],
                 ['label' => 'Ablehnen', 'status' => ReservationStatus::Rejected->value, 'style' => 'danger'],
             ],

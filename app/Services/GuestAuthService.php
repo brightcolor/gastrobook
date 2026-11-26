@@ -51,7 +51,17 @@ class GuestAuthService
             return null;
         }
 
-        $row->update(['used_at' => now()]);
+        // Den Link genau einmal einlösen: Zwei gleichzeitige Klicks kämen sonst
+        // beide durch die Prüfung oben und gäben die Buchung zweimal frei.
+        $now = now();
+        $claimed = GuestAuthToken::withoutGlobalScopes()
+            ->whereKey($row->getKey())
+            ->whereNull('used_at')
+            ->update(['used_at' => $now]);
+        if ($claimed !== 1) {
+            return null;
+        }
+        $row->used_at = $now;
 
         return $row;
     }

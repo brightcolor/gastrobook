@@ -25,7 +25,10 @@ trait CreatesTenants
     {
         $tenant = Tenant::factory()->create(['plan_id' => Plan::factory()]);
         $location = Location::factory()->create(['tenant_id' => $tenant->id]);
-        $location->settings()->create(['tenant_id' => $tenant->id, 'min_lead_minutes' => 0]);
+        // Ab Werk verlangt ein Standort die Bestätigung der E-Mail-Adresse. Die
+        // meisten Tests prüfen die Buchung selbst und schalten sie deshalb ab;
+        // den Ablauf mit Bestätigungslink prüft EmailConfirmationRequiredTest.
+        $location->settings()->create(['tenant_id' => $tenant->id, 'min_lead_minutes' => 0, 'require_email_confirmation' => false]);
 
         foreach (range(0, 6) as $weekday) {
             OpeningHour::create([

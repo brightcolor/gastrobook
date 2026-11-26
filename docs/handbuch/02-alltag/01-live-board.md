@@ -10,7 +10,10 @@ Abend offen liegt. Es aktualisiert sich selbst – niemand muss neu laden.
 ## Die zwei Spalten
 
 **Neu & offen** – alles, was Aufmerksamkeit braucht: eingegangene Anfragen und
-Buchungen der letzten Stunden. Hier bestätigst oder lehnst du ab.
+Buchungen der letzten Stunden. Hier bestätigst oder lehnst du ab. Buchungen mit
+dem Status „Wartet auf E-Mail-Bestätigung“ stehen hier ohne Knöpfe: Der Gast
+muss erst den Link in seiner Mail anklicken. Danach wird daraus eine Anfrage
+oder eine feste Reservierung.
 
 **Heute** – der zeitliche Ablauf des Tages mit allen aktiven Buchungen.
 

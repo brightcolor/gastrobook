@@ -655,7 +655,7 @@ class PublicBookingController extends Controller
             'hold_token' => ['nullable', 'string', 'max:64'],
         ];
         foreach (['email' => 'email:rfc|'.ContactFieldRules::emailMax(), 'phone' => 'string|'.ContactFieldRules::phoneMax()] as $field => $rule) {
-            $fieldRule = $settings->fieldRule($field);
+            $fieldRule = $settings->bookingFieldRule($field);
             if ($fieldRule === 'required') {
                 $rules[$field] = array_merge(['required'], explode('|', $rule));
             } elseif ($fieldRule === 'optional') {

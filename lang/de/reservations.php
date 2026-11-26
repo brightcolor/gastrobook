@@ -4,7 +4,7 @@ return [
     'status' => [
         'draft' => 'Entwurf',
         'requested' => 'Angefragt',
-        'pending_confirmation' => 'Wartet auf Bestätigung',
+        'pending_confirmation' => 'Wartet auf E-Mail-Bestätigung',
         'confirmed' => 'Bestätigt',
         'seated' => 'Am Tisch',
         'partially_arrived' => 'Teilweise da',

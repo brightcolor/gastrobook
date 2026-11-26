@@ -52,7 +52,7 @@ class LocationSettings extends Model
         'refund_mode' => 'off',
         'refund_percent' => 100,
         'refund_processing' => 'immediate',
-        'require_email_confirmation' => false,
+        'require_email_confirmation' => true,
         'confetti_on_booking' => true,
         'guest_address' => 'Sie',
         'feedback_enabled' => true,
@@ -155,5 +155,20 @@ class LocationSettings extends Model
         ];
 
         return $this->field_rules[$field] ?? $defaults[$field] ?? 'optional';
+    }
+
+    /**
+     * Die Regel, die beim Buchen wirklich gilt. Verlangt der Standort die
+     * Bestätigung der Adresse, ist die E-Mail Pflicht: Ohne Adresse käme eine
+     * Buchung sonst ganz ohne Bestätigungslink durch. Die Einstellungsseite
+     * zeigt weiter die gespeicherte Wahl (fieldRule()).
+     */
+    public function bookingFieldRule(string $field): string
+    {
+        if ($field === 'email' && $this->require_email_confirmation) {
+            return 'required';
+        }
+
+        return $this->fieldRule($field);
     }
 }

@@ -48,7 +48,9 @@ enum ReservationStatus: string
         return [
             self::Draft->value => [self::Requested->value, self::Confirmed->value, self::CancelledByRestaurant->value],
             self::Requested->value => [self::Confirmed->value, self::Rejected->value, self::CancelledByGuest->value, self::CancelledByRestaurant->value, self::Waitlisted->value, self::PaymentPending->value, self::Expired->value],
-            self::PendingConfirmation->value => [self::Confirmed->value, self::Rejected->value, self::CancelledByGuest->value, self::CancelledByRestaurant->value, self::Expired->value],
+            // Wartet auf den Klick des Gastes im Bestätigungslink. Der Klick
+            // führt zur Anfrage (Freigabe von Hand) oder zur Bestätigung.
+            self::PendingConfirmation->value => [self::Requested->value, self::Confirmed->value, self::Rejected->value, self::CancelledByGuest->value, self::CancelledByRestaurant->value, self::Expired->value],
             self::PaymentPending->value => [self::Confirmed->value, self::PaymentFailed->value, self::CancelledByGuest->value, self::CancelledByRestaurant->value, self::Expired->value],
             self::PaymentFailed->value => [self::PaymentPending->value, self::Confirmed->value, self::CancelledByRestaurant->value, self::Expired->value],
             self::Confirmed->value => [self::Seated->value, self::PartiallyArrived->value, self::CancelledByGuest->value, self::CancelledByRestaurant->value, self::NoShow->value, self::Completed->value],

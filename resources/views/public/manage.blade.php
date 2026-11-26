@@ -12,6 +12,7 @@ $isSalon = $location->tenant?->isSalon();
 $sv = $reservation->status->value;
 $statusBadge = match($sv) {
     'confirmed'       => ['bg-emerald-50 text-emerald-800', '✓'],
+    'pending_confirmation' => ['bg-amber-50 text-amber-800', '📧'],
     'requested'       => ['bg-amber-50 text-amber-800', '⏳'],
     'payment_pending' => ['bg-blue-50 text-blue-800', '💳'],
     'cancelled'       => ['bg-stone-100 text-stone-600', '✕'],

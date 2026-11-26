@@ -82,7 +82,7 @@ class EmailConfirmationRequiredTest extends TestCase
         $this->bookOnline($setup);
 
         $reservation = Reservation::withoutGlobalScopes()->firstOrFail();
-        $this->assertSame(ReservationStatus::Requested, $reservation->status);
+        $this->assertSame(ReservationStatus::PendingConfirmation, $reservation->status);
 
         // Der Link haengt an genau dieser Buchung.
         $this->assertSame(1, GuestAuthToken::withoutGlobalScopes()
@@ -113,7 +113,7 @@ class EmailConfirmationRequiredTest extends TestCase
 
         $this->assertSame(3, Reservation::withoutGlobalScopes()->count());
         $this->assertSame(3, Reservation::withoutGlobalScopes()
-            ->where('status', ReservationStatus::Requested->value)
+            ->where('status', ReservationStatus::PendingConfirmation->value)
             ->count(), 'Eine spaetere Buchung wurde ohne Bestaetigung durchgelassen.');
         $this->assertSame(3, GuestAuthToken::withoutGlobalScopes()->where('purpose', 'verify')->count());
     }
@@ -323,7 +323,7 @@ class EmailConfirmationRequiredTest extends TestCase
         (new ExpireUnconfirmedReservations)->handle(app(ReservationLifecycleService::class));
 
         $this->assertSame(
-            ReservationStatus::Requested,
+            ReservationStatus::PendingConfirmation,
             Reservation::withoutGlobalScopes()->firstOrFail()->status
         );
     }
