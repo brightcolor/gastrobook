@@ -22,6 +22,7 @@ class ReservationAvailabilityService
         private readonly TableAssignmentService $tableAssignment,
         private readonly SeasonService $seasons,
         private readonly TableHolds $holds,
+        private readonly OnlineBookingWindow $bookingWindow,
     ) {}
 
     /**
@@ -47,6 +48,10 @@ class ReservationAvailabilityService
                 return [];
             }
             if ($localDate->startOfDay()->gt($nowLocal->addDays($settings->max_advance_days))) {
+                return [];
+            }
+            // Annahmeschluss erreicht: Der Tag samt seiner Nacht ist online zu.
+            if ($this->bookingWindow->closedForTheDay($location, $localDate, $nowLocal)) {
                 return [];
             }
         }
@@ -219,13 +224,9 @@ class ReservationAvailabilityService
         // lassen "ausserhalb der Oeffnungszeiten" beim Aufrufer fallen. Stuende
         // die Pruefung davor, fiele die Vorlaufzeit dort gleich mit weg.
         if ($online && ! $adHoc) {
-            $nowLocal = CarbonImmutable::now($location->timezone);
-
-            if ($startLocal->lt($nowLocal->addMinutes($settings->min_lead_minutes))) {
-                return 'lead_time';
-            }
-            if ($startLocal->gt($nowLocal->addDays($settings->max_advance_days))) {
-                return 'too_far_ahead';
+            $timeReason = $this->bookingWindow->blockReason($location, $startLocal);
+            if ($timeReason !== null) {
+                return $timeReason;
             }
         }
 
@@ -396,17 +397,17 @@ class ReservationAvailabilityService
     ): array {
         $settings = $location->effectiveSettings();
 
-        // Vorlaufzeit und Buchungshorizont schuetzen die oeffentliche Buchung
+        // Vorlaufzeit, Annahmeschluss und Buchungshorizont (OnlineBookingWindow)
+        // schuetzen die oeffentliche Buchung
         // vor sich selbst. Eine Belegung "ab jetzt" kommt vom Betrieb und steht
         // per Definition davor - der Gast steht bereits in der Tuer.
         $adHoc = (bool) ($options['ad_hoc'] ?? false);
 
-        if ($online && ! $adHoc && $startLocal->lt($nowLocal->addMinutes($settings->min_lead_minutes))) {
-            return [false, 'lead_time', []];
-        }
-
-        if ($online && ! $adHoc && $startLocal->gt($nowLocal->addDays($settings->max_advance_days))) {
-            return [false, 'too_far_ahead', []];
+        if ($online && ! $adHoc) {
+            $timeReason = $this->bookingWindow->blockReason($location, $startLocal, $nowLocal);
+            if ($timeReason !== null) {
+                return [false, $timeReason, []];
+            }
         }
 
         // Location-wide blackout (room_id null, no reduced capacity = full block)

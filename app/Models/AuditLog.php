@@ -169,6 +169,7 @@ class AuditLog extends Model
         'duration_rules' => 'Tischzeiten',
         // Buchungsregeln (BookingRulesController)
         'min_lead_minutes' => 'Mindestvorlauf (Min.)',
+        'same_day_cutoff' => 'Annahmeschluss für heute',
         'max_advance_days' => 'Vorausbuchung (Tage)',
         'min_party_online' => 'Kleinste Gruppe',
         'max_party_online' => 'Größte Gruppe',

@@ -17,6 +17,7 @@ use App\Models\StaffMember;
 use App\Models\Tenant;
 use App\Services\GuestAuthService;
 use App\Services\Mail\MailDeliveryStatus;
+use App\Services\OnlineBookingWindow;
 use App\Services\Payments\PaymentProviderManager;
 use App\Services\RefundService;
 use App\Services\ReservationAvailabilityService;
@@ -49,6 +50,7 @@ class PublicBookingController extends Controller
         private readonly GuestAuthService $guestAuth,
         private readonly SeasonService $seasons,
         private readonly TableHolds $holds,
+        private readonly OnlineBookingWindow $bookingWindow,
     ) {}
 
     /**
@@ -252,6 +254,15 @@ class PublicBookingController extends Controller
                 return response()->json($response);
             }
 
+            // Annahmeschluss für heute erreicht: Hinweis mit Uhrzeit, Telefon
+            // und Sprung zum nächsten Tag statt Warteliste und Alternativen.
+            $dayNotice = $this->dayClosedNotice($location, $localDate);
+            if ($dayNotice !== null) {
+                $response['day_notice'] = $dayNotice;
+
+                return response()->json($response);
+            }
+
             $partySize = (int) $validated['party_size'];
             $maxParty = $this->largestBookableParty($location);
 
@@ -306,6 +317,31 @@ class PublicBookingController extends Controller
                 : 'Schön, dass Sie da sind! An diesem Tag haben wir geschlossen. Reservieren können Sie schon jetzt – wählen Sie einfach einen Tag ab dem '.$tag.'.',
             'next_date' => $next->toDateString(),
             'jump_label' => 'Zum '.$tag,
+        ];
+    }
+
+    /**
+     * Hinweis, wenn der Annahmeschluss für diesen Geschäftstag erreicht ist,
+     * mit Sprung zum nächsten Tag, sofern er im Buchungshorizont liegt. null,
+     * wenn der Tag online noch offen ist.
+     *
+     * @return array{text: string, next_date: ?string, jump_label: ?string}|null
+     */
+    private function dayClosedNotice(Location $location, CarbonImmutable $localDate): ?array
+    {
+        if (! $this->bookingWindow->closedForTheDay($location, $localDate)) {
+            return null;
+        }
+
+        $next = $localDate->addDay();
+        $horizon = CarbonImmutable::now($location->timezone)->addDays((int) $location->effectiveSettings()->max_advance_days);
+        $inHorizon = $next->startOfDay()->lte($horizon);
+        $tomorrow = $next->isSameDay(CarbonImmutable::now($location->timezone)->addDay());
+
+        return [
+            'text' => $this->bookingWindow->closedMessage($location),
+            'next_date' => $inHorizon ? $next->toDateString() : null,
+            'jump_label' => $inHorizon ? ($tomorrow ? __('Zu morgen') : __('Zum :day', ['day' => $next->locale('de')->translatedFormat('j. F')])) : null,
         ];
     }
 
@@ -381,12 +417,19 @@ class PublicBookingController extends Controller
             }
         }
 
-        return response()->json([
+        $response = [
             'date' => $validated['date'],
             'slots' => array_map(fn ($s) => $s['time'], $available),
             'slot_dates' => $slotDates,
             'staff_slots' => $staffInfo,
-        ]);
+        ];
+
+        $dayNotice = $available === [] ? $this->dayClosedNotice($location, $localDate) : null;
+        if ($dayNotice !== null) {
+            $response['day_notice'] = $dayNotice;
+        }
+
+        return response()->json($response);
     }
 
     /**
@@ -842,6 +885,7 @@ class PublicBookingController extends Controller
         if ($blockReason !== null) {
             $meldung = match ($blockReason) {
                 'lead_time' => __('Für diesen Termin ist es leider etwas zu kurzfristig – bitte wählen Sie einen späteren Zeitpunkt.'),
+                'same_day_closed' => $this->bookingWindow->closedMessage($location),
                 'too_far_ahead' => __('Dieser Termin liegt noch zu weit in der Zukunft.'),
                 'blackout' => __('Zu diesem Zeitpunkt haben wir leider geschlossen. Bitte wählen Sie einen anderen Tag.'),
                 'covers_full' => __('Zu diesem Zeitpunkt sind leider alle Termine vergeben – bitte wählen Sie eine andere Uhrzeit.'),

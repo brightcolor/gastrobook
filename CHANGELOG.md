@@ -2,6 +2,26 @@
 
 ## [1.141.1] – 2026-11-26
 
+### Annahmeschluss für den laufenden Tag
+
+- **Neue Einstellung „Annahmeschluss für heute“** unter Einstellungen ›
+  Buchungsregeln, je Standort. Ab dieser Uhrzeit, etwa 12:00, nimmt die
+  Online-Buchung für den laufenden Tag nichts mehr an, auch nicht für die
+  Uhrzeiten nach Mitternacht, die noch zu den heutigen Öffnungszeiten gehören.
+  Leer heißt: kein Annahmeschluss, wie bisher.
+- Gäste sehen auf der Buchungsseite einen Hinweis mit der Uhrzeit, der
+  Telefonnummer des Standorts und einem Knopf zum nächsten Tag. Das gilt auch
+  für Salons und für das Umbuchen durch den Gast. Das Team trägt im
+  Reservierungsbuch weiter für heute ein.
+- Vorlauf, Annahmeschluss und Vorausbuchung prüft jetzt eine Stelle
+  (`OnlineBookingWindow`) für Buchungsseite, Tischplan, Umbuchung und
+  Salonkalender.
+- Verständlichere Meldungen, wenn die freien Zeiten nicht laden.
+- Migration: neue Spalte `location_settings.same_day_cutoff`, leer für alle
+  bestehenden Standorte.
+
+## [@@VERSION@@] – 2026-11-26
+
 ### Versionsnummern vergibt die CI
 
 - Beim Merge eines Pull Requests nach `main` setzt GitHub die nächste

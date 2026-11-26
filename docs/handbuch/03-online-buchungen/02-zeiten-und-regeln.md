@@ -181,6 +181,14 @@ werden müssen.
 **Mindestvorlauf** – wie kurzfristig online gebucht werden darf. 60 Minuten sind
 üblich; 0 heißt „bis zur letzten Sekunde“.
 
+**Annahmeschluss für heute** – ab dieser Uhrzeit nimmt die Online-Buchung für
+den laufenden Tag nichts mehr an, etwa ab 12:00. Das gilt auch für die Uhrzeiten
+nach Mitternacht, die noch zu den heutigen Öffnungszeiten gehören (bei 18:00 bis
+02:00 also auch für 00:30). Gäste sehen dann einen Hinweis mit der Uhrzeit, der
+Telefonnummer des Standorts und einem Knopf zum nächsten Tag. Im
+Reservierungsbuch trägst du weiter für heute ein. Leer heißt: kein
+Annahmeschluss.
+
 **Vorausbuchung** – wie weit in die Zukunft die Buchungsseite freie Tage zeigt.
 90 Tage sind üblich.
 
@@ -210,7 +218,8 @@ Diese Kette von oben nach unten durchgehen:
 2. Ausnahme „Geschlossen“ für das Datum?
 3. Ausnahme mit „Weniger Gäste“ oder gesperrten Räumen, die den Zeitraum
    abdeckt?
-4. Mindestvorlauf – liegt der Termin zu nah?
+4. Mindestvorlauf – liegt der Termin zu nah? Annahmeschluss für heute – ist
+   er für den Tag schon erreicht?
 5. „Vorausbuchung“ – liegt er zu weit weg?
 6. Gruppengröße innerhalb der Online-Grenzen?
 7. Gibt es überhaupt einen Tisch mit passender Kapazität – und ist er „online
