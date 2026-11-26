@@ -63,15 +63,7 @@ class UserManagementController extends Controller
         $tenant = $this->context->tenant();
 
         if (! $this->limits->canAdd($tenant, 'max_users')) {
-            $limit = (int) $tenant->limit('max_users');
-
-            return $this->failed($request, 'email', trans_choice(
-                'Dein Tarif umfasst einen Zugang, und der ist vergeben.|Dein Tarif umfasst :count Zugänge, und alle sind vergeben.',
-                $limit,
-                ['count' => $limit],
-            ).' '.($request->user()->canInTenant('billing.manage', $tenant)
-                ? __('Für weitere Personen den Tarif unter „Abo & Rechnungen“ wechseln oder einen Zugang entfernen.')
-                : __('Für weitere Personen bitte eine Person mit Zugang zu „Abo & Rechnungen“ fragen.')));
+            return $this->limitReached($request, $tenant);
         }
 
         $validated = $request->validate([
@@ -101,27 +93,37 @@ class UserManagementController extends Controller
             // Mitgliedschaft liegt hinter users.roles.manage.
             abort_if($user->id === $request->user()->id, 403, __('Deine eigene Rolle und deine Standorte ändert eine andere Person mit Rechten für das Team. Bitte sie darum.'));
 
-            $membership = TenantUser::firstOrCreate(
-                ['tenant_id' => $tenant->id, 'user_id' => $user->id],
-                ['role' => $validated['role'], 'all_locations' => $allLocations]
-            );
+            // Eine bestehende Mitgliedschaft bleibt, wie sie ist: Sie zu
+            // erweitern ist eine Aenderung an fremden Rechten und gehoert
+            // nicht zum Einladen. Eine neue entsteht unter der Sperre des
+            // Tarifs, damit zwei gleichzeitige Einladungen nicht beide den
+            // letzten freien Zugang bekommen.
+            $membership = TenantUser::where('tenant_id', $tenant->id)->where('user_id', $user->id)->first()
+                ?? $this->limits->createWithinLimit($tenant, 'max_users', function () use ($tenant, $user, $validated, $allLocations) {
+                    $membership = TenantUser::firstOrCreate(
+                        ['tenant_id' => $tenant->id, 'user_id' => $user->id],
+                        ['role' => $validated['role'], 'all_locations' => $allLocations]
+                    );
 
-            // Nur fuer eine NEUE Mitgliedschaft. Eine bestehende zu erweitern
-            // ist eine Aenderung an fremden Rechten und gehoert nicht zum
-            // Einladen - firstOrCreate laesst die Rolle aus demselben Grund
-            // unangetastet.
-            if ($membership->wasRecentlyCreated && ! $allLocations) {
-                $locationIds = collect($validated['location_ids'] ?? [])
-                    ->filter(fn ($id) => $tenant->locations()->where('id', $id)->exists());
-                foreach ($locationIds as $locationId) {
-                    DB::table('location_user')->insertOrIgnore([
-                        'location_id' => $locationId,
-                        'user_id' => $user->id,
-                        'tenant_id' => $tenant->id,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                }
+                    if ($membership->wasRecentlyCreated && ! $allLocations) {
+                        $locationIds = collect($validated['location_ids'] ?? [])
+                            ->filter(fn ($id) => $tenant->locations()->where('id', $id)->exists());
+                        foreach ($locationIds as $locationId) {
+                            DB::table('location_user')->insertOrIgnore([
+                                'location_id' => $locationId,
+                                'user_id' => $user->id,
+                                'tenant_id' => $tenant->id,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                        }
+                    }
+
+                    return $membership;
+                });
+
+            if ($membership === null) {
+                return $this->limitReached($request, $tenant);
             }
 
             if (! $membership->wasRecentlyCreated) {
@@ -150,6 +152,22 @@ class UserManagementController extends Controller
         return $this->saved($request, __('Einladung für :email angelegt. Den Link findest du unter „Offene Einladungen“ zum Kopieren.', [
             'email' => $invitation->email,
         ]), reload: true);
+    }
+
+    /**
+     * Antwort, wenn der Tarif keinen weiteren Zugang zulässt.
+     */
+    private function limitReached(Request $request, Tenant $tenant)
+    {
+        $limit = (int) $tenant->limit('max_users');
+
+        return $this->failed($request, 'email', trans_choice(
+            'Dein Tarif umfasst einen Zugang, und der ist vergeben.|Dein Tarif umfasst :count Zugänge, und alle sind vergeben.',
+            $limit,
+            ['count' => $limit],
+        ).' '.($request->user()->canInTenant('billing.manage', $tenant)
+            ? __('Für weitere Personen den Tarif unter „Abo & Rechnungen“ wechseln oder einen Zugang entfernen.')
+            : __('Für weitere Personen bitte eine Person mit Zugang zu „Abo & Rechnungen“ fragen.')));
     }
 
     /**

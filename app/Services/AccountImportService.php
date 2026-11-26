@@ -47,7 +47,8 @@ use Illuminate\Support\Str;
  * business can actually move — or restore a backup.
  *
  * The import is additive (nothing existing is deleted) and runs in a single
- * transaction: either everything lands or nothing does. Internal ids from the
+ * transaction: either everything lands or nothing does. A file that would push
+ * the business over a plan limit is rejected as a whole. Internal ids from the
  * source system are never reused; every record gets a fresh id and references
  * are remapped. Access tokens and booking codes are regenerated, because the
  * export deliberately contains none.
@@ -72,6 +73,8 @@ class AccountImportService
      * und waere online buchbar.
      */
     private const CARRY = ['created_at', 'updated_at', 'deleted_at'];
+
+    public function __construct(private readonly PlanLimitService $limits) {}
 
     /** @var array<string, array<int|string, int>> old id → new id, per entity */
     private array $map = [];
@@ -115,6 +118,12 @@ class AccountImportService
         $this->map = [];
 
         return DB::transaction(function () use ($tenant, $data) {
+            // Den Betrieb sperren, solange der Import laeuft: Ein Tisch oder
+            // Standort, der gleichzeitig im Adminbereich entsteht, wartet und
+            // zaehlt danach mit. Am Ende wird geprueft, ob die Datei eine
+            // Tarifgrenze sprengt; dann rollt die Transaktion alles zurueck.
+            $locked = $this->limits->lockTenant($tenant) ?? $tenant;
+            $before = $this->limits->usage($locked);
             $done = [];
 
             $done['locations'] = $this->locations($tenant, $data);
@@ -186,6 +195,13 @@ class AccountImportService
                 'marketing_campaign_id' => 'marketing_campaigns',
                 'guest_id' => 'guests',
             ]);
+
+            $exceeded = $this->limits->exceededSince($locked, $before);
+            if ($exceeded !== []) {
+                throw new AccountImportException(__('Mit dieser Datei hätte der Betrieb mehr, als der Tarif erlaubt: :details. Die Datei wurde nicht übernommen. Bitte den Tarif unter „Abo & Rechnungen“ wechseln oder die Datei vor dem Import kürzen.', [
+                    'details' => $this->limits->describe($exceeded),
+                ]));
+            }
 
             return array_filter($done);
         });

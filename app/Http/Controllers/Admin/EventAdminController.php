@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\EventBooking;
+use App\Models\Tenant;
 use App\Services\AuditLogger;
 use App\Services\EventBookingService;
 use App\Services\PlanLimitService;
@@ -48,7 +49,7 @@ class EventAdminController extends Controller
         abort_if($location === null, 404);
 
         if (! $this->limits->canAdd($location->tenant, 'max_events')) {
-            return back()->withErrors(['title' => __('Event-Limit Ihres Tarifs erreicht.')]);
+            return $this->limitReached($request, $location->tenant);
         }
 
         $validated = $request->validate([
@@ -86,38 +87,62 @@ class EventAdminController extends Controller
             $slug = $base.'-'.(++$i);
         }
 
-        $event = Event::create([
-            'tenant_id' => $location->tenant_id,
-            'location_id' => $location->id,
-            'room_id' => $validated['room_id'] ?? null,
-            'title' => $validated['title'],
-            'slug' => $slug,
-            'description' => $validated['description'] ?? null,
-            'starts_at' => $startLocal->utc(),
-            'ends_at' => $endLocal->utc(),
-            'capacity' => (int) $validated['capacity'],
-            'price_minor' => isset($validated['price']) && $validated['price'] !== null
-                ? (int) round($validated['price'] * 100)
-                : null,
-            'deposit_minor' => isset($validated['deposit']) && $validated['deposit'] !== null
-                ? (int) round($validated['deposit'] * 100)
-                : null,
-            'currency' => $location->currency,
-            'booking_deadline_at' => isset($validated['booking_deadline_hours'])
-                ? $startLocal->subHours((int) $validated['booking_deadline_hours'])->utc()
-                : null,
-            'cancellation_deadline_at' => isset($validated['cancellation_deadline_hours'])
-                ? $startLocal->subHours((int) $validated['cancellation_deadline_hours'])->utc()
-                : null,
-            'is_public' => $request->boolean('is_public', true),
-            'status' => 'published',
-        ]);
+        // Die Vorpruefung oben sagt frueh Bescheid; die Grenze haelt erst das
+        // Anlegen unter Sperre, sonst saehen zwei gleichzeitige Anfragen beide
+        // den letzten freien Platz.
+        $event = $this->limits->createWithinLimit($location->tenant, 'max_events', function () use ($location, $validated, $slug, $startLocal, $endLocal, $request) {
+            return Event::create([
+                'tenant_id' => $location->tenant_id,
+                'location_id' => $location->id,
+                'room_id' => $validated['room_id'] ?? null,
+                'title' => $validated['title'],
+                'slug' => $slug,
+                'description' => $validated['description'] ?? null,
+                'starts_at' => $startLocal->utc(),
+                'ends_at' => $endLocal->utc(),
+                'capacity' => (int) $validated['capacity'],
+                'price_minor' => isset($validated['price']) && $validated['price'] !== null
+                    ? (int) round($validated['price'] * 100)
+                    : null,
+                'deposit_minor' => isset($validated['deposit']) && $validated['deposit'] !== null
+                    ? (int) round($validated['deposit'] * 100)
+                    : null,
+                'currency' => $location->currency,
+                'booking_deadline_at' => isset($validated['booking_deadline_hours'])
+                    ? $startLocal->subHours((int) $validated['booking_deadline_hours'])->utc()
+                    : null,
+                'cancellation_deadline_at' => isset($validated['cancellation_deadline_hours'])
+                    ? $startLocal->subHours((int) $validated['cancellation_deadline_hours'])->utc()
+                    : null,
+                'is_public' => $request->boolean('is_public', true),
+                'status' => 'published',
+            ]);
+        });
+        if ($event === null) {
+            return $this->limitReached($request, $location->tenant);
+        }
 
         $this->storeImage($request, $event);
 
         $this->audit->log('event.created', $event, null, ['title' => $event->title]);
 
         return back()->with('success', __('Event ":title" angelegt.', ['title' => $event->title]));
+    }
+
+    /**
+     * Antwort, wenn der Tarif kein weiteres Event zulässt.
+     */
+    private function limitReached(Request $request, Tenant $tenant)
+    {
+        $limit = (int) $tenant->limit('max_events');
+
+        return back()->withInput()->withErrors(['title' => trans_choice(
+            'Dein Tarif umfasst ein Event, und das ist schon angelegt.|Dein Tarif umfasst :count Events, und alle sind schon angelegt.',
+            $limit,
+            ['count' => $limit],
+        ).' '.($request->user()->canInTenant('billing.manage', $tenant)
+            ? __('Für ein weiteres Event den Tarif unter „Abo & Rechnungen“ wechseln.')
+            : __('Für ein weiteres Event bitte eine Person mit Zugang zu „Abo & Rechnungen“ fragen.'))]);
     }
 
     public function show(Event $event)
