@@ -199,7 +199,7 @@
             <h2 class="mb-3 font-bold">E-Mails<span class="tip" tabindex="0" data-tip="Alle Mails zu dieser Reservierung, an den Gast und an den Betrieb. Der Zustand kommt vom Mailserver: „Zugestellt“ heißt, der Mailserver des Empfängers hat die Mail angenommen. „Nicht zustellbar“ oder „Zurückgekommen“ heißt, sie ist nicht angekommen; dann am besten anrufen.">?</span></h2>
 
             <div data-mail-waiting role="status" class="mb-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900 ring-1 ring-amber-200" @if(! $mailWaiting) hidden @endif>
-                <p class="font-semibold">Eine E-Mail ist noch unterwegs.</p>
+                <p class="font-semibold">Die E-Mail an den Gast ist noch unterwegs.</p>
                 <p>Bitte diese Seite noch nicht verlassen. Sobald der Mailserver die Zustellung bestätigt, steht das Ergebnis hier.</p>
             </div>
             <p data-mail-timeout class="mb-3 rounded-xl bg-stone-50 p-3 text-sm text-stone-700" hidden>

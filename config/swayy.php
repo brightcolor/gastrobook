@@ -356,6 +356,8 @@ return [
     | list_max: so viele Mails zeigt die Liste im Admin höchstens (5–500).
     | message_id_domain: Domain hinter dem @ der Message-ID. Leer: die Domain
     |   von MAIL_FROM_ADDRESS.
+    | operator_templates: Mails an Betrieb und Team. Auf ihre Zustellung wartet
+    |   keine Seite; ihr Zustand steht nur in der Liste im Admin.
     | unknown_address_patterns / mailbox_full_patterns: Textstellen in der
     |   Antwort des Mailservers (ohne Groß-/Kleinschreibung), an denen der Gast
     |   „Adresse gibt es nicht“ bzw. „Postfach ist voll“ liest.
@@ -369,6 +371,10 @@ return [
         'detail_max' => EnvSetting::integer('SWAYY_MAIL_DELIVERY_DETAIL_MAX', default: 1000, min: 100, max: 10000),
         'list_max' => EnvSetting::integer('SWAYY_MAIL_DELIVERY_LIST_MAX', default: 50, min: 5, max: 500),
         'message_id_domain' => trim((string) env('SWAYY_MAIL_DELIVERY_MESSAGE_ID_DOMAIN', '')),
+        'operator_templates' => array_values(array_filter(array_map('trim', explode(
+            ',',
+            (string) env('SWAYY_MAIL_DELIVERY_OPERATOR_TEMPLATES', 'owner_new_reservation')
+        )))),
         'unknown_address_patterns' => array_values(array_filter(array_map('trim', explode(
             ',',
             (string) env('SWAYY_MAIL_DELIVERY_UNKNOWN_ADDRESS_PATTERNS', '5.1.1,5.1.0,user unknown,unknown user,no such user,does not exist,address rejected,mailbox unavailable,mailbox not found,invalid recipient')

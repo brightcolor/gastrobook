@@ -21,6 +21,8 @@
   nicht, Postfach voll, zurückgehalten, abgelehnt), die Telefonnummer des
   Standorts und den nächsten Schritt. Nach der eingestellten Wartezeit gilt
   der Hinweis „noch nicht bestätigt“. Die Reservierung im Admin wartet genauso.
+  Gewartet wird nur auf Mails an den Gast; Mails an Betrieb und Team
+  (`SWAYY_MAIL_DELIVERY_OPERATOR_TEMPLATES`) stehen nur in der Liste.
 - **Die Bestätigungsmail steht jetzt im Versandprotokoll.** Bisher fehlte sie
   dort ganz. Scheitert ihr Versand, bricht die Buchung nicht mehr mit einem
   Serverfehler ab; die Seite zeigt dem Gast, was passiert ist.

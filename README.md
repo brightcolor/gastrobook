@@ -977,6 +977,7 @@ MAIL_FROM_NAME="Swayy"
 | `SWAYY_MAIL_DELIVERY_RECENT_MINUTES` | `10` | Mails, die jünger sind, gelten als „wird gerade zugestellt“ (1 bis 1440) |
 | `SWAYY_MAIL_DELIVERY_DETAIL_MAX` | `1000` | Längste gespeicherte Antwort des Mailservers in Zeichen (100 bis 10000) |
 | `SWAYY_MAIL_DELIVERY_LIST_MAX` | `50` | So viele Mails zeigt die Liste einer Reservierung höchstens (5 bis 500) |
+| `SWAYY_MAIL_DELIVERY_OPERATOR_TEMPLATES` | `owner_new_reservation` | Mails an Betrieb und Team (Kommaliste der Vorlagen). Keine Seite wartet auf sie; ihr Zustand steht nur in der Liste im Admin |
 | `SWAYY_MAIL_DELIVERY_MESSAGE_ID_DOMAIN` | leer | Domain der Message-ID; leer: die Domain von `MAIL_FROM_ADDRESS` |
 | `SWAYY_MAIL_DELIVERY_UNKNOWN_ADDRESS_PATTERNS` | `5.1.1,5.1.0,user unknown,…` | Textstellen in der Antwort des Mailservers, bei denen der Gast „Adresse gibt es nicht“ liest |
 | `SWAYY_MAIL_DELIVERY_MAILBOX_FULL_PATTERNS` | `5.2.2,4.2.2,mailbox full,…` | Textstellen für „Postfach ist voll“ |

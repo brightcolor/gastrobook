@@ -44,7 +44,7 @@ Buchung: an den Gast und an euch, mit Empfänger, Betreff, Uhrzeit und Zustand.
 
 Ist eine Mail nicht angekommen, ruf den Gast an und korrigiere die Adresse.
 
-Ist gerade eine Mail unterwegs, bittet die Seite, sie noch nicht zu verlassen,
+Ist gerade eine Mail an den Gast unterwegs, bittet die Seite, sie noch nicht zu verlassen,
 und zeigt das Ergebnis, sobald es da ist. Dasselbe sieht der Gast nach dem
 Buchen: Die Erfolgsmeldung erscheint erst, wenn seine Mail zugestellt ist.
 Kommt sie nicht an, liest er den Grund, eure Telefonnummer und was er tun kann.

@@ -30,7 +30,7 @@ final class MailDeliveryStatus
 
     /**
      * Zustand der Mails, die der Gast gerade bekommt: die jüngsten Mails an
-     * ihn (ohne Hinweise an den Betrieb), solange sie jünger als
+     * ihn (ohne Mails an Betrieb und Team), solange sie jünger als
      * recent_minutes sind. null, wenn die Seite nicht warten soll.
      *
      * @return array{state: string, message: string, recipient: string, reference: string}|null
@@ -41,7 +41,7 @@ final class MailDeliveryStatus
             return null;
         }
 
-        $logs = $this->recentLogs($reservation)->filter(fn (NotificationLog $log) => $log->isForGuest())->values();
+        $logs = $this->recentGuestLogs($reservation);
         if ($logs->isEmpty()) {
             return null;
         }
@@ -81,11 +81,15 @@ final class MailDeliveryStatus
             ->get();
     }
 
-    /** Gerade unterwegs und deshalb ein Grund, auf der Seite zu bleiben. */
+    /**
+     * Eine Mail an den Gast ist gerade unterwegs und deshalb ein Grund, auf
+     * der Seite zu bleiben. Mails an Betrieb und Team zählen nicht; ihr
+     * Zustand steht ohnehin in der Liste.
+     */
     public function adminIsWaiting(Reservation $reservation): bool
     {
         return $this->waitsForDelivery()
-            && $this->recentLogs($reservation)->contains(fn (NotificationLog $log) => $log->isPending());
+            && $this->recentGuestLogs($reservation)->contains(fn (NotificationLog $log) => $log->isPending());
     }
 
     /**
@@ -107,14 +111,22 @@ final class MailDeliveryStatus
         ];
     }
 
-    /** @return Collection<int, NotificationLog> */
-    private function recentLogs(Reservation $reservation): Collection
+    /**
+     * Die jüngsten Mails an den Gast. Nur sie entscheiden, ob eine Seite
+     * wartet; Mails an Betrieb und Team (operator_templates) bleiben außen vor.
+     *
+     * @return Collection<int, NotificationLog>
+     */
+    private function recentGuestLogs(Reservation $reservation): Collection
     {
+        $operator = NotificationLog::operatorTemplates();
+
         return NotificationLog::withoutGlobalScopes()
             ->where('tenant_id', $reservation->tenant_id)
             ->where('reservation_id', $reservation->id)
             ->where('channel', 'mail')
             ->whereNotNull('message_id')
+            ->when($operator !== [], fn ($q) => $q->where(fn ($q) => $q->whereNull('template_key')->orWhereNotIn('template_key', $operator)))
             ->where('created_at', '>=', now()->subMinutes((int) config('swayy.mail_delivery.recent_minutes', 10)))
             ->orderByDesc('created_at')
             ->orderByDesc('id')
