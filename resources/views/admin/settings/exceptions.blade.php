@@ -16,7 +16,6 @@
     $emptyText = $salon
         ? 'Trag Feiertage, Betriebsferien oder Tage mit anderen Öffnungszeiten ein. Kunden sehen die Änderung sofort auf der Buchungsseite.'
         : 'Trag Feiertage, Betriebsferien oder Tage mit weniger Plätzen ein. Gäste sehen die Änderung sofort auf der Buchungsseite.';
-    $sentenceStart = 'Wähle Tage und was anders ist; hier steht dann, was '.$guests.' erleben.';
 @endphp
 <x-page-header title="Ausnahmen" :crumb="['Einstellungen', 'Platz & Zeiten']" scope="location" :description="$description">
     <x-slot:actions>
@@ -61,49 +60,7 @@
 @endif
 
 @push('drawers')
-    @php
-        $texts = [
-            'start' => $sentenceStart,
-            'incomplete' => 'Noch unvollständig: :message',
-            'unavailable' => 'Die Vorschau ist gerade nicht verfügbar. Speichern klappt trotzdem.',
-        ];
-        $drawers = [['id' => 'ausnahme-neu', 'entry' => null]];
-        foreach ($upcoming as $entries) {
-            foreach ($entries as $entry) {
-                if ($entry['editable']) {
-                    $drawers[] = ['id' => 'ausnahme-'.$entry['key'], 'entry' => $entry];
-                }
-            }
-        }
-    @endphp
-    @foreach($drawers as $drawer)
-        @php
-            $entry = $drawer['entry'];
-            $drawerId = $drawer['id'];
-            $values = $entry['form'] ?? $blank;
-        @endphp
-        <x-drawer :id="$drawerId" :title="$entry === null ? 'Neue Ausnahme' : 'Ausnahme bearbeiten'"
-                  :description="$entry === null ? 'Gilt für einen Tag oder einen Zeitraum.' : ($entry['label'] ?: ScheduleExceptionPeriod::text($entry['from'], $entry['until']))">
-            @include('admin.settings.partials.exception-form', [
-                'prefix' => $drawerId,
-                'action' => $entry === null ? route('admin.settings.exceptions.store') : route('admin.settings.exceptions.update', $entry['key']),
-                'method' => $entry === null ? 'POST' : 'PUT',
-                'key' => $entry['key'] ?? null,
-                'values' => $values,
-                'rooms' => $roomsFor($values),
-                'preset' => $entry === null ? $presetTable : null,
-            ])
-            <x-slot:footer>
-                <div class="w-full space-y-1">
-                    <p id="{{ $drawerId }}-sentence-title" class="text-sm font-semibold text-stone-900">So wirkt es</p>
-                    <p data-effect-sentence role="status" aria-live="polite" aria-atomic="true" aria-labelledby="{{ $drawerId }}-sentence-title"
-                       data-text-start="{{ $texts['start'] }}" data-text-incomplete="{{ $texts['incomplete'] }}" data-text-unavailable="{{ $texts['unavailable'] }}"
-                       class="text-sm text-stone-700 [overflow-wrap:anywhere]">{{ $texts['start'] }}</p>
-                </div>
-                <button type="button" data-drawer-close class="btn btn-secondary">Abbrechen</button>
-                <button type="submit" form="form-{{ $drawerId }}" class="btn btn-primary">{{ $entry === null ? 'Ausnahme anlegen' : 'Speichern' }}</button>
-            </x-slot:footer>
-        </x-drawer>
-    @endforeach
+    {{-- Nur die Seitenleiste zum Anlegen. Die zum Bearbeiten lädt drawer.js beim Öffnen (data-drawer-src in der Zeile). --}}
+    @include('admin.settings.partials.exception-drawer', ['entry' => null])
 @endpush
 @endsection

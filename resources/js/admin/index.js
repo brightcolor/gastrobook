@@ -31,4 +31,12 @@ export function initAdmin() {
     initDrawers();
     initCopyButtons();
     initWidgetBuilder();
+
+    // Eine nachgeladene Seitenleiste (drawer.js, data-drawer-src) richten die Bausteine ein wie beim Laden der Seite.
+    document.addEventListener('swayy:drawer-added', () => {
+        initRows();
+        initExceptions();
+        initReveals();
+        initMinuteHints();
+    });
 }
