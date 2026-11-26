@@ -661,20 +661,25 @@ final class ScheduleExceptions
         $base = ['tenant_id' => $location->tenant_id, 'location_id' => $location->id, 'exception_group' => $group];
         $label = $data['label'] ?? null;
         $label = is_string($label) && $label !== '' ? $label : null;
+        // Die Zeilen sammeln und je Tabelle in Blöcken schreiben (insertRows). Einzeln
+        // waren es bei zwei Wochen Sperre für zwölf Tische 168 Anfragen nur für die Tische.
+        $hours = [];
+        $blackouts = [];
+        $blocks = [];
 
         if (in_array('closed', $effects, true)) {
             foreach ($this->dates($data) as $day) {
-                SpecialOpeningHour::create($base + ['date' => $day, 'closed' => true, 'label' => $label]);
+                $hours[] = $base + ['date' => $day, 'closed' => true, 'label' => $label, 'opens_at' => null, 'closes_at' => null];
             }
         }
 
         if (in_array('hours', $effects, true)) {
             foreach ($this->dates($data) as $day) {
                 foreach (ScheduleExceptionRules::sortedWindows($data) as $window) {
-                    SpecialOpeningHour::create($base + [
+                    $hours[] = $base + [
                         'date' => $day, 'closed' => false, 'label' => $label,
                         'opens_at' => $window['opens_at'], 'closes_at' => $window['closes_at'],
-                    ]);
+                    ];
                 }
             }
         }
@@ -682,10 +687,10 @@ final class ScheduleExceptions
         if (in_array('limit', $effects, true)) {
             $roomId = ($data['limit_room_id'] ?? null) === null ? null : (int) $data['limit_room_id'];
             foreach ($this->spans($location, $data, 'limit') as [$start, $end]) {
-                BlackoutPeriod::create($base + [
+                $blackouts[] = $base + [
                     'room_id' => $roomId, 'starts_at' => $start, 'ends_at' => $end,
                     'reduce_covers_to' => (int) $data['limit_covers'], 'reason' => $label,
-                ]);
+                ];
             }
         }
 
@@ -696,20 +701,53 @@ final class ScheduleExceptions
 
             foreach (ScheduleExceptionRules::ids($data['lock_rooms'] ?? null) as $roomId) {
                 foreach ($spans as [$start, $end]) {
-                    BlackoutPeriod::create($base + [
+                    $blackouts[] = $base + [
                         'room_id' => $roomId, 'starts_at' => $start, 'ends_at' => $end,
                         'reduce_covers_to' => null, 'reason' => $label,
-                    ]);
+                    ];
                 }
             }
             foreach ($tableIds as $tableId) {
                 foreach ($spans as [$start, $end]) {
-                    TableBlock::create($base + [
+                    $blocks[] = $base + [
                         'restaurant_table_id' => $tableId, 'starts_at' => $start, 'ends_at' => $end,
                         'reason' => $label, 'created_by' => $userId,
-                    ]);
+                    ];
                 }
             }
+        }
+
+        $this->insertRows(SpecialOpeningHour::class, $hours);
+        $this->insertRows(BlackoutPeriod::class, $blackouts);
+        $this->insertRows(TableBlock::class, $blocks);
+    }
+
+    /**
+     * Schreibt Zeilen in Blöcken zu swayy.exceptions.insert_chunk
+     * (SWAYY_EXCEPTIONS_INSERT_CHUNK) Zeilen. Wie beim Anlegen über das Modell
+     * bekommt jede Zeile created_at und updated_at, und Zeitpunkte stehen im
+     * Datumsformat des Modells. Die Modelle haben keine Ereignisse, die beim
+     * Anlegen laufen müssten; tenant_id steht in jeder Zeile.
+     *
+     * @param  class-string<Model>  $model
+     * @param  list<array<string, mixed>>  $rows
+     */
+    private function insertRows(string $model, array $rows): void
+    {
+        if ($rows === []) {
+            return;
+        }
+
+        $instance = new $model;
+        $now = $instance->freshTimestampString();
+        $format = $instance->getDateFormat();
+        $prepared = array_map(fn (array $row): array => array_map(
+            fn (mixed $value): mixed => $value instanceof DateTimeInterface ? $value->format($format) : $value,
+            $row,
+        ) + ['created_at' => $now, 'updated_at' => $now], $rows);
+
+        foreach (array_chunk($prepared, max(1, (int) config('swayy.exceptions.insert_chunk'))) as $chunk) {
+            $model::query()->insert($chunk);
         }
     }
 

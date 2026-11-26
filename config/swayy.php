@@ -579,6 +579,8 @@ return [
     | covers_max: Obergrenze für „Weniger Gäste“ (1–32767; die Spalte
     | reduce_covers_to ist smallint).
     | past_months: so viele Monate zurück zeigt die Liste „Vergangen“ (1–60).
+    | insert_chunk: so viele Zeilen schreibt ein Sammel-Insert beim Speichern
+    | (1–5000).
     |
     */
     'exceptions' => [
@@ -587,6 +589,10 @@ return [
         'label_max' => EnvSetting::integer('SWAYY_EXCEPTIONS_LABEL_MAX', default: 120, min: 20, max: 200),
         'covers_max' => EnvSetting::integer('SWAYY_EXCEPTIONS_COVERS_MAX', default: 10000, min: 1, max: 32767),
         'past_months' => EnvSetting::integer('SWAYY_EXCEPTIONS_PAST_MONTHS', default: 12, min: 1, max: 60),
+        // Zeilen je Sammel-Insert beim Speichern einer Ausnahme (Tischsperren, Sperrzeiten,
+        // Sondertage). PostgreSQL nimmt höchstens 65535 Werte je Anfrage; bei bis zu zehn
+        // Spalten bleiben 5000 Zeilen darunter.
+        'insert_chunk' => EnvSetting::integer('SWAYY_EXCEPTIONS_INSERT_CHUNK', default: 500, min: 1, max: 5000),
     ],
 
     /*
