@@ -126,26 +126,39 @@ class Reservation extends Model
         return $this->belongsTo(Event::class);
     }
 
+    /**
+     * Die erste Leistung des Termins, auch wenn sie inzwischen gelöscht ist.
+     *
+     * Leistungen und Personen werden weich gelöscht, und nur, wenn kein
+     * kommender Termin sie braucht (ServiceController, StaffMemberController).
+     * An vergangenen Terminen hängen sie weiter und gehören zu deren Verlauf:
+     * Terminplan, Gastbereich, Bestätigung und Export zeigen sie deshalb mit.
+     */
     public function service(): BelongsTo
     {
-        return $this->belongsTo(Service::class);
+        return $this->belongsTo(Service::class)->withTrashed();
     }
 
     /**
-     * All services that make up this (salon) appointment, in order.
+     * All services that make up this (salon) appointment, in order, also
+     * deleted ones (see service()).
      *
      * @return BelongsToMany<Service, $this>
      */
     public function services(): BelongsToMany
     {
         return $this->belongsToMany(Service::class, 'reservation_service')
+            ->withTrashed()
             ->withPivot(['sort_order', 'duration_minutes', 'price_minor'])
             ->orderByPivot('sort_order');
     }
 
+    /**
+     * Die Person des Termins, auch wenn sie inzwischen gelöscht ist (siehe service()).
+     */
     public function staffMember(): BelongsTo
     {
-        return $this->belongsTo(StaffMember::class);
+        return $this->belongsTo(StaffMember::class)->withTrashed();
     }
 
     /** @return BelongsToMany<RestaurantTable, $this> */
