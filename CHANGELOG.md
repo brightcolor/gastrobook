@@ -1,6 +1,6 @@
 # Changelog
 
-## [@@VERSION@@] – 2026-11-26
+## [1.141.1] – 2026-11-26
 
 ### Versionsnummern vergibt die CI
 
