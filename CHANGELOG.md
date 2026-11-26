@@ -1,6 +1,6 @@
 # Changelog
 
-## [@@VERSION@@] – 2026-11-26
+## [1.142.1] – 2026-11-26
 
 ### Ausnahmen-Seite lädt die Seitenleiste zum Bearbeiten erst beim Öffnen
 
