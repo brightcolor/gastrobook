@@ -335,6 +335,52 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Zustellstatus der Mails (Postal-Webhook)
+    |--------------------------------------------------------------------------
+    |
+    | Jede Mail an Gast oder Betrieb bekommt eine eigene Message-ID und steht im
+    | Versandprotokoll. Postal meldet über POST /webhooks/postal/delivery, ob
+    | die Mail zugestellt, verzögert, zurückgehalten oder abgewiesen wurde. Die
+    | Signatur prüft derselbe Schlüssel wie bei den Gästeantworten
+    | (SWAYY_GUEST_MAIL_RELAY_PUBLIC_KEY).
+    |
+    | wait_for_delivery: Buchungsseite und Reservierung im Admin warten auf die
+    |   Meldung von Postal, bevor sie Erfolg melden. Erst einschalten, wenn der
+    |   Webhook in Postal eingerichtet ist, sonst wartet jeder Gast bis zum
+    |   Ablauf von wait_seconds.
+    | wait_seconds: so lange wartet die Seite höchstens auf die Meldung (10–600).
+    | poll_seconds: Abstand zwischen zwei Abfragen der Seite (1–30).
+    | recent_minutes: Mails, die jünger sind, gelten auf der Seite als „wird
+    |   gerade zugestellt“ (1–1440).
+    | detail_max: längste gespeicherte Antwort des Mailservers in Zeichen.
+    | list_max: so viele Mails zeigt die Liste im Admin höchstens (5–500).
+    | message_id_domain: Domain hinter dem @ der Message-ID. Leer: die Domain
+    |   von MAIL_FROM_ADDRESS.
+    | unknown_address_patterns / mailbox_full_patterns: Textstellen in der
+    |   Antwort des Mailservers (ohne Groß-/Kleinschreibung), an denen der Gast
+    |   „Adresse gibt es nicht“ bzw. „Postfach ist voll“ liest.
+    |
+    */
+    'mail_delivery' => [
+        'wait_for_delivery' => (bool) env('SWAYY_MAIL_DELIVERY_WAIT', false),
+        'wait_seconds' => EnvSetting::integer('SWAYY_MAIL_DELIVERY_WAIT_SECONDS', default: 90, min: 10, max: 600),
+        'poll_seconds' => EnvSetting::integer('SWAYY_MAIL_DELIVERY_POLL_SECONDS', default: 3, min: 1, max: 30),
+        'recent_minutes' => EnvSetting::integer('SWAYY_MAIL_DELIVERY_RECENT_MINUTES', default: 10, min: 1, max: 1440),
+        'detail_max' => EnvSetting::integer('SWAYY_MAIL_DELIVERY_DETAIL_MAX', default: 1000, min: 100, max: 10000),
+        'list_max' => EnvSetting::integer('SWAYY_MAIL_DELIVERY_LIST_MAX', default: 50, min: 5, max: 500),
+        'message_id_domain' => trim((string) env('SWAYY_MAIL_DELIVERY_MESSAGE_ID_DOMAIN', '')),
+        'unknown_address_patterns' => array_values(array_filter(array_map('trim', explode(
+            ',',
+            (string) env('SWAYY_MAIL_DELIVERY_UNKNOWN_ADDRESS_PATTERNS', '5.1.1,5.1.0,user unknown,unknown user,no such user,does not exist,address rejected,mailbox unavailable,mailbox not found,invalid recipient')
+        )))),
+        'mailbox_full_patterns' => array_values(array_filter(array_map('trim', explode(
+            ',',
+            (string) env('SWAYY_MAIL_DELIVERY_MAILBOX_FULL_PATTERNS', '5.2.2,4.2.2,mailbox full,quota exceeded,over quota,insufficient storage')
+        )))),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Newsletter-Anbindung (MailWizz)
     |--------------------------------------------------------------------------
     |

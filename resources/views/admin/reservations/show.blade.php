@@ -186,6 +186,48 @@
             </div>
         </div>
 
+        {{-- Versandprotokoll: welche Mail ging wann an wen, und ist sie angekommen? --}}
+        {{-- Einzeiler: Ein PHP-Block hier paarte sich mit dem einzeiligen PHP-Aufruf weiter oben. --}}
+        @php($mailTz = $location?->timezone ?? config('app.timezone'))
+        @php($mailSalon = (bool) $location?->tenant?->isSalon())
+        @php($mailTones = ['ok' => 'bg-emerald-50 text-emerald-800 ring-emerald-200', 'wait' => 'bg-amber-50 text-amber-800 ring-amber-200', 'bad' => 'bg-red-50 text-red-800 ring-red-200'])
+        <div id="mail-delivery" class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100"
+             data-status-url="{{ route('admin.reservations.mail-status', $reservation) }}"
+             data-poll-ms="{{ (int) config('swayy.mail_delivery.poll_seconds', 3) * 1000 }}"
+             data-wait-ms="{{ (int) config('swayy.mail_delivery.wait_seconds', 90) * 1000 }}"
+             data-waiting="{{ $mailWaiting ? '1' : '0' }}">
+            <h2 class="mb-3 font-bold">E-Mails<span class="tip" tabindex="0" data-tip="Alle Mails zu dieser Reservierung, an den Gast und an den Betrieb. Der Zustand kommt vom Mailserver: „Zugestellt“ heißt, der Mailserver des Empfängers hat die Mail angenommen. „Nicht zustellbar“ oder „Zurückgekommen“ heißt, sie ist nicht angekommen; dann am besten anrufen.">?</span></h2>
+
+            <div data-mail-waiting role="status" class="mb-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900 ring-1 ring-amber-200" @if(! $mailWaiting) hidden @endif>
+                <p class="font-semibold">Eine E-Mail ist noch unterwegs.</p>
+                <p>Bitte diese Seite noch nicht verlassen. Sobald der Mailserver die Zustellung bestätigt, steht das Ergebnis hier.</p>
+            </div>
+            <p data-mail-timeout class="mb-3 rounded-xl bg-stone-50 p-3 text-sm text-stone-700" hidden>
+                Der Mailserver hat die Zustellung noch nicht bestätigt. Die Seite fragt nicht mehr nach; ein späteres Neuladen zeigt den aktuellen Stand.
+            </p>
+
+            @if($mailLogs->isEmpty())
+                <p class="text-sm text-stone-500">Zu dieser Reservierung wurden keine E-Mails verschickt.</p>
+            @else
+                <ul class="space-y-2 text-sm">
+                    @foreach($mailLogs as $mail)
+                        <li class="rounded-lg bg-stone-50 p-3" data-mail-row="{{ $mail->id }}">
+                            <div class="flex flex-wrap items-baseline justify-between gap-2">
+                                <span class="font-semibold text-stone-800">{{ $mail->templateLabel($mailSalon) }}</span>
+                                <span data-mail-badge class="rounded-full px-2 py-0.5 text-xs font-semibold ring-1 {{ $mailTones[$mail->statusTone()] }}">{{ $mail->statusLabel() }}</span>
+                            </div>
+                            <div class="mt-1 flex flex-wrap justify-between gap-2 text-xs text-stone-500">
+                                <span>an {{ $mail->recipient }}</span>
+                                <span>{{ $mail->created_at?->copy()->setTimezone($mailTz)->format('d.m.Y H:i') }} Uhr</span>
+                            </div>
+                            @if($mail->subject)<p class="mt-1 text-xs text-stone-500">Betreff: {{ $mail->subject }}</p>@endif
+                            <p data-mail-detail class="mt-1 break-words text-xs {{ $mail->hasFailed() ? 'text-red-700' : 'text-stone-400' }}" @if(! ($mail->status_detail ?? $mail->error)) hidden @endif>{{ $mail->status_detail ?? $mail->error }}</p>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+        </div>
+
         {{-- Antworten des Gastes (über die Antwortadresse eingegangen) --}}
         @if($reservation->mailReplies->isNotEmpty())
         <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100">
@@ -556,6 +598,69 @@
 
     // Initialize pills from server-rendered state
     loadTags().then(renderPills);
+})();
+</script>
+
+<script>
+// Zustellstatus der Mails: Solange eine Mail unterwegs ist, fragt die Seite
+// nach, warnt vor dem Verlassen und zeigt das Ergebnis, sobald es da ist.
+(function () {
+    var box = document.getElementById('mail-delivery');
+    if (!box || box.dataset.waiting !== '1') return;
+
+    var url = box.dataset.statusUrl;
+    var pollMs = parseInt(box.dataset.pollMs, 10) || 3000;
+    var waitMs = parseInt(box.dataset.waitMs, 10) || 90000;
+    var startedAt = Date.now();
+    var tones = {
+        ok: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
+        wait: 'bg-amber-50 text-amber-800 ring-amber-200',
+        bad: 'bg-red-50 text-red-800 ring-red-200'
+    };
+    var allTones = (tones.ok + ' ' + tones.wait + ' ' + tones.bad).split(' ');
+
+    function guard(e) { e.preventDefault(); e.returnValue = ''; }
+    window.addEventListener('beforeunload', guard);
+
+    function finish(timedOut) {
+        window.removeEventListener('beforeunload', guard);
+        box.querySelector('[data-mail-waiting]').hidden = true;
+        box.querySelector('[data-mail-timeout]').hidden = !timedOut;
+    }
+
+    function render(rows) {
+        rows.forEach(function (row) {
+            var li = box.querySelector('[data-mail-row="' + row.id + '"]');
+            if (!li) return;
+            var badge = li.querySelector('[data-mail-badge]');
+            badge.textContent = row.label;
+            badge.classList.remove.apply(badge.classList, allTones);
+            badge.classList.add.apply(badge.classList, (tones[row.tone] || tones.wait).split(' '));
+            var detail = li.querySelector('[data-mail-detail]');
+            detail.textContent = row.detail;
+            detail.hidden = row.detail === '';
+            detail.classList.toggle('text-red-700', row.tone === 'bad');
+            detail.classList.toggle('text-stone-400', row.tone !== 'bad');
+        });
+    }
+
+    function poll() {
+        fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
+            .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+            .then(function (data) {
+                render(data.rows || []);
+                if (!data.waiting) return finish(false);
+                if (Date.now() - startedAt >= waitMs) return finish(true);
+                setTimeout(poll, pollMs);
+            })
+            .catch(function () {
+                // Netzfehler oder abgelaufene Anmeldung: nicht ewig warnen.
+                if (Date.now() - startedAt >= waitMs) return finish(true);
+                setTimeout(poll, pollMs);
+            });
+    }
+
+    setTimeout(poll, pollMs);
 })();
 </script>
 @endsection

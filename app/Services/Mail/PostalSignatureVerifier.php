@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Mail;
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use OpenSSLAsymmetricKey;
 
@@ -26,6 +27,24 @@ final class PostalSignatureVerifier
         }
 
         return $this->algorithm() === OPENSSL_ALGO_SHA1 ? 'X-Postal-Signature' : 'X-Postal-Signature-256';
+    }
+
+    /**
+     * Prüft Signatur und optionales Geheimnis einer Anfrage von Postal.
+     * null, wenn alles stimmt; sonst die Meldung für die Antwort mit 401.
+     */
+    public function rejection(Request $request): ?string
+    {
+        if (! $this->verify($request->getContent(), (string) $request->header($this->headerName()))) {
+            return 'Signatur der Anfrage fehlt oder stimmt nicht. Die Nachricht wurde nicht verarbeitet. Bitte den öffentlichen Schlüssel von Postal in SWAYY_GUEST_MAIL_RELAY_PUBLIC_KEY prüfen.';
+        }
+
+        $shared = trim((string) config('swayy.guest_mail_relay.inbound_shared_secret'));
+        if ($shared !== '' && ! hash_equals($shared, (string) $request->header('X-Postal-Shared-Secret'))) {
+            return 'Zugangskennung fehlt oder stimmt nicht.';
+        }
+
+        return null;
     }
 
     public function verify(string $payload, string $signatureHeader): bool

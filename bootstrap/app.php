@@ -103,6 +103,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'webhooks/stripe',
             'webhooks/gocardless',
             'webhooks/postal',
+            'webhooks/postal/delivery',
             // Abmeldung per Klick aus dem Mailprogramm (RFC 8058); geschützt durch die Signatur.
             'marketing/abmelden/*',
         ]);

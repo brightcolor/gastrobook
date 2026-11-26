@@ -962,6 +962,25 @@ MAIL_FROM_NAME="Swayy"
 | `SWAYY_GUEST_MAIL_FROM_NAME_MAX` | `100` | Längster Absendername in Zeichen (10 bis 255; die Spalte fasst 255) |
 | `SWAYY_GUEST_MAIL_REPLY_TO_MAX` | `200` | Längste Antwortadresse in Zeichen (30 bis 255; die Spalte fasst 255) |
 
+**Zustellstatus (Postal):** Jede Mail zu einer Reservierung steht im Versandprotokoll, mit eigener Message-ID. Die Reservierung im Admin zeigt unter *E-Mails*, welche Mail wann an wen ging und ob sie angekommen ist. Den Zustand meldet Postal über einen Webhook:
+
+1. In Postal beim Mailserver von Swayy unter *Webhooks* einen Webhook anlegen: URL `https://<APP_URL>/webhooks/postal/delivery`, Ereignisse *MessageSent*, *MessageDelayed*, *MessageDeliveryFailed*, *MessageHeld* und *MessageBounced*.
+2. Die Signatur prüft derselbe Schlüssel wie bei den Gästeantworten: `SWAYY_GUEST_MAIL_RELAY_PUBLIC_KEY` (der Wert hinter `p=` aus `postal default-dkim-record`).
+3. Eine Testbuchung machen und im Admin prüfen, dass die Mail auf *Zugestellt* springt.
+4. Erst dann `SWAYY_MAIL_DELIVERY_WAIT=true` setzen. Ab da zeigt die Buchungsseite die Erfolgsmeldung erst, wenn Postal die Zustellung bestätigt. Bis dahin bittet sie den Gast, die Seite nicht zu verlassen. Scheitert die Zustellung, nennt sie den Grund und den nächsten Schritt.
+
+| Variable | Voreinstellung | Wirkung |
+|---|---|---|
+| `SWAYY_MAIL_DELIVERY_WAIT` | `false` | Buchungsseite und Reservierung im Admin warten auf die Meldung von Postal |
+| `SWAYY_MAIL_DELIVERY_WAIT_SECONDS` | `90` | So lange wartet die Seite höchstens, danach gilt der Hinweis „noch nicht bestätigt“ (10 bis 600) |
+| `SWAYY_MAIL_DELIVERY_POLL_SECONDS` | `3` | Abstand zwischen zwei Abfragen der Seite in Sekunden (1 bis 30) |
+| `SWAYY_MAIL_DELIVERY_RECENT_MINUTES` | `10` | Mails, die jünger sind, gelten als „wird gerade zugestellt“ (1 bis 1440) |
+| `SWAYY_MAIL_DELIVERY_DETAIL_MAX` | `1000` | Längste gespeicherte Antwort des Mailservers in Zeichen (100 bis 10000) |
+| `SWAYY_MAIL_DELIVERY_LIST_MAX` | `50` | So viele Mails zeigt die Liste einer Reservierung höchstens (5 bis 500) |
+| `SWAYY_MAIL_DELIVERY_MESSAGE_ID_DOMAIN` | leer | Domain der Message-ID; leer: die Domain von `MAIL_FROM_ADDRESS` |
+| `SWAYY_MAIL_DELIVERY_UNKNOWN_ADDRESS_PATTERNS` | `5.1.1,5.1.0,user unknown,…` | Textstellen in der Antwort des Mailservers, bei denen der Gast „Adresse gibt es nicht“ liest |
+| `SWAYY_MAIL_DELIVERY_MAILBOX_FULL_PATTERNS` | `5.2.2,4.2.2,mailbox full,…` | Textstellen für „Postfach ist voll“ |
+
 **Gestaltung der Mails:** Alle Mails teilen einen Rahmen mit Überschrift, Tabelle für Angaben, Knöpfen und Fußbereich (`mail:vorschau` zeigt sie an). Diese Einstellungen steuern ihn und die Gültigkeit der Links:
 
 | Variable | Voreinstellung | Wirkung |

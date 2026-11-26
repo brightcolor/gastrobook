@@ -25,13 +25,9 @@ class PostalInboundController extends Controller
     {
         $payload = $request->getContent();
 
-        if (! $this->verifier->verify($payload, (string) $request->header($this->verifier->headerName()))) {
-            return response()->json(['error' => 'Signatur der Anfrage fehlt oder stimmt nicht. Die Nachricht wurde nicht verarbeitet.'], 401);
-        }
-
-        $shared = trim((string) config('swayy.guest_mail_relay.inbound_shared_secret'));
-        if ($shared !== '' && ! hash_equals($shared, (string) $request->header('X-Postal-Shared-Secret'))) {
-            return response()->json(['error' => 'Zugangskennung fehlt oder stimmt nicht.'], 401);
+        $rejection = $this->verifier->rejection($request);
+        if ($rejection !== null) {
+            return response()->json(['error' => $rejection], 401);
         }
 
         $data = json_decode($payload, true);

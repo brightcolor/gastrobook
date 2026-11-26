@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.140.0] – 2026-11-26
+
+### Zustellstatus der Mails: sehen, wer welche Mail bekommen hat
+
+- **Liste „E-Mails“ an jeder Reservierung.** Der Admin zeigt jede Mail zur
+  Buchung mit Empfänger, Betreff, Uhrzeit und Zustand: wartet, übergeben,
+  zugestellt, verzögert, zurückgehalten, nicht zustellbar, zurückgekommen.
+  Bei einem Fehler steht die Antwort des Mailservers darunter.
+- **Postal meldet die Zustellung.** Neuer Webhook `POST /webhooks/postal/delivery`
+  für MessageSent, MessageDelayed, MessageDeliveryFailed, MessageHeld und
+  MessageBounced, signiert mit dem Postal-Schlüssel aus
+  `SWAYY_GUEST_MAIL_RELAY_PUBLIC_KEY`. Jede Mail trägt dafür eine eigene
+  Message-ID aus dem Versandprotokoll. Ältere Meldungen überschreiben neuere
+  nicht; ein Rückläufer nach der Zustellung gilt.
+- **Buchungsseite wartet auf die Zustellung** (`SWAYY_MAIL_DELIVERY_WAIT=true`).
+  Die Erfolgsmeldung kommt erst, wenn Postal die Mail als zugestellt meldet.
+  Bis dahin bittet die Seite den Gast, sie nicht zu verlassen, und warnt beim
+  Schließen. Kommt die Mail nicht an, nennt sie den Grund (Adresse gibt es
+  nicht, Postfach voll, zurückgehalten, abgelehnt), die Telefonnummer des
+  Standorts und den nächsten Schritt. Nach der eingestellten Wartezeit gilt
+  der Hinweis „noch nicht bestätigt“. Die Reservierung im Admin wartet genauso.
+- **Die Bestätigungsmail steht jetzt im Versandprotokoll.** Bisher fehlte sie
+  dort ganz. Scheitert ihr Versand, bricht die Buchung nicht mehr mit einem
+  Serverfehler ab; die Seite zeigt dem Gast, was passiert ist.
+- **Versandprotokoll zeigt den echten Zustand.** Bisher stand jede Mail für
+  immer auf „queued“. Jetzt setzt die Annahme durch den Mailserver „übergeben“,
+  ein endgültiger Fehler in der Warteschlange „nicht zustellbar“.
+- Neue Einstellungen `SWAYY_MAIL_DELIVERY_*` (README, „Zustellstatus“).
+  Die Anonymisierung eines Gastes leert auch Antwort des Mailservers und
+  Message-ID.
+- Migration: neue Spalten `notification_logs.message_id`, `status_detail`,
+  `status_changed_at`, Indizes auf `message_id` und
+  `(reservation_id, created_at)`.
+
 ## [1.139.0] – 2026-11-26
 
 ### Erst der Klick im Bestätigungslink macht aus dem Wunsch eine Anfrage

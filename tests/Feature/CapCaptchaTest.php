@@ -257,6 +257,7 @@ class CapCaptchaTest extends TestCase
         'POST webhooks/gocardless',
         'POST webhooks/stripe',
         'POST webhooks/postal',
+        'POST webhooks/postal/delivery',
         // Kundenpanel von bright color: jeder Aufruf mit HMAC signiert (App\Provisioning\RequestCheck).
         'POST provisioning/v1/accounts',
         'POST provisioning/v1/accounts/{contract}/{action}',

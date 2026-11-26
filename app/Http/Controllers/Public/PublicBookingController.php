@@ -16,6 +16,7 @@ use App\Models\Service;
 use App\Models\StaffMember;
 use App\Models\Tenant;
 use App\Services\GuestAuthService;
+use App\Services\Mail\MailDeliveryStatus;
 use App\Services\Payments\PaymentProviderManager;
 use App\Services\RefundService;
 use App\Services\ReservationAvailabilityService;
@@ -890,11 +891,28 @@ class PublicBookingController extends Controller
     public function confirmation(string $code, string $token)
     {
         $reservation = $this->findByCodeAndToken($code, $token);
+        $location = $reservation->location()->withoutGlobalScope('tenant')->first();
 
         return view('public.confirmation', [
             'reservation' => $reservation,
-            'location' => $reservation->location()->withoutGlobalScope('tenant')->first(),
+            'location' => $location,
+            // Zustellstatus der Mail, die der Gast gerade bekommt. null: Die
+            // Seite wartet nicht (abgeschaltet oder keine frische Mail).
+            'delivery' => $location !== null ? app(MailDeliveryStatus::class)->forGuest($reservation, $location) : null,
         ]);
+    }
+
+    /**
+     * Zustellstatus für die Bestätigungsseite, die alle paar Sekunden nachfragt.
+     */
+    public function mailStatus(string $code, string $token): JsonResponse
+    {
+        $reservation = $this->findByCodeAndToken($code, $token);
+        $location = $reservation->location()->withoutGlobalScope('tenant')->first();
+        $delivery = $location !== null ? app(MailDeliveryStatus::class)->forGuest($reservation, $location) : null;
+
+        return response()->json($delivery ?? ['state' => 'none'])
+            ->header('Cache-Control', 'no-store');
     }
 
     public function manage(string $code, string $token)

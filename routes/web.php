@@ -51,6 +51,7 @@ use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\RegistrationController;
 use App\Http\Controllers\GoCardlessWebhookController;
+use App\Http\Controllers\PostalDeliveryWebhookController;
 use App\Http\Controllers\PostalInboundController;
 use App\Http\Controllers\Provisioning\PanelLinkController;
 use App\Http\Controllers\Public\FeedbackController;
@@ -135,9 +136,12 @@ Route::get('/pay/stripe/return/{intent}', [PaymentController::class, 'stripeRetu
 Route::post('/webhooks/stripe', [PaymentController::class, 'stripeWebhook'])->name('webhooks.stripe');
 Route::post('/webhooks/gocardless', [GoCardlessWebhookController::class, 'handle'])->name('webhooks.gocardless');
 Route::post('/webhooks/postal', [PostalInboundController::class, 'handle'])->name('webhooks.postal');
+Route::post('/webhooks/postal/delivery', [PostalDeliveryWebhookController::class, 'handle'])->name('webhooks.postal.delivery');
 
 Route::get('/reservation/{code}/confirmed/{token}', [PublicBookingController::class, 'confirmation'])
     ->middleware('throttle:booking-slots')->name('booking.confirmation');
+Route::get('/reservation/{code}/mail-status/{token}', [PublicBookingController::class, 'mailStatus'])
+    ->middleware('throttle:mail-status')->name('booking.mail-status');
 Route::get('/reservation/{code}/manage/{token}', [PublicBookingController::class, 'manage'])
     ->middleware('throttle:booking-slots')->name('booking.manage');
 Route::post('/reservation/{code}/cancel/{token}', [PublicBookingController::class, 'cancel'])
@@ -257,6 +261,7 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
         Route::post('/reservations', [ReservationBookController::class, 'store'])
             ->middleware('permission:reservations.create')->name('reservations.store');
         Route::get('/reservations/{reservation}', [ReservationBookController::class, 'show'])->name('reservations.show');
+        Route::get('/reservations/{reservation}/mail-status', [ReservationBookController::class, 'mailStatus'])->name('reservations.mail-status');
         Route::post('/reservations/{reservation}/transition', [ReservationBookController::class, 'transition'])->name('reservations.transition');
         Route::post('/reservations/{reservation}/party', [ReservationBookController::class, 'updateParty'])
             ->middleware('permission:reservations.update')->name('reservations.party');
