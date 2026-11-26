@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.138.4] – 2026-11-26
+
+### Gelöschte Leistungen und Personen bleiben an vergangenen Terminen
+
+- Eine gelöschte Leistung verschwand aus allen vergangenen Terminen: Terminplan,
+  Gastbereich, Bestätigungs- und Verwaltungsseite zeigten nur noch die übrigen
+  Leistungen oder gar keine. Dasselbe galt für eine gelöschte Person. Jetzt
+  bleiben beide an den Terminen stehen, an denen sie gebucht waren.
+- Der Datenexport nimmt die vollständige Zusammenstellung eines Termins mit,
+  auch gelöschte Leistungen samt Preis und Dauer. Beim Umzug ging sie bisher
+  verloren.
+
 ## [1.138.3] – 2026-11-26
 
 ### Tarifgrenzen halten auch bei gleichzeitigen Anfragen und beim Import
