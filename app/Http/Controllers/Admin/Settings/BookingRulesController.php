@@ -54,6 +54,8 @@ class BookingRulesController extends Controller
 
         $values = [
             'min_lead_minutes' => (int) $validated['min_lead_minutes'],
+            // Leer heißt: kein Annahmeschluss.
+            'same_day_cutoff' => ($validated['same_day_cutoff'] ?? null) ?: null,
             'max_advance_days' => (int) $validated['max_advance_days'],
             'cancellation_deadline_minutes' => (int) $validated['cancellation_deadline_minutes'],
             'modification_deadline_minutes' => (int) $validated['modification_deadline_minutes'],

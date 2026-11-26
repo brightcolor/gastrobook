@@ -16,6 +16,7 @@ class SalonAvailabilityService
 {
     public function __construct(
         private readonly TimeSlotService $timeSlots,
+        private readonly OnlineBookingWindow $bookingWindow,
     ) {}
 
     // ---------------------------------------------------------------------
@@ -191,7 +192,8 @@ class SalonAvailabilityService
 
             $available = true;
 
-            if ($startLocal->lt($nowLocal->addMinutes($settings->min_lead_minutes))) {
+            // Vorlauf, Annahmeschluss und Vorausbuchung wie bei Restaurants.
+            if ($this->bookingWindow->blockReason($location, $startLocal, $nowLocal) !== null) {
                 $available = false;
             }
             if ($available && $windows !== null && ! $this->fitsAnyWindow($startLocal, $endLocal, $windows)) {

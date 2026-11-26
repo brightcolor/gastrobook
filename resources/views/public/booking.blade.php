@@ -408,12 +408,33 @@ details > summary::-webkit-details-marker { display: none; }
                     const data = await res.json();
                     salonSlotDates = data.slot_dates || {};
                     if (!data.slots || !data.slots.length) {
+                        // Annahmeschluss für heute erreicht: Hinweis mit Telefon und Sprung zum nächsten Tag.
+                        if (data.day_notice) {
+                            slotContainer.innerHTML = '';
+                            const note = document.createElement('p');
+                            note.className = 'col-span-full rounded-2xl border-2 border-brand/20 bg-brand/5 px-4 py-4 text-center text-sm font-medium text-stone-700';
+                            note.textContent = data.day_notice.text;
+                            slotContainer.appendChild(note);
+                            const next = data.day_notice.next_date;
+                            if (next && data.day_notice.jump_label && (!dateInput.max || next <= dateInput.max)) {
+                                const jump = document.createElement('button');
+                                jump.type = 'button';
+                                jump.className = 'btn-brand col-span-full mt-1 rounded-xl px-4 py-3 text-sm font-bold text-white transition-all active:scale-[0.99]';
+                                jump.textContent = data.day_notice.jump_label;
+                                jump.addEventListener('click', () => {
+                                    dateInput.value = next;
+                                    dateInput.dispatchEvent(new Event('change'));
+                                });
+                                slotContainer.appendChild(jump);
+                            }
+                            return;
+                        }
                         slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-red-50 px-3 py-2.5 text-sm font-medium text-red-700">An diesem Tag sind leider keine Termine verfügbar.</p>';
                         return;
                     }
                     renderSalonSlots(data.slots);
                 } catch (e) {
-                    slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-red-50 px-3 py-2.5 text-sm text-red-700">Fehler – bitte erneut versuchen.</p>';
+                    slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-red-50 px-3 py-2.5 text-sm text-red-700">Die freien Termine ließen sich gerade nicht laden. Bitte die Internetverbindung prüfen und den Tag noch einmal wählen.</p>';
                 }
             }
 
@@ -921,19 +942,22 @@ details > summary::-webkit-details-marker { display: none; }
                 const data = await res.json();
                 slotContainer.innerHTML = '';
                 if (!data.slots || !data.slots.length) {
-                    if (data.season_notice) {
+                    // Saison geschlossen oder Annahmeschluss für heute erreicht:
+                    // ein Hinweis mit Sprung zum nächsten buchbaren Tag.
+                    const notice = data.season_notice || data.day_notice;
+                    if (notice) {
                         const note = document.createElement('p');
                         note.className = 'col-span-full rounded-2xl border-2 border-brand/20 bg-brand/5 px-4 py-4 text-center text-sm font-medium text-stone-700';
-                        note.textContent = data.season_notice.text;
+                        note.textContent = notice.text;
                         slotContainer.appendChild(note);
                         // Ein Tipp bis zum ersten buchbaren Tag – nur, wenn er im
                         // Buchungshorizont liegt; sonst bliebe die Auswahl leer.
-                        const next = data.season_notice.next_date;
-                        if (next && data.season_notice.jump_label && (!dateInput.max || next <= dateInput.max)) {
+                        const next = notice.next_date;
+                        if (next && notice.jump_label && (!dateInput.max || next <= dateInput.max)) {
                             const jump = document.createElement('button');
                             jump.type = 'button';
                             jump.className = 'btn-brand col-span-full mt-1 rounded-xl px-4 py-3 text-sm font-bold text-white transition-all active:scale-[0.99]';
-                            jump.textContent = data.season_notice.jump_label;
+                            jump.textContent = notice.jump_label;
                             jump.addEventListener('click', () => {
                                 dateInput.value = next;
                                 dateInput.dispatchEvent(new Event('change'));
@@ -993,7 +1017,7 @@ details > summary::-webkit-details-marker { display: none; }
                 slotDates = data.slot_dates || {};
                 renderSlots(data.slots);
             } catch (e) {
-                slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-stone-50 px-3 py-2.5 text-sm text-stone-500">Kurze Unterbrechung – bitte Seite neu laden.</p>';
+                slotContainer.innerHTML = '<p class="col-span-full rounded-xl bg-stone-50 px-3 py-2.5 text-sm text-stone-500">Die freien Zeiten ließen sich gerade nicht laden. Bitte die Internetverbindung prüfen und die Seite neu laden.</p>';
             }
         }
 

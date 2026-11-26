@@ -37,6 +37,7 @@ class ReservationLifecycleService
         private readonly GuestMailSender $mailSender,
         private readonly TableHolds $holds,
         private readonly MailDeliveryLog $deliveryLog,
+        private readonly OnlineBookingWindow $bookingWindow,
     ) {}
 
     /**
@@ -127,7 +128,7 @@ class ReservationLifecycleService
                         throw ValidationException::withMessages([
                             'start_at' => $forTeam
                                 ? $this->teamBlockMessage((string) $check['reason'], $location, $startUtc, $endUtc)
-                                : $this->availabilityMessage($check['reason']),
+                                : $this->availabilityMessage($check['reason'], $location),
                         ]);
                     }
                     $tableIds = $check['table_ids'];
@@ -146,7 +147,7 @@ class ReservationLifecycleService
                         throw ValidationException::withMessages([
                             'start_at' => $forTeam
                                 ? $this->teamBlockMessage($blockReason, $location, $startUtc, $endUtc, $tableIds)
-                                : $this->availabilityMessage($blockReason),
+                                : $this->availabilityMessage($blockReason, $location),
                         ]);
                     }
 
@@ -674,19 +675,14 @@ class ReservationLifecycleService
         $endUtc = $startUtc->addMinutes($duration);
 
         // Umbuchen muss dieselben Zeitgrenzen einhalten wie die Neuanlage:
-        // Vorlauf und Vorausbuchungsgrenze. Die erste Pruefung deckt zugleich
-        // die Vergangenheit ab (bei Vorlauf 0 wird sie zu "vor jetzt").
+        // Vorlauf, Annahmeschluss und Vorausbuchungsgrenze. Der Vorlauf deckt
+        // zugleich die Vergangenheit ab (bei Vorlauf 0 wird er zu "vor jetzt").
         // Ausgenommen ist der Fall, in dem nur die Personenzahl geaendert wird -
         // dort ist der Zeitpunkt unveraendert und darf nicht neu gemessen werden.
         if ($actorType === 'guest' && ! $newStartLocal->equalTo($reservation->localStart())) {
-            $grenzen = $location->effectiveSettings();
-            $nowLocal = CarbonImmutable::now($location->timezone);
-
-            if ($newStartLocal->lt($nowLocal->addMinutes((int) $grenzen->min_lead_minutes))) {
-                throw ValidationException::withMessages(['time' => $this->availabilityMessage('lead_time')]);
-            }
-            if ($newStartLocal->gt($nowLocal->addDays((int) $grenzen->max_advance_days))) {
-                throw ValidationException::withMessages(['time' => $this->availabilityMessage('too_far_ahead')]);
+            $timeReason = $this->bookingWindow->blockReason($location, $newStartLocal);
+            if ($timeReason !== null) {
+                throw ValidationException::withMessages(['time' => $this->availabilityMessage($timeReason, $location)]);
             }
         }
 
@@ -716,7 +712,7 @@ class ReservationLifecycleService
             if ($blockReason !== null) {
                 throw ValidationException::withMessages([
                     'time' => $istGast
-                        ? $this->availabilityMessage($blockReason)
+                        ? $this->availabilityMessage($blockReason, $location)
                         : $this->teamBlockMessage($blockReason, $location, $startUtc, $endUtc),
                 ]);
             }
@@ -752,7 +748,7 @@ class ReservationLifecycleService
                 if (! $check['available']) {
                     throw ValidationException::withMessages([
                         'time' => $istGast
-                            ? $this->availabilityMessage((string) $check['reason'])
+                            ? $this->availabilityMessage((string) $check['reason'], $location)
                             : $this->teamBlockMessage((string) $check['reason'], $location, $startUtc, $endUtc),
                     ]);
                 }
@@ -780,7 +776,7 @@ class ReservationLifecycleService
                     if ($roomBlock !== null) {
                         throw ValidationException::withMessages([
                             'time' => $istGast
-                                ? $this->availabilityMessage($roomBlock)
+                                ? $this->availabilityMessage($roomBlock, $location)
                                 : $this->teamBlockMessage($roomBlock, $location, $startUtc, $endUtc, $tableIds),
                         ]);
                     }
@@ -1372,10 +1368,10 @@ class ReservationLifecycleService
      * Die Meldung zu einem Ablehnungsgrund, passend zum Leser: Gaeste bekommen
      * die oeffentliche Formulierung, das Team eine, die sagt, was es tun kann.
      */
-    public function reasonMessage(string $reason, string $actorType): string
+    public function reasonMessage(string $reason, string $actorType, ?Location $location = null): string
     {
         if ($actorType === 'guest') {
-            return $this->availabilityMessage($reason);
+            return $this->availabilityMessage($reason, $location);
         }
 
         return match ($reason) {
@@ -1442,8 +1438,12 @@ class ReservationLifecycleService
      * geteilte Walk-in hatte seine eigene, und die beschrieb nur einen der
      * moeglichen Gruende.
      */
-    public function availabilityMessage(string $reason): string
+    public function availabilityMessage(string $reason, ?Location $location = null): string
     {
+        if ($reason === 'same_day_closed' && $location !== null) {
+            return $this->bookingWindow->closedMessage($location);
+        }
+
         return match ($reason) {
             'lead_time' => __('Für diesen Zeitpunkt ist es leider etwas zu kurzfristig – bitte wählen Sie einen Termin etwas weiter in der Zukunft.'),
             'too_far_ahead' => __('Dieser Termin liegt noch zu weit in der Zukunft. Bitte schauen Sie später noch einmal vorbei.'),
