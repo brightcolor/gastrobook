@@ -89,7 +89,7 @@ class RoomSoftDeleteTest extends TestCase
         $room->forceFill(['background_path' => 'rooms/plan.png'])->save();
         FloorZone::create([
             'tenant_id' => $setup['tenant']->id, 'location_id' => $setup['location']->id, 'room_id' => $room->id,
-            'name' => 'Raucherecke', 'color' => '#aabbcc', 'opacity' => 0.3, 'points' => [[0, 0], [10, 0], [10, 10]],
+            'name' => 'Raucherecke', 'color' => '#aabbcc', 'opacity' => 30, 'points' => [[0, 0], [10, 0], [10, 10]],
         ]);
         $owner = $this->createMember($setup['tenant'], 'tenant_owner');
         $this->clearTenantContext();
