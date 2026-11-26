@@ -8,6 +8,7 @@ wissen, was wann rausgeht, und die Texte einmal auf deine Stimme bringen.
 | Mail | Wann |
 |---|---|
 | **E-Mail-Adresse bestätigen** | sofort nach dem Absenden, wenn „E-Mail-Adresse bestätigen lassen“ an ist |
+| **Erinnerung an den Bestätigungslink** | standardmäßig sechs Stunden bevor der Link abläuft, wenn der Gast noch nicht geklickt hat; nur an den Gast |
 | **Reservierung bestätigt** | bei automatischer Bestätigung nach der Buchung (mit Bestätigungslink nach dem Klick darauf), sonst nach eurer Freigabe |
 | **Anfrage eingegangen** | wenn ihr erst bestätigen müsst: nach der Buchung, mit Bestätigungslink nach dem Klick darauf |
 | **Reservierung storniert** | bei Stornierung – egal von welcher Seite |

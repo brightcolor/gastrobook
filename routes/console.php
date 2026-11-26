@@ -7,6 +7,7 @@ use App\Jobs\ProcessScheduledRefunds;
 use App\Jobs\PruneProvisioningRecords;
 use App\Jobs\PruneTableHolds;
 use App\Jobs\PruneUnansweredFeedback;
+use App\Jobs\RemindUnconfirmedReservations;
 use App\Jobs\RunRetentionPolicies;
 use App\Jobs\SendFeedbackRequests;
 use App\Jobs\SendMarketingCampaigns;
@@ -39,3 +40,7 @@ Schedule::job(new ExpireUnpaidReservations)->everyFiveMinutes();
 // Buchungen, deren E-Mail-Bestätigung nie kam. Der Link gilt 24 Stunden;
 // stündlich prüfen reicht, danach wird der Tisch wieder frei.
 Schedule::job(new ExpireUnconfirmedReservations)->hourly();
+// Vorher eine Erinnerung an den Gast (Vorlauf SWAYY_GUEST_VERIFY_REMINDER_MINUTES,
+// Vorgabe 6 Stunden vor Ablauf des Links). Viertelstündlich, damit sie
+// ungefähr zum eingestellten Vorlauf kommt.
+Schedule::job(new RemindUnconfirmedReservations)->everyFifteenMinutes();

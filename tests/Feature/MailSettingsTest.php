@@ -20,6 +20,7 @@ class MailSettingsTest extends TestCase
         $this->assertSame(60, config('swayy.mail.button_label_max'));
         $this->assertSame(60, config('swayy.guest_auth.login_minutes'));
         $this->assertSame(1440, config('swayy.guest_auth.verify_minutes'));
+        $this->assertSame(360, config('swayy.guest_auth.verify_reminder_minutes'));
         $this->assertSame(72, config('swayy.billing_request.confirm_hours'));
         $this->assertSame('#ffffff', config('swayy.mail.palette.on_brand'));
     }
@@ -31,7 +32,7 @@ class MailSettingsTest extends TestCase
         foreach ([
             'SWAYY_MAIL_OWNER_ADDRESS', 'SWAYY_MAIL_POWERED_BY', 'SWAYY_MAIL_LOGO_MAX_KB', 'SWAYY_MAIL_LOGO_HEIGHT',
             'SWAYY_MAIL_CONTRAST_MIN', 'SWAYY_MAIL_DETAILS_MIN_ROWS', 'SWAYY_MAIL_LABEL_MAX', 'SWAYY_MAIL_BUTTON_LABEL_MAX',
-            'SWAYY_GUEST_LOGIN_LINK_MINUTES', 'SWAYY_GUEST_VERIFY_LINK_MINUTES', 'SWAYY_BILLING_CONFIRM_HOURS',
+            'SWAYY_GUEST_LOGIN_LINK_MINUTES', 'SWAYY_GUEST_VERIFY_LINK_MINUTES', 'SWAYY_GUEST_VERIFY_REMINDER_MINUTES', 'SWAYY_BILLING_CONFIRM_HOURS',
         ] as $variable) {
             $this->assertStringContainsString($variable.'=', $example, $variable);
         }

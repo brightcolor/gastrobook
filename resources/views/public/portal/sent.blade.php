@@ -7,7 +7,8 @@
     <h1 class="mt-3 text-2xl font-bold">Bitte E-Mails prüfen</h1>
     <p class="mt-2 text-stone-600">
         Falls ein Konto zu dieser E-Mail-Adresse existiert, haben wir {{ $du ? 'dir' : 'Ihnen' }} einen Anmeldelink geschickt.
-        Der Link ist 60 Minuten gültig.
+        Der Link ist {{ \App\Support\Duration::minutes((int) config('swayy.guest_auth.login_minutes', 60)) }} gültig.
     </p>
+    <x-spam-hint :du="$du" class="text-stone-500" />
 </div>
 @endsection

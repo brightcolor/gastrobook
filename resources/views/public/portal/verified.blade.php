@@ -45,6 +45,7 @@
                 geschrieben, wie {{ $du ? 'du die' : 'Sie die' }} Anzahlung
                 leisten {{ $du ? 'kannst' : 'können' }} – erst danach ist der
                 Tisch verbindlich reserviert.
+                <x-spam-hint :du="$du" class="text-stone-500" />
             @else
                 ist bei uns angekommen.
             @endif
@@ -57,6 +58,7 @@
                 Eingangsbestätigung {{ $du ? 'hast du' : 'haben Sie' }} schon
                 im Postfach.
             </p>
+            <x-spam-hint :du="$du" class="text-stone-500" />
             <p class="mt-3 text-sm text-stone-500">
                 Wir freuen uns auf {{ $du ? 'dich' : 'Sie' }}!
             </p>

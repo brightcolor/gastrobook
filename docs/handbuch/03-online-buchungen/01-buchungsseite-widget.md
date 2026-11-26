@@ -106,8 +106,14 @@ Fantasieadressen, und Gäste, die **auf Vorrat reservieren** – wer sich vier
 Adventssonntage freihalten will, muss vier Mails öffnen. Erfahrungsgemäß
 bleiben dann ein oder zwei übrig, die wirklich gewollt sind.
 
-Kommt der Klick nicht, solange der Link gilt (standardmäßig 24 Stunden), wird
-der Tisch **automatisch wieder frei**. Ihr müsst nichts nachhalten.
+Hat der Gast kurz vor Ablauf des Links (standardmäßig sechs Stunden vorher) noch
+nicht geklickt, bekommt er
+eine **Erinnerung** mit demselben Link. Kommt der Klick auch dann nicht, solange
+der Link gilt (standardmäßig 24 Stunden), wird der Tisch **automatisch wieder
+frei**. Ihr müsst nichts nachhalten.
+
+Jede Meldung, die dem Gast eine Mail ankündigt, erinnert ihn auch daran, im
+Spam- oder Werbeordner nachzusehen.
 
 **Ohne „E-Mail-Adresse bestätigen lassen“:**
 

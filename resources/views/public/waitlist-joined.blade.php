@@ -16,6 +16,7 @@
                 Bestätigungslink – einfach klicken und der Tisch gehört Ihnen.
             @endif
         </p>
+        <x-spam-hint :du="$du" class="text-stone-500" />
         <p class="mt-6 font-semibold text-stone-700">{{ $location->name }}</p>
     </div>
 </div>
