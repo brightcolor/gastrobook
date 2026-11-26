@@ -1,5 +1,16 @@
 # Changelog
 
+## [@@VERSION@@] – 2026-11-27
+
+### Ausnahmen speichern in Sammel-Inserts
+
+- Beim Speichern einer Ausnahme entstand jede Zeile einzeln: zwei Wochen
+  Sperre für zwölf Tische waren 168 Anfragen nur für die Tischsperren, alle
+  in einer Transaktion. Jetzt schreibt Swayy Sondertage, Sperrzeiten und
+  Tischsperren je Tabelle in Blöcken, mit denselben Werten und Zeitstempeln.
+- Neue Einstellung `SWAYY_EXCEPTIONS_INSERT_CHUNK` (Vorgabe 500, 1 bis 5000):
+  so viele Zeilen schreibt ein Sammel-Insert.
+
 ## [1.142.1] – 2026-11-26
 
 ### Ausnahmen-Seite lädt die Seitenleiste zum Bearbeiten erst beim Öffnen

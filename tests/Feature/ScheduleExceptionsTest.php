@@ -303,27 +303,29 @@ class ScheduleExceptionsTest extends TestCase
         // special_opening_hours.label, blackout_periods.reason und table_blocks.reason sind varchar(255), reduce_covers_to ist smallint.
         [$config, $warnings] = $this->swayyConfig([
             'SWAYY_EXCEPTIONS_MAX_DAYS' => '9999', 'SWAYY_EXCEPTIONS_WINDOWS_MAX' => '99', 'SWAYY_EXCEPTIONS_LABEL_MAX' => '4000',
-            'SWAYY_EXCEPTIONS_COVERS_MAX' => '99999', 'SWAYY_EXCEPTIONS_PAST_MONTHS' => '999',
+            'SWAYY_EXCEPTIONS_COVERS_MAX' => '99999', 'SWAYY_EXCEPTIONS_PAST_MONTHS' => '999', 'SWAYY_EXCEPTIONS_INSERT_CHUNK' => '99999',
         ]);
-        $this->assertSame(['max_days' => 366, 'windows_max' => 12, 'label_max' => 200, 'covers_max' => 32767, 'past_months' => 60], $config['exceptions']);
-        foreach (['MAX_DAYS', 'WINDOWS_MAX', 'LABEL_MAX', 'COVERS_MAX', 'PAST_MONTHS'] as $name) {
+        $this->assertSame(['max_days' => 366, 'windows_max' => 12, 'label_max' => 200, 'covers_max' => 32767, 'past_months' => 60, 'insert_chunk' => 5000], $config['exceptions']);
+        foreach (['MAX_DAYS', 'WINDOWS_MAX', 'LABEL_MAX', 'COVERS_MAX', 'PAST_MONTHS', 'INSERT_CHUNK'] as $name) {
             $this->assertStringContainsString('SWAYY_EXCEPTIONS_'.$name, $warnings);
         }
         $this->assertLessThanOrEqual(255, $config['exceptions']['label_max']);
         $this->assertLessThanOrEqual(32767, $config['exceptions']['covers_max']);
+        // PostgreSQL nimmt höchstens 65535 Werte je Anfrage; eine Zeile hat höchstens zehn Spalten plus Zeitstempel.
+        $this->assertLessThanOrEqual(65535, $config['exceptions']['insert_chunk'] * 12);
 
         [$config] = $this->swayyConfig([
             'SWAYY_EXCEPTIONS_MAX_DAYS' => '0', 'SWAYY_EXCEPTIONS_WINDOWS_MAX' => '0', 'SWAYY_EXCEPTIONS_LABEL_MAX' => '1',
-            'SWAYY_EXCEPTIONS_COVERS_MAX' => '0', 'SWAYY_EXCEPTIONS_PAST_MONTHS' => '0',
+            'SWAYY_EXCEPTIONS_COVERS_MAX' => '0', 'SWAYY_EXCEPTIONS_PAST_MONTHS' => '0', 'SWAYY_EXCEPTIONS_INSERT_CHUNK' => '0',
         ]);
-        $this->assertSame(['max_days' => 1, 'windows_max' => 1, 'label_max' => 20, 'covers_max' => 1, 'past_months' => 1], $config['exceptions']);
+        $this->assertSame(['max_days' => 1, 'windows_max' => 1, 'label_max' => 20, 'covers_max' => 1, 'past_months' => 1, 'insert_chunk' => 1], $config['exceptions']);
 
         [$config] = $this->swayyConfig([]);
-        $this->assertSame(['max_days' => 93, 'windows_max' => 6, 'label_max' => 120, 'covers_max' => 10000, 'past_months' => 12], $config['exceptions']);
+        $this->assertSame(['max_days' => 93, 'windows_max' => 6, 'label_max' => 120, 'covers_max' => 10000, 'past_months' => 12, 'insert_chunk' => 500], $config['exceptions']);
 
         $this->assertDocumentedInEnvExample([
             'SWAYY_EXCEPTIONS_MAX_DAYS', 'SWAYY_EXCEPTIONS_WINDOWS_MAX', 'SWAYY_EXCEPTIONS_LABEL_MAX',
-            'SWAYY_EXCEPTIONS_COVERS_MAX', 'SWAYY_EXCEPTIONS_PAST_MONTHS',
+            'SWAYY_EXCEPTIONS_COVERS_MAX', 'SWAYY_EXCEPTIONS_PAST_MONTHS', 'SWAYY_EXCEPTIONS_INSERT_CHUNK',
         ]);
     }
 

@@ -449,6 +449,7 @@ Die Navigation kommt aus einer Quelle, [`config/navigation.php`](config/navigati
 | `SWAYY_EXCEPTIONS_LABEL_MAX` | `120` | Länge der Bezeichnung einer Ausnahme (20 bis 200; die Spalten fassen 255) |
 | `SWAYY_EXCEPTIONS_COVERS_MAX` | `10000` | Obergrenze für „Weniger Gäste“ (1 bis 32767; die Spalte ist `smallint`) |
 | `SWAYY_EXCEPTIONS_PAST_MONTHS` | `12` | Monate zurück, die die Liste „Vergangen“ zeigt (1 bis 60) |
+| `SWAYY_EXCEPTIONS_INSERT_CHUNK` | `500` | Zeilen je Sammel-Insert beim Speichern einer Ausnahme (1 bis 5000; PostgreSQL nimmt höchstens 65535 Werte je Anfrage) |
 
 **Kapazität, Dauer und Buchungsregeln:**
 
