@@ -1,6 +1,6 @@
 # Changelog
 
-## [@@VERSION@@] – 2026-11-27
+## [1.142.2] – 2026-11-27
 
 ### Ausnahmen speichern in Sammel-Inserts
 
