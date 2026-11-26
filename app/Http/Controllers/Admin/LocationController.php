@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Admin\Settings\Concerns\RespondsToSettingsForms;
 use App\Http\Controllers\Controller;
 use App\Models\Location;
+use App\Models\Tenant;
 use App\Services\AuditLogger;
 use App\Services\PlanLimitService;
 use App\Support\FileSize;
@@ -70,27 +71,29 @@ class LocationController extends Controller
         abort_if($tenant === null, 404);
 
         if (! $this->limits->canAdd($tenant, 'max_locations')) {
-            $limit = (int) $tenant->limit('max_locations');
-
-            return $this->failed($request, 'name', trans_choice(
-                'Dein Tarif umfasst einen Standort, und der ist schon angelegt.|Dein Tarif umfasst :count Standorte, und alle sind schon angelegt.',
-                $limit,
-                ['count' => $limit],
-            ).' '.($request->user()->canInTenant('billing.manage', $tenant)
-                ? __('Für einen weiteren Standort den Tarif unter „Abo & Rechnungen“ wechseln.')
-                : __('Für einen weiteren Standort bitte eine Person mit Zugang zu „Abo & Rechnungen“ fragen.')));
+            return $this->limitReached($request, $tenant);
         }
 
         $validated = $request->validate($this->rules(), $this->messages(), $this->attributes());
 
-        $location = Location::create([
-            'tenant_id' => $tenant->id,
-            'slug' => $this->uniqueSlug($tenant->id, $validated['name']),
-            'is_active' => true,
-            'online_booking_enabled' => true,
-            ...$this->values($validated),
-        ]);
-        $location->settings()->create(['tenant_id' => $tenant->id]);
+        // Die Vorpruefung oben sagt dem Formular frueh Bescheid; die Grenze
+        // haelt erst das Anlegen unter Sperre. Zwei gleichzeitige Anfragen
+        // saehen oben sonst beide den letzten freien Platz.
+        $location = $this->limits->createWithinLimit($tenant, 'max_locations', function () use ($tenant, $validated) {
+            $location = Location::create([
+                'tenant_id' => $tenant->id,
+                'slug' => $this->uniqueSlug($tenant->id, $validated['name']),
+                'is_active' => true,
+                'online_booking_enabled' => true,
+                ...$this->values($validated),
+            ]);
+            $location->settings()->create(['tenant_id' => $tenant->id]);
+
+            return $location;
+        });
+        if ($location === null) {
+            return $this->limitReached($request, $tenant);
+        }
 
         $this->audit->log('location.created', $location, null, ['name' => $location->name]);
 
@@ -103,6 +106,22 @@ class LocationController extends Controller
         }
 
         return redirect()->route('admin.locations.index')->with('success', $message);
+    }
+
+    /**
+     * Antwort, wenn der Tarif keinen weiteren Standort zulässt.
+     */
+    private function limitReached(Request $request, Tenant $tenant)
+    {
+        $limit = (int) $tenant->limit('max_locations');
+
+        return $this->failed($request, 'name', trans_choice(
+            'Dein Tarif umfasst einen Standort, und der ist schon angelegt.|Dein Tarif umfasst :count Standorte, und alle sind schon angelegt.',
+            $limit,
+            ['count' => $limit],
+        ).' '.($request->user()->canInTenant('billing.manage', $tenant)
+            ? __('Für einen weiteren Standort den Tarif unter „Abo & Rechnungen“ wechseln.')
+            : __('Für einen weiteren Standort bitte eine Person mit Zugang zu „Abo & Rechnungen“ fragen.')));
     }
 
     public function update(Request $request, Location $location)

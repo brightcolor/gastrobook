@@ -18,7 +18,7 @@
 
 <x-settings.section id="import" title="Daten einspielen">
     <x-slot:description>
-        <p>Liest eine zuvor heruntergeladene Datei ein, etwa beim Umzug von einem anderen Swayy-System. Die Daten kommen zu den bestehenden dazu.</p>
+        <p>Liest eine zuvor heruntergeladene Datei ein, etwa beim Umzug von einem anderen Swayy-System. Die Daten kommen zu den bestehenden dazu. Standorte, Tische und Events aus der Datei zählen zu den Grenzen deines Tarifs; passt die Datei nicht hinein, wird sie ganz abgelehnt.</p>
         <p>Bestätigungslinks entstehen neu; bereits versendete Links zum Ändern oder Stornieren gelten danach nicht mehr. Offene Erstattungen gelten als erledigt, sie gehören ins alte System. Stripe und PayPal verbindest du danach neu.</p>
     </x-slot:description>
     <form method="POST" action="{{ route('admin.account.import') }}" enctype="multipart/form-data" class="space-y-5">

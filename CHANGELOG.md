@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.138.3] – 2026-11-26
+
+### Tarifgrenzen halten auch bei gleichzeitigen Anfragen und beim Import
+
+- **Der Import prüft die Tarifgrenzen.** Eine Export-Datei konnte beliebig
+  viele Standorte, Tische und Events in einen Betrieb bringen, auch über die
+  Grenzen des Tarifs hinaus. Jetzt wird die Datei ganz abgelehnt, wenn sie
+  eine Grenze sprengen würde, mit einer Meldung wie „3 Tische, erlaubt sind 2“.
+  Ein Betrieb, der schon über einer Grenze liegt, kann weiter Dateien
+  einspielen, die daran nichts ändern.
+- **Standorte, Events und Zugänge entstehen unter Sperre.** Bisher prüfte
+  Swayy nur am Anfang der Anfrage, ob noch Platz ist. Zwei gleichzeitige
+  Anfragen sahen beide den letzten freien Platz und legten beide an. Jetzt
+  sperrt das Anlegen den Betrieb und zählt neu, wie es für Tische schon galt.
+  Das gilt für neue Standorte, neue Events, das Einladen eines vorhandenen
+  Kontos und den Import.
+- **Einladungen belegen einen Zugang erst beim Annehmen, und dann nur, wenn
+  einer frei ist.** Offene Einladungen zählen weiter nicht gegen die Grenze.
+  Ist beim Annehmen kein Zugang mehr frei, bleibt die Einladung offen, und die
+  Person liest, dass sie die einladende Person um einen freien Zugang bitten
+  soll.
+- Die Meldung bei erreichter Event-Grenze nennt jetzt die Zahl aus dem Tarif
+  und den Weg zum Tarifwechsel.
+
 ## [1.138.2] – 2026-11-25
 
 ### Längengrenzen für E-Mail-Adressen und Telefonnummern
