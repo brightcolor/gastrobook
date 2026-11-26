@@ -143,7 +143,7 @@ Seite; Hinweise dazu in [`docs/handbuch/00-import-hinweis.md`](docs/handbuch/00-
 | Stornolink / Änderungslink mit Secret-Token und Fristprüfung | ✅ |
 | Online-Umbuchung durch den Gast (Frist, Re-Check Tisch/Mitarbeiter) | ✅ |
 | Kundenkonto per Magic-Link (passwortlos): Termine ansehen, umbuchen, stornieren | ✅ |
-| E-Mail-Bestätigung aktivierbar (Gast bestätigt **jede** Buchung per Klick; unbestätigte geben den Tisch nach 24 h wieder frei; bei Freigabe von Hand bekommt der Gast nach dem Klick eine Eingangsbestätigung) | ✅ |
+| E-Mail-Bestätigung, ab Werk an (Gast bestätigt **jede** Buchung per Klick, E-Mail dann Pflicht; bis zum Klick Status „Wartet auf E-Mail-Bestätigung“, erst danach Anfrage oder feste Reservierung und Mail an den Betrieb; unbestätigte geben den Tisch nach Ablauf des Links wieder frei; Hinweis zum Ablauf schon im Buchungsformular) | ✅ |
 | E-Mail-Vorlagen (pro Tenant/Standort überschreibbar, Platzhalter, DE/EN) | ✅ |
 | Antwortadresse für Gästemails: Reply-To an den Betrieb, optional eine Swayy-eigene Adresse je Betrieb (Postal-Eingang, Zuordnung zur Buchung, Verlauf, Weiterleitung an den Betrieb) | ✅ |
 | Reminder- & Feedback-Follow-up-Jobs (Scheduler) | ✅ |

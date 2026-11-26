@@ -36,8 +36,8 @@ class GuestAccountTest extends TestCase
 
         $reservation = Reservation::withoutGlobalScopes()->where('guest_email_snapshot', 'neu@example.test')->first();
         $this->assertNotNull($reservation);
-        // Held until email confirmed
-        $this->assertSame(ReservationStatus::Requested, $reservation->status);
+        // Gehalten, bis der Gast den Link anklickt
+        $this->assertSame(ReservationStatus::PendingConfirmation, $reservation->status);
         $this->assertDatabaseHas('guest_auth_tokens', ['purpose' => 'verify', 'reservation_id' => $reservation->id]);
     }
 

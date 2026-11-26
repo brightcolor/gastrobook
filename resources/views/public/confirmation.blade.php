@@ -1,14 +1,22 @@
 @extends('layouts.public', ['tenant' => $location->tenant])
 @php
 $isSalon = $location->tenant?->isSalon();
+// Der Titel im Browser-Tab nennt denselben Stand wie die Überschrift.
+$pageTitle = match ($reservation->status->value) {
+    'pending_confirmation' => 'E-Mail-Adresse bestätigen',
+    'requested' => 'Anfrage erhalten',
+    'payment_pending' => 'Zahlung ausstehend',
+    default => $isSalon ? 'Termin bestätigt' : 'Reservierung bestätigt',
+};
 @endphp
-@section('title', $isSalon ? 'Termin bestätigt' : 'Reservierung bestätigt')
+@section('title', $pageTitle)
 @section('content')
 
 @php
+$isAwaitingClick = $reservation->status->value === 'pending_confirmation';
 $isRequested = $reservation->status->value === 'requested';
 $isPending   = $reservation->status->value === 'payment_pending';
-$isConfirmed = ! $isRequested && ! $isPending;
+$isConfirmed = ! $isAwaitingClick && ! $isRequested && ! $isPending;
 
 $settings    = $location->effectiveSettings();
 $confetti    = $isConfirmed && $settings->confetti_on_booking;
@@ -49,7 +57,9 @@ if ($companions) {
         // Wartet die Buchung auf die Bestaetigung der E-Mail-Adresse, ist das
         // die wichtigste Aussage der Seite - nicht "Anfrage erhalten". Wer den
         // Link nicht anklickt, hat keinen Tisch.
-        $wartetAufMail = (bool) session('email_confirmation_sent');
+        // Der Status trägt die Aussage auch nach dem Neuladen der Seite; der
+        // Hinweis aus der Sitzung gilt nur für den ersten Aufruf.
+        $wartetAufMail = $isAwaitingClick || (bool) session('email_confirmation_sent');
         $vorgang = $isSalon ? 'Buchung' : 'Reservierung';
     @endphp
 
@@ -90,7 +100,7 @@ if ($companions) {
                 <li>Die Zustellung dauert meist nur Sekunden, manchmal ein paar Minuten.</li>
                 <li><strong>{{ $du ? 'Sieh' : 'Sehen Sie' }} im Spam- oder Werbeordner nach</strong> – dort landet die
                     Bestätigung erfahrungsgemäß am häufigsten.</li>
-                <li>Der Link gilt 24 Stunden. Danach {{ $du ? 'buche einfach neu' : 'buchen Sie einfach neu' }}.</li>
+                <li>Der Link gilt {{ \App\Support\Duration::minutes((int) config('swayy.guest_auth.verify_minutes', 1440)) }}. Danach {{ $du ? 'buche einfach neu' : 'buchen Sie einfach neu' }}.</li>
             </ul>
         </div>
     @elseif($isConfirmed)

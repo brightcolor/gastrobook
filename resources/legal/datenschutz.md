@@ -112,8 +112,8 @@ Ausfällen).
 Sie können ein **passwortloses Kundenkonto** nutzen: Wir senden auf Anfrage
 einen einmaligen Anmeldelink („Magic Link") an Ihre E-Mail-Adresse, über den
 Sie Ihre Buchungen einsehen, umbuchen oder stornieren können. Sofern aktiviert,
-bestätigen Sie bei der ersten Buchung Ihre E-Mail-Adresse über einen
-Bestätigungslink.
+bestätigen Sie bei jeder Online-Buchung Ihre E-Mail-Adresse über einen
+Bestätigungslink. Erst danach geht Ihre Buchung an den Betrieb.
 
 **Zweck:** Sichere, passwortlose Verwaltung Ihrer Buchungen; Verifizierung der
 E-Mail-Adresse.

@@ -3,8 +3,10 @@
 
 @section('content')
 @php
+    $emailConfirmation = $emailConfirmation ?? false;
     $texts = [
-        'email' => ['E-Mail', 'Für Bestätigung, Erinnerung und den Link, mit dem Gäste ihre Buchung verwalten.'],
+        'email' => ['E-Mail', 'Für Bestätigung, Erinnerung und den Link, mit dem Gäste ihre Buchung verwalten.'
+            .($emailConfirmation ? ' Solange „E-Mail-Adresse bestätigen lassen“ unter Buchungsregeln an ist, ist die E-Mail beim Buchen immer Pflicht.' : '')],
         'phone' => ['Telefon', 'Für Rückfragen und SMS-Erinnerungen.'],
         'occasion' => ['Anlass', 'Geburtstag, Jubiläum, Geschäftsessen: So kannst du dich vorbereiten.'],
         'allergies' => ['Allergien und Unverträglichkeiten', 'Hinweise für die Küche, bevor der Gast kommt.'],

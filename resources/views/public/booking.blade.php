@@ -3,6 +3,8 @@
 @section('content')
 @php
     $du = $settings->guest_address === 'du';
+    // Gibt der Betrieb jede Buchung selbst frei, schickt der Gast eine Anfrage.
+    $isRequest = $settings->freigabeVonHand();
     // Hinweis zum gehaltenen Tisch (Tisch beim Buchen halten), in der Anrede des Betriebs.
     $holdTexts = $du
         ? ['held' => 'Wir halten den Tisch bis :until Uhr für dich.', 'expired' => 'Die Haltezeit ist abgelaufen. Du kannst trotzdem buchen, solange der Tisch frei ist.']
@@ -206,9 +208,11 @@ details > summary::-webkit-details-marker { display: none; }
                         </div>
                         <x-cap-widget form="booking" />
 
+                        @include('public.partials.booking-next-steps', ['isSalon' => true])
+
                         <button type="submit"
                                 class="btn-brand flex w-full items-center justify-center gap-2 rounded-xl py-4 text-base font-bold text-white transition-all active:scale-[0.99]">
-                            Termin buchen
+                            {{ $isRequest ? 'Termin anfragen' : 'Termin buchen' }}
                             <svg class="h-5 w-5 opacity-80" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
                         </button>
                     </div>
@@ -565,11 +569,11 @@ details > summary::-webkit-details-marker { display: none; }
                                class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
                         @error('name')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                     </div>
-                    @if($settings->fieldRule('email') !== 'hidden')
+                    @if($settings->bookingFieldRule('email') !== 'hidden')
                     <div>
-                        <label for="email" class="mb-1.5 block text-sm font-semibold">E-Mail {{ $settings->fieldRule('email') === 'required' ? '*' : '' }}</label>
+                        <label for="email" class="mb-1.5 block text-sm font-semibold">E-Mail {{ $settings->bookingFieldRule('email') === 'required' ? '*' : '' }}</label>
                         <input type="email" name="email" id="email" value="{{ old('email') }}" autocomplete="email" inputmode="email"
-                               @if($settings->fieldRule('email') === 'required') required @endif
+                               @if($settings->bookingFieldRule('email') === 'required') required @endif
                                class="public-input w-full rounded-xl border-2 border-stone-200 px-4 py-3">
                         @error('email')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                     </div>
@@ -636,9 +640,11 @@ details > summary::-webkit-details-marker { display: none; }
 
                     <x-cap-widget form="booking" />
 
+                    @include('public.partials.booking-next-steps', ['isSalon' => false])
+
                     <button type="submit"
                             class="btn-brand flex w-full items-center justify-center gap-2 rounded-xl py-4 text-base font-bold text-white transition-all active:scale-[0.99]">
-                        Jetzt reservieren
+                        {{ $isRequest ? 'Reservierung anfragen' : 'Jetzt reservieren' }}
                         <svg class="h-5 w-5 opacity-80" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
                     </button>
                 </div>

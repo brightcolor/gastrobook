@@ -7,8 +7,9 @@ wissen, was wann rausgeht, und die Texte einmal auf deine Stimme bringen.
 
 | Mail | Wann |
 |---|---|
-| **Reservierung bestätigt** | sofort nach der Buchung (wenn automatisch bestätigt wird) |
-| **Anfrage eingegangen** | sofort, wenn ihr erst bestätigen müsst |
+| **E-Mail-Adresse bestätigen** | sofort nach dem Absenden, wenn „E-Mail-Adresse bestätigen lassen“ an ist |
+| **Reservierung bestätigt** | bei automatischer Bestätigung nach der Buchung (mit Bestätigungslink nach dem Klick darauf), sonst nach eurer Freigabe |
+| **Anfrage eingegangen** | wenn ihr erst bestätigen müsst: nach der Buchung, mit Bestätigungslink nach dem Klick darauf |
 | **Reservierung storniert** | bei Stornierung – egal von welcher Seite |
 | **Anfrage abgelehnt** | wenn ihr eine Anfrage ablehnt |
 | **Erinnerung** | eine einstellbare Zeit vor dem Termin, standardmäßig 24 Stunden |
@@ -16,7 +17,7 @@ wissen, was wann rausgeht, und die Texte einmal auf deine Stimme bringen.
 | **Wartelisten-Angebot** | wenn ihr einem Wartenden einen Tisch anbietet |
 
 Dazu kommen anlassbezogene Nachrichten: Zahlungslinks bei Anzahlungen,
-Bestätigungslink bei der E-Mail-Verifizierung, Anmeldelink fürs Kundenkonto und
+Anmeldelink fürs Kundenkonto und
 – falls eingerichtet – die Marketing-Nachrichten (eigenes Kapitel).
 
 **Die Erinnerung ist die wirksamste Mail überhaupt.** Sie kostet nichts und

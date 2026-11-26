@@ -4,7 +4,7 @@ return [
     'status' => [
         'draft' => 'Draft',
         'requested' => 'Requested',
-        'pending_confirmation' => 'Pending confirmation',
+        'pending_confirmation' => 'Awaiting email confirmation',
         'confirmed' => 'Confirmed',
         'seated' => 'Seated',
         'partially_arrived' => 'Partially arrived',
