@@ -145,8 +145,7 @@ if ($companions) {
             <p class="font-bold">📬 Keine E-Mail bekommen?</p>
             <ul class="mt-1.5 space-y-1 text-amber-800">
                 <li>Die Zustellung dauert meist nur Sekunden, manchmal ein paar Minuten.</li>
-                <li><strong>{{ $du ? 'Sieh' : 'Sehen Sie' }} im Spam- oder Werbeordner nach</strong> – dort landet die
-                    Bestätigung erfahrungsgemäß am häufigsten.</li>
+                <li><strong>{{ \App\Support\MailNotice::spamHint($du) }}</strong></li>
                 <li>Der Link gilt {{ \App\Support\Duration::minutes((int) config('swayy.guest_auth.verify_minutes', 1440)) }}. Danach {{ $du ? 'buche einfach neu' : 'buchen Sie einfach neu' }}.</li>
             </ul>
         </div>
@@ -160,6 +159,7 @@ if ($companions) {
                 Schön, dass {{ $du ? 'du' : 'Sie' }} zu uns {{ $du ? 'möchtest' : 'möchten' }}!
                 Wir schauen uns {{ $du ? 'deine' : 'Ihre' }} Anfrage persönlich an und
                 {{ $du ? 'schreiben dir' : 'schreiben Ihnen' }}, sobald alles feststeht.
+                <x-spam-hint :du="$du" class="text-stone-500" />
             @elseif($isPending)
                 {{ $du ? 'Deine' : 'Ihre' }} {{ $vorgang }} wird nach Zahlungseingang bestätigt.
             @endif

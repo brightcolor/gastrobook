@@ -996,6 +996,7 @@ MAIL_FROM_NAME="Swayy"
 | `SWAYY_MAIL_BUTTON_LABEL_MAX` | `60` | Längste Knopfbeschriftung in Zeichen (20 bis 120) |
 | `SWAYY_GUEST_LOGIN_LINK_MINUTES` | `60` | Gültigkeit des Anmeldelinks für Gäste in Minuten (10 bis 1440) |
 | `SWAYY_GUEST_VERIFY_LINK_MINUTES` | `1440` | Gültigkeit des Bestätigungslinks einer Buchung in Minuten (60 bis 10080) |
+| `SWAYY_GUEST_VERIFY_REMINDER_MINUTES` | `360` | So viele Minuten vor Ablauf eines noch nicht angeklickten Bestätigungslinks bekommt der Gast eine Erinnerung mit demselben Link; `0` schaltet sie ab (0 bis 10080) |
 | `SWAYY_BILLING_CONFIRM_HOURS` | `72` | Gültigkeit des Bestätigungslinks einer Tarifanfrage in Stunden (1 bis 336) |
 
 Zum lokalen Testen ohne echten Versand: `MAIL_MAILER=log` → Mails landen in `storage/logs/laravel.log`. Vorlagen liegen als Defaults im `NotificationTemplateRenderer` und sind pro Tenant/Standort über die Tabelle `notification_templates` überschreibbar (Platzhalter: `{guest_name}`, `{reservation_date}`, `{cancel_link}`, …).

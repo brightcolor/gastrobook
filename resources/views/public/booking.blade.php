@@ -1041,7 +1041,7 @@ details > summary::-webkit-details-marker { display: none; }
                     }),
                 });
                 if (res.ok && res.status === 200) {
-                    wlBox.innerHTML = '<div class="py-2 text-center"><p class="text-2xl">✅</p><p class="mt-1 text-sm font-bold text-amber-900">Du stehst auf der Warteliste!</p><p class="mt-1 text-xs text-amber-800">Wir melden uns per E-Mail, sobald ein Tisch frei wird.</p></div>';
+                    wlBox.innerHTML = '<div class="py-2 text-center"><p class="text-2xl">✅</p><p class="mt-1 text-sm font-bold text-amber-900">Du stehst auf der Warteliste!</p><p class="mt-1 text-xs text-amber-800">Wir melden uns per E-Mail, sobald ein Tisch frei wird.</p><p data-spam-hint class="mt-1 text-xs text-amber-800">' + @json(\App\Support\MailNotice::spamHint(true)) + '</p></div>';
                     return;
                 }
                 const data = await res.json().catch(() => ({}));

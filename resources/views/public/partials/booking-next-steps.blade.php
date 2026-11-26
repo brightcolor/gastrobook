@@ -19,12 +19,14 @@
                 Wir prüfen sie und {{ $du ? 'schicken dir' : 'schicken Ihnen' }} dann die {{ $confirmationName }}.
             </p>
             <p class="mt-1 text-amber-800">Der Link gilt {{ $linkValidity }}.</p>
+            <x-spam-hint :du="$du" class="mt-1 text-amber-800" />
         @elseif($confirmByMail)
             <p class="mt-1">
                 Nach dem Absenden {{ $du ? 'bekommst du' : 'bekommen Sie' }} eine E-Mail mit einem Bestätigungslink.
                 <strong>{{ ucfirst($place) }} ist {{ $booked }}, sobald {{ $du ? 'du den Link anklickst' : 'Sie den Link anklicken' }}.</strong>
             </p>
             <p class="mt-1 text-amber-800">Der Link gilt {{ $linkValidity }}.</p>
+            <x-spam-hint :du="$du" class="mt-1 text-amber-800" />
         @else
             <p class="mt-1">
                 Wir prüfen jede Anfrage persönlich und
@@ -34,6 +36,9 @@
                     melden uns bei {{ $du ? 'dir' : 'Ihnen' }}, sobald {{ $place }} feststeht.
                 @endif
             </p>
+            @if($settings->bookingFieldRule('email') !== 'hidden')
+                <x-spam-hint :du="$du" class="mt-1 text-amber-800" />
+            @endif
         @endif
     </div>
 @endif

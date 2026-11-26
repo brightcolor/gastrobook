@@ -8,6 +8,7 @@ use App\Models\MarketingCampaign;
 use App\Services\AuditLogger;
 use App\Services\GuestMailSender;
 use App\Services\MarketingCampaignService;
+use App\Support\MailNotice;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -155,7 +156,10 @@ class MarketingCampaignController extends Controller
             unsubscribeUrl: $this->campaigns->unsubscribeUrl($sample),
         ));
 
-        return back()->with('success', __('Testmail an :mail verschickt.', ['mail' => $request->user()->email]));
+        return back()->with('success', MailNotice::withSpamHint(
+            __('Testmail an :mail verschickt.', ['mail' => $request->user()->email]),
+            du: true,
+        ));
     }
 
     /**

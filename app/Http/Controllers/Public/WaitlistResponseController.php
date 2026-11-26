@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Public;
 use App\Http\Controllers\Controller;
 use App\Models\WaitlistEntry;
 use App\Services\WaitlistService;
+use App\Support\MailNotice;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -42,9 +43,11 @@ class WaitlistResponseController extends Controller
                 // Ohne diesen Zweig lud die Seite unveraendert neu: derselbe
                 // Knopf, keine Meldung, kein Tisch. Der Gast erfuhr nie, ob er
                 // ihn bekommen hat, und klickte weiter.
-                return back()->withErrors(['offer' => __(
-                    'Der Tisch ist leider gerade vergeben worden. Wir melden uns, sobald wieder etwas frei wird.'
-                )]);
+                $du = $waitlistEntry->location()->withoutGlobalScope('tenant')->first()?->effectiveSettings()->du() ?? false;
+
+                return back()->withErrors(['offer' => MailNotice::withSpamHint(__(
+                    'Der Tisch ist leider gerade vergeben worden. Wir melden uns per E-Mail, sobald wieder etwas frei wird.'
+                ), $du)]);
             }
 
             return redirect()->route('booking.confirmation', [

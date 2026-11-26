@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.141.0] – 2026-11-26
+
+### Erinnerung vor Ablauf des Bestätigungslinks, Spam-Ordner in jeder Mail-Meldung
+
+- **Erinnerung an den Gast.** Hat ein Gast den Bestätigungslink seiner
+  Buchung noch nicht angeklickt, bekommt er sechs Stunden vor dessen Ablauf
+  eine Erinnerung mit demselben Link, Datum, Uhrzeit und dem Zeitpunkt, an dem
+  der Tisch wieder frei wird. Nur der Gast, genau einmal je Buchung. Anlass:
+  Bisher verfiel eine Buchung ohne jede Nachricht. Der Vorlauf steht in
+  `SWAYY_GUEST_VERIFY_REMINDER_MINUTES` (Vorgabe 360, `0` schaltet ab); gilt
+  der Link kürzer als der Vorlauf, entfällt die Erinnerung. Neuer Lauf
+  `RemindUnconfirmedReservations`, viertelstündlich. Die Erinnerung steht
+  wie jede Mail mit Zustellstatus in der Liste „E-Mails“ der Reservierung.
+- **Spam-Ordner in jeder Meldung, die eine Mail ankündigt** (Vorgabe von
+  Mathias): Buchungsformular, Bestätigungsseite, Seite nach dem Klick,
+  Anmeldelink fürs Kundenkonto, Warteliste, Passwort zurücksetzen,
+  Tarifanfrage nach der Testphase und Testmail einer Kampagne. Der Text steht
+  einmal in `App\Support\MailNotice` (Baustein `<x-spam-hint>`); der neue
+  `MailNoticeGuardTest` wird rot, sobald eine Meldung eine Mail ankündigt und
+  den Hinweis nicht nutzt.
+- Die Gültigkeit von Anmeldelink und Bestätigungslink der Tarifanfrage kommt
+  auf den Seiten aus den Einstellungen statt fest „60 Minuten“ und
+  „72 Stunden“.
+
 ## [1.140.0] – 2026-11-26
 
 ### Zustellstatus der Mails: sehen, wer welche Mail bekommen hat

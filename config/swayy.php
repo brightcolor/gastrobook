@@ -891,11 +891,15 @@ return [
 
     /*
     | Links für Gäste: Gültigkeit des Anmeldelinks (10–1440) und des
-    | Bestätigungslinks einer Buchung (60–10080), jeweils in Minuten.
+    | Bestätigungslinks einer Buchung (60–10080), jeweils in Minuten. Dazu der
+    | Vorlauf der Erinnerung an einen noch nicht angeklickten
+    | Bestätigungslink: so viele Minuten vor seinem Ablauf (0 = keine
+    | Erinnerung, höchstens 10080).
     */
     'guest_auth' => [
         'login_minutes' => EnvSetting::integer('SWAYY_GUEST_LOGIN_LINK_MINUTES', default: 60, min: 10, max: 1440),
         'verify_minutes' => EnvSetting::integer('SWAYY_GUEST_VERIFY_LINK_MINUTES', default: 1440, min: 60, max: 10080),
+        'verify_reminder_minutes' => EnvSetting::integer('SWAYY_GUEST_VERIFY_REMINDER_MINUTES', default: 360, min: 0, max: 10080),
     ],
 
     /*

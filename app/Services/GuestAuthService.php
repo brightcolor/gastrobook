@@ -159,4 +159,46 @@ class GuestAuthService
             'subject' => $subject,
         ]);
     }
+
+    /**
+     * Erinnert den Gast an einen Bestätigungslink, den er noch nicht
+     * angeklickt hat – mit demselben Link, damit kein zweiter gültiger
+     * entsteht. Baut nur die Mail; Auswahl, Sperre, Versandprotokoll und
+     * „genau einmal“ liegen bei RemindUnconfirmedReservations.
+     */
+    public function verificationReminder(GuestAuthToken $token, Reservation $reservation): GuestLinkMail
+    {
+        $location = $reservation->location()->withoutGlobalScope('tenant')->first();
+        $tenant = $location?->tenant()->withoutGlobalScopes()->first();
+        $du = $location?->effectiveSettings()->du() ?? false;
+        $salon = $tenant?->isSalon() ?? false;
+        $sender = app(GuestMailSender::class);
+        $timezone = $reservation->timezone ?: ($location?->timezone ?: (string) config('app.timezone'));
+
+        $start = $reservation->localStart();
+        $expires = $token->expires_at->copy()->setTimezone($timezone);
+        $name = GuestText::inline($reservation->guest_name_snapshot);
+        $vars = [
+            'guest' => $name,
+            'code' => $reservation->code,
+            'date' => $start->format('d.m.Y'),
+            'time' => $start->format('H:i'),
+            'until' => $expires->format('d.m.Y, H:i'),
+            'place' => $salon ? __('Termin') : __('Tisch'),
+        ];
+
+        return new GuestLinkMail(
+            $du ? __('Erinnerung: Bitte bestätige deine Buchung :code', $vars)
+                : __('Erinnerung: Bitte bestätigen Sie Ihre Buchung :code', $vars),
+            $du ? __("Hallo :guest,\n\ndeine Buchung :code am :date um :time Uhr wartet noch auf deine Bestätigung. Ein Klick auf den Knopf genügt.", $vars)
+                : __("Hallo :guest,\n\nIhre Buchung :code am :date um :time Uhr wartet noch auf Ihre Bestätigung. Ein Klick auf den Knopf genügt.", $vars),
+            route('guest.verify', ['token' => $token->token]),
+            __('Buchung bestätigen'),
+            $sender->fromName($tenant, $location),
+            $sender->replyTo($tenant, $location),
+            app(MailFrameFactory::class)->forGuest('guest_verify', $tenant, $location),
+            $du ? __('Der Link gilt bis :until Uhr. Danach geben wir den :place wieder frei. Hast du nicht bei uns reserviert, kannst du diese Mail löschen.', $vars)
+                : __('Der Link gilt bis :until Uhr. Danach geben wir den :place wieder frei. Haben Sie nicht bei uns reserviert, können Sie diese Mail löschen.', $vars),
+        );
+    }
 }

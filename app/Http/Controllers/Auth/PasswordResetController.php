@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Mail\PasswordResetMail;
 use App\Support\ContactFieldRules;
+use App\Support\MailNotice;
 use App\Support\PasswordPolicy;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
@@ -60,7 +61,10 @@ class PasswordResetController extends Controller
             }
         );
 
-        return back()->with('status', __('Falls ein Konto mit dieser E-Mail-Adresse existiert, haben wir einen Reset-Link gesendet.'));
+        return back()->with('status', MailNotice::withSpamHint(
+            __('Falls ein Konto mit dieser E-Mail-Adresse existiert, haben wir einen Reset-Link gesendet.'),
+            du: false,
+        ));
     }
 
     public function showReset(Request $request, string $token)

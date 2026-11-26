@@ -32,7 +32,8 @@
                 <p class="mx-auto mt-4 max-w-md leading-relaxed text-stone-500">
                     {{ session('success') }}
                 </p>
-                <p class="mt-4 text-sm text-stone-400">Der Link ist 72 Stunden gültig.</p>
+                <p class="mt-4 text-sm text-stone-500">Der Link ist {{ \App\Support\Duration::minutes(60 * (int) config('swayy.billing_request.confirm_hours', 72)) }} gültig.</p>
+                <x-spam-hint :du="false" class="text-stone-500" />
             </div>
 
         @else
