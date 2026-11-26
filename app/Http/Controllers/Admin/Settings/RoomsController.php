@@ -7,6 +7,8 @@ namespace App\Http\Controllers\Admin\Settings;
 use App\Enums\ReservationStatus;
 use App\Http\Controllers\Admin\Settings\Concerns\RespondsToSettingsForms;
 use App\Http\Controllers\Controller;
+use App\Models\DepositRule;
+use App\Models\FloorZone;
 use App\Models\Location;
 use App\Models\RestaurantTable;
 use App\Models\Room;
@@ -21,6 +23,7 @@ use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 /**
@@ -130,14 +133,20 @@ class RoomsController extends Controller
     {
         abort_if($room->location_id !== $this->context->locationId(), 404);
 
-        // Ein Raum löscht seine Tische samt Verknüpfung zu Reservierungen in
-        // der Datenbank mit. Solange Tische darin stehen, bleibt er. Die Sperre
-        // auf dem Raum hält neue Tische fern, bis er gelöscht ist; ein zweiter
-        // Löschauftrag (Doppelklick, zweites Fenster) findet ihn nicht mehr und
-        // schreibt nichts ins Protokoll.
+        // Der Raum wird weich gelöscht: Seine gelöschten Tische hängen weiter an
+        // vergangenen Reservierungen und bleiben so erhalten. Solange aktive
+        // Tische darin stehen oder eine Anzahlungsregel für ihn gilt, bleibt
+        // er; eine Regel für einen gelöschten Raum griffe nie und stünde in der
+        // Liste wie eine Regel für den ganzen Standort. Zonen und Hintergrundbild
+        // sind nur Zeichnung im Tischplan und gehen mit. Die Sperre auf dem Raum hält
+        // neue Tische fern, bis er gelöscht ist; ein zweiter Löschauftrag
+        // (Doppelklick, zweites Fenster) findet ihn nicht mehr und schreibt
+        // nichts ins Protokoll.
         $tableCount = 0;
+        $ruleNames = collect();
         $deleted = null;
-        DB::transaction(function () use ($room, &$tableCount, &$deleted): void {
+        $background = null;
+        DB::transaction(function () use ($room, &$tableCount, &$ruleNames, &$deleted, &$background): void {
             $locked = Room::whereKey($room->id)->where('location_id', $room->location_id)->lockForUpdate()->first();
             if ($locked === null) {
                 return;
@@ -148,9 +157,23 @@ class RoomsController extends Controller
                 return;
             }
 
+            $ruleNames = DepositRule::where('room_id', $locked->id)->orderBy('name')->pluck('name');
+            if ($ruleNames->isNotEmpty()) {
+                return;
+            }
+
+            FloorZone::where('room_id', $locked->id)->delete();
+            $background = $locked->background_path;
+            $locked->forceFill(['background_path' => null])->save();
             $locked->delete();
             $deleted = $locked;
         });
+
+        // Das Hintergrundbild ist wie die Zonen nur Zeichnung und geht mit,
+        // erst nach dem Festschreiben, damit ein Abbruch die Datei nicht kostet.
+        if ($deleted !== null && $background !== null) {
+            Storage::disk('public')->delete($background);
+        }
 
         // Der Protokolleintrag folgt nach dem Festschreiben, weil sein Fremdschlüssel die Zeile des Betriebs sperrt, die
         // createWithinLimit vor dem Anlegen eines Tisches im Raum sperrt, und beide Anfragen einander sonst blockieren könnten.
@@ -163,6 +186,14 @@ class RoomsController extends Controller
                 '„:name“ enthält noch einen Tisch. Bitte zuerst den Tisch löschen.|„:name“ enthält noch :count Tische. Bitte zuerst die Tische löschen.',
                 $tableCount,
                 ['name' => $room->name, 'count' => $tableCount],
+            ));
+        }
+
+        if ($ruleNames->isNotEmpty()) {
+            return $this->failed($request, 'room', trans_choice(
+                '„:name“ gilt noch in der Anzahlungsregel :rules. Bitte die Regel zuerst unter „Anzahlungen“ ändern oder löschen.|„:name“ gilt noch in den Anzahlungsregeln :rules. Bitte die Regeln zuerst unter „Anzahlungen“ ändern oder löschen.',
+                $ruleNames->count(),
+                ['name' => $room->name, 'rules' => $ruleNames->map(fn (string $rule) => '„'.$rule.'“')->implode(', ')],
             ));
         }
 

@@ -131,9 +131,14 @@ class RestaurantTable extends Model
         return $this->belongsTo(Location::class);
     }
 
+    /**
+     * Der Raum des Tisches, auch wenn er gelöscht ist. Ein Raum lässt sich nur
+     * ohne aktive Tische löschen; an seinem Raum hängen danach nur noch
+     * gelöschte Tische vergangener Reservierungen.
+     */
     public function room(): BelongsTo
     {
-        return $this->belongsTo(Room::class);
+        return $this->belongsTo(Room::class)->withTrashed();
     }
 
     public function backupTable(): BelongsTo

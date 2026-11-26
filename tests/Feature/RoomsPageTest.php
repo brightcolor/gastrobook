@@ -662,7 +662,7 @@ class RoomsPageTest extends TestCase
 
             public function createWithinLimit(Tenant $tenant, string $limitKey, Closure $create): mixed
             {
-                DB::table('rooms')->where('id', $this->roomId)->delete();
+                DB::table('rooms')->where('id', $this->roomId)->update(['deleted_at' => now()]);
 
                 return parent::createWithinLimit($tenant, $limitKey, $create);
             }

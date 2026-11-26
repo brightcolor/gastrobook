@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.138.5] – 2026-11-26
+
+### Gelöschte Räume nehmen ihre alten Tische nicht mehr mit
+
+- **Räume werden weich gelöscht.** Ein Raum lässt sich löschen, sobald keine
+  aktiven Tische mehr darin stehen. Gelöschte Tische, die noch an vergangenen
+  Reservierungen hängen, löschte die Datenbank bisher endgültig mit, und diese
+  Reservierungen verloren ihre Tischzuordnung. Jetzt bleibt der Raum im
+  Hintergrund erhalten, samt Tischen und Zuordnung, auch beim Datenexport.
+  In der Verwaltung, im Tischplan und bei der Buchung taucht er nicht mehr auf.
+- **Anzahlungsregeln schützen ihren Raum.** Gilt eine Anzahlungsregel für den
+  Raum, bleibt er stehen, und die Meldung nennt die Regel. Bisher galt die
+  Regel nach dem Löschen stillschweigend für den ganzen Standort.
+- Zonen und Hintergrundbild des Raums werden beim Löschen entfernt, wie
+  bisher die Zonen.
+- Migration: neue Spalte `rooms.deleted_at`. Bestehende Räume bleiben
+  unverändert.
+
 ## [1.138.4] – 2026-11-26
 
 ### Gelöschte Leistungen und Personen bleiben an vergangenen Terminen
