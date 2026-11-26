@@ -1,0 +1,93 @@
+# Vergibt beim Merge eines Pull Requests nach main die nächste Version. Die Stufe kommt aus den Labels des Pull Requests (major, minor
+# oder patch; ohne eines dieser Labels gilt patch). Der Lauf schreibt die Nummer in config/version.php, ersetzt den Platzhalter
+# @@VERSION@@ in CHANGELOG.md und README.md (außer in Zeilen mit dem Wort "Platzhalter"), legt einen Commit mit [skip ci] und das annotierte Tag vMAJOR.MINOR.PATCH an und startet
+# danach die CI für dieses Tag. Sie baut das Abbild mit der Nummer und "latest", Watchtower rollt es aus. Pull Requests ändern
+# config/version.php nicht; .github/workflows/version-hint.yml weist darauf hin. Beschreibung: README, Abschnitt "Version und Tag beim
+# Merge"; Rechnung: bin/next-version.
+#
+# Ausgangspunkt ist das höchste vorhandene Tag v*. Das Repository mergt per Rebase, einen Merge-Commit mit der Version vor dem Merge
+# gibt es deshalb nicht. Die Läufe dieses Ablaufs warten aufeinander, jeder sieht das Tag des vorigen.
+#
+# Ein Tag, das mit dem GITHUB_TOKEN gepusht wird, startet keine weiteren Workflows. Deshalb ruft der letzte Schritt die CI für das Tag
+# ausdrücklich auf (workflow_dispatch ist davon ausgenommen).
+name: Version vergeben
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  release:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Nächste Version berechnen
+        id: version
+        env:
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          git fetch --tags --force origin
+          base="$(git tag --list 'v*' --sort=-v:refname | head -n 1)"
+          base="${base#v}"
+          if [ -z "$base" ]; then
+            echo "::error::Es gibt noch kein Tag v*. Bitte das erste Tag von Hand setzen, etwa v1.0.0."
+            exit 1
+          fi
+          new="$(bin/next-version "$base" "$LABELS")"
+          if git ls-remote --exit-code --tags origin "refs/tags/v$new" >/dev/null 2>&1; then
+            echo "::error::Das Tag v$new gibt es schon. Bitte die Tags und config/version.php auf main prüfen und das Tag von Hand klären."
+            exit 1
+          fi
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          echo "new=$new" >> "$GITHUB_OUTPUT"
+          echo "Version $base wird zu $new (Labels: ${LABELS:-keine})"
+
+      - name: Version eintragen und Tag setzen
+        env:
+          NEW: ${{ steps.version.outputs.new }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          git config user.name "gastrobook-release"
+          git config user.email "noreply@github.com"
+          git checkout -B main origin/main
+          sed -i -E "s/'number' => '[^']*'/'number' => '$NEW'/" config/version.php
+          if ! grep -q "'number' => '$NEW'" config/version.php; then
+            echo "::error::Die Nummer ließ sich nicht in config/version.php eintragen. Bitte den Eintrag 'number' dort prüfen."
+            exit 1
+          fi
+          # Zeilen mit dem Wort "Platzhalter" beschreiben den Platzhalter selbst und bleiben stehen.
+          sed -i "/Platzhalter/!s/@@VERSION@@/$NEW/g" CHANGELOG.md README.md
+          git add config/version.php CHANGELOG.md README.md
+          git commit -m "Version $NEW (Pull Request #$NUMBER)" -m "[skip ci]"
+          for attempt in 1 2 3; do
+            if git push origin main; then break; fi
+            if [ "$attempt" = 3 ]; then
+              echo "::error::Der Push nach main ist dreimal gescheitert. Bitte main prüfen und die Version von Hand setzen."
+              exit 1
+            fi
+            git pull --rebase origin main
+          done
+          git tag -a "v$NEW" -m "Version $NEW: $TITLE"
+          git push origin "v$NEW"
+
+      - name: CI für das Tag starten
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEW: ${{ steps.version.outputs.new }}
+        run: gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref "v$NEW"

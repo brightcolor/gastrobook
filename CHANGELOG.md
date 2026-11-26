@@ -1,5 +1,19 @@
 # Changelog
 
+## [@@VERSION@@] – 2026-11-26
+
+### Versionsnummern vergibt die CI
+
+- Beim Merge eines Pull Requests nach `main` setzt GitHub die nächste
+  Version: Die Stufe kommt aus dem Label `major`, `minor` oder `patch` am
+  Pull Request, ohne Label gilt `patch`. Der Lauf schreibt die Nummer in
+  `config/version.php` und ins Changelog, setzt das Tag `vX.Y.Z` und startet
+  den Bau des Abbilds. Gleichzeitige Pull Requests bekommen so nacheinander
+  eindeutige Nummern.
+- `latest` entsteht nur noch aus Versions-Tags. Bisher schob auch jeder Push
+  auf `main` ein `latest`, und Watchtower startete nach einem Merge die
+  Container zweimal neu, einmal davon mit der alten Nummer.
+
 ## [1.141.0] – 2026-11-26
 
 ### Erinnerung vor Ablauf des Bestätigungslinks, Spam-Ordner in jeder Mail-Meldung

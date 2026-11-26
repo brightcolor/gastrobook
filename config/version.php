@@ -5,9 +5,10 @@
 | Application version (Semantic Versioning – https://semver.org)
 |--------------------------------------------------------------------------
 |
-| Single source of truth for the Swayy version. Bump on every shipped
-| change and tag the release (git tag vX.Y.Z) – the CI builds a semver-tagged
-| image from v* tags. Shown discreetly in the admin UI.
+| Single source of truth for the Swayy version, shown discreetly in the
+| admin UI. Die Nummer setzt .github/workflows/release.yml beim Merge eines
+| Pull Requests nach main (Stufe aus dem Label major, minor oder patch) und
+| legt das Tag vX.Y.Z an. Pull Requests ändern diese Datei nicht.
 |
 |   MAJOR – breaking changes
 |   MINOR – new, backwards-compatible features

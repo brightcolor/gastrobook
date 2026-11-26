@@ -342,13 +342,23 @@ Den Host-Port am besten nur lokal binden und den Proxy davorsetzen, z. B. in der
 
 `docker/data/` ist git-ignoriert. Backup = Ordner kopieren (DB-Dump per `docker compose exec db pg_dump -U gastrobook gastrobook` bleibt der saubere Weg).
 
-**Fertige Images (GHCR):** Die CI baut bei jedem Push auf `main` (und bei `v*`-Tags) automatisch ein Image:
+**Fertige Images (GHCR):** Die CI baut bei jedem Push auf `main` und bei jedem Versions-Tag `v*` automatisch ein Image:
 
 ```bash
 docker pull ghcr.io/brightcolor/gastrobook:latest
 ```
 
-Tags: `latest` (main), `sha-<commit>`, `main`, sowie `x.y.z` bei Versions-Tags.
+Tags: `latest` und `x.y.z` bei Versions-Tags, `main` und `sha-<commit>` bei jedem Push auf `main`. `latest` zeigt damit immer auf die zuletzt nummerierte Version.
+
+### Version und Tag beim Merge
+
+GitHub vergibt die Version, sobald ein Pull Request nach `main` gemergt ist (`.github/workflows/release.yml`). Pull Requests ändern `config/version.php` nicht, damit gleichzeitige Pull Requests nicht an der Nummer kollidieren.
+
+* **Stufe:** Sie kommt aus den Labels des Pull Requests. `major` hebt die erste Stelle an (`1.141.7` wird `2.0.0`), `minor` die zweite (`1.141.7` wird `1.142.0`), `patch` die dritte (`1.141.7` wird `1.141.8`). Trägt ein Pull Request mehrere dieser Labels, gilt das höchste; ohne eines gilt `patch`. Das Label setzt, wer den Pull Request öffnet (`gh pr create --label minor` oder `gh pr edit <Nr> --add-label minor`).
+* **Changelog und Texte:** Im Pull Request steht statt der Nummer der Platzhalter `@@VERSION@@`, etwa `## [@@VERSION@@] – 2026-11-26` im `CHANGELOG.md` oder „seit Version @@VERSION@@“ hier in der README.
+* **Ablauf:** Der Lauf nimmt das höchste Tag `v*`, rechnet mit `bin/next-version`, schreibt die Nummer in `config/version.php`, ersetzt den Platzhalter in `CHANGELOG.md` und `README.md` (Zeilen, die das Wort „Platzhalter“ enthalten, bleiben unverändert), legt einen Commit (`Version X.Y.Z (Pull Request #N)`, mit `[skip ci]`) und das annotierte Tag `vX.Y.Z` an. Danach startet er die CI für das Tag; sie baut das Abbild `x.y.z` und `latest`, und Watchtower rollt es aus. Die Läufe warten aufeinander, ein schon vorhandenes Tag bricht den Lauf mit einer Meldung ab.
+* **Hinweis:** Ändert ein Pull Request `config/version.php` doch, weist `.github/workflows/version-hint.yml` darauf hin; die Änderung zählt beim Merge nicht.
+* **Tests:** `tests/Unit/NextVersionScriptTest.php` prüft die Rechnung mit verschiedenen Nummern und das Zusammenspiel mit `config/version.php`.
 
 ---
 
