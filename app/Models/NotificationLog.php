@@ -99,9 +99,18 @@ class NotificationLog extends Model
         return self::SYSTEM_TEMPLATE_LABELS[$key] ?? TemplateLabels::label($key, $salon);
     }
 
-    /** Für den Gast bestimmt (alles außer den Hinweisen an den Betrieb). */
+    /**
+     * Für den Gast bestimmt: alles außer den Mails an Betrieb und Team
+     * (Einstellung swayy.mail_delivery.operator_templates).
+     */
     public function isForGuest(): bool
     {
-        return ! str_starts_with((string) $this->template_key, 'owner_');
+        return ! in_array((string) $this->template_key, self::operatorTemplates(), true);
+    }
+
+    /** @return list<string> */
+    public static function operatorTemplates(): array
+    {
+        return array_values(array_map('strval', (array) config('swayy.mail_delivery.operator_templates', [])));
     }
 }

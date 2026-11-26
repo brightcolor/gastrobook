@@ -447,14 +447,53 @@ class MailDeliveryTrackingTest extends TestCase
             ->assertSee('suppression list')
             ->assertSee('Hinweis an den Betrieb: neue Reservierung')
             ->assertSee('Wartet auf Versand')
-            // Der Hinweis an den Betrieb ist noch unterwegs.
-            ->assertSee('data-waiting="1"', false);
+            // Der Hinweis an den Betrieb ist noch unterwegs, aber nur die Mail
+            // an den Gast hält die Seite fest, und die ist entschieden.
+            ->assertSee('data-waiting="0"', false);
 
         $this->actingAs($owner)->getJson('/admin/reservations/'.$reservation->id.'/mail-status')
             ->assertOk()
-            ->assertJsonPath('waiting', true)
+            ->assertJsonPath('waiting', false)
             ->assertJsonCount(2, 'rows')
             ->assertJsonFragment(['label' => 'Zurückgehalten', 'tone' => 'bad']);
+    }
+
+    public function test_only_the_guest_mail_decides_whether_a_page_waits(): void
+    {
+        $setup = $this->createTenantSetup();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $reservation = $this->makeReservation($setup);
+        $guestMail = $this->openLog($reservation);
+        $operatorMail = $this->openLog($reservation, 'owner_new_reservation');
+        $this->clearTenantContext();
+
+        // Beide unterwegs: Es wird gewartet, wegen der Gastmail.
+        $this->actingAs($owner)->getJson('/admin/reservations/'.$reservation->id.'/mail-status')
+            ->assertJsonPath('waiting', true);
+        $this->getJson($this->statusUrl($reservation))->assertJson(['state' => 'pending']);
+
+        // Gastmail zugestellt, Mail an den Betrieb abgewiesen: Für den Gast
+        // ist der Vorgang erfolgreich, im Admin wartet nichts mehr.
+        $this->postDelivery($this->postalEvent('MessageSent', $guestMail->message_id, (float) time()))->assertOk();
+        $this->postDelivery($this->postalEvent('MessageDeliveryFailed', $operatorMail->message_id, (float) time(), 'Permanent SMTP delivery error'))->assertOk();
+
+        $this->getJson($this->statusUrl($reservation))->assertJson(['state' => 'delivered']);
+        $this->actingAs($owner)->getJson('/admin/reservations/'.$reservation->id.'/mail-status')
+            ->assertJsonPath('waiting', false)
+            ->assertJsonFragment(['label' => 'Nicht zustellbar', 'tone' => 'bad']);
+    }
+
+    public function test_operator_templates_come_from_the_settings(): void
+    {
+        $setup = $this->createTenantSetup();
+        $reservation = $this->makeReservation($setup);
+        $this->openLog($reservation, 'team_digest');
+
+        // Ab Werk gilt team_digest als Mail an den Gast: Die Seite wartet.
+        $this->getJson($this->statusUrl($reservation))->assertJson(['state' => 'pending']);
+
+        config(['swayy.mail_delivery.operator_templates' => ['owner_new_reservation', 'team_digest']]);
+        $this->getJson($this->statusUrl($reservation))->assertJson(['state' => 'none']);
     }
 
     public function test_the_list_limit_comes_from_the_settings(): void
