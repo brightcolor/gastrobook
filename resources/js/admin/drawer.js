@@ -17,6 +17,14 @@
 // speichern für sich, die Seitenleiste bleibt dann offen. Geänderte
 // Formulare in der offenen Seitenleiste tragen data-dirty; ein angefordertes
 // Neuladen (forms.js) wartet, bis sie gespeichert oder verworfen sind.
+//
+// Nachladen: Trägt das öffnende Element data-drawer-src und steht die
+// Seitenleiste noch nicht auf der Seite, holt sie ein GET an diese Adresse
+// (HTML der Seitenleiste ohne Layout). Sie kommt hinter die übrigen
+// Seitenleisten und meldet sich mit swayy:drawer-added, damit die Bausteine
+// sie einrichten (index.js); danach öffnet sie wie jede andere. So trägt eine
+// Seite mit vielen Einträgen nicht für jeden ein ganzes Formular (Ausnahmen).
+// Antwortet der Server mit einem Fehler, zeigt ein Hinweis seine Meldung.
 // Das Speichern des Hauptformulars schließt die Seitenleiste nur, wenn kein
 // weiteres Formular ungespeicherte Eingaben trägt. Sonst bleibt sie offen, und
 // der Hinweis nennt die Abschnitte, die noch offen sind: ihren Namen aus
@@ -31,6 +39,10 @@ import { showToast } from './toast.js';
 let installed = false;
 let current = null;
 const baselines = new WeakMap();
+// Laufende Ladevorgänge je Seitenleiste: Ein zweiter Klick wartet auf denselben.
+const loads = new Map();
+
+export const DRAWER_LOAD_FAILED = 'Die Seitenleiste ließ sich nicht laden. Bitte die Internetverbindung prüfen und die Seite neu laden.';
 
 function closesOnSave(drawer, form) {
     const primary = [...drawer.querySelectorAll('button[type="submit"][form]')].map((button) => button.getAttribute('form'));
@@ -131,6 +143,61 @@ function close() {
     }
 }
 
+async function fetchDrawer(id, src) {
+    let response;
+    try {
+        response = await fetch(src, {
+            headers: { Accept: 'text/html', 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+        });
+    } catch {
+        throw new Error(DRAWER_LOAD_FAILED);
+    }
+    if (!response.ok) {
+        let message = null;
+        try {
+            message = (await response.json())?.message ?? null;
+        } catch {
+            // Keine Meldung im erwarteten Format, etwa eine Fehlerseite des Proxys.
+        }
+        throw new Error(typeof message === 'string' && message !== '' ? message : DRAWER_LOAD_FAILED);
+    }
+
+    const template = document.createElement('template');
+    template.innerHTML = (await response.text()).trim();
+    const drawer = template.content.querySelector('[data-drawer]');
+    if (!drawer || drawer.id !== id) throw new Error(DRAWER_LOAD_FAILED);
+
+    // Kam sie inzwischen auf anderem Weg auf die Seite, gilt die vorhandene.
+    const existing = document.getElementById(id);
+    if (existing?.hasAttribute('data-drawer')) return existing;
+
+    const last = [...document.querySelectorAll('[data-drawer]')].pop();
+    if (last) {
+        last.after(drawer);
+    } else {
+        document.body.append(drawer);
+    }
+    drawer.dispatchEvent(new CustomEvent('swayy:drawer-added', { bubbles: true }));
+    return drawer;
+}
+
+function loadDrawer(id, src) {
+    if (!loads.has(id)) {
+        loads.set(id, fetchDrawer(id, src).finally(() => loads.delete(id)));
+    }
+    return loads.get(id);
+}
+
+function openLater(opener) {
+    if (opener.getAttribute('aria-busy') === 'true') return;
+    opener.setAttribute('aria-busy', 'true');
+    loadDrawer(opener.dataset.drawerOpen, opener.dataset.drawerSrc)
+        .then((drawer) => open(drawer, opener))
+        .catch((error) => showToast(error?.message || DRAWER_LOAD_FAILED, { error: true }))
+        .finally(() => opener.removeAttribute('aria-busy'));
+}
+
 function openFromHash({ keepProblems = false } = {}) {
     let id = '';
     try {
@@ -139,8 +206,15 @@ function openFromHash({ keepProblems = false } = {}) {
         // Kaputte Kodierung in der Adresse (etwa „#%“): keine Seitenleiste.
         return;
     }
-    const drawer = id ? document.getElementById(id) : null;
-    if (drawer?.hasAttribute('data-drawer')) open(drawer, null, { keepProblems });
+    if (!id) return;
+    const drawer = document.getElementById(id);
+    if (drawer?.hasAttribute('data-drawer')) {
+        open(drawer, null, { keepProblems });
+        return;
+    }
+    // Eine nachgeladene Seitenleiste (#ausnahme-…): über ihr öffnendes Element laden.
+    const opener = document.querySelector(`[data-drawer-open="${CSS.escape(id)}"][data-drawer-src]`);
+    if (opener) openLater(opener);
 }
 
 export function initDrawers() {
@@ -156,6 +230,9 @@ export function initDrawers() {
             if (drawer?.hasAttribute('data-drawer')) {
                 e.preventDefault();
                 open(drawer, opener);
+            } else if (opener.dataset.drawerSrc) {
+                e.preventDefault();
+                openLater(opener);
             }
             return;
         }

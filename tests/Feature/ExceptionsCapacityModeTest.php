@@ -159,6 +159,7 @@ class ExceptionsCapacityModeTest extends TestCase
         $this->assertSame(1, substr_count($content, e($note)));
         $this->assertLessThan(strpos($content, '>Ruhetag<'), strpos($content, e($note)));
         // Die Seitenleiste zeigt die Karte und den Raum weiter an, damit nichts stumm verloren geht.
+        $content = (string) $this->actingAs($owner)->get(route('admin.settings.exceptions.drawer', $key))->assertOk()->getContent();
         $prefix = preg_quote('ausnahme-'.$key, '/');
         $this->assertMatchesRegularExpression('/id="'.$prefix.'-effects-lock"[^>]*checked/', $content);
         $this->assertMatchesRegularExpression('/<option value="'.$other->id.'" selected>/', $content);

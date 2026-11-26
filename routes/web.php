@@ -468,6 +468,9 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
         ->middleware(['permission:special_hours.manage', 'permission:blackouts.manage'])->name('settings.exceptions.preview');
     Route::post('/settings/exceptions', [ExceptionsController::class, 'store'])
         ->middleware(['permission:special_hours.manage', 'permission:blackouts.manage'])->name('settings.exceptions.store');
+    Route::get('/settings/exceptions/{key}/drawer', [ExceptionsController::class, 'drawer'])
+        ->where('key', ScheduleExceptionRules::KEY_PATTERN)
+        ->middleware(['permission:special_hours.manage', 'permission:blackouts.manage'])->name('settings.exceptions.drawer');
     Route::put('/settings/exceptions/{key}', [ExceptionsController::class, 'update'])
         ->where('key', ScheduleExceptionRules::KEY_PATTERN)
         ->middleware(['permission:special_hours.manage', 'permission:blackouts.manage'])->name('settings.exceptions.update');

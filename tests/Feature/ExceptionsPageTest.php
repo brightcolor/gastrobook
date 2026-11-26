@@ -47,7 +47,7 @@ class ExceptionsPageTest extends TestCase
             ->assertSee('Vergangen')
             ->assertSee('Feiertag')
             ->assertSee('id="ausnahme-neu"', false)
-            ->assertSee('id="ausnahme-g-'.$group.'"', false)
+            ->assertSee('data-drawer-src="'.route('admin.settings.exceptions.drawer', 'g-'.$group).'"', false)
             ->assertSee('data-preview-url="'.route('admin.settings.exceptions.preview').'"', false)
             ->assertDontSee('onclick', false);
         $this->assertMatchesRegularExpression('/data-nav-key="exceptions"[^>]*aria-current="page"/', (string) $response->getContent());
@@ -190,7 +190,8 @@ class ExceptionsPageTest extends TestCase
         ])->assertOk();
         $key = 'g-'.SpecialOpeningHour::where('location_id', $setup['location']->id)->value('exception_group');
 
-        $response = $this->actingAs($owner)->get('/admin/settings/exceptions')->assertOk();
+        // Die Seitenleiste zum Bearbeiten liefert der Server beim Öffnen (ExceptionDrawerTest).
+        $response = $this->actingAs($owner)->get(route('admin.settings.exceptions.drawer', $key))->assertOk();
         $content = (string) $response->getContent();
         $prefix = 'ausnahme-'.$key;
 
@@ -205,8 +206,10 @@ class ExceptionsPageTest extends TestCase
             ->assertSee('value="15:00"', false)
             ->assertSee('value="12"', false)
             ->assertSee('value="17:00"', false)
-            ->assertSee('value="22:00"', false)
-            ->assertSee('Höchstens 12 Gäste gleichzeitig (Raum „'.$room->name.'“), 17:00–21:00')
+            ->assertSee('value="22:00"', false);
+        // Die Liste der Seite nennt die Wirkungen des Eintrags.
+        $page = $this->actingAs($owner)->get('/admin/settings/exceptions')->assertOk();
+        $page->assertSee('Höchstens 12 Gäste gleichzeitig (Raum „'.$room->name.'“), 17:00–21:00')
             ->assertSee('Gesperrt: Tisch '.$table->name.', 18:00–22:00')
             ->assertSee('Geöffnet 11:00–15:00');
         foreach (['hours', 'limit', 'lock'] as $effect) {
@@ -216,7 +219,7 @@ class ExceptionsPageTest extends TestCase
         $this->assertMatchesRegularExpression('/id="'.preg_quote($prefix, '/').'-lock_tables-'.$table->id.'"[^>]*checked/', $content);
         $this->assertDoesNotMatchRegularExpression('/id="'.preg_quote($prefix, '/').'-lock_tables-'.$setup['tables'][0]->id.'"[^>]*checked/', $content);
         // Das Formular zum Anlegen sendet keinen Schlüssel.
-        $this->assertSame(1, preg_match('/<form id="form-ausnahme-neu".*?<\/form>/s', $content, $creating));
+        $this->assertSame(1, preg_match('/<form id="form-ausnahme-neu".*?<\/form>/s', (string) $page->getContent(), $creating));
         $this->assertStringNotContainsString('name="key"', $creating[0]);
     }
 
@@ -402,7 +405,7 @@ class ExceptionsPageTest extends TestCase
         }
         $inactiveTable->update(['is_active' => false]);
 
-        $content = (string) $this->actingAs($owner)->get('/admin/settings/exceptions')->assertOk()->getContent();
+        $content = (string) $this->actingAs($owner)->get(route('admin.settings.exceptions.drawer', $key))->assertOk()->getContent();
         $prefix = preg_quote('ausnahme-'.$key, '/');
 
         $this->assertMatchesRegularExpression('/id="'.$prefix.'-lock_rooms-'.$lockRoom->id.'"[^>]*checked/', $content);
@@ -414,7 +417,8 @@ class ExceptionsPageTest extends TestCase
         $this->assertStringContainsString('Tisch '.$inactiveTable->name.' · 2–4 Personen (inaktiv)', $content);
         $this->assertStringContainsString('Tisch K1 · 2–6 Personen (inaktiv)', $content);
         // Das Formular zum Anlegen bietet Inaktives nicht an.
-        $this->assertSame(1, preg_match('/<form id="form-ausnahme-neu".*?<\/form>/s', $content, $creating));
+        $page = (string) $this->actingAs($owner)->get('/admin/settings/exceptions')->assertOk()->getContent();
+        $this->assertSame(1, preg_match('/<form id="form-ausnahme-neu".*?<\/form>/s', $page, $creating));
         foreach (['lock_rooms-'.$lockRoom->id, 'lock_tables-'.$inactiveTable->id, 'lock_tables-'.$cellarTable->id, 'value="'.$limitRoom->id.'"'] as $needle) {
             $this->assertStringNotContainsString($needle, $creating[0]);
         }

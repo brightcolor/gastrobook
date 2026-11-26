@@ -51,18 +51,58 @@ class ExceptionsController extends Controller
     public function show(Request $request): View
     {
         $location = $this->location();
+        $entries = $this->exceptions->entries($location);
+
+        return view('admin.settings.exceptions', [
+            'upcoming' => $entries['upcoming'],
+            'past' => $entries['past'],
+            ...$this->formContext($request, $location),
+        ]);
+    }
+
+    /**
+     * Die Seitenleiste „Ausnahme bearbeiten“ eines Eintrags, ohne Layout. Die
+     * Seite trägt sie nicht mit; drawer.js lädt sie beim Öffnen. Ein fremder,
+     * unbekannter, vergangener oder nicht bearbeitbarer Eintrag ergibt 404 mit
+     * einer Meldung, die drawer.js als Hinweis zeigt.
+     */
+    public function drawer(Request $request, string $key): mixed
+    {
+        $location = $this->location();
+        $entry = $this->exceptions->find($location, $key);
+        $message = match (true) {
+            $entry === null => ScheduleExceptions::gone(),
+            $entry['until'] < CarbonImmutable::now($location->timezone)->toDateString() => __('Diese Ausnahme ist schon vorbei und lässt sich nicht mehr bearbeiten.'),
+            ! $entry['editable'] => $entry['note'] ?? __('Diese Ausnahme lässt sich nicht bearbeiten. Zum Ändern bitte löschen und neu anlegen.'),
+            default => null,
+        };
+        if ($message !== null) {
+            return response()->json(['message' => $message], 404);
+        }
+
+        return view('admin.settings.partials.exception-drawer', [
+            'entry' => $entry,
+            ...$this->formContext($request, $location),
+        ]);
+    }
+
+    /**
+     * Was die Formulare der Ausnahmen brauchen, auf der Seite und in der
+     * nachgeladenen Seitenleiste gleich.
+     *
+     * @return array<string, mixed>
+     */
+    private function formContext(Request $request, Location $location): array
+    {
         $tenant = $this->context->tenant();
         abort_if($tenant === null, 404, __('Es ist kein Betrieb gewählt. Bitte neu anmelden und die Seite neu laden.'));
         $salon = $tenant->isSalon();
-        $entries = $this->exceptions->entries($location);
         $rooms = $salon ? collect() : $this->rooms($location);
         // Räume und Tische wirken nur, wo Swayy Tische vergibt; sonst entfällt auch die Vorbelegung über ?tisch=.
         $assignsTables = CapacityModes::assignsTables($location);
         $presetTable = $assignsTables ? $this->presetTable($request, $this->offered($rooms, $this->blank(null))) : null;
 
-        return view('admin.settings.exceptions', [
-            'upcoming' => $entries['upcoming'],
-            'past' => $entries['past'],
+        return [
             'blank' => $this->blank($presetTable),
             'presetTable' => $presetTable,
             'assignsTables' => $assignsTables,
@@ -72,7 +112,7 @@ class ExceptionsController extends Controller
             'salon' => $salon,
             'limits' => (array) config('swayy.exceptions'),
             'previewDelay' => (int) config('swayy.ui.preview_delay_ms'),
-        ]);
+        ];
     }
 
     public function store(Request $request): mixed

@@ -1,5 +1,19 @@
 # Changelog
 
+## [@@VERSION@@] – 2026-11-26
+
+### Ausnahmen-Seite lädt die Seitenleiste zum Bearbeiten erst beim Öffnen
+
+- Die Seite „Ausnahmen“ legte für jede bearbeitbare Ausnahme eine eigene
+  Seitenleiste samt vollständigem Formular mit allen Räumen und Tischen an.
+  Bei vielen Ausnahmen wurde die Seite entsprechend groß und langsam. Jetzt
+  trägt sie nur noch die Seitenleiste „Neue Ausnahme“. Die zum Bearbeiten
+  holt „Bearbeiten“ beim ersten Öffnen vom Server, ein Direktlink
+  (`#ausnahme-…`) funktioniert wie bisher.
+- Lässt sich eine Ausnahme nicht mehr bearbeiten, weil sie inzwischen
+  gelöscht, vorbei oder eine ältere Sperre ist, nennt ein Hinweis den Grund.
+  Scheitert das Laden, sagt der Hinweis, was zu tun ist.
+
 ## [1.142.0] – 2026-11-26
 
 ### Versionsnummern vergibt die CI

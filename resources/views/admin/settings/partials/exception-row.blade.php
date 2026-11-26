@@ -40,7 +40,7 @@
     </div>
     <div class="flex min-w-0 flex-wrap items-center gap-1">
         @if($canEdit)
-            <button type="button" data-drawer-open="ausnahme-{{ $entry['key'] }}" class="btn btn-quiet">Bearbeiten<span class="sr-only"> „{{ $name }}“</span></button>
+            <button type="button" data-drawer-open="ausnahme-{{ $entry['key'] }}" data-drawer-src="{{ route('admin.settings.exceptions.drawer', $entry['key']) }}" class="btn btn-quiet">Bearbeiten<span class="sr-only"> „{{ $name }}“</span></button>
         @endif
         <x-inline-confirm :id="'ausnahme-loeschen-'.$entry['key']" :action="route('admin.settings.exceptions.destroy', $entry['key'])" method="DELETE"
                           label="Löschen" confirm="Ausnahme löschen" :subject="$name" :reload="true"
