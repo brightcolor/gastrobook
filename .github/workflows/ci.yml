@@ -1,10 +1,13 @@
 name: CI
 
+# Versions-Tags pusht .github/workflows/release.yml mit dem GITHUB_TOKEN; solche Pushes starten keine Workflows. Der Ablauf ruft
+# die CI für das Tag deshalb über workflow_dispatch auf.
 on:
   push:
     branches: [main]
     tags: ['v*']
   pull_request:
+  workflow_dispatch:
 
 # Der GITHUB_TOKEN bekommt in jedem Job nur Leserechte auf den Code. Der
 # Docker-Job erweitert sie selbst um das Schreibrecht für die Registry.
@@ -138,11 +141,15 @@ jobs:
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ghcr.io/${{ github.repository }}
+          # "latest" kommt nur aus Versions-Tags: Watchtower rollt damit genau die Fassungen aus, die
+          # .github/workflows/release.yml nummeriert hat. Ein Lauf auf main baut "main" und "sha-…".
+          flavor: |
+            latest=false
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
             type=sha
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
 
       - name: Build and push image
         id: build

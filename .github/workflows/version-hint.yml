@@ -1,0 +1,26 @@
+# Weist einen Pull Request darauf hin, dass er config/version.php nicht ändert: Die Version vergibt .github/workflows/release.yml beim
+# Merge. Der Lauf bleibt grün; ändert ein Pull Request die Datei doch, steht ein Hinweis im Protokoll des Laufs, und die Änderung zählt
+# beim Merge nicht.
+name: Hinweis zur Version
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  hint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: config/version.php im Pull Request
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          if git diff --name-only "origin/$BASE...HEAD" | grep -qx 'config/version.php'; then
+            echo "::warning file=config/version.php::Dieser Pull Request ändert config/version.php. Das ist nicht mehr nötig: GitHub vergibt die Version beim Merge nach dem Label major, minor oder patch (ohne Label: patch). Im Changelog steht @@VERSION@@ statt der Nummer."
+          fi
