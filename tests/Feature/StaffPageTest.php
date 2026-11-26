@@ -14,6 +14,7 @@ use App\Models\Service;
 use App\Models\StaffAbsence;
 use App\Models\StaffMember;
 use App\Models\StaffWorkingHour;
+use App\Services\OnlineBookingWindow;
 use App\Services\ReservationLifecycleService;
 use App\Services\SalonAvailabilityService;
 use App\Services\TimeSlotService;
@@ -1250,7 +1251,7 @@ class StaffPageTest extends TestCase
         {
             public function __construct(TimeSlotService $slots, private readonly Closure $hook)
             {
-                parent::__construct($slots);
+                parent::__construct($slots, app(OnlineBookingWindow::class));
             }
 
             public function isStaffAvailableForServices(StaffMember $staff, Collection $services, CarbonImmutable $startUtc, Location $location): bool

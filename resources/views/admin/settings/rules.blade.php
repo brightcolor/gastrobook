@@ -15,7 +15,7 @@
     <x-settings.section id="zeitraum" title="Wann Gäste buchen können">
         <x-slot:description>
             <p>Der Mindestvorlauf gibt dir Zeit zur Vorbereitung: Bei 60 Minuten bucht um 18:30 niemand mehr für 19:00.</p>
-            <p>Mit dem Annahmeschluss endet die Online-Buchung für den laufenden Tag zu einer festen Uhrzeit, samt der Nacht nach Mitternacht, die noch zu den heutigen Öffnungszeiten gehört. Gäste sehen dann deine Telefonnummer und können einen anderen Tag wählen. Im Reservierungsbuch trägst du weiter für heute ein.</p>
+            <p>Mit dem Annahmeschluss endet die Online-Buchung für den laufenden Tag zu einer festen Uhrzeit, samt der Nacht nach Mitternacht, die noch zu den heutigen Öffnungszeiten gehört. Gäste sehen dann deine Telefonnummer und können einen anderen Tag wählen. {{ $salon ? 'Unter „Termine“ trägst du für heute weiter ein.' : 'Im Reservierungsbuch trägst du für heute weiter ein.' }}</p>
         </x-slot:description>
         <x-field name="min_lead_minutes" label="Mindestvorlauf" type="number" unit="Min." :minutes="true" required class="max-w-48"
                  :value="$settings->min_lead_minutes" min="0" :max="$limits['lead_max_minutes']"
