@@ -9,6 +9,7 @@ use App\Jobs\RunRetentionPolicies;
 use App\Models\AuditLog;
 use App\Models\Guest;
 use App\Models\GuestNote;
+use App\Models\NotificationLog;
 use App\Models\Plan;
 use App\Models\Reservation;
 use App\Models\ReservationNote;
@@ -91,6 +92,37 @@ class GuestErasureTest extends TestCase
         $this->assertNull($eintrag->old_values);
         $this->assertNull($eintrag->new_values);
         $this->assertSame('guest.updated', $eintrag->action);
+    }
+
+    /**
+     * Die Antwort des Mailservers nennt oft die Adresse des Gastes, die
+     * Message-ID führt zum Eintrag im Mailserver.
+     */
+    public function test_erasure_reaches_the_delivery_status_of_mails(): void
+    {
+        $setup = $this->createTenantSetup();
+        [$guest, $reservation] = $this->guestWithHistory($setup);
+
+        $log = NotificationLog::withoutGlobalScopes()->create([
+            'tenant_id' => $setup['tenant']->id,
+            'reservation_id' => $reservation->id,
+            'channel' => 'mail',
+            'template_key' => 'reservation_confirmed',
+            'recipient' => 'gast@example.test',
+            'status' => NotificationLog::STATUS_BOUNCED,
+            'message_id' => 'abc@mail.example.test',
+            'status_detail' => '550 5.1.1 <gast@example.test> does not exist',
+            'error' => '550 5.1.1 <gast@example.test> does not exist',
+        ]);
+
+        app(GuestPrivacyService::class)->anonymize($guest);
+
+        $log->refresh();
+        $this->assertSame('-', $log->recipient);
+        $this->assertNull($log->status_detail);
+        $this->assertNull($log->error);
+        $this->assertNull($log->message_id);
+        $this->assertSame(NotificationLog::STATUS_BOUNCED, $log->status);
     }
 
     /**

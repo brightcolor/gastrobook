@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Mail\Concerns\RendersInFrame;
+use App\Mail\Concerns\TracksDelivery;
 use App\Mail\Layout\MailFrame;
 use App\Mail\Layout\MailFrameFactory;
 use Illuminate\Bus\Queueable;
@@ -16,7 +17,7 @@ use Illuminate\Queue\SerializesModels;
 
 class TemplatedMail extends Mailable implements ShouldQueue
 {
-    use Queueable, RendersInFrame, SerializesModels;
+    use Queueable, RendersInFrame, SerializesModels, TracksDelivery;
 
     public function __construct(
         public readonly string $mailSubject,
@@ -48,7 +49,7 @@ class TemplatedMail extends Mailable implements ShouldQueue
 
     public function headers(): Headers
     {
-        return $this->framedHeaders($this->resolvedFrame());
+        return $this->withDeliveryHeaders($this->framedHeaders($this->resolvedFrame()));
     }
 
     /**

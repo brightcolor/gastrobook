@@ -63,6 +63,53 @@ if ($companions) {
         $vorgang = $isSalon ? 'Buchung' : 'Reservierung';
     @endphp
 
+    @php
+        // Zustellstatus der Mail an den Gast (Postal). Solange sie unterwegs
+        // ist, bleibt die Erfolgsmeldung verborgen, und die Seite bittet, sie
+        // nicht zu verlassen. Ohne JavaScript gilt die Erfolgsmeldung wie bisher.
+        $deliveryState = $delivery['state'] ?? null;
+        $deliveryWaiting = in_array($deliveryState, ['pending', 'delayed'], true);
+        $deliveryFailed = $deliveryState === 'failed';
+        $phone = trim((string) $location->phone);
+        $deliveryTimeout = ($du
+                ? 'Die Zustellung ist noch nicht bestätigt. Sieh in ein paar Minuten in dein Postfach, auch in den Spam-Ordner.'
+                : 'Die Zustellung ist noch nicht bestätigt. Sehen Sie in ein paar Minuten in Ihr Postfach, auch in den Spam-Ordner.')
+            .' '.($phone !== ''
+                ? ($du ? "Kommt keine E-Mail an, ruf uns an: {$phone}." : "Kommt keine E-Mail an, rufen Sie uns an: {$phone}.")
+                : ($du ? 'Kommt keine E-Mail an, melde dich direkt bei uns.' : 'Kommt keine E-Mail an, melden Sie sich direkt bei uns.'));
+    @endphp
+
+    @if($delivery !== null)
+    <div id="mail-delivery"
+         data-status-url="{{ route('booking.mail-status', ['code' => $reservation->code, 'token' => $reservation->manage_token]) }}"
+         data-poll-ms="{{ (int) config('swayy.mail_delivery.poll_seconds', 3) * 1000 }}"
+         data-wait-ms="{{ (int) config('swayy.mail_delivery.wait_seconds', 90) * 1000 }}"
+         data-state="{{ $deliveryState }}">
+        <div data-delivery-pending role="status" aria-live="polite"
+             class="rounded-2xl bg-amber-50 p-5 text-left text-sm text-amber-900 ring-1 ring-amber-200"
+             @if(! $deliveryWaiting) hidden @endif>
+            <div class="flex items-center gap-3">
+                <span class="inline-block h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-amber-300 border-t-amber-700 motion-reduce:animate-none" aria-hidden="true"></span>
+                <p class="font-bold">{{ $du ? 'Einen Moment, bitte bleib auf dieser Seite.' : 'Einen Moment, bitte bleiben Sie auf dieser Seite.' }}</p>
+            </div>
+            <p data-delivery-message class="mt-2 leading-relaxed">{{ $deliveryWaiting ? $delivery['message'] : '' }}</p>
+        </div>
+        <div data-delivery-failed role="alert"
+             class="rounded-2xl bg-red-50 p-5 text-left text-sm text-red-900 ring-1 ring-red-200"
+             @if(! $deliveryFailed) hidden @endif>
+            <p class="font-bold">{{ $du ? 'Unsere E-Mail an dich ist nicht angekommen.' : 'Unsere E-Mail an Sie ist nicht angekommen.' }}</p>
+            <p data-delivery-message class="mt-2 leading-relaxed">{{ $deliveryFailed ? $delivery['message'] : '' }}</p>
+            <p class="mt-2 text-xs text-red-700">Kennung für Rückfragen: <span data-delivery-reference>{{ $delivery['reference'] }}</span></p>
+        </div>
+        <p data-delivery-timeout class="mb-4 rounded-xl bg-stone-50 p-3 text-left text-sm text-stone-700" hidden>{{ $deliveryTimeout }}</p>
+    </div>
+    @endif
+
+    <div data-delivery-success @if($deliveryWaiting || $deliveryFailed) hidden @endif>
+    @if($deliveryWaiting)
+        <noscript><style>[data-delivery-success]{display:block!important}[data-delivery-pending]{display:none!important}</style></noscript>
+    @endif
+
     {{-- Status-Icon --}}
     <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full {{ $wartetAufMail ? 'bg-amber-50' : ($isRequested ? 'bg-amber-50' : ($isPending ? 'bg-blue-50' : 'bg-brand/10')) }} text-4xl">
         {{ $wartetAufMail ? '📧' : ($isRequested ? '⏳' : ($isPending ? '💳' : '✅')) }}
@@ -118,6 +165,8 @@ if ($companions) {
             @endif
         </p>
     @endif
+
+    </div>{{-- /data-delivery-success --}}
 
     {{-- Details --}}
     <div class="mt-6 rounded-2xl bg-stone-50 text-left text-sm">
@@ -197,7 +246,9 @@ if ($companions) {
      Integritätsprüfung, auf einer Seite, die Buchungscode und Verwaltungstoken
      im Link trägt. --}}
 <script>
-(function () {
+// Wartet die Seite noch auf die Zustellung der Mail, startet das Konfetti erst
+// mit der Erfolgsmeldung (siehe Skript zum Zustellstatus unten).
+window.swayyConfetti = function () {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
     var brand = getComputedStyle(document.documentElement).getPropertyValue('--brand').trim() || '#0f766e';
@@ -274,6 +325,73 @@ if ($companions) {
 
     setTimeout(function () { burst(0.5, 0.3, 80); requestAnimationFrame(frame); }, 120);
     setTimeout(function () { burst(0.25, 0.45, 50); burst(0.75, 0.45, 50); }, 320);
+};
+if (!document.querySelector('[data-delivery-success][hidden]')) window.swayyConfetti();
+</script>
+@endif
+
+@if($deliveryWaiting)
+<script>
+// Zustellstatus der Mail an den Gast: Die Seite fragt nach, bis Postal die
+// Zustellung meldet, und warnt bis dahin vor dem Verlassen. Erst dann
+// erscheint die Erfolgsmeldung; scheitert die Zustellung, steht der Grund da.
+(function () {
+    var box = document.getElementById('mail-delivery');
+    if (!box) return;
+
+    var url = box.dataset.statusUrl;
+    var pollMs = parseInt(box.dataset.pollMs, 10) || 3000;
+    var waitMs = parseInt(box.dataset.waitMs, 10) || 90000;
+    var startedAt = Date.now();
+    var pending = box.querySelector('[data-delivery-pending]');
+    var failed = box.querySelector('[data-delivery-failed]');
+    var timeout = box.querySelector('[data-delivery-timeout]');
+    var success = document.querySelector('[data-delivery-success]');
+
+    function guard(e) { e.preventDefault(); e.returnValue = ''; }
+    window.addEventListener('beforeunload', guard);
+
+    function showSuccess() {
+        window.removeEventListener('beforeunload', guard);
+        pending.hidden = true;
+        success.hidden = false;
+        if (typeof window.swayyConfetti === 'function') window.swayyConfetti();
+    }
+
+    function showFailure(data) {
+        window.removeEventListener('beforeunload', guard);
+        pending.hidden = true;
+        failed.querySelector('[data-delivery-message]').textContent = data.message || '';
+        failed.querySelector('[data-delivery-reference]').textContent = data.reference || '';
+        failed.hidden = false;
+        failed.setAttribute('tabindex', '-1');
+        failed.focus();
+    }
+
+    function showTimeout() {
+        timeout.hidden = false;
+        showSuccess();
+    }
+
+    function poll() {
+        fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
+            .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+            .then(function (data) {
+                if (data.state === 'delivered' || data.state === 'none') return showSuccess();
+                if (data.state === 'failed') return showFailure(data);
+                pending.querySelector('[data-delivery-message]').textContent = data.message || '';
+                if (Date.now() - startedAt >= waitMs) return showTimeout();
+                setTimeout(poll, pollMs);
+            })
+            .catch(function () {
+                // Netzfehler oder Drosselung: weiter versuchen, aber nicht länger
+                // als die eingestellte Wartezeit.
+                if (Date.now() - startedAt >= waitMs) return showTimeout();
+                setTimeout(poll, pollMs);
+            });
+    }
+
+    setTimeout(poll, Math.min(pollMs, 1000));
 })();
 </script>
 @endif

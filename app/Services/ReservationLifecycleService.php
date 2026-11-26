@@ -7,7 +7,6 @@ use App\Mail\Layout\GuestText;
 use App\Mail\Layout\MailFrameFactory;
 use App\Models\BlackoutPeriod;
 use App\Models\Location;
-use App\Models\NotificationLog;
 use App\Models\Refund;
 use App\Models\Reservation;
 use App\Models\ReservationStatusHistory;
@@ -15,6 +14,7 @@ use App\Models\RestaurantTable;
 use App\Models\Service;
 use App\Models\StaffMember;
 use App\Models\User;
+use App\Services\Mail\MailDeliveryLog;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -36,6 +36,7 @@ class ReservationLifecycleService
         private readonly AuditLogger $audit,
         private readonly GuestMailSender $mailSender,
         private readonly TableHolds $holds,
+        private readonly MailDeliveryLog $deliveryLog,
     ) {}
 
     /**
@@ -633,10 +634,12 @@ class ReservationLifecycleService
                 'code' => $reservation->code,
             ];
 
-            Mail::to($reservation->guest_email_snapshot, $reservation->guest_name_snapshot)->queue($this->mailSender->toGuest(
-                $du
-                    ? __('Tischänderung zu deiner Reservierung :code – :loc', $vars)
-                    : __('Tischänderung zu Ihrer Reservierung :code – :loc', $vars),
+            $subject = $du
+                ? __('Tischänderung zu deiner Reservierung :code – :loc', $vars)
+                : __('Tischänderung zu Ihrer Reservierung :code – :loc', $vars);
+
+            $this->deliveryLog->queue(Mail::to($reservation->guest_email_snapshot, $reservation->guest_name_snapshot), $this->mailSender->toGuest(
+                $subject,
                 $du
                     ? __("Hallo :name,\n\nwir haben dir einen anderen Tisch zugewiesen, damit alles gut passt. Sonst bleibt deine Reservierung, wie sie ist.\n\nDatum: :date\nUhrzeit: :time Uhr\nTisch: :tables\nReservierungsnummer: :code\n\nBei Fragen melde dich gern.\n:loc", $vars)
                     : __("Hallo :name,\n\nwir haben Ihnen einen anderen Tisch zugewiesen, damit alles gut passt. Sonst bleibt Ihre Reservierung, wie sie ist.\n\nDatum: :date\nUhrzeit: :time Uhr\nTisch: :tables\nReservierungsnummer: :code\n\nBei Fragen melden Sie sich gern.\n:loc", $vars),
@@ -644,7 +647,14 @@ class ReservationLifecycleService
                 $location,
                 $reservation,
                 'reservation_table_changed',
-            ));
+            ), [
+                'tenant_id' => $reservation->tenant_id,
+                'location_id' => $reservation->location_id,
+                'reservation_id' => $reservation->id,
+                'template_key' => 'reservation_table_changed',
+                'recipient' => $reservation->guest_email_snapshot,
+                'subject' => $subject,
+            ]);
 
             $reservation->update(['table_chosen_by_guest' => false]);
         }
@@ -999,24 +1009,20 @@ class ReservationLifecycleService
         $subject = 'Neue Reservierung – '.$localStart->format('d.m.').' '.$localStart->format('H:i').' · '
             .$reservation->guest_name_snapshot.' ('.$reservation->party_size.' P.)';
 
-        Mail::to($to, $location->name)->queue($this->mailSender->toOperator(
+        $this->deliveryLog->queue(Mail::to($to, $location->name), $this->mailSender->toOperator(
             $subject,
             $body,
             $tenant,
             $location,
             $reservation->guest_email_snapshot,
             'operator_new_reservation',
-        ));
-
-        NotificationLog::withoutGlobalScopes()->create([
+        ), [
             'tenant_id' => $reservation->tenant_id,
             'location_id' => $reservation->location_id,
             'reservation_id' => $reservation->id,
-            'channel' => 'mail',
             'template_key' => 'owner_new_reservation',
             'recipient' => $to,
             'subject' => $subject,
-            'status' => 'queued',
         ]);
     }
 
@@ -1203,20 +1209,21 @@ class ReservationLifecycleService
         $tenant = $reservation->tenant()->first();
         $location = $reservation->location()->withoutGlobalScope('tenant')->first();
 
-        Mail::to($reservation->guest_email_snapshot, $reservation->guest_name_snapshot)->queue(
-            $this->mailSender->toGuest($rendered['subject'], $rendered['body'], $tenant, $location, $reservation, $templateKey)
+        // Erst der Eintrag im Versandprotokoll, dann die Warteschlange: Die
+        // Mail trägt die Message-ID des Eintrags, über die Versand und Postal
+        // den Zustand melden.
+        $this->deliveryLog->queue(
+            Mail::to($reservation->guest_email_snapshot, $reservation->guest_name_snapshot),
+            $this->mailSender->toGuest($rendered['subject'], $rendered['body'], $tenant, $location, $reservation, $templateKey),
+            [
+                'tenant_id' => $reservation->tenant_id,
+                'location_id' => $reservation->location_id,
+                'reservation_id' => $reservation->id,
+                'template_key' => $templateKey,
+                'recipient' => $reservation->guest_email_snapshot,
+                'subject' => $rendered['subject'],
+            ],
         );
-
-        NotificationLog::withoutGlobalScopes()->create([
-            'tenant_id' => $reservation->tenant_id,
-            'location_id' => $reservation->location_id,
-            'reservation_id' => $reservation->id,
-            'channel' => 'mail',
-            'template_key' => $templateKey,
-            'recipient' => $reservation->guest_email_snapshot,
-            'subject' => $rendered['subject'],
-            'status' => 'queued',
-        ]);
     }
 
     private function webhookPayload(Reservation $reservation): array

@@ -12,6 +12,7 @@ use App\Models\GuestAuthToken;
 use App\Models\Location;
 use App\Models\Reservation;
 use App\Models\Tenant;
+use App\Services\Mail\MailDeliveryLog;
 use App\Support\Duration;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -132,10 +133,14 @@ class GuestAuthService
         $sender = app(GuestMailSender::class);
 
         // Synchronous: the guest is waiting on this link to finish booking.
+        // Im Versandprotokoll, damit Buchungsseite und Admin den Zustellstatus
+        // sehen. Ein Fehler beim Versand bricht die Buchung nicht ab; die
+        // Bestätigungsseite zeigt ihn dem Gast mit dem nächsten Schritt.
         $name = GuestText::inline($guest->first_name ?: $guest->last_name);
-        Mail::to($reservation->guest_email_snapshot, $name)->send(new GuestLinkMail(
-            $du ? __('Bitte bestätige deine E-Mail-Adresse')
-                : __('Bitte bestätigen Sie Ihre E-Mail-Adresse'),
+        $subject = $du ? __('Bitte bestätige deine E-Mail-Adresse')
+            : __('Bitte bestätigen Sie Ihre E-Mail-Adresse');
+        app(MailDeliveryLog::class)->sendNow(Mail::to($reservation->guest_email_snapshot, $name), new GuestLinkMail(
+            $subject,
             $du ? __("Hallo :guest,\n\nein Klick noch, dann ist deine Buchung :code bei uns.", ['guest' => $name, 'code' => $reservation->code])
                 : __("Hallo :guest,\n\nein Klick noch, dann ist Ihre Buchung :code bei uns.", ['guest' => $name, 'code' => $reservation->code]),
             $url,
@@ -145,6 +150,13 @@ class GuestAuthService
             app(MailFrameFactory::class)->forGuest('guest_verify', $tenant, $location),
             $du ? __('Der Link gilt :dauer. Hast du nicht bei uns reserviert, kannst du diese Mail löschen.', ['dauer' => Duration::minutes($minutes)])
                 : __('Der Link gilt :dauer. Haben Sie nicht bei uns reserviert, können Sie diese Mail löschen.', ['dauer' => Duration::minutes($minutes)]),
-        ));
+        ), [
+            'tenant_id' => $reservation->tenant_id,
+            'location_id' => $reservation->location_id,
+            'reservation_id' => $reservation->id,
+            'template_key' => 'guest_verify',
+            'recipient' => $reservation->guest_email_snapshot,
+            'subject' => $subject,
+        ]);
     }
 }

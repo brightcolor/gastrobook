@@ -8,6 +8,7 @@ use App\Models\Reservation;
 use App\Models\Service;
 use App\Models\StaffMember;
 use App\Services\AuditLogger;
+use App\Services\Mail\MailDeliveryStatus;
 use App\Services\RefundService;
 use App\Services\ReservationAvailabilityService;
 use App\Services\ReservationLifecycleService;
@@ -307,7 +308,22 @@ class ReservationBookController extends Controller
             'canEditReservation' => request()->user()->canInTenant('reservations.update', $this->context->tenant()),
             'canOverbook' => request()->user()->canInTenant('overbook.manual', $this->context->tenant(), $reservation->location()->withoutGlobalScope('tenant')->first()),
             'canSeeAudit' => request()->user()->canInTenant('audit.view', $this->context->tenant()),
+            // Welche Mail ging wann an wen, und ist sie angekommen?
+            'mailLogs' => app(MailDeliveryStatus::class)->forAdmin($reservation),
+            'mailWaiting' => app(MailDeliveryStatus::class)->adminIsWaiting($reservation),
         ]);
+    }
+
+    /**
+     * Zustellstatus der Mails dieser Reservierung, für die Seite, die
+     * nachfragt, solange eine Mail unterwegs ist.
+     */
+    public function mailStatus(Reservation $reservation): JsonResponse
+    {
+        $this->authorizeReservation($reservation);
+
+        return response()->json(app(MailDeliveryStatus::class)->adminPayload($reservation))
+            ->header('Cache-Control', 'no-store');
     }
 
     public function create(Request $request)

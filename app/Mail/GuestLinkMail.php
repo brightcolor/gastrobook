@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Mail;
 
 use App\Mail\Concerns\RendersInFrame;
+use App\Mail\Concerns\TracksDelivery;
 use App\Mail\Layout\MailFrame;
 use App\Mail\Layout\MailFrameFactory;
 use Illuminate\Bus\Queueable;
@@ -12,11 +13,12 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Mail\Mailables\Headers;
 use Illuminate\Queue\SerializesModels;
 
 class GuestLinkMail extends Mailable
 {
-    use Queueable, RendersInFrame, SerializesModels;
+    use Queueable, RendersInFrame, SerializesModels, TracksDelivery;
 
     public function __construct(
         public string $subjectLine,
@@ -49,5 +51,10 @@ class GuestLinkMail extends Mailable
             .($this->note !== '' ? "\n\n---\n\n".$this->note : '');
 
         return $this->framedContent($text, $this->frame ?? app(MailFrameFactory::class)->forGuest('guest_login', null, null));
+    }
+
+    public function headers(): Headers
+    {
+        return $this->withDeliveryHeaders(new Headers);
     }
 }

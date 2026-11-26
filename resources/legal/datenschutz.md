@@ -165,6 +165,14 @@ Abbuchungen. Das Mandat kann jederzeit im Konto gekündigt werden.
   und Zahlungs-/Stornoinformationen versenden wir per E-Mail über einen
   SMTP-Dienstleister. Antworten Sie auf eine solche E-Mail, geht Ihre Antwort
   direkt an die E-Mail-Adresse des Betriebs, bei dem Sie gebucht haben.
+- **Zustellstatus der E-Mails:** Zu jeder E-Mail speichern wir Empfängeradresse,
+  Betreff, Versandzeit, eine technische Kennung der Nachricht (Message-ID) und
+  die Rückmeldung unseres Mailservers, ob die E-Mail zugestellt, verzögert oder
+  abgewiesen wurde, samt der Antwort des empfangenden Mailservers. So sehen Sie
+  auf der Buchungsseite, ob die E-Mail angekommen ist, und der Betrieb kann Sie
+  erreichen, wenn sie nicht ankam. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b
+  DSGVO (Durchführung der Buchung). Die Angaben hängen an der Buchung und
+  werden mit ihr gelöscht bzw. bei einer Anonymisierung entfernt (siehe Ziff. 14).
 - **Antworten über unsere Antwortadresse (sofern der Betrieb dies aktiviert):**
   Ihre Antwort kann an eine eigene Antwortadresse des Dienstes gehen (Form
   `<Kennung>@[Antwort-Domain]`). Wir nehmen sie an, ordnen sie Ihrer Buchung zu,

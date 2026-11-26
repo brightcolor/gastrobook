@@ -3,12 +3,16 @@
 namespace App\Providers;
 
 use App\Models\User;
+use App\Services\Mail\MailDeliveryLog;
 use App\Support\TenantContext;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Mail\Events\MessageSent;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Symfony\Component\Mime\Header\IdentificationHeader;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -23,6 +27,23 @@ class AppServiceProvider extends ServiceProvider
         // their own tenant checks for everyone else.
         Gate::before(function (User $user, string $ability) {
             return $user->isSuperAdmin() ? true : null;
+        });
+
+        // Versandprotokoll: Der Mailserver hat die Mail angenommen. Zugeordnet
+        // über die Message-ID, die MailDeliveryLog der Mail mitgegeben hat.
+        Event::listen(MessageSent::class, function (MessageSent $event) {
+            $header = $event->message->getHeaders()->get('Message-ID');
+            if ($header instanceof IdentificationHeader) {
+                app(MailDeliveryLog::class)->markSent($header->getId());
+            }
+        });
+
+        // Zustellstatus auf der Buchungsseite: Die Seite fragt alle paar
+        // Sekunden nach. Doppelt so viel Luft, wie der eingestellte Abstand braucht.
+        RateLimiter::for('mail-status', function (Request $request) {
+            $poll = max(1, (int) config('swayy.mail_delivery.poll_seconds', 3));
+
+            return Limit::perMinute(max(30, (int) ceil(60 / $poll) * 2))->by($request->ip());
         });
 
         // Public booking endpoints: strict per-IP limits against spam.

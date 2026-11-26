@@ -28,6 +28,27 @@ senkt die No-Show-Quote spürbar. Lass sie an. Du schaltest sie unter
 Die **Anrede** („du“ oder „Sie“) für alle Texte wählst du auf derselben Seite im
 Abschnitt „Anrede“.
 
+## Sehen, ob eine Mail angekommen ist
+
+Öffne die Reservierung. Im Abschnitt **E-Mails** steht jede Mail zu dieser
+Buchung: an den Gast und an euch, mit Empfänger, Betreff, Uhrzeit und Zustand.
+
+| Zustand | Bedeutung |
+|---|---|
+| **Wartet auf Versand** | Swayy verschickt die Mail gleich. |
+| **An Mailserver übergeben** | Unser Mailserver hat sie, die Zustellung läuft. |
+| **Zugestellt** | Der Mailserver des Gastes hat sie angenommen. Landet sie dort im Spam-Ordner, sehen wir das nicht. |
+| **Verzögert, wird erneut versucht** | Der Mailserver des Gastes nimmt gerade nichts an; unser Mailserver versucht es weiter. |
+| **Zurückgehalten** | Unser Mailserver schickt nicht an diese Adresse, meist weil frühere Mails dort nicht ankamen. |
+| **Nicht zustellbar** / **Zurückgekommen** | Die Mail ist nicht angekommen, oft wegen eines Tippfehlers in der Adresse. Darunter steht die Antwort des Mailservers. |
+
+Ist eine Mail nicht angekommen, ruf den Gast an und korrigiere die Adresse.
+
+Ist gerade eine Mail unterwegs, bittet die Seite, sie noch nicht zu verlassen,
+und zeigt das Ergebnis, sobald es da ist. Dasselbe sieht der Gast nach dem
+Buchen: Die Erfolgsmeldung erscheint erst, wenn seine Mail zugestellt ist.
+Kommt sie nicht an, liest er den Grund, eure Telefonnummer und was er tun kann.
+
 ## Texte anpassen
 
 **Einstellungen › Gästekommunikation › Vorlagen.** Für jede Vorlage der Liste

@@ -173,7 +173,10 @@ class GuestPrivacyService
             // E-Mail und Telefon noch bekannt sind.
             NotificationLog::withoutGlobalScopes()
                 ->whereIn('reservation_id', $guest->reservations()->withoutGlobalScope('tenant')->select('reservations.id'))
-                ->update(['recipient' => '-', 'subject' => null]);
+                // Die Antwort des Mailservers nennt oft die Adresse („550 5.1.1
+                // <gast@…> does not exist“); die Message-ID führt zum Eintrag
+                // im Mailserver. Beides geht mit.
+                ->update(['recipient' => '-', 'subject' => null, 'status_detail' => null, 'error' => null, 'message_id' => null]);
 
             // Eingehende Antworten des Gastes fuehren Absender und Inhalt im
             // Klartext. Sie haengen ueber guest_id am Gast und werden geleert;
@@ -194,7 +197,7 @@ class GuestPrivacyService
                             $q->orWhere('recipient', $guest->phone);
                         }
                     })
-                    ->update(['recipient' => '-', 'subject' => null]);
+                    ->update(['recipient' => '-', 'subject' => null, 'status_detail' => null, 'error' => null, 'message_id' => null]);
             }
 
             // Das Aenderungsprotokoll haelt die vollstaendige Historie im
