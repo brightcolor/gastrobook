@@ -769,10 +769,11 @@ Konfiguration im Adminbereich unter **Einstellungen › Verbindungen › Newslet
 
 1. API-URL (z. B. `https://news.example.com/api`), API-Key und Listen-UID eintragen – die Verbindung wird beim Speichern sofort getestet.
 2. Credentials werden **verschlüsselt** gespeichert (`integration_connections`, Laravel Crypt); der API-Key wird nach dem Speichern nie wieder angezeigt.
-3. Ab dann: Setzt ein Gast im Buchungswidget die **getrennte Newsletter-Checkbox**, wird er nach der Buchung per Queue-Job (`SyncNewsletterSubscriber`, Retry mit Backoff) in die MailWizz-Liste übertragen (`EMAIL`, `FNAME`, `LNAME`).
+3. Ab dann: Setzt ein Gast im Buchungswidget die **getrennte Newsletter-Checkbox**, wird er nach der Buchung per Queue-Job (`SyncNewsletterSubscriber`, Retry mit Backoff) in die MailWizz-Liste übertragen (`EMAIL`, `FNAME`, `LNAME`, bei neuer Anmeldung zusätzlich Herkunft und Veranstaltung). Ist die Adresse schon eingetragen, sucht Swayy sie (`subscribers/search-by-email`) und aktualisiert den Namen; abgemeldet wird über `subscribers/{uid}/unsubscribe`, auch beim Klick auf den Abmeldelink einer Swayy-Mail.
 4. **Double-Opt-In** steuert die Listeneinstellung in MailWizz – bei DOI-Listen verschickt MailWizz die Bestätigungsmail selbst.
 5. Jede Übertragung wird in `notification_logs` (Kanal `newsletter`) protokolliert; die Einwilligung selbst liegt unabhängig davon DSGVO-konform in `guest_consents`.
-6. Die API-URL läuft durch dieselbe [Zielprüfung](#zielprüfung-für-ausgehende-anfragen) wie Webhook-Endpunkte: beim Speichern, beim Verbindungstest und vor jeder Übertragung. Lehnt die Prüfung eine gespeicherte Adresse ab, steht die Anbindung auf „Fehler“, die Einstellungsseite nennt den Grund, und weitere Übertragungen ruhen bis zum nächsten Speichern. Ein Name, der sich vorübergehend nicht auflösen lässt, führt zu einem späteren Versuch.
+6. Unter **Anmeldung beim Buchen** stellt der Betrieb den Text neben dem Häkchen ein (wird je Zustimmung in `guest_consents.consent_text` gespeichert), ob die Liste eine Bestätigungsmail verschickt, wie deren Knopf heißt (beides steuert den Hinweis auf der Seite nach der Buchung) und die Feldkürzel samt Werten für Herkunft und Veranstaltung (Vorgaben in `config/swayy.php`, `newsletter.fields`).
+7. Die API-URL läuft durch dieselbe [Zielprüfung](#zielprüfung-für-ausgehende-anfragen) wie Webhook-Endpunkte: beim Speichern, beim Verbindungstest und vor jeder Übertragung. Lehnt die Prüfung eine gespeicherte Adresse ab, steht die Anbindung auf „Fehler“, die Einstellungsseite nennt den Grund, und weitere Übertragungen ruhen bis zum nächsten Speichern. Ein Name, der sich vorübergehend nicht auflösen lässt, führt zu einem späteren Versuch.
 
 **Spätere Buchung ohne Haken:** Unter *Einstellungen › Betrieb › Allgemein › Newsletter-Einwilligung* legt der Betrieb fest, ob ein leerer Newsletter-Haken bei einer weiteren Buchung als Abmeldung zählt (`tenants.newsletter_unticked_revokes`, Recht `tenant.settings.manage`). Vorgabe: aus, die erteilte Einwilligung bleibt bestehen, abgemeldet wird über den Abmeldelink. Eingeschaltet verbucht die Buchung einen Widerruf in `guest_consents` und trägt den Gast aus der MailWizz-Liste aus. Gilt für Tischbuchungen, Salontermine und Veranstaltungen. Einwilligungen, die vor 1.136.0 nur eine solche Buchung widerrufen hatte, stellt `php artisan swayy:newsletter-consent-restore` wieder her (ohne `--apply` nur Anzeige; Kanal `correction` in der Einwilligungshistorie, Eintrag im Protokoll).
 
@@ -786,6 +787,9 @@ Ohne konfigurierte Integration wird die Einwilligung nur gespeichert – es geht
 | `SWAYY_NEWSLETTER_API_URL_MAX` | `255` | Längste API-URL der Seite „Newsletter“ in Zeichen (30 bis 2000) |
 | `SWAYY_NEWSLETTER_API_KEY_MAX` | `255` | Längster API-Key in Zeichen (32 bis 1000) |
 | `SWAYY_NEWSLETTER_LIST_UID_MAX` | `64` | Längste Listen-UID in Zeichen (8 bis 255); die drei Angaben liegen verschlüsselt in einem Textfeld der Datenbank, die Höchstwerte passen zusammen hinein |
+| `SWAYY_NEWSLETTER_CONSENT_TEXT_MAX` | `500` | Längster Text neben dem Newsletter-Häkchen in Zeichen (40 bis 2000) |
+| `SWAYY_NEWSLETTER_CONFIRM_BUTTON_MAX` | `60` | Längster Name des Knopfes der Bestätigungsmail in Zeichen (10 bis 255) |
+| `SWAYY_NEWSLETTER_FIELD_VALUE_MAX` | `100` | Längster Wert für Herkunft oder Veranstaltung in Zeichen (10 bis 255) |
 
 Ein ungültiger Wert legt nichts lahm: Eine Zahl außerhalb der Grenzen gilt als nächste Grenze, alles andere als Voreinstellung, und eine Warnung im Log nennt die Variable.
 

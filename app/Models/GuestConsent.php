@@ -15,7 +15,7 @@ class GuestConsent extends Model
     use BelongsToTenant;
 
     protected $fillable = [
-        'tenant_id', 'guest_id', 'type', 'granted', 'channel', 'ip_hash', 'recorded_at',
+        'tenant_id', 'guest_id', 'type', 'granted', 'channel', 'ip_hash', 'recorded_at', 'consent_text',
     ];
 
     protected function casts(): array

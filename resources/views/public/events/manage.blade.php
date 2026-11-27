@@ -10,6 +10,10 @@
         <h1 class="text-xl font-bold">{{ $du ? 'Deine' : 'Ihre' }} Eventbuchung</h1>
     @endif
 
+    <div class="mt-4 empty:hidden">
+        @include('public.partials.newsletter-hint', ['tenant' => $location?->tenant])
+    </div>
+
     @if(session('success'))
         <div class="mt-4 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-900">{{ session('success') }}</div>
     @endif

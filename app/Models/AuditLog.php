@@ -122,6 +122,11 @@ class AuditLog extends Model
         'mail_relay_enabled' => 'Antworten über Swayy',
         // Allgemein › Newsletter-Einwilligung (GeneralController)
         'newsletter_unticked_revokes' => 'Leerer Haken zählt als Abmeldung',
+        // Newsletter › Anmeldung beim Buchen (NewsletterController)
+        'newsletter_consent_text' => 'Text neben dem Newsletter-Häkchen',
+        'newsletter_confirm_button' => 'Knopf in der Bestätigungsmail',
+        'newsletter_double_opt_in' => 'Liste mit Bestätigungsmail',
+        'newsletter_fields' => 'Felder für Herkunft und Veranstaltung',
         // Wiederherstellen der Newsletter-Einwilligung (swayy:newsletter-consent-restore)
         'marketing_consent' => 'Newsletter-Einwilligung',
         // SMS-Versand (SmsController)
@@ -345,6 +350,7 @@ class AuditLog extends Model
         'tenant.branding_updated' => 'Erscheinungsbild geändert',
         'tenant.guest_mail_updated' => 'Absender für Gästemails geändert',
         'tenant.newsletter_consent_updated' => 'Newsletter-Einwilligung eingestellt',
+        'tenant.newsletter_signup_updated' => 'Newsletter-Anmeldung eingestellt',
         'api_token.deleted' => 'API-Schlüssel widerrufen',
         'webhook.deactivated' => 'Webhook pausiert',
         'webhook.ping' => 'Webhook getestet',

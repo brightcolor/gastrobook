@@ -11,8 +11,10 @@ use App\Rules\AllowedOutboundUrl;
 use App\Services\AuditLogger;
 use App\Services\Newsletter\MailwizzProvider;
 use App\Support\IntegrationStatus;
+use App\Support\NewsletterSignup;
 use App\Support\OutboundUrlBlocked;
 use App\Support\TenantContext;
+use Closure;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -67,7 +69,74 @@ class NewsletterController extends Controller
             // Eine neue Anbindung startet eingeschaltet; nur eine ausdrücklich ausgeschaltete bleibt es.
             'enabled' => $connection === null || $connection->status !== 'disconnected',
             'limits' => (array) config('swayy.newsletter'),
+            'tenant' => $tenant,
+            'fields' => NewsletterSignup::fieldSettings($tenant),
+            'defaultText' => (string) config('swayy.newsletter.consent_text_defaults.'.($tenant->isSalon() ? NewsletterSignup::FORM_SALON : NewsletterSignup::FORM_RESTAURANT)),
         ]);
+    }
+
+    /**
+     * Anmeldung beim Buchen: Text neben dem Häkchen, Bestätigungsmail und die Felder, die eine neue Anmeldung im
+     * Newsletter-System bekommt. Gilt auch ohne Anbindung (der Häkchentext steht immer auf der Buchungsseite). Nur
+     * gesendete Felder ändern sich.
+     */
+    public function updateSignup(Request $request): mixed
+    {
+        $tenant = $this->context->tenant();
+        abort_if($tenant === null, 404);
+
+        $textMax = (int) config('swayy.newsletter.consent_text_max');
+        $buttonMax = (int) config('swayy.newsletter.confirm_button_max');
+        $valueMax = (int) config('swayy.newsletter.field_value_max');
+        $tag = ['sometimes', 'nullable', 'string', 'max:50', 'regex:/^[A-Za-z0-9_]+$/', function (string $attribute, mixed $value, Closure $fail): void {
+            if (in_array(strtoupper((string) $value), NewsletterSignup::RESERVED_TAGS, true)) {
+                $fail(__('Die Kürzel EMAIL, FNAME und LNAME gehören zu Adresse und Namen. Bitte ein anderes Feldkürzel eintragen oder das Feld leer lassen.'));
+            }
+        }];
+
+        $validated = $request->validate([
+            'newsletter_consent_text' => ['sometimes', 'nullable', 'string', 'max:'.$textMax],
+            'newsletter_confirm_button' => ['sometimes', 'nullable', 'string', 'max:'.$buttonMax],
+            'newsletter_double_opt_in' => ['sometimes', 'boolean'],
+            'source_tag' => $tag,
+            'event_tag' => $tag,
+            'source_value' => ['sometimes', 'nullable', 'string', 'max:'.$valueMax],
+            'event_value' => ['sometimes', 'nullable', 'string', 'max:'.$valueMax],
+        ], [
+            'newsletter_consent_text.max' => __('Der Text neben dem Häkchen darf höchstens :max Zeichen lang sein. Bitte ihn kürzen.', ['max' => $textMax]),
+            'newsletter_confirm_button.max' => __('Der Name des Knopfes darf höchstens :max Zeichen lang sein. Bitte ihn so eintragen, wie er in der Bestätigungsmail steht.', ['max' => $buttonMax]),
+            'source_tag.regex' => __('Ein Feldkürzel besteht aus Buchstaben, Ziffern und Unterstrich, etwa QUELLE. Bitte es so eintragen, wie es in der Liste heißt.'),
+            'event_tag.regex' => __('Ein Feldkürzel besteht aus Buchstaben, Ziffern und Unterstrich, etwa VERANSTALTUNG. Bitte es so eintragen, wie es in der Liste heißt.'),
+            'source_tag.max' => __('Ein Feldkürzel darf höchstens :max Zeichen lang sein.'),
+            'event_tag.max' => __('Ein Feldkürzel darf höchstens :max Zeichen lang sein.'),
+            'source_value.max' => __('Der Wert darf höchstens :max Zeichen lang sein. Bitte ihn kürzen.', ['max' => $valueMax]),
+            'event_value.max' => __('Der Wert darf höchstens :max Zeichen lang sein. Bitte ihn kürzen.', ['max' => $valueMax]),
+        ]);
+
+        $changes = [];
+        foreach (['newsletter_consent_text', 'newsletter_confirm_button'] as $column) {
+            if (array_key_exists($column, $validated)) {
+                $changes[$column] = trim((string) $validated[$column]) ?: null;
+            }
+        }
+        if (array_key_exists('newsletter_double_opt_in', $validated)) {
+            $changes['newsletter_double_opt_in'] = $request->boolean('newsletter_double_opt_in');
+        }
+        $fields = NewsletterSignup::fieldSettings($tenant);
+        $sentFields = array_intersect(NewsletterSignup::FIELD_KEYS, array_keys($validated));
+        foreach ($sentFields as $key) {
+            $value = trim((string) $validated[$key]);
+            $fields[$key] = str_ends_with($key, '_tag') ? strtoupper($value) : $value;
+        }
+        if ($sentFields !== []) {
+            $changes['newsletter_fields'] = $fields;
+        }
+
+        $old = $tenant->only(array_keys($changes));
+        $tenant->update($changes);
+        $this->audit->log('tenant.newsletter_signup_updated', $tenant, $old, $changes);
+
+        return $this->saved($request, __('Anmeldung zum Newsletter gespeichert.'));
     }
 
     /**

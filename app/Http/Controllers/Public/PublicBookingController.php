@@ -17,6 +17,7 @@ use App\Models\StaffMember;
 use App\Models\Tenant;
 use App\Services\GuestAuthService;
 use App\Services\Mail\MailDeliveryStatus;
+use App\Services\Newsletter\NewsletterManager;
 use App\Services\OnlineBookingWindow;
 use App\Services\Payments\PaymentProviderManager;
 use App\Services\RefundService;
@@ -51,6 +52,7 @@ class PublicBookingController extends Controller
         private readonly SeasonService $seasons,
         private readonly TableHolds $holds,
         private readonly OnlineBookingWindow $bookingWindow,
+        private readonly NewsletterManager $newsletters,
     ) {}
 
     /**
@@ -794,7 +796,8 @@ class PublicBookingController extends Controller
         return redirect()->route('booking.confirmation', [
             'code' => $reservation->code,
             'token' => $reservation->manage_token,
-        ])->with('email_confirmation_sent', $needsConfirm);
+        ])->with('email_confirmation_sent', $needsConfirm)
+            ->with('newsletter_signup', $this->newsletters->announcesConfirmationMail($location->tenant, (bool) ($validated['newsletter'] ?? false)));
     }
 
     private function storeSalon(Request $request, Location $location): RedirectResponse
@@ -929,7 +932,8 @@ class PublicBookingController extends Controller
         return redirect()->route('booking.confirmation', [
             'code' => $reservation->code,
             'token' => $reservation->manage_token,
-        ])->with('email_confirmation_sent', $needsConfirm);
+        ])->with('email_confirmation_sent', $needsConfirm)
+            ->with('newsletter_signup', $this->newsletters->announcesConfirmationMail($location->tenant, (bool) ($validated['newsletter'] ?? false)));
     }
 
     public function confirmation(string $code, string $token)

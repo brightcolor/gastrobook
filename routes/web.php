@@ -436,6 +436,8 @@ Route::middleware(['auth', 'tenant', 'license', 'trial'])->prefix('admin')->name
         ->middleware('permission:tenant.settings.manage')->name('settings.field-rules');
     Route::get('/settings/newsletter', [NewsletterController::class, 'show'])
         ->middleware('permission:integrations.manage')->name('settings.newsletter.show');
+    Route::put('/settings/newsletter-signup', [NewsletterController::class, 'updateSignup'])
+        ->middleware('permission:integrations.manage')->name('settings.newsletter-signup');
     Route::put('/settings/mailwizz', [NewsletterController::class, 'update'])
         ->middleware('permission:integrations.manage')->name('settings.mailwizz');
     Route::get('/settings/payment-providers', [PaymentProvidersController::class, 'show'])

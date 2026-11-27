@@ -4,6 +4,7 @@ namespace App\Services\Newsletter;
 
 use App\Models\IntegrationConnection;
 use App\Models\Tenant;
+use App\Support\NewsletterSignup;
 use Illuminate\Support\Facades\Crypt;
 
 class NewsletterManager
@@ -33,9 +34,19 @@ class NewsletterManager
                 $credentials['api_url'] ?? '',
                 $credentials['api_key'] ?? '',
                 $credentials['list_uid'] ?? '',
+                NewsletterSignup::extraFields($tenant),
             ),
             default => null,
         };
+    }
+
+    /**
+     * Muss die Seite nach einer Buchung auf eine Bestätigungsmail des Newsletter-Systems hinweisen? Nur mit Häkchen,
+     * verbundener Anbindung und Double-Opt-in.
+     */
+    public function announcesConfirmationMail(?Tenant $tenant, bool $ticked): bool
+    {
+        return $ticked && $tenant !== null && $tenant->newsletter_double_opt_in && $this->connectionFor($tenant) !== null;
     }
 
     /**

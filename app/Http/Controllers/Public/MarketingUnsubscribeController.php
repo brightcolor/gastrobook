@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SyncNewsletterSubscriber;
 use App\Models\Guest;
 use App\Models\GuestConsent;
 use App\Services\AuditLogger;
@@ -68,6 +69,13 @@ class MarketingUnsubscribeController extends Controller
             ]);
 
             $this->audit->log('guest.marketing_unsubscribed', $profile, null, null, null, null, $profile->tenant_id);
+
+            // Auch im Newsletter-System abmelden, sonst käme dessen Newsletter weiter an. Ohne Anbindung tut der Job
+            // nichts. Das ist neben diesem Link der einzige Weg zur Abmeldung dort: Ein leeres Häkchen bei einer
+            // späteren Buchung ändert nichts.
+            if ($profile->email) {
+                SyncNewsletterSubscriber::dispatch($profile->id, false);
+            }
         }
 
         return [$profile->first_name ?: $profile->last_name, false];

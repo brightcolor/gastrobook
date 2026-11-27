@@ -203,7 +203,7 @@ details > summary::-webkit-details-marker { display: none; }
                             <label class="flex cursor-pointer items-start gap-3">
                                 <input type="checkbox" name="newsletter" value="1"
                                        class="mt-0.5 h-4 w-4 flex-shrink-0 rounded accent-[var(--brand)]">
-                                <span class="text-stone-400">Newsletter erhalten (jederzeit widerrufbar).</span>
+                                <span class="text-stone-400">{{ \App\Support\NewsletterSignup::consentText($tenant, \App\Support\NewsletterSignup::FORM_SALON) }}</span>
                             </label>
                         </div>
                         <x-cap-widget form="booking" />
@@ -655,7 +655,7 @@ details > summary::-webkit-details-marker { display: none; }
                         <label class="flex cursor-pointer items-start gap-3">
                             <input type="checkbox" name="newsletter" value="1"
                                    class="mt-0.5 h-4 w-4 flex-shrink-0 rounded accent-[var(--brand)]">
-                            <span class="text-stone-400">Newsletter mit Angeboten erhalten (jederzeit widerrufbar).</span>
+                            <span class="text-stone-400">{{ \App\Support\NewsletterSignup::consentText($tenant, \App\Support\NewsletterSignup::FORM_RESTAURANT) }}</span>
                         </label>
                     </div>
 

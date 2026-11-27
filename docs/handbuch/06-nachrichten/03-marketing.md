@@ -78,7 +78,8 @@ Bewusst eng gefasst:
 
 Jede Nachricht enthält einen Abmeldelink. Ein Klick genügt. Die Einwilligung
 ist damit widerrufen, und der Widerruf wird in der Einwilligungshistorie des
-Gastes festgehalten.
+Gastes festgehalten. Ist ein Newsletter-System verbunden (**Einstellungen ›
+Verbindungen › Newsletter**), trägt Swayy die Adresse auch dort aus.
 
 **Und wenn ein Gast wieder bucht und den Haken leer lässt?** Dann bleibt seine
 Einwilligung bestehen. Wer schon eingewilligt hat, setzt den Haken bei der

@@ -8,6 +8,7 @@ use App\Models\EventBooking;
 use App\Models\Location;
 use App\Models\Tenant;
 use App\Services\EventBookingService;
+use App\Services\Newsletter\NewsletterManager;
 use App\Services\Payments\PaymentProviderManager;
 use App\Support\ContactFieldRules;
 use Illuminate\Http\Request;
@@ -101,7 +102,8 @@ class PublicEventController extends Controller
         ]);
 
         return redirect()->route('events.manage', ['code' => $booking->code, 'token' => $booking->manage_token])
-            ->with('just_booked', true);
+            ->with('just_booked', true)
+            ->with('newsletter_signup', app(NewsletterManager::class)->announcesConfirmationMail(Tenant::find($booking->tenant_id), (bool) ($validated['newsletter'] ?? false)));
     }
 
     public function manage(string $code, string $token)

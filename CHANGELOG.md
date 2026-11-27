@@ -1,5 +1,25 @@
 # Changelog
 
+## [@@VERSION@@] – 2026-11-27
+
+### Newsletter-Anmeldung über MailWizz
+
+- Neu unter **Einstellungen › Verbindungen › Newsletter › Anmeldung beim
+  Buchen**: eigener Text neben dem Häkchen (Buchungsseite, Salon und Events),
+  Name des Knopfes der Bestätigungsmail, Double-Opt-in an oder aus und die
+  Felder für Herkunft und Veranstaltung.
+- Swayy speichert bei jeder Zustimmung den Text, den der Gast gesehen hat.
+- Nach einer Buchung mit Häkchen weist die Seite auf die Bestätigungsmail des
+  Newsletters, ihren Knopf und den Spam-Ordner hin.
+- Behoben: Das Aktualisieren und das Abmelden in MailWizz riefen Adressen auf,
+  die es in der MailWizz-Schnittstelle nicht gibt. Swayy sucht die Adresse
+  jetzt und ändert den gefundenen Eintrag.
+- Behoben: Der Abmeldelink in Swayy-Mails meldete nur in Swayy ab. Er trägt die
+  Adresse jetzt auch im Newsletter-System aus.
+- Neue Einstellungen: `SWAYY_NEWSLETTER_CONSENT_TEXT_MAX`,
+  `SWAYY_NEWSLETTER_CONFIRM_BUTTON_MAX`, `SWAYY_NEWSLETTER_FIELD_VALUE_MAX`.
+- Migration legt nur neue Spalten an.
+
 ## [1.142.7] – 2026-11-27
 
 ### Zweig wip/gast-link-anrede aufgearbeitet

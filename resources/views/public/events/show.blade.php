@@ -71,7 +71,7 @@
                 </label>
                 <label class="flex items-start gap-2">
                     <input type="checkbox" name="newsletter" value="1" class="mt-1">
-                    <span>Newsletter mit Angeboten und Veranstaltungen erhalten (jederzeit widerrufbar).</span>
+                    <span>{{ \App\Support\NewsletterSignup::consentText($tenant, \App\Support\NewsletterSignup::FORM_EVENT) }}</span>
                 </label>
             </div>
             @if($event->price_minor)

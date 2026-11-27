@@ -77,20 +77,23 @@ class GuestProfileService
      * Haken bei der nächsten Buchung meist nicht noch einmal. Widerrufen geht
      * über den Abmeldelink.
      *
+     * $newsletterText ist der Text neben dem Newsletter-Häkchen, den der Gast gesehen hat; er wird mit der Zustimmung
+     * als Nachweis gespeichert (Art. 7 Abs. 1 DSGVO). Einträge des Teams tragen keinen.
+     *
      * @param  array<string, bool>  $consents
      */
-    public function recordBookingConsents(Guest $guest, Tenant $tenant, array $consents, string $channel, ?string $ip = null): void
+    public function recordBookingConsents(Guest $guest, Tenant $tenant, array $consents, string $channel, ?string $ip = null, ?string $newsletterText = null): void
     {
         foreach ($consents as $type => $granted) {
             if ($type === 'newsletter' && ! $granted && ! $tenant->newsletter_unticked_revokes) {
                 continue;
             }
 
-            $this->recordConsent($guest, $type, $granted, $channel, $ip);
+            $this->recordConsent($guest, $type, $granted, $channel, $ip, $type === 'newsletter' && $granted ? $newsletterText : null);
         }
     }
 
-    public function recordConsent(Guest $guest, string $type, bool $granted, string $channel, ?string $ip = null): GuestConsent
+    public function recordConsent(Guest $guest, string $type, bool $granted, string $channel, ?string $ip = null, ?string $consentText = null): GuestConsent
     {
         if ($type === 'marketing' || $type === 'newsletter') {
             $warEingetragen = (bool) $guest->marketing_consent;
@@ -120,6 +123,7 @@ class GuestProfileService
             'channel' => $channel,
             'ip_hash' => $ip ? substr(hash('sha256', $ip.config('app.key')), 0, 32) : null,
             'recorded_at' => now(),
+            'consent_text' => $consentText,
         ]);
     }
 

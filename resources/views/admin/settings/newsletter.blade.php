@@ -11,6 +11,38 @@
 <x-page-header title="Newsletter" :crumb="['Einstellungen', 'Verbindungen']" scope="tenant"
                :description="$guests.' mit Newsletter-Einwilligung gehen an deine Liste in MailWizz.'" />
 
+<x-settings.section id="anmeldung" title="Anmeldung beim Buchen">
+    <x-slot:description>
+        <p>Der Text neben dem Häkchen steht auf der Buchungsseite und bei Events. Er sollte nennen, wer schreibt und worum es geht. Swayy speichert bei jeder Zustimmung den Text, den der {{ $guest }} gesehen hat.</p>
+        @if($tenant->newsletter_unticked_revokes)
+            <p>Unter Betrieb › Allgemein ist „Leerer Haken zählt als Abmeldung“ eingeschaltet: Neben dem Abmeldelink meldet auch eine spätere Buchung mit leerem Häkchen ab.</p>
+        @else
+            <p>Abgemeldet wird über den Abmeldelink. Bleibt das Häkchen bei einer späteren Buchung leer, bleibt die Anmeldung bestehen.</p>
+        @endif
+    </x-slot:description>
+    <form id="formNewsletterSignup" method="POST" action="{{ route('admin.settings.newsletter-signup') }}" data-ajax class="space-y-5">
+        @csrf
+        @method('PUT')
+        <x-field name="newsletter_consent_text" label="Text neben dem Häkchen" :help="'Leer heißt: „'.$defaultText.'“'">
+            <textarea id="f-newsletter_consent_text" name="newsletter_consent_text" rows="3" maxlength="{{ $limits['consent_text_max'] }}"
+                      aria-describedby="f-newsletter_consent_text-help" class="w-full">{{ old('newsletter_consent_text', $tenant->newsletter_consent_text) }}</textarea>
+        </x-field>
+        <x-checkbox name="newsletter_double_opt_in" label="Die Liste verschickt eine Bestätigungsmail (Double-Opt-in)" :checked="$tenant->newsletter_double_opt_in"
+                    :help="'Nach einer Buchung mit Häkchen weist die Seite dann auf diese Mail und den Spam-Ordner hin.'" />
+        <x-field name="newsletter_confirm_button" label="Knopf in der Bestätigungsmail" :value="$tenant->newsletter_confirm_button" :maxlength="$limits['confirm_button_max']"
+                 help="So, wie er in der Mail steht, etwa „Ja, ich will mehr!“. Leer: Der Hinweis spricht vom Bestätigungslink." />
+        <x-field name="source_tag" label="Feld für die Herkunft" :value="$fields['source_tag']" maxlength="50" autocapitalize="off" spellcheck="false"
+                 help="Feldkürzel in deiner Liste, etwa QUELLE. Leer schaltet das Feld ab." />
+        <x-field name="source_value" label="Wert für die Herkunft" :value="$fields['source_value']" :maxlength="$limits['field_value_max']"
+                 help="Geht nur bei einer neuen Anmeldung mit; wer schon auf der Liste steht, behält seine erste Herkunft." />
+        <x-field name="event_tag" label="Feld für die Veranstaltung" :value="$fields['event_tag']" maxlength="50" autocapitalize="off" spellcheck="false"
+                 help="Etwa VERANSTALTUNG. Leer schaltet das Feld ab." />
+        <x-field name="event_value" label="Wert für die Veranstaltung" :value="$fields['event_value']" :maxlength="$limits['field_value_max']"
+                 :help="'Leer: der Name des Betriebs („'.$tenant->name.'“).'" />
+        <button type="submit" class="btn btn-primary">Speichern</button>
+    </form>
+</x-settings.section>
+
 <x-settings.section id="mailwizz" title="MailWizz">
     <x-slot:description>
         <p>Stimmt ein {{ $guest }} beim Buchen dem Newsletter zu, trägt Swayy ihn in deine Liste in MailWizz ein. Ob MailWizz zuerst eine Bestätigungsmail schickt (Double-Opt-in), stellst du in den Einstellungen der Liste ein.</p>

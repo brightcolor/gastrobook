@@ -15,6 +15,7 @@ use App\Models\Service;
 use App\Models\StaffMember;
 use App\Models\User;
 use App\Services\Mail\MailDeliveryLog;
+use App\Support\NewsletterSignup;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -196,7 +197,10 @@ class ReservationLifecycleService
                     'source' => $online ? 'online_booking' : $data['source'],
                 ]);
 
-                $this->guests->recordBookingConsents($guest, $location->tenant, $data['consents'] ?? [], $online ? 'booking_widget' : 'staff', $data['ip'] ?? null);
+                $newsletterText = $online
+                    ? NewsletterSignup::consentText($location->tenant, $location->tenant->isSalon() ? NewsletterSignup::FORM_SALON : NewsletterSignup::FORM_RESTAURANT)
+                    : null;
+                $this->guests->recordBookingConsents($guest, $location->tenant, $data['consents'] ?? [], $online ? 'booking_widget' : 'staff', $data['ip'] ?? null, $newsletterText);
             }
 
             // Initial status
