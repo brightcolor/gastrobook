@@ -1,6 +1,6 @@
 # Changelog
 
-## [@@VERSION@@] – 2026-11-27
+## [1.143.0] – 2026-11-27
 
 ### Newsletter-Anmeldung über MailWizz
 
