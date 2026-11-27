@@ -1,6 +1,6 @@
 # Changelog
 
-## [@@VERSION@@] – 2026-11-27
+## [1.142.7] – 2026-11-27
 
 ### Zweig wip/gast-link-anrede aufgearbeitet
 
