@@ -73,7 +73,7 @@ class SameDayCutoffTest extends TestCase
         $today = $this->slots($setup, '2026-12-02');
         $this->assertSame([], $today['slots']);
         $this->assertSame(
-            'Schön, dass Sie heute kommen möchten! Online buchen geht für heute nur bis 12:00 Uhr. Kommen Sie aber gern einfach vorbei – vielleicht findet sich noch ein Plätzchen für Sie, versprechen können wir es leider nicht. Sie können uns auch anrufen: +49 30 1234567. Oder suchen Sie sich einen anderen Tag aus. Wir freuen uns auf Sie!',
+            "Wie schön, dass Sie heute vorbeikommen möchten! Unsere Online-Reservierungen für heute sind bereits geschlossen. Schauen Sie trotzdem gerne spontan bei uns vorbei – mit ein bisschen Glück haben wir noch ein gemütliches Plätzchen für Sie frei. Sie erreichen uns auch unter +49 30 1234567.\n\nWenn Sie sich einen Platz sichern möchten, suchen Sie sich gerne einen anderen Tag aus.\n\nWir freuen uns auf Sie!",
             $today['day_notice']['text'],
         );
         $this->assertSame('2026-12-03', $today['day_notice']['next_date']);
@@ -89,7 +89,7 @@ class SameDayCutoffTest extends TestCase
         $setup['location']->settings()->update(['guest_address' => 'du']);
 
         $this->assertSame(
-            'Schön, dass du heute kommen möchtest! Online buchen geht für heute nur bis 12:00 Uhr. Komm aber gern einfach vorbei – vielleicht findet sich noch ein Plätzchen für dich, versprechen können wir es leider nicht. Oder such dir einen anderen Tag aus. Wir freuen uns auf dich!',
+            "Wie schön, dass du heute vorbeikommen möchtest! Unsere Online-Reservierungen für heute sind bereits geschlossen. Schau trotzdem gerne spontan bei uns vorbei – mit ein bisschen Glück haben wir noch ein gemütliches Plätzchen für dich frei.\n\nWenn du dir einen Platz sichern möchtest, such dir gerne einen anderen Tag aus.\n\nWir freuen uns auf dich!",
             $this->slots($setup, '2026-12-02')['day_notice']['text'],
         );
     }
@@ -100,9 +100,54 @@ class SameDayCutoffTest extends TestCase
         $setup['location']->settings()->update(['walkins_enabled' => false, 'guest_address' => 'du']);
 
         $this->assertSame(
-            'Schön, dass du heute kommen möchtest! Online buchen geht für heute nur bis 12:00 Uhr. Ruf uns gern an: +49 30 1234567. Oder such dir einen anderen Tag aus. Wir freuen uns auf dich!',
+            "Wie schön, dass du zu uns kommen möchtest! Unsere Online-Reservierungen für heute sind bereits geschlossen. Ruf uns gern an: +49 30 1234567.\n\nSuch dir gerne einen anderen Tag aus.\n\nWir freuen uns auf dich!",
             $this->slots($setup, '2026-12-02')['day_notice']['text'],
         );
+    }
+
+    public function test_the_own_text_replaces_the_whole_notice_and_keeps_its_paragraphs(): void
+    {
+        Mail::fake();
+        $setup = $this->restaurant();
+        $setup['location']->settings()->update([
+            'same_day_closed_text' => "Wie schön, dass du auf einen Glühwein vorbeikommen möchtest!\n\nSchau gerne spontan vorbei.",
+        ]);
+        $expected = "Wie schön, dass du auf einen Glühwein vorbeikommen möchtest!\n\nSchau gerne spontan vorbei.";
+
+        $this->assertSame($expected, $this->slots($setup, '2026-12-02')['day_notice']['text']);
+
+        $this->book($setup, ['date' => '2026-12-02', 'time' => '19:00'])->assertSessionHasErrors();
+        $this->assertContains($expected, session('errors')->all());
+    }
+
+    public function test_the_own_text_is_saved_with_plain_line_breaks_checked_and_cleared(): void
+    {
+        $setup = $this->restaurant();
+        $owner = $this->createMember($setup['tenant'], 'tenant_owner');
+        $this->clearTenantContext();
+        $rules = [
+            'min_lead_minutes' => 60, 'max_advance_days' => 60, 'min_party_online' => 1, 'max_party_online' => 8,
+            'cancellation_deadline_minutes' => 120, 'modification_deadline_minutes' => 120, 'same_day_cutoff' => '12:00',
+            'booking_confirmation_mode' => 'auto', 'require_email_confirmation' => '1', 'waitlist_enabled' => '1', 'walkins_enabled' => '1',
+        ];
+        $stored = fn () => $setup['location']->settings()->first()->same_day_closed_text;
+
+        $this->actingAs($owner)->putJson('/admin/settings/rules', $rules + ['same_day_closed_text' => "  Erste Zeile\r\n\r\nZweite Zeile  "])->assertOk();
+        $this->assertSame("Erste Zeile\n\nZweite Zeile", $stored());
+
+        // Ein Aufruf ohne das Feld lässt den Text stehen.
+        $this->actingAs($owner)->putJson('/admin/settings/rules', $rules)->assertOk();
+        $this->assertSame("Erste Zeile\n\nZweite Zeile", $stored());
+
+        config(['swayy.booking.closed_notice_max' => 120]);
+        $this->actingAs($owner)->putJson('/admin/settings/rules', $rules + ['same_day_closed_text' => str_repeat('a', 121)])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.same_day_closed_text.0', 'Der Hinweis nach dem Annahmeschluss darf höchstens 120 Zeichen lang sein. Bitte ihn kürzen.');
+
+        $this->actingAs($owner)->putJson('/admin/settings/rules', $rules + ['same_day_closed_text' => ''])->assertOk();
+        $this->assertNull($stored());
+
+        $this->actingAs($owner)->get('/admin/settings/rules')->assertOk()->assertSee('name="same_day_closed_text"', false);
     }
 
     public function test_before_the_cutoff_today_is_bookable(): void
@@ -127,7 +172,7 @@ class SameDayCutoffTest extends TestCase
         // Die Nacht von heute: 00:00 am 3. Dezember gehört zum 2. Dezember.
         $this->book($setup, ['date' => '2026-12-02', 'slot_date' => '2026-12-03', 'time' => '00:00'])
             ->assertSessionHasErrors();
-        $this->assertStringContainsString('bis 12:00 Uhr', implode(' ', session('errors')->all()));
+        $this->assertStringContainsString('für heute sind bereits geschlossen', implode(' ', session('errors')->all()));
         $this->assertSame(0, Reservation::withoutGlobalScopes()->count());
 
         // Der Abend des 3. Dezember ist ein neuer Tag, samt seiner Nacht.
@@ -159,7 +204,7 @@ class SameDayCutoffTest extends TestCase
         $response = $this->book($setup, ['date' => '2026-12-02', 'time' => '19:00']);
 
         $response->assertSessionHasErrors();
-        $this->assertStringContainsString('bis 12:00 Uhr', implode(' ', session('errors')->all()));
+        $this->assertStringContainsString('für heute sind bereits geschlossen', implode(' ', session('errors')->all()));
         $this->assertSame(0, Reservation::withoutGlobalScopes()->count());
 
         $this->book($setup, ['date' => '2026-12-03', 'time' => '19:00'])->assertSessionHasNoErrors();
@@ -228,9 +273,9 @@ class SameDayCutoffTest extends TestCase
 
         $today = $this->getJson($url.'2026-12-02')->assertOk()->json();
         $this->assertSame([], $today['slots']);
-        $this->assertStringContainsString('bis 12:00 Uhr', $today['day_notice']['text']);
+        $this->assertStringContainsString('Unsere Online-Buchung für heute ist bereits geschlossen.', $today['day_notice']['text']);
         // Im Salon gibt es keinen Walk-in-Schalter, also auch keine Einladung zum Vorbeikommen.
-        $this->assertStringNotContainsString('einfach vorbei', $today['day_notice']['text']);
+        $this->assertStringNotContainsString('spontan', $today['day_notice']['text']);
 
         $this->assertNotSame([], $this->getJson($url.'2026-12-03')->assertOk()->json('slots'));
     }

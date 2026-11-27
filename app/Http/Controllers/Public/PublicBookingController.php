@@ -1118,7 +1118,14 @@ class PublicBookingController extends Controller
             ];
         }
 
-        $validated = $request->validate($rules);
+        $range = ['min' => $settings->min_party_online, 'max' => $settings->max_party_online];
+        $sizeMessage = __('Online lässt sich die Reservierung auf :min bis :max Personen ändern. Bitte eine Zahl aus der Auswahl wählen oder den Betrieb direkt ansprechen.', $range);
+        $validated = $request->validate($rules, [
+            'party_size.min' => $sizeMessage,
+            'party_size.max' => $sizeMessage,
+            'party_size.required' => __('Bitte die Personenzahl wählen.'),
+            'party_size.integer' => __('Bitte die Personenzahl aus der Auswahl wählen.'),
+        ]);
 
         $newStartLocal = CarbonImmutable::parse(
             ($validated['slot_date'] ?? $validated['date']).' '.$validated['time'],

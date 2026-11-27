@@ -93,41 +93,60 @@ class OnlineBookingWindow
     }
 
     /**
-     * Die Meldung für Gäste, wenn der Annahmeschluss erreicht ist: mit der
-     * Uhrzeit, der Einladung zum spontanen Vorbeikommen (Restaurant mit
-     * eingeschaltetem „Walk-ins erfassen“), der Telefonnummer des Standorts
-     * (falls gepflegt) und dem Weg zu einem anderen Tag. Anrede nach den
-     * Einstellungen des Standorts.
+     * Die Meldung für Gäste, wenn der Annahmeschluss erreicht ist. Hat der
+     * Standort einen eigenen Text, ersetzt er die ganze Meldung samt seinen
+     * Absätzen. Der Standardtext lädt im Restaurant zum spontanen
+     * Vorbeikommen ein (eingeschaltetes „Walk-ins erfassen“), nennt die
+     * Telefonnummer des Standorts (falls gepflegt) und den Weg zu einem
+     * anderen Tag. Anrede nach den Einstellungen des Standorts.
      */
     public function closedMessage(Location $location): string
     {
         $settings = $location->effectiveSettings();
+        $own = trim((string) $settings->same_day_closed_text);
+        if ($own !== '') {
+            return $own;
+        }
+
         $du = $settings->du();
         $phone = trim((string) $location->phone);
+        $salon = (bool) $location->tenant?->isSalon();
         // Der Salon hat keinen Walk-in-Schalter; die Spalte steht dort auf ihrer Vorgabe.
-        $walkIns = $settings->walkins_enabled && ! $location->tenant?->isSalon();
+        $walkIns = $settings->walkins_enabled && ! $salon;
 
-        $sentences = [
-            $du ? __('Schön, dass du heute kommen möchtest!') : __('Schön, dass Sie heute kommen möchten!'),
-            __('Online buchen geht für heute nur bis :time Uhr.', ['time' => $this->cutoff($location) ?? '']),
+        $first = [
+            match (true) {
+                $walkIns && $du => __('Wie schön, dass du heute vorbeikommen möchtest!'),
+                $walkIns => __('Wie schön, dass Sie heute vorbeikommen möchten!'),
+                $du => __('Wie schön, dass du zu uns kommen möchtest!'),
+                default => __('Wie schön, dass Sie zu uns kommen möchten!'),
+            },
+            $salon
+                ? __('Unsere Online-Buchung für heute ist bereits geschlossen.')
+                : __('Unsere Online-Reservierungen für heute sind bereits geschlossen.'),
         ];
         if ($walkIns) {
-            $sentences[] = $du
-                ? __('Komm aber gern einfach vorbei – vielleicht findet sich noch ein Plätzchen für dich, versprechen können wir es leider nicht.')
-                : __('Kommen Sie aber gern einfach vorbei – vielleicht findet sich noch ein Plätzchen für Sie, versprechen können wir es leider nicht.');
+            $first[] = $du
+                ? __('Schau trotzdem gerne spontan bei uns vorbei – mit ein bisschen Glück haben wir noch ein gemütliches Plätzchen für dich frei.')
+                : __('Schauen Sie trotzdem gerne spontan bei uns vorbei – mit ein bisschen Glück haben wir noch ein gemütliches Plätzchen für Sie frei.');
         }
         if ($phone !== '') {
             // Nach der Einladung zum Vorbeikommen ist der Anruf der zweite Weg.
-            $sentences[] = match (true) {
-                $walkIns && $du => __('Du kannst uns auch anrufen: :phone.', ['phone' => $phone]),
-                $walkIns => __('Sie können uns auch anrufen: :phone.', ['phone' => $phone]),
+            $first[] = match (true) {
+                $walkIns && $du => __('Du erreichst uns auch unter :phone.', ['phone' => $phone]),
+                $walkIns => __('Sie erreichen uns auch unter :phone.', ['phone' => $phone]),
                 $du => __('Ruf uns gern an: :phone.', ['phone' => $phone]),
                 default => __('Rufen Sie uns gern an: :phone.', ['phone' => $phone]),
             };
         }
-        $sentences[] = $du ? __('Oder such dir einen anderen Tag aus.') : __('Oder suchen Sie sich einen anderen Tag aus.');
-        $sentences[] = $du ? __('Wir freuen uns auf dich!') : __('Wir freuen uns auf Sie!');
 
-        return implode(' ', $sentences);
+        $otherDay = match (true) {
+            $walkIns && $du => __('Wenn du dir einen Platz sichern möchtest, such dir gerne einen anderen Tag aus.'),
+            $walkIns => __('Wenn Sie sich einen Platz sichern möchten, suchen Sie sich gerne einen anderen Tag aus.'),
+            $du => __('Such dir gerne einen anderen Tag aus.'),
+            default => __('Suchen Sie sich gerne einen anderen Tag aus.'),
+        };
+
+        return implode("\n\n", [implode(' ', $first), $otherDay, $du ? __('Wir freuen uns auf dich!') : __('Wir freuen uns auf Sie!')]);
     }
 }

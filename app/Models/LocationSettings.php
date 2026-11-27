@@ -15,7 +15,7 @@ class LocationSettings extends Model
     protected $fillable = [
         'tenant_id', 'location_id',
         'slot_interval_minutes', 'default_duration_minutes', 'duration_rules', 'buffer_minutes',
-        'min_lead_minutes', 'same_day_cutoff', 'max_advance_days', 'min_party_online', 'max_party_online', 'large_group_email',
+        'min_lead_minutes', 'same_day_cutoff', 'same_day_closed_text', 'max_advance_days', 'min_party_online', 'max_party_online', 'large_group_email',
         'auto_confirm', 'request_only', 'capacity_mode', 'max_covers_per_slot',
         'waitlist_enabled', 'walkins_enabled',
         'cancellation_deadline_minutes', 'modification_deadline_minutes',
@@ -86,6 +86,32 @@ class LocationSettings extends Model
     public function location(): BelongsTo
     {
         return $this->belongsTo(Location::class);
+    }
+
+    /**
+     * Größte Personenzahl, für die Gäste einen Knopf bekommen: ab der kleinsten
+     * Gruppe so viele Knöpfe wie eingestellt, höchstens bis zur größten Gruppe.
+     */
+    public function partyButtonMax(): int
+    {
+        return min((int) $this->max_party_online, (int) $this->min_party_online + (int) config('swayy.booking.party_buttons') - 1);
+    }
+
+    /**
+     * Die Knöpfe für die Personenzahl beim Buchen und beim Ändern. $keep ist
+     * die schon gebuchte Zahl: Liegt sie über den Knöpfen und noch innerhalb
+     * der Online-Grenzen, bekommt sie einen eigenen.
+     *
+     * @return list<int>
+     */
+    public function partyButtons(?int $keep = null): array
+    {
+        $sizes = range((int) $this->min_party_online, max((int) $this->min_party_online, $this->partyButtonMax()));
+        if ($keep !== null && $keep > $this->partyButtonMax() && $keep <= (int) $this->max_party_online) {
+            $sizes[] = $keep;
+        }
+
+        return $sizes;
     }
 
     /**

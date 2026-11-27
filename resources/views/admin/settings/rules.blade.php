@@ -23,6 +23,11 @@
         <x-field name="same_day_cutoff" label="Annahmeschluss für heute" type="time" class="max-w-48"
                  :value="$settings->same_day_cutoff"
                  help="Ab dieser Uhrzeit nimmt die Online-Buchung für den laufenden Tag nichts mehr an, etwa 12:00. Leer lassen, wenn den ganzen Tag gebucht werden kann." />
+        <x-field name="same_day_closed_text" label="Hinweis nach dem Annahmeschluss"
+                 help="Diesen Text sehen Gäste, wenn heute online nichts mehr geht. Absätze bleiben erhalten. Er ersetzt den ganzen Standardtext, also auch Telefonnummer und Einladung zum Vorbeikommen. Leer: der Standardtext.">
+            <textarea id="f-same_day_closed_text" name="same_day_closed_text" rows="6" maxlength="{{ $limits['closed_notice_max'] }}"
+                      aria-describedby="f-same_day_closed_text-help" class="w-full">{{ old('same_day_closed_text', $settings->same_day_closed_text) }}</textarea>
+        </x-field>
         <x-field name="max_advance_days" label="Vorausbuchung" type="number" unit="Tage" required class="max-w-48"
                  :value="$settings->max_advance_days" min="1" :max="$limits['advance_max_days']"
                  help="So weit im Voraus zeigt die Buchungsseite freie Tage." />

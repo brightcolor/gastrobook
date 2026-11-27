@@ -87,6 +87,8 @@ final class BookingSettingRules
         $rules = [
             'min_lead_minutes' => ['required', 'integer', 'min:0', 'max:'.$limits['lead_max_minutes']],
             'same_day_cutoff' => ['nullable', 'date_format:H:i'],
+            // „sometimes“: Ein Aufruf ohne das Feld (Einrichtungsassistent) lässt den Text stehen.
+            'same_day_closed_text' => ['sometimes', 'nullable', 'string', 'max:'.$limits['closed_notice_max']],
             'max_advance_days' => ['required', 'integer', 'min:1', 'max:'.$limits['advance_max_days']],
             'min_party_online' => ['required', 'integer', 'min:1', 'max:'.$limits['party_online_max']],
             'max_party_online' => ['required', 'integer', 'min:1', 'max:'.$limits['party_online_max'], 'gte:min_party_online'],
@@ -138,6 +140,8 @@ final class BookingSettingRules
             'table_hold_minutes.required_if_accepted' => __('Bitte bei „Haltezeit“ eintragen, wie viele Minuten der Tisch gehalten wird, oder das Halten ausschalten.'),
             'table_hold_minutes.min' => __('Die Haltezeit beträgt mindestens :min Minute. Bitte einen größeren Wert eintragen.'),
             'table_hold_minutes.max' => __('Die Haltezeit beträgt höchstens :max Minuten. Bitte einen kleineren Wert eintragen.'),
+            'same_day_closed_text.max' => __('Der Hinweis nach dem Annahmeschluss darf höchstens :max Zeichen lang sein. Bitte ihn kürzen.'),
+            'same_day_closed_text.string' => __('Der Hinweis nach dem Annahmeschluss muss ein Text sein. Bitte die Seite neu laden und ihn erneut eintragen.'),
             'same_day_cutoff.date_format' => __('Bitte den Annahmeschluss als Uhrzeit eintragen, zum Beispiel 12:00, oder das Feld leer lassen.'),
             'max_party_online.gte' => __('Die größte Gruppe ist kleiner als die kleinste. Bitte bei „Größte Gruppe“ mindestens :value eintragen.'),
         ];
@@ -184,6 +188,7 @@ final class BookingSettingRules
             'duration_rules.*.duration' => __('Tischzeit'),
             'min_lead_minutes' => __('Mindestvorlauf'),
             'same_day_cutoff' => __('Annahmeschluss für heute'),
+            'same_day_closed_text' => __('Hinweis nach dem Annahmeschluss'),
             'max_advance_days' => __('Vorausbuchung'),
             'min_party_online' => __('Kleinste Gruppe'),
             'max_party_online' => __('Größte Gruppe'),

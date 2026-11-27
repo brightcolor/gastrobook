@@ -466,6 +466,8 @@ Die Navigation kommt aus einer Quelle, [`config/navigation.php`](config/navigati
 | `SWAYY_BOOKING_COVERS_MAX` | `2000` | Größte Zahl für „Höchstens gleichzeitig“ in Gästen (1 bis 32767) |
 | `SWAYY_BOOKING_LEAD_MAX` | `10080` | Längster Mindestvorlauf in Minuten (0 bis 32767) |
 | `SWAYY_BOOKING_ADVANCE_MAX` | `730` | So viele Tage im Voraus ist höchstens buchbar (1 bis 1825) |
+| `SWAYY_BOOKING_CLOSED_NOTICE_MAX` | `800` | Längster eigener Hinweis nach dem Annahmeschluss in Zeichen (100 bis 2000) |
+| `SWAYY_BOOKING_PARTY_BUTTONS` | `9` | Knöpfe für die Personenzahl beim Buchen und Ändern, ab der kleinsten Gruppe (2 bis 40) |
 | `SWAYY_BOOKING_DEADLINE_MAX` | `20160` | Längste Storno- und Umbuchungsfrist in Minuten (0 bis 32767) |
 | `SWAYY_BOOKING_PARTY_ONLINE_MAX` | `100` | Größte Gruppe, die online buchen kann (1 bis 100) |
 

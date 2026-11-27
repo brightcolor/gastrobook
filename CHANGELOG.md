@@ -5,11 +5,22 @@
 ### Wärmerer Hinweis nach dem Annahmeschluss
 
 - Ist die Online-Buchung für heute geschlossen, lädt der Hinweis im Restaurant
-  jetzt zum spontanen Vorbeikommen ein und sagt dazu, dass ein freier Platz
-  nicht versprochen ist. Die Einladung erscheint, solange „Walk-ins erfassen“
-  eingeschaltet ist.
-- Der ganze Hinweis ist freundlicher formuliert, mit „du“ und „Sie“. Eine
-  eingetragene Telefonnummer steht weiter dabei.
+  jetzt ein, spontan vorbeizukommen: „mit ein bisschen Glück“ ist noch ein Platz
+  frei. Die Einladung erscheint, solange „Walk-ins erfassen“ eingeschaltet ist.
+- Der Hinweis ist freundlicher formuliert und in Absätze gegliedert, mit „du“
+  und „Sie“. Eine eingetragene Telefonnummer steht weiter dabei.
+- Neu je Standort unter **Buchungsregeln**: „Hinweis nach dem Annahmeschluss“
+  für einen eigenen Text (`SWAYY_BOOKING_CLOSED_NOTICE_MAX`, Vorgabe 800
+  Zeichen). Migration legt nur die Spalte an.
+
+### Reservierung ändern wie buchen
+
+- Behoben: Beim Ändern ließ sich jede Zahl bis zur „Größten Gruppe“ wählen,
+  etwa 30. Jetzt zeigt die Seite dieselben Knöpfe wie beim Buchen samt „Mehr“
+  und der Adresse für größere Gruppen. Die schon gebuchte Zahl bleibt wählbar.
+- Behoben: Beim Ändern fehlte der Hinweis nach dem Annahmeschluss und zur
+  Saisonpause; die Seite meldete nur „keine Zeiten verfügbar“.
+- Die Zahl der Knöpfe ist einstellbar (`SWAYY_BOOKING_PARTY_BUTTONS`).
 
 ## [1.143.0] – 2026-11-27
 
