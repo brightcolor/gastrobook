@@ -811,7 +811,7 @@ class ScheduleExceptionsTest extends TestCase
 
         $cases = [
             ['Am 24.12.2026 kann niemand online buchen.', ['from' => '2026-12-24', 'effects' => ['closed']]],
-            ['Vom 31.12.2026 bis 01.01.2027 buchen Gäste zwischen 12:00 und 02:00, letzte Uhrzeit 00:30.', [
+            ['Vom 31.12.2026 bis 01.01.2027 buchen Gäste zwischen 12:00 und 02:00 am Folgetag, letzte Uhrzeit 00:30 am Folgetag.', [
                 'from' => '2026-12-31', 'until' => '2027-01-01', 'effects' => ['hours'], 'windows' => [['opens_at' => '18:00', 'closes_at' => '02:00'], ['opens_at' => '12:00', 'closes_at' => '15:00']],
             ]],
             ['Am 31.12.2026 buchen Gäste zwischen 18:00 und 18:30, finden aber keine Uhrzeit: Kein Fenster ist lang genug für einen Besuch.', [
@@ -830,6 +830,12 @@ class ScheduleExceptionsTest extends TestCase
             ['Am 31.12.2026 buchen Gäste zwischen 18:00 und 23:00; es gelten höchstens 20 Gäste gleichzeitig im ganzen Betrieb; „Terrasse“ ist gesperrt; letzte Uhrzeit 21:30.', [
                 'from' => '2026-12-31', 'effects' => ['limit', 'hours', 'lock'], 'windows' => [['opens_at' => '18:00', 'closes_at' => '23:00']],
                 'limit_covers' => 20, 'lock_rooms' => [$terrace->id],
+            ]],
+            // Fenster, Grenze und Sperre über Mitternacht nennen den Folgetag.
+            ['Am 31.12.2026 buchen Gäste zwischen 19:00 und 03:00 am Folgetag; es gelten von 23:00 bis 01:00 am Folgetag höchstens 30 Gäste gleichzeitig im ganzen Betrieb; Tisch T1 ist gesperrt von 22:00 bis 02:00 am Folgetag; letzte Uhrzeit 01:30 am Folgetag.', [
+                'from' => '2026-12-31', 'effects' => ['hours', 'limit', 'lock'], 'windows' => [['opens_at' => '19:00', 'closes_at' => '03:00']],
+                'limit_covers' => 30, 'limit_from' => '23:00', 'limit_until' => '01:00',
+                'lock_tables' => [$setup['tables'][0]->id], 'lock_from' => '22:00', 'lock_until' => '02:00',
             ]],
             ['', ['from' => '2026-12-31', 'effects' => []]],
         ];
@@ -862,7 +868,9 @@ class ScheduleExceptionsTest extends TestCase
                 $this->actingAs($owner)->postJson('/admin/settings/exceptions', $payload)->assertOk();
                 $starts = app(TimeSlotService::class)->slotStarts($location, $day, $duration);
                 $this->assertNotSame([], $starts);
-                $this->assertStringEndsWith(', letzte Uhrzeit '.$starts[array_key_last($starts)]->format('H:i').'.', $sentence);
+                $last = $starts[array_key_last($starts)];
+                $nextDay = $last->toDateString() > $day->toDateString() ? ' am Folgetag' : '';
+                $this->assertStringEndsWith(', letzte Uhrzeit '.$last->format('H:i').$nextDay.'.', $sentence);
 
                 $this->actingAs($owner)->deleteJson('/admin/settings/exceptions/g-'.SpecialOpeningHour::query()->latest('id')->value('exception_group'))->assertOk();
             }

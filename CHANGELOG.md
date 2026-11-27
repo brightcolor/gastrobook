@@ -1,5 +1,16 @@
 # Changelog
 
+## [@@VERSION@@] – 2026-11-27
+
+### „So wirkt es“ nennt den Folgetag
+
+- Bei Öffnungszeiten über Mitternacht stand im Satz „So wirkt es“ der
+  Ausnahmen etwa „zwischen 18:00 und 02:00, letzte Uhrzeit 00:30“. Dass
+  02:00 und 00:30 schon am nächsten Tag liegen, stand nirgends. Jetzt heißt
+  es „zwischen 18:00 und 02:00 am Folgetag, letzte Uhrzeit 00:30 am
+  Folgetag“. Dasselbe gilt für Grenzen und Sperren, deren Zeitraum über
+  Mitternacht reicht („gesperrt von 22:00 bis 02:00 am Folgetag“).
+
 ## [1.142.2] – 2026-11-27
 
 ### Ausnahmen speichern in Sammel-Inserts
