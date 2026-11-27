@@ -318,7 +318,7 @@
                                        class="h-10 w-16 cursor-pointer rounded-xl border-2 border-stone-200">
                                 <span id="obColorPreview" class="rounded-xl px-4 py-2 text-sm font-semibold text-white"
                                       style="background:{{ $tenant->brand_primary_color ?: config('swayy.ui.default_brand_color') }}">
-                                    Jetzt reservieren
+                                    {{ $salon ? 'Termin buchen' : 'Jetzt reservieren' }}
                                 </span>
                             </div>
                         </div>

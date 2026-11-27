@@ -1,5 +1,24 @@
 # Changelog
 
+## [@@VERSION@@] – 2026-11-27
+
+### Widget-Skripte: Salon-Wortlaut und Namen nur als Text
+
+- **Salons buchen Termine, auch im Widget.** Das eingebundene Buchungsfenster
+  (`embed.js`) hieß für Screenreader „Tisch reservieren – …“, das Popup
+  „Reservierung – …“ mit dem Knopf „Jetzt reservieren“, auch bei Salons. Jetzt
+  heißt es dort „Termin buchen – …“ und „Terminbuchung – …“, der Knopf ohne
+  eigenen Text „Termin buchen“ wie im Baukasten. Die Farbvorschau im
+  Onboarding folgt dem.
+- **Namen und Knopftext nur als Text.** Das Popup setzte Knopftext, Name des
+  Standorts und Titel als HTML in die Website des Betriebs. Ein
+  Anführungszeichen im Standortnamen brach das Fenster auf, Markup in
+  `data-label` lief als HTML. Jetzt entstehen Knopf und Fenster aus
+  Elementen und Text.
+- Beide Skripte übernehmen die Höhe der Buchungsseite nur noch von deren
+  eigener Adresse und nur als Zahl; das Popup gibt den Empfänger beim
+  Schließen wieder frei.
+
 ## [1.142.3] – 2026-11-27
 
 ### „So wirkt es“ nennt den Folgetag
