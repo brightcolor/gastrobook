@@ -1,5 +1,17 @@
 # Changelog
 
+## [@@VERSION@@] – 2026-11-27
+
+### Zweig wip/gast-link-anrede aufgearbeitet
+
+- Der nie ausgelieferte Zweig (Stand 1.134.3) wollte zwei Dinge: die Anrede im
+  Schlusssatz der Link-Mails und einen Browsertitel der Bestätigungsseite, der
+  den Stand der Buchung nennt. Beides ist auf dem heutigen Stand schon gelöst.
+  Übernommen wird der Test `ConfirmationPageTitleTest`, angepasst an die
+  heutige Seite: Er hält für Restaurant und Salon, mit „du“ und „Sie“, fest,
+  dass der Titel „E-Mail-Adresse bestätigen“, „Anfrage erhalten“, „Zahlung
+  ausstehend“ oder „bestätigt“ lautet. Für Gäste ändert sich nichts.
+
 ## [1.142.6] – 2026-11-27
 
 ### Wochentage an einer Stelle, Index für Tischsperren
