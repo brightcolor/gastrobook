@@ -64,7 +64,7 @@ final class ScheduleExceptionSentence
             $windows = $this->slots->windowsForDate($location, $day, $otherSpecialRows);
             $closure = $windows === [] ? $this->closure($location, $day, $otherSpecialRows) : null;
         }
-        $last = $this->lastStart($location, $windows, $salon);
+        $last = $this->lastStart($location, $windows, $salon, $day);
         $guests = $salon ? __('Kunden') : __('Gäste');
         $noTime = $salon
             ? __('Kein Fenster ist lang genug für einen Termin.')
@@ -72,7 +72,7 @@ final class ScheduleExceptionSentence
 
         if ($effects === ['hours']) {
             $opening = __(':when buchen :guests zwischen :open und :close', [
-                'when' => $when, 'guests' => $guests, 'open' => $this->firstOpening($windows), 'close' => $this->lastClosing($windows),
+                'when' => $when, 'guests' => $guests, 'open' => $this->firstOpening($windows), 'close' => $this->lastClosing($windows, $day),
             ]);
 
             return $last === null
@@ -82,7 +82,7 @@ final class ScheduleExceptionSentence
 
         $parts = [];
         if (in_array('hours', $effects, true)) {
-            $parts[] = __('buchen :guests zwischen :open und :close', ['guests' => $guests, 'open' => $this->firstOpening($windows), 'close' => $this->lastClosing($windows)]);
+            $parts[] = __('buchen :guests zwischen :open und :close', ['guests' => $guests, 'open' => $this->firstOpening($windows), 'close' => $this->lastClosing($windows, $day)]);
         }
         if (in_array('limit', $effects, true)) {
             $parts[] = $this->limitPart($location, $data, $salon, first: $parts === []);
@@ -190,11 +190,23 @@ final class ScheduleExceptionSentence
      *
      * @param  array<int, array{opens: CarbonImmutable, closes: CarbonImmutable, label: ?string}>  $windows
      */
-    private function lastStart(Location $location, array $windows, bool $salon): ?string
+    private function lastStart(Location $location, array $windows, bool $salon, CarbonImmutable $day): ?string
     {
         $starts = $this->slots->startsForWindows($windows, $this->preview->duration($location, $salon), $this->slots->slotInterval($location));
 
-        return $starts === [] ? null : $starts[array_key_last($starts)]->format('H:i');
+        return $starts === [] ? null : $this->timeOn($starts[array_key_last($starts)], $day);
+    }
+
+    /**
+     * Uhrzeit eines Zeitpunkts; liegt er nach dem Tag $day, steht „am Folgetag“
+     * dabei. Ohne den Zusatz las sich „zwischen 18:00 und 02:00, letzte Uhrzeit
+     * 00:30“ wie ein Tag, an dem um 00:30 und 02:00 schon vorbei sind.
+     */
+    private function timeOn(CarbonImmutable $time, CarbonImmutable $day): string
+    {
+        return $time->toDateString() > $day->toDateString()
+            ? __(':time am Folgetag', ['time' => $time->format('H:i')])
+            : $time->format('H:i');
     }
 
     /**
@@ -208,9 +220,11 @@ final class ScheduleExceptionSentence
     /**
      * @param  array<int, array{opens: CarbonImmutable, closes: CarbonImmutable, label: ?string}>  $windows
      */
-    private function lastClosing(array $windows): string
+    private function lastClosing(array $windows, CarbonImmutable $day): string
     {
-        return collect($windows)->map(fn (array $window) => $window['closes'])->sortByDesc(fn (CarbonImmutable $time) => $time->getTimestamp())->first()?->format('H:i') ?? '';
+        $last = collect($windows)->map(fn (array $window) => $window['closes'])->sortByDesc(fn (CarbonImmutable $time) => $time->getTimestamp())->first();
+
+        return $last === null ? '' : $this->timeOn($last, $day);
     }
 
     /** @param array<string, mixed> $data */
@@ -261,6 +275,13 @@ final class ScheduleExceptionSentence
     /** "von 18:00 bis 22:00", oder null ohne Uhrzeiten. */
     private function range(mixed $from, mixed $until): ?string
     {
-        return is_string($from) && is_string($until) ? __('von :from bis :until', ['from' => $from, 'until' => $until]) : null;
+        if (! is_string($from) || ! is_string($until)) {
+            return null;
+        }
+
+        // Endet die Spanne nicht nach ihrem Beginn, reicht sie in den Folgetag (ScheduleExceptions::spans).
+        return $until <= $from
+            ? __('von :from bis :until am Folgetag', ['from' => $from, 'until' => $until])
+            : __('von :from bis :until', ['from' => $from, 'until' => $until]);
     }
 }
