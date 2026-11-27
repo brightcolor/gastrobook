@@ -1,6 +1,6 @@
 # Changelog
 
-## [@@VERSION@@] – 2026-11-27
+## [1.142.6] – 2026-11-27
 
 ### Wochentage an einer Stelle, Index für Tischsperren
 
