@@ -1,6 +1,6 @@
 # Changelog
 
-## [@@VERSION@@] – 2026-11-27
+## [1.144.0] – 2026-11-27
 
 ### Wärmerer Hinweis nach dem Annahmeschluss
 
