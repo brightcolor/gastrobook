@@ -1,5 +1,20 @@
 # Changelog
 
+## [@@VERSION@@] – 2026-11-27
+
+### Widget-Skripte laden wieder
+
+- **Reservierungsknopf und eingebettetes Buchungsfenster laden wieder auf den
+  Websites der Betriebe.** Seit 1.129.1 (07.10.2026) lieferte nginx jede
+  Adresse mit Dateiendung als statische Datei aus und antwortete mit 404, wenn
+  es sie nicht gab. Die Widget-Skripte `/embed/{betrieb}.js` und
+  `/widget/{betrieb}/popup.js` erzeugt aber die Anwendung; sie kamen nie dort
+  an. Jetzt reicht nginx fehlende Dateien an die Anwendung weiter; vorhandene
+  Dateien liefert es wie bisher direkt aus.
+- `docker/nginx.conf` ist ein Bind-Mount: Wer selbst betreibt, übernimmt die
+  Datei aus dem Repository und erzeugt den Container `web` neu
+  (`docker compose up -d --force-recreate web`).
+
 ## [1.142.4] – 2026-11-27
 
 ### Widget-Skripte: Salon-Wortlaut und Namen nur als Text
