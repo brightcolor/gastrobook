@@ -70,7 +70,7 @@ details > summary::-webkit-details-marker { display: none; }
         <div class="mx-5 mt-5 rounded-xl bg-red-50 p-4 text-sm text-red-800 sm:mx-6">
             <p class="mb-1 font-semibold">Bitte korrigieren:</p>
             <ul class="list-inside list-disc space-y-0.5">
-                @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
+                @foreach($errors->all() as $error)<li class="whitespace-pre-line">{{ $error }}</li>@endforeach
             </ul>
         </div>
     @endif
@@ -412,7 +412,7 @@ details > summary::-webkit-details-marker { display: none; }
                         if (data.day_notice) {
                             slotContainer.innerHTML = '';
                             const note = document.createElement('p');
-                            note.className = 'col-span-full rounded-2xl border-2 border-brand/20 bg-brand/5 px-4 py-4 text-center text-sm font-medium text-stone-700';
+                            note.className = 'col-span-full rounded-2xl border-2 border-brand/20 bg-brand/5 px-4 py-4 text-center text-sm font-medium text-stone-700 whitespace-pre-line';
                             note.textContent = data.day_notice.text;
                             slotContainer.appendChild(note);
                             const next = data.day_notice.next_date;
@@ -461,14 +461,14 @@ details > summary::-webkit-details-marker { display: none; }
                     <button type="button" class="sp-edit ml-3 text-xs font-semibold text-brand hover:underline" onclick="event.stopPropagation();editStep(1)">Ändern</button>
                 </div>
                 <div class="sp-body px-5 pb-5 sm:px-6">
-                    @php $onlineMax = min($settings->max_party_online, $settings->min_party_online + 8); @endphp
+                    @php $onlineMax = $settings->partyButtonMax(); @endphp
                     <div class="grid grid-cols-4 gap-2 sm:grid-cols-5" id="partyButtons">
-                        @for($i = $settings->min_party_online; $i <= $onlineMax; $i++)
+                        @foreach($settings->partyButtons() as $i)
                             <button type="button" data-party="{{ $i }}"
                                     class="party-btn rounded-2xl border-2 border-stone-200 py-3.5 text-xl font-black transition-all duration-150 hover:border-brand hover:bg-brand/5 active:scale-95">
                                 {{ $i }}
                             </button>
-                        @endfor
+                        @endforeach
                         @if($settings->large_group_email)
                             <button type="button" id="partyMoreBtn" aria-expanded="false" aria-controls="largeGroupNotice"
                                     class="party-more-btn rounded-2xl border-2 border-dashed border-stone-300 py-3.5 text-base font-bold text-stone-500 transition-all duration-150 hover:border-brand hover:bg-brand/5 hover:text-brand active:scale-95">
@@ -483,28 +483,11 @@ details > summary::-webkit-details-marker { display: none; }
 
             {{-- ── Große Gruppen: warmer Hinweis zur E-Mail (per "Mehr" aufgedeckt) ── --}}
             @if($settings->large_group_email)
-                @php
-                    $grpFrom = $onlineMax + 1;
-                    $grpSubject = rawurlencode('Gruppenanfrage – '.$location->name);
-                @endphp
                 <div id="largeGroupNotice" class="px-5 pb-6 pt-5 sm:px-6">
-                    <div class="rounded-2xl border-2 border-brand/20 bg-brand/5 p-6 text-center">
-                        <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand/15 text-2xl" aria-hidden="true">🥂</div>
-                        <h3 class="text-lg font-bold text-stone-800">Große Runde? Wie schön!</h3>
-                        <p class="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-stone-600">
-                            {{ $du
-                                ? 'Für Gruppen ab '.$grpFrom.' Personen finden wir gemeinsam den passenden Platz. Schreib uns kurz, worum es geht – wir melden uns schnell mit einem persönlichen Vorschlag.'
-                                : 'Für Gruppen ab '.$grpFrom.' Personen finden wir gemeinsam den passenden Platz. Schreiben Sie uns kurz, worum es geht – wir melden uns schnell mit einem persönlichen Vorschlag.' }}
-                        </p>
-                        <a href="mailto:{{ $settings->large_group_email }}?subject={{ $grpSubject }}"
-                           class="btn-brand mt-5 inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-base font-bold text-white transition-all active:scale-[0.99]">
-                            ✉️ E-Mail schreiben
-                        </a>
-                        <p class="mt-3 text-xs text-stone-400">{{ $settings->large_group_email }}</p>
-                        <button type="button" id="partyLessBtn" class="mt-4 text-xs font-semibold text-stone-500 transition-colors hover:text-brand hover:underline">
-                            ← Zurück zur Auswahl
-                        </button>
-                    </div>
+                    @include('public.partials.large-group-card', [
+                        'email' => $settings->large_group_email, 'from' => $onlineMax + 1, 'du' => $du,
+                        'subject' => 'Gruppenanfrage – '.$location->name, 'backId' => 'partyLessBtn',
+                    ])
                 </div>
             @endif
 
@@ -537,7 +520,7 @@ details > summary::-webkit-details-marker { display: none; }
                     {{-- Kennung des gehaltenen Tisches (Einstellung „Tisch beim Buchen halten“). --}}
                     <input type="hidden" name="hold_token" id="holdToken" value="{{ old('hold_token') }}">
                     <div id="alternatives" class="hidden rounded-xl bg-amber-50 p-3 text-sm text-amber-900"></div>
-                    @error('time')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+                    @error('time')<p class="mt-1 whitespace-pre-line text-xs text-red-600">{{ $message }}</p>@enderror
 
                 </div>
             </div>
@@ -947,7 +930,7 @@ details > summary::-webkit-details-marker { display: none; }
                     const notice = data.season_notice || data.day_notice;
                     if (notice) {
                         const note = document.createElement('p');
-                        note.className = 'col-span-full rounded-2xl border-2 border-brand/20 bg-brand/5 px-4 py-4 text-center text-sm font-medium text-stone-700';
+                        note.className = 'col-span-full rounded-2xl border-2 border-brand/20 bg-brand/5 px-4 py-4 text-center text-sm font-medium text-stone-700 whitespace-pre-line';
                         note.textContent = notice.text;
                         slotContainer.appendChild(note);
                         // Ein Tipp bis zum ersten buchbaren Tag – nur, wenn er im

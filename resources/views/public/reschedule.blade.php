@@ -22,7 +22,7 @@
             <div class="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">
                 <p class="font-semibold">Bitte beachten:</p>
                 <ul class="mt-1 list-inside list-disc space-y-0.5">
-                    @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
+                    @foreach($errors->all() as $error)<li class="whitespace-pre-line">{{ $error }}</li>@endforeach
                 </ul>
             </div>
         @endif
@@ -32,20 +32,38 @@
             @csrf
 
             @if(! $isSalon)
+            @php($onlineMax = $settings->partyButtonMax())
             <div>
                 <label class="mb-2 block text-sm font-semibold">Personenanzahl</label>
-                <div class="grid gap-2" style="grid-template-columns: repeat({{ min($settings->max_party_online, 8) }}, minmax(0, 1fr))">
-                    @for($i = $settings->min_party_online; $i <= $settings->max_party_online; $i++)
+                <div class="grid grid-cols-4 gap-2 sm:grid-cols-5">
+                    @foreach($settings->partyButtons((int) $reservation->party_size) as $i)
                     <button type="button" data-party="{{ $i }}"
                             class="party-btn rounded-xl border-2 border-stone-200 py-2.5 text-lg font-bold transition-all hover:border-brand active:scale-95
                                    {{ old('party_size', $reservation->party_size) == $i ? 'border-brand bg-brand text-white' : '' }}">
                         {{ $i }}
                     </button>
-                    @endfor
+                    @endforeach
+                    @if($settings->large_group_email)
+                    <button type="button" id="partyMoreBtn" aria-expanded="false" aria-controls="largeGroupNotice"
+                            class="rounded-xl border-2 border-dashed border-stone-300 py-2.5 text-base font-bold text-stone-500 transition-all hover:border-brand hover:text-brand active:scale-95">
+                        Mehr
+                    </button>
+                    @endif
                 </div>
                 <input type="hidden" name="party_size" id="partySizeInput" value="{{ old('party_size', $reservation->party_size) }}">
             </div>
+            @if($settings->large_group_email)
+            <div id="largeGroupNotice" hidden>
+                @include('public.partials.large-group-card', [
+                    'email' => $settings->large_group_email, 'from' => $onlineMax + 1, 'du' => $du,
+                    'subject' => 'Gruppenanfrage – '.$location->name.' (Reservierung '.$reservation->code.')', 'backId' => 'partyLessBtn',
+                    'note' => $du ? 'Deine bisherige Reservierung bleibt so lange bestehen.' : 'Ihre bisherige Reservierung bleibt so lange bestehen.',
+                ])
+            </div>
             @endif
+            @endif
+
+            <div id="changeFields" class="space-y-5">
 
             <div>
                 <label for="date" class="mb-2 block text-sm font-semibold">Neues Datum</label>
@@ -69,6 +87,7 @@
             <button type="submit" class="btn-brand w-full rounded-xl py-3.5 text-lg font-bold text-white shadow hover:opacity-90">
                 Umbuchen
             </button>
+            </div>
         </form>
 
         <a href="{{ route('booking.manage', ['code' => $reservation->code, 'token' => $reservation->manage_token]) }}"
@@ -88,6 +107,22 @@
             const slotContainer  = document.getElementById('slotContainer');
             const partySizeInput = document.getElementById('partySizeInput');
 
+            // Große Gruppen: „Mehr“ zeigt den Weg per E-Mail und blendet Datum, Uhrzeit und Absenden aus.
+            const moreBtn = document.getElementById('partyMoreBtn');
+            const lessBtn = document.getElementById('partyLessBtn');
+            const groupNotice = document.getElementById('largeGroupNotice');
+            const changeFields = document.getElementById('changeFields');
+            function groupInquiry(open) {
+                if (!moreBtn || !groupNotice) return;
+                groupNotice.hidden = !open;
+                changeFields.hidden = open;
+                moreBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                moreBtn.classList.toggle('border-brand', open);
+                moreBtn.classList.toggle('text-brand', open);
+            }
+            if (moreBtn) moreBtn.addEventListener('click', () => groupInquiry(true));
+            if (lessBtn) lessBtn.addEventListener('click', () => groupInquiry(false));
+
             // Party-size buttons (restaurant only)
             document.querySelectorAll('.party-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
@@ -98,6 +133,7 @@
                     btn.classList.add('border-brand', 'bg-brand', 'text-white');
                     btn.classList.remove('border-stone-200');
                     partySizeInput.value = btn.dataset.party;
+                    groupInquiry(false);
                     loadSlots();
                 });
             });
@@ -121,6 +157,23 @@
                     const data = await res.json();
                     slotContainer.innerHTML = '';
                     if (!data.slots || data.slots.length === 0) {
+                        // Wie beim Buchen: Saisonpause und Annahmeschluss erklären sich mit ihrem eigenen Hinweis.
+                        const notice = data.season_notice || data.day_notice;
+                        if (notice) {
+                            const note = document.createElement('p');
+                            note.className = 'col-span-full whitespace-pre-line rounded-2xl border-2 border-brand/20 bg-brand/5 px-4 py-4 text-center text-sm font-medium text-stone-700';
+                            note.textContent = notice.text;
+                            slotContainer.appendChild(note);
+                            if (notice.next_date && notice.jump_label && (!dateInput.max || notice.next_date <= dateInput.max)) {
+                                const jump = document.createElement('button');
+                                jump.type = 'button';
+                                jump.className = 'btn-brand col-span-full mt-1 rounded-xl px-4 py-3 text-sm font-bold text-white';
+                                jump.textContent = notice.jump_label;
+                                jump.addEventListener('click', () => { dateInput.value = notice.next_date; loadSlots(); });
+                                slotContainer.appendChild(jump);
+                            }
+                            return;
+                        }
                         slotContainer.innerHTML = '<p class="col-span-full text-sm text-red-600">An diesem Tag sind keine Zeiten verfügbar.</p>';
                         return;
                     }

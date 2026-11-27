@@ -185,10 +185,12 @@ werden müssen.
 den laufenden Tag nichts mehr an, etwa ab 12:00. Das gilt auch für die Uhrzeiten
 nach Mitternacht, die noch zu den heutigen Öffnungszeiten gehören (bei 18:00 bis
 02:00 also auch für 00:30). Gäste sehen dann einen freundlichen Hinweis mit der
-Uhrzeit, der Telefonnummer des Standorts (falls eingetragen) und einem Knopf zum
-nächsten Tag. Im Restaurant lädt der Hinweis außerdem ein, spontan
-vorbeizukommen, und sagt dazu, dass ein freier Platz nicht versprochen ist. Das
-gilt, solange **Walk-ins erfassen** eingeschaltet ist. Im
+Telefonnummer des Standorts (falls eingetragen) und einem Knopf zum nächsten
+Tag. Im Restaurant lädt der Hinweis außerdem ein, mit etwas Glück spontan einen
+Platz zu bekommen, solange **Walk-ins erfassen** eingeschaltet ist. Unter
+**Hinweis nach dem Annahmeschluss** schreibst du deinen eigenen Text, etwa
+passend zur Veranstaltung; er ersetzt den ganzen Standardtext, Absätze bleiben
+erhalten. Im
 Reservierungsbuch trägst du weiter für heute ein. Leer heißt: kein
 Annahmeschluss.
 

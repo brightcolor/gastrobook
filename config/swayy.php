@@ -542,9 +542,14 @@ return [
         // Spalte location_settings.min_lead_minutes (smallint): höchstens 32767.
         'lead_max_minutes' => EnvSetting::integer('SWAYY_BOOKING_LEAD_MAX', default: 10080, min: 0, max: 32767),
         'advance_max_days' => EnvSetting::integer('SWAYY_BOOKING_ADVANCE_MAX', default: 730, min: 1, max: 1825),
+        // Längster eigener Hinweis nach dem Annahmeschluss in Zeichen.
+        'closed_notice_max' => EnvSetting::integer('SWAYY_BOOKING_CLOSED_NOTICE_MAX', default: 800, min: 100, max: 2000),
         // Spalten cancellation_deadline_minutes und modification_deadline_minutes (smallint): höchstens 32767.
         'deadline_max_minutes' => EnvSetting::integer('SWAYY_BOOKING_DEADLINE_MAX', default: 20160, min: 0, max: 32767),
         'party_online_max' => EnvSetting::integer('SWAYY_BOOKING_PARTY_ONLINE_MAX', default: 100, min: 1, max: 100),
+        // So viele Knöpfe für die Personenzahl zeigen Buchen und Ändern ab der kleinsten Gruppe; darüber führt „Mehr“
+        // zur Adresse für größere Gruppen.
+        'party_buttons' => EnvSetting::integer('SWAYY_BOOKING_PARTY_BUTTONS', default: 9, min: 2, max: 40),
         // Tisch beim Buchen halten (Kapazität & Dauer): Vorgabe und längste Haltezeit in Minuten, dazu wie oft eine
         // Adresse je Minute einen Platz halten darf. Ein Platz kann so nicht im Sekundentakt für alle anderen verschwinden.
         'hold_max_minutes' => $bookingHoldMax,

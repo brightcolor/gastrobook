@@ -46,6 +46,11 @@ class BookingRulesController extends Controller
         abort_if($location === null, 404);
         $salon = $this->context->tenant()->isSalon();
 
+        // Das Formular schickt Zeilenumbrüche als CRLF; gezählt und gespeichert wird ein Zeichen je Umbruch.
+        if (is_string($request->input('same_day_closed_text'))) {
+            $request->merge(['same_day_closed_text' => trim(str_replace(["\r\n", "\r"], "\n", $request->input('same_day_closed_text')))]);
+        }
+
         $validated = $request->validate(
             BookingSettingRules::booking($salon),
             BookingSettingRules::messages(),
@@ -70,6 +75,11 @@ class BookingRulesController extends Controller
                 'large_group_email' => ($validated['large_group_email'] ?? null) ?: null,
                 'walkins_enabled' => $request->boolean('walkins_enabled'),
             ];
+        }
+
+        if (array_key_exists('same_day_closed_text', $validated)) {
+            // Leer heißt: der Standardtext.
+            $values['same_day_closed_text'] = $validated['same_day_closed_text'] ?: null;
         }
 
         $settings = $location->settings()->firstOrCreate(['tenant_id' => $location->tenant_id]);
