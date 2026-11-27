@@ -1,5 +1,16 @@
 # Changelog
 
+## [@@VERSION@@] – 2026-11-27
+
+### Wärmerer Hinweis nach dem Annahmeschluss
+
+- Ist die Online-Buchung für heute geschlossen, lädt der Hinweis im Restaurant
+  jetzt zum spontanen Vorbeikommen ein und sagt dazu, dass ein freier Platz
+  nicht versprochen ist. Die Einladung erscheint, solange „Walk-ins erfassen“
+  eingeschaltet ist.
+- Der ganze Hinweis ist freundlicher formuliert, mit „du“ und „Sie“. Eine
+  eingetragene Telefonnummer steht weiter dabei.
+
 ## [1.143.0] – 2026-11-27
 
 ### Newsletter-Anmeldung über MailWizz
