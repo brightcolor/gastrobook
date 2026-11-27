@@ -17,9 +17,6 @@ use Carbon\CarbonImmutable;
  */
 final class OpeningHoursPreview
 {
-    /** Wochentage in der Zählung der Tabelle opening_hours: 0 ist Montag. */
-    public const WEEKDAYS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
-
     public function __construct(private readonly TimeSlotService $slots) {}
 
     /**
@@ -177,7 +174,7 @@ final class OpeningHoursPreview
                 $hints[] = ['index' => $index, 'text' => __('Rund um die Uhr geöffnet: Das Fenster dauert 24 Stunden.')];
             } elseif ($window['closes']->toDateString() !== $window['opens']->toDateString()) {
                 $hints[] = ['index' => $index, 'text' => __('Endet am Folgetag (:day) um :time.', [
-                    'day' => self::WEEKDAYS[($weekday + 1) % 7],
+                    'day' => Weekdays::NAMES[($weekday + 1) % 7],
                     'time' => $window['closes']->format('H:i'),
                 ])];
             }

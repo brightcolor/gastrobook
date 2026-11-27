@@ -12,7 +12,7 @@
     $typeName = $salon ? 'Salon / Dienstleister' : 'Restaurant / Café';
     // Adressen im Skript mit Schrägstrichen, sonst wie @json: Tags, Anführungszeichen und & bleiben maskiert.
     $jsonUrl  = JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES;
-    $weekdays = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
+    $weekdays = \App\Support\Weekdays::NAMES;
     $csrf     = csrf_token();
 
     $steps = [
@@ -508,7 +508,7 @@
         div.className = 'hour-row flex flex-wrap items-center gap-2';
         div.innerHTML = `
             <select name="hours[${i}][weekday]" class="rounded-lg border-stone-200">
-                ${['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'].map((d, idx) =>
+                ${@js(\App\Support\Weekdays::NAMES).map((d, idx) =>
                     `<option value="${idx}" ${idx === nextDay ? 'selected' : ''}>${d}</option>`).join('')}
             </select>
             <input type="time" name="hours[${i}][opens_at]" value="11:00" class="rounded-lg border-stone-200">
