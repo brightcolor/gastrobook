@@ -13,6 +13,7 @@ use App\Models\Service;
 use App\Services\AuditLogger;
 use App\Support\MoneyInput;
 use App\Support\TenantContext;
+use App\Support\Weekdays;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
@@ -27,12 +28,6 @@ use Illuminate\View\View;
 class DepositsController extends Controller
 {
     use RespondsToSettingsForms;
-
-    /** Wochentage in der Zählung der Regeln: 0 ist Montag (PaymentRequirementService). */
-    public const WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-
-    /** Ausgeschriebene Namen derselben Tage, für Screenreader. */
-    public const WEEKDAY_NAMES = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
 
     public function __construct(
         private readonly TenantContext $context,
@@ -101,8 +96,8 @@ class DepositsController extends Controller
             'settings' => $location->effectiveSettings(),
             'salon' => $salon,
             'limits' => (array) config('swayy.deposits'),
-            'weekdays' => self::WEEKDAYS,
-            'weekdayNames' => self::WEEKDAY_NAMES,
+            'weekdays' => Weekdays::SHORT,
+            'weekdayNames' => Weekdays::NAMES,
             'canRefunds' => $request->user()?->canInTenant('opening_hours.manage', $tenant, $location) ?? false,
         ]);
     }
@@ -347,7 +342,7 @@ class DepositsController extends Controller
             'flat_amount' => MoneyInput::fromMinor($rule->flat_amount_minor),
             'from_time' => $rule->from_time ? substr((string) $rule->from_time, 0, 5) : null,
             'until_time' => $rule->until_time ? substr((string) $rule->until_time, 0, 5) : null,
-            'weekdays' => $rule->weekdays ? implode(', ', array_map(fn ($day) => self::WEEKDAYS[$day] ?? '?', $rule->weekdays)) : null,
+            'weekdays' => $rule->weekdays ? implode(', ', array_map(fn ($day) => Weekdays::SHORT[$day] ?? '?', $rule->weekdays)) : null,
             'payment_deadline_minutes' => $rule->payment_deadline_minutes,
             'cancel_unpaid_automatically' => (bool) $rule->cancel_unpaid_automatically,
             'service_id' => $rule->service_id,
@@ -374,7 +369,7 @@ class DepositsController extends Controller
             $parts[] = trans_choice('ab :count Person|ab :count Personen', $rule->min_party_size);
         }
         if (! empty($rule->weekdays)) {
-            $parts[] = implode(', ', array_map(fn ($day) => self::WEEKDAYS[$day] ?? '?', $rule->weekdays));
+            $parts[] = implode(', ', array_map(fn ($day) => Weekdays::SHORT[$day] ?? '?', $rule->weekdays));
         }
         if ($rule->from_time) {
             $parts[] = __('ab :time', ['time' => substr((string) $rule->from_time, 0, 5)]);

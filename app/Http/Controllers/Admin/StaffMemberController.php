@@ -16,6 +16,7 @@ use App\Models\StaffWorkingHour;
 use App\Services\AuditLogger;
 use App\Support\NameOrder;
 use App\Support\TenantContext;
+use App\Support\Weekdays;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -32,9 +33,6 @@ use Illuminate\View\View;
 class StaffMemberController extends Controller
 {
     use RespondsToSettingsForms;
-
-    /** Wochentage in der Zählung der Tabelle (0 = Montag). */
-    private const WEEKDAYS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
 
     public function __construct(
         private readonly TenantContext $context,
@@ -60,7 +58,7 @@ class StaffMemberController extends Controller
             'services' => NameOrder::inOrder(Service::where('location_id', $location->id)->where('is_active', true)->get()),
             'defaultColor' => config('swayy.ui.default_staff_color'),
             'limits' => (array) config('swayy.salon'),
-            'weekdays' => self::WEEKDAYS,
+            'weekdays' => Weekdays::NAMES,
         ]);
     }
 
@@ -564,7 +562,7 @@ class StaffMemberController extends Controller
             foreach ($windows as $window) {
                 if ($reach !== null && $window['start'] < $reach['end']) {
                     $problems["hours.{$window['key']}.starts_at"] = __('Dieses Zeitfenster überschneidet sich mit dem Zeitfenster am :day von :from bis :to Uhr. Bitte Beginn oder Ende so ändern, dass sich beide nicht überschneiden.', [
-                        'day' => self::WEEKDAYS[$day], 'from' => $reach['start'], 'to' => $reach['end'],
+                        'day' => Weekdays::NAMES[$day], 'from' => $reach['start'], 'to' => $reach['end'],
                     ]);
                 }
                 if ($reach === null || $window['end'] > $reach['end']) {
@@ -591,7 +589,7 @@ class StaffMemberController extends Controller
                 'ends_at' => substr((string) (is_array($hour) ? $hour['ends_at'] : $hour->ends_at), 0, 5),
             ])
             ->sortBy([['weekday', 'asc'], ['starts_at', 'asc'], ['ends_at', 'asc']])
-            ->map(fn (array $hour): string => self::WEEKDAYS[$hour['weekday']].' '.$hour['starts_at'].'–'.$hour['ends_at'])
+            ->map(fn (array $hour): string => Weekdays::NAMES[$hour['weekday']].' '.$hour['starts_at'].'–'.$hour['ends_at'])
             ->values()
             ->all();
     }

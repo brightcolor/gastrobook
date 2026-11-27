@@ -13,6 +13,7 @@ use App\Support\OpeningHoursPreview;
 use App\Support\OpeningHoursRules;
 use App\Support\ScheduleExceptionRules;
 use App\Support\TenantContext;
+use App\Support\Weekdays;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Validator;
@@ -54,7 +55,7 @@ class OpeningHoursController extends Controller
             ];
         }
         $days = [];
-        foreach (OpeningHoursPreview::WEEKDAYS as $weekday => $name) {
+        foreach (Weekdays::NAMES as $weekday => $name) {
             $days[] = ['weekday' => $weekday, 'name' => $name, 'windows' => $byDay[$weekday] ?? []];
         }
 

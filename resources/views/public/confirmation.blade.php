@@ -34,10 +34,7 @@ if ($party >= 3) {
 
 // German date + time
 $start    = $reservation->localStart();
-$weekdays = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
-$months   = ['', 'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
-             'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
-$dateStr  = $weekdays[$start->dayOfWeek] . ', ' . $start->day . '. ' . $months[$start->month];
+$dateStr  = \App\Support\Weekdays::of($start) . ', ' . $start->day . '. ' . $start->locale('de')->translatedFormat('F');
 $timeStr  = $start->format('H:i');
 
 // Build the full welcome sentence

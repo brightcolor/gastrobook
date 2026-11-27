@@ -297,7 +297,7 @@ final class OpeningHoursRules
                     [$later, $earlier] = [$b['start'] + $shift, $b['order']] > [$a['start'], $a['order']] ? [$b, $a] : [$a, $b];
                     $found[$later['key']] ??= [
                         'window' => self::clock($earlier['opens']).'–'.self::clock($earlier['closes']),
-                        'day' => $weekly && $earlier['day'] !== $later['day'] ? OpeningHoursPreview::WEEKDAYS[$earlier['day']] : null,
+                        'day' => $weekly && $earlier['day'] !== $later['day'] ? Weekdays::NAMES[$earlier['day']] : null,
                     ];
                     break;
                 }

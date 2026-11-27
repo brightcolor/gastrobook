@@ -1,5 +1,18 @@
 # Changelog
 
+## [@@VERSION@@] – 2026-11-27
+
+### Wochentage an einer Stelle, Index für Tischsperren
+
+- Die Namen der Wochentage standen in sechs Dateien (Anzahlungen,
+  Mitarbeiter, Öffnungszeiten, Einrichtungsassistent, Bestätigungsseite),
+  einmal mit Sonntag als erstem Tag. Jetzt kommen sie aus
+  `App\Support\Weekdays` (Woche ab Montag, wie die Spalten der Datenbank); ein
+  Test meldet jede neue eigene Liste. Für Gäste und Team ändert sich nichts.
+- Neuer Index `table_blocks_location_end_idx` auf `table_blocks`
+  (`location_id`, `ends_at`) für die Liste der Ausnahmen. Migration legt nur
+  den Index an.
+
 ## [1.142.5] – 2026-11-27
 
 ### Widget-Skripte laden wieder
