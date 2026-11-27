@@ -1,6 +1,6 @@
 # Changelog
 
-## [@@VERSION@@] – 2026-11-27
+## [1.142.4] – 2026-11-27
 
 ### Widget-Skripte: Salon-Wortlaut und Namen nur als Text
 
