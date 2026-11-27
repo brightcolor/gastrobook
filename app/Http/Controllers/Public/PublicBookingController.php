@@ -1177,22 +1177,29 @@ class PublicBookingController extends Controller
      */
     public function embedScript(string $tenantSlug, string $locationSlug)
     {
-        [, $location] = $this->resolve($tenantSlug, $locationSlug);
+        [$tenant, $location] = $this->resolve($tenantSlug, $locationSlug);
 
-        $bookingUrl = route('booking.show', [$tenantSlug, $locationSlug]);
+        $src = $this->jsString(route('booking.show', [$tenantSlug, $locationSlug]));
+        // Salons buchen Termine; der Titel liest sich für Screenreader wie die Buchungsseite.
+        $title = $this->jsString(($tenant->isSalon() ? __('Termin buchen') : __('Tisch reservieren')).' – '.$location->name);
 
+        // Die Höhe meldet die Buchungsseite per postMessage. Sie gilt nur von der eigenen Adresse und
+        // nur als Zahl; andere Fenster der Website können das iframe so nicht verformen.
         $js = <<<JS
         (function () {
             var container = document.getElementById('swayy-widget') || document.currentScript.parentNode;
+            var src = {$src};
+            var origin = new URL(src).origin;
             var iframe = document.createElement('iframe');
-            iframe.src = {$this->jsString($bookingUrl)};
-            iframe.title = {$this->jsString('Tisch reservieren – '.$location->name)};
+            iframe.src = src;
+            iframe.title = {$title};
             iframe.style.cssText = 'width:100%;min-height:760px;border:0;border-radius:12px;';
             iframe.loading = 'lazy';
             iframe.allow = 'payment';
             container.appendChild(iframe);
             window.addEventListener('message', function (e) {
-                if (e.data && e.data.swayyHeight) iframe.style.height = e.data.swayyHeight + 'px';
+                var height = e.data && Number(e.data.swayyHeight);
+                if (e.origin === origin && height > 0) iframe.style.height = height + 'px';
             });
         })();
         JS;
@@ -1212,7 +1219,10 @@ class PublicBookingController extends Controller
         [$tenant, $location] = $this->resolve($tenantSlug, $locationSlug);
 
         $src = $this->jsString(route('booking.show', [$tenantSlug, $locationSlug]));
-        $title = $this->jsString('Reservierung – '.$location->name);
+        $salon = $tenant->isSalon();
+        $title = $this->jsString(($salon ? __('Terminbuchung') : __('Reservierung')).' – '.$location->name);
+        // Derselbe Knopftext wie im Baukasten unter „Buchungsseite & Widget“ (BookingPageController).
+        $defLabel = $this->jsString($salon ? __('Termin buchen') : __('Jetzt reservieren'));
         // Markenfarbe des Betriebs, sonst die Vorgabe aus den Einstellungen.
         $defaultColor = (string) config('swayy.ui.default_brand_color');
         $defColor = $this->jsString($tenant->brand_primary_color ?: $defaultColor);
@@ -1220,7 +1230,7 @@ class PublicBookingController extends Controller
         $js = <<<JS
 (function () {
     var s = document.currentScript;
-    var label   = (s && s.dataset.label) || 'Jetzt reservieren';
+    var label   = (s && s.dataset.label) || {$defLabel};
     var color   = (s && s.dataset.color) || {$defColor};
     var isFloat = !!(s && s.dataset.float === '1');
     var src     = {$src};
@@ -1244,11 +1254,16 @@ class PublicBookingController extends Controller
 
     var icon = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>';
 
+    // Knopftext, Name des Standorts und Titel kommen als Text ins Dokument der Website, nie als Markup:
+    // data-label setzt der Betrieb, den Namen pflegt er in Swayy, und ein Anführungszeichen darin brach
+    // vorher das title-Attribut auf. Markup ist nur das feste Symbol.
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'swayy-btn' + (isFloat ? ' swayy-btn--float' : '');
     btn.style.setProperty('--swayy-c', color);
-    btn.innerHTML = icon + label;
+    btn.innerHTML = icon;
+    btn.appendChild(document.createTextNode(label));
+    var origin = new URL(src).origin;
 
     function mountBtn() {
         if (isFloat) { document.body.appendChild(btn); }
@@ -1267,31 +1282,47 @@ class PublicBookingController extends Controller
         overlay.className = 'swayy-overlay';
         var modal = document.createElement('div');
         modal.className = 'swayy-modal';
-        modal.innerHTML =
-            '<div class="swayy-modal-head">' +
-                '<span class="swayy-modal-title">' + label + '</span>' +
-                '<button class="swayy-close" type="button" aria-label="Schließen">×</button>' +
-            '</div>' +
-            '<iframe class="swayy-iframe" src="' + src + '" title="' + ttl + '" allow="payment" loading="lazy"></iframe>';
+        var head = document.createElement('div');
+        head.className = 'swayy-modal-head';
+        var heading = document.createElement('span');
+        heading.className = 'swayy-modal-title';
+        heading.textContent = label;
+        var close = document.createElement('button');
+        close.className = 'swayy-close';
+        close.type = 'button';
+        close.setAttribute('aria-label', 'Schließen');
+        close.textContent = '×';
+        head.appendChild(heading);
+        head.appendChild(close);
+        var iframe = document.createElement('iframe');
+        iframe.className = 'swayy-iframe';
+        iframe.src = src;
+        iframe.title = ttl;
+        iframe.allow = 'payment';
+        iframe.loading = 'lazy';
+        modal.appendChild(head);
+        modal.appendChild(iframe);
         overlay.appendChild(modal);
         document.body.appendChild(overlay);
         document.body.style.overflow = 'hidden';
 
+        // Die Höhe gilt nur von der eigenen Buchungsseite und nur als Zahl.
+        function onMessage(e) {
+            var height = e.data && Number(e.data.swayyHeight);
+            if (e.origin === origin && height > 0) iframe.style.minHeight = (height + 20) + 'px';
+        }
         function closeModal() {
             document.body.removeChild(overlay);
             document.body.style.overflow = '';
             document.removeEventListener('keydown', onEsc);
+            window.removeEventListener('message', onMessage);
         }
         function onEsc(e) { if (e.key === 'Escape') closeModal(); }
 
-        modal.querySelector('.swayy-close').addEventListener('click', closeModal);
+        close.addEventListener('click', closeModal);
         overlay.addEventListener('click', function (e) { if (e.target === overlay) closeModal(); });
         document.addEventListener('keydown', onEsc);
-
-        var iframe = modal.querySelector('.swayy-iframe');
-        window.addEventListener('message', function (e) {
-            if (e.data && e.data.swayyHeight) iframe.style.minHeight = (e.data.swayyHeight + 20) + 'px';
-        });
+        window.addEventListener('message', onMessage);
     });
 })();
 JS;
