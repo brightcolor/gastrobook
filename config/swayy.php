@@ -419,6 +419,32 @@ return [
 
         // Längste Listen-UID in Zeichen. 8 bis 255, Vorgabe 64.
         'list_uid_max' => EnvSetting::integer('SWAYY_NEWSLETTER_LIST_UID_MAX', default: 64, min: 8, max: 255),
+
+        // Längster Text neben dem Newsletter-Häkchen in Zeichen. 40 bis 2000, Vorgabe 500.
+        'consent_text_max' => EnvSetting::integer('SWAYY_NEWSLETTER_CONSENT_TEXT_MAX', default: 500, min: 40, max: 2000),
+
+        // Längster Name des Knopfes der Bestätigungsmail in Zeichen. 10 bis 255, Vorgabe 60.
+        'confirm_button_max' => EnvSetting::integer('SWAYY_NEWSLETTER_CONFIRM_BUTTON_MAX', default: 60, min: 10, max: 255),
+
+        // Längster Wert eines zusätzlichen Feldes in Zeichen; MailWizz speichert bis 255. 10 bis 255, Vorgabe 100.
+        'field_value_max' => EnvSetting::integer('SWAYY_NEWSLETTER_FIELD_VALUE_MAX', default: 100, min: 10, max: 255),
+
+        // Text neben dem Häkchen je Formular, solange der Betrieb keinen eigenen einträgt.
+        'consent_text_defaults' => [
+            'restaurant' => 'Newsletter mit Angeboten erhalten (jederzeit widerrufbar).',
+            'salon' => 'Newsletter erhalten (jederzeit widerrufbar).',
+            'event' => 'Newsletter mit Angeboten und Veranstaltungen erhalten (jederzeit widerrufbar).',
+        ],
+
+        // Zusätzliche Felder einer neuen Anmeldung, solange der Betrieb nichts anderes speichert: Feldkürzel und Wert
+        // für die Herkunft und für die Veranstaltung (ohne eigenen Wert gilt der Name des Betriebs). Felder, die es in
+        // der Liste nicht gibt, übergeht MailWizz.
+        'fields' => [
+            'source_tag' => 'QUELLE',
+            'source_value' => 'swayy',
+            'event_tag' => 'VERANSTALTUNG',
+            'event_value' => '',
+        ],
     ],
 
     /*

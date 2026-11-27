@@ -91,6 +91,26 @@ funktioniert; schlägt der Test fehl, nennt die Seite die Ursache. Der Schalter
 Zugangsdaten bleiben gespeichert. Der API-Key wird verschlüsselt gespeichert und
 nie wieder angezeigt.
 
+Im Abschnitt **Anmeldung beim Buchen** auf derselben Seite stellst du ein:
+
+| Feld | Wirkung |
+|---|---|
+| Text neben dem Häkchen | Steht auf der Buchungsseite und bei Events. Nenne, wer schreibt und worum es geht. Swayy speichert bei jeder Zustimmung den Text, den der Gast gesehen hat. Leer: der Standardtext |
+| Die Liste verschickt eine Bestätigungsmail | Eingeschaltet weist die Seite nach einer Buchung mit Häkchen auf diese Mail und den Spam-Ordner hin |
+| Knopf in der Bestätigungsmail | Der Hinweis nennt den Knopf so, wie er in der Mail steht |
+| Feld und Wert für die Herkunft | Feldkürzel deiner Liste (Vorgabe `QUELLE` mit dem Wert `swayy`) |
+| Feld und Wert für die Veranstaltung | Feldkürzel deiner Liste (Vorgabe `VERANSTALTUNG`; ohne eigenen Wert der Name des Betriebs) |
+
+Herkunft und Veranstaltung gehen bei einer neuen Anmeldung mit. Wer schon auf
+der Liste steht, behält seine ersten Angaben; Swayy aktualisiert dann nur den
+Namen. Mehrere Betriebe können dieselbe Liste nutzen: Trage bei jedem dieselbe
+API-URL und Listen-UID ein und unterscheide sie über den Wert für die
+Veranstaltung.
+
+**Abmelden:** Der Abmeldelink in einer Nachricht aus Swayy trägt die Adresse
+auch in MailWizz aus. Wer sich in MailWizz selbst abmeldet, ist dort
+ausgetragen; das Gästeprofil in Swayy behält seinen Stand.
+
 ## Was ihr davon habt
 
 Typische sinnvolle Anbindungen:

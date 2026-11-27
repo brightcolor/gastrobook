@@ -88,7 +88,7 @@ Sobald du Dienste einbindest, verarbeiten Dritte Daten deiner Gäste:
 | seven.io | SMS-Erinnerungen (Einstellungen › Gästekommunikation › SMS-Versand) | Mobilnummer, Nachrichtentext |
 | Stripe / PayPal | Anzahlungen (Einstellungen › Zahlungen › Zahlungsanbieter) | Zahlungsdaten, Betrag, Referenz |
 | GoCardless | dein eigenes Abo | deine Bankdaten (nicht die der Gäste) |
-| MailWizz | Newsletter, falls genutzt (Einstellungen › Verbindungen › Newsletter) | E-Mail-Adresse, Name |
+| MailWizz | Newsletter, falls genutzt (Einstellungen › Verbindungen › Newsletter) | E-Mail-Adresse, Name, bei neuer Anmeldung Herkunft und Veranstaltung |
 
 Für jeden dieser Dienste brauchst du einen **Auftragsverarbeitungsvertrag** und
 einen Eintrag in deinem **Verarbeitungsverzeichnis**. Die Anbieter stellen

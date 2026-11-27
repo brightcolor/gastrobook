@@ -201,9 +201,19 @@ Nachrichten) bzw. Art. 6 Abs. 1 lit. f DSGVO.
 
 Sofern Sie ausdrücklich eingewilligt haben, verarbeiten wir Ihre E-Mail-Adresse
 für den Versand von Angeboten und Neuigkeiten; hierfür kann ein
-Newsletter-Dienst ([MailWizz]) eingesetzt werden.
+Newsletter-Dienst ([MailWizz]) eingesetzt werden. Als Nachweis speichern wir zu
+Ihrer Zustimmung auf der Buchungsseite den Text, den Sie dabei neben dem
+Kontrollkästchen gesehen haben. An den Newsletter-Dienst übermitteln wir Ihre
+E-Mail-Adresse und Ihren Namen, bei einer neuen Anmeldung zusätzlich, woher die
+Anmeldung kommt (Buchungssoftware) und zu welcher Veranstaltung oder welchem
+Betrieb sie gehört. [Verlangt die Liste eine Bestätigung (Double-Opt-in),
+erhalten Sie dafür eine eigene E-Mail; angemeldet sind Sie erst nach Ihrem Klick
+darin. Falls der Newsletter von einem anderen Verantwortlichen herausgegeben
+wird, etwa dem Veranstalter, hier Name und Anschrift ergänzen.]
 **Rechtsgrundlage:** Art. 6 Abs. 1 lit. a DSGVO (Einwilligung). Sie können den
-Newsletter jederzeit über den Abmeldelink oder per Nachricht an uns abbestellen;
+Newsletter jederzeit über den Abmeldelink oder per Nachricht an uns abbestellen.
+Klicken Sie auf den Abmeldelink in einer Nachricht aus unserer Buchungssoftware,
+tragen wir Sie auch beim angebundenen Newsletter-Dienst aus;
 der Widerruf berührt nicht die Rechtmäßigkeit der bis dahin erfolgten
 Verarbeitung. Lassen Sie bei einer späteren Buchung den Haken beim Newsletter
 leer, bleibt eine bereits erteilte Einwilligung bestehen. [Falls unter

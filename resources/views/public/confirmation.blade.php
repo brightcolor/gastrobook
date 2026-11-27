@@ -165,6 +165,10 @@ if ($companions) {
 
     </div>{{-- /data-delivery-success --}}
 
+    <div class="mt-4 empty:hidden">
+        @include('public.partials.newsletter-hint', ['tenant' => $location->tenant])
+    </div>
+
     {{-- Details --}}
     <div class="mt-6 rounded-2xl bg-stone-50 text-left text-sm">
         <div class="divide-y divide-stone-100">

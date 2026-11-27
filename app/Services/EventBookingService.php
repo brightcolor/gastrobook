@@ -6,6 +6,7 @@ use App\Mail\Layout\GuestText;
 use App\Models\Event;
 use App\Models\EventBooking;
 use App\Models\User;
+use App\Support\NewsletterSignup;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
@@ -59,7 +60,7 @@ class EventBookingService
                     'phone' => $data['guest_phone'] ?? null,
                     'source' => 'online_booking',
                 ]);
-                $this->guests->recordBookingConsents($guest, $tenant, $data['consents'] ?? [], 'booking_widget', $data['ip'] ?? null);
+                $this->guests->recordBookingConsents($guest, $tenant, $data['consents'] ?? [], 'booking_widget', $data['ip'] ?? null, NewsletterSignup::consentText($tenant, NewsletterSignup::FORM_EVENT));
             }
 
             // With a deposit set, only that part is collected online – the rest

@@ -21,6 +21,10 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $tariff_ends_at
  * @property array<string, int|null>|null $contract_limits
  * @property bool $newsletter_unticked_revokes
+ * @property string|null $newsletter_consent_text
+ * @property string|null $newsletter_confirm_button
+ * @property bool $newsletter_double_opt_in
+ * @property array<string, string>|null $newsletter_fields
  * @property-read Plan|null $plan
  */
 class Tenant extends Model
@@ -35,6 +39,12 @@ class Tenant extends Model
         'imprint_url', 'privacy_url', 'terms_url',
         'guest_retention_months', 'settings', 'feature_overrides',
         'newsletter_unticked_revokes',
+        'newsletter_consent_text', 'newsletter_confirm_button', 'newsletter_double_opt_in', 'newsletter_fields',
+    ];
+
+    /** Wie die Vorgabe der Spalte, auch am noch nicht neu gelesenen Modell. */
+    protected $attributes = [
+        'newsletter_double_opt_in' => true,
     ];
 
     protected function casts(): array
@@ -48,6 +58,8 @@ class Tenant extends Model
             'feature_overrides' => 'array',
             'mail_relay_enabled' => 'boolean',
             'newsletter_unticked_revokes' => 'boolean',
+            'newsletter_double_opt_in' => 'boolean',
+            'newsletter_fields' => 'array',
             'approved_at' => 'datetime',
             'tariff_ends_at' => 'datetime',
             'free_place' => 'boolean',
