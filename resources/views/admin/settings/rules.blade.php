@@ -15,7 +15,7 @@
     <x-settings.section id="zeitraum" title="Wann Gäste buchen können">
         <x-slot:description>
             <p>Der Mindestvorlauf gibt dir Zeit zur Vorbereitung: Bei 60 Minuten bucht um 18:30 niemand mehr für 19:00.</p>
-            <p>Mit dem Annahmeschluss endet die Online-Buchung für den laufenden Tag zu einer festen Uhrzeit, samt der Nacht nach Mitternacht, die noch zu den heutigen Öffnungszeiten gehört. Gäste sehen dann deine Telefonnummer und können einen anderen Tag wählen. {{ $salon ? 'Unter „Termine“ trägst du für heute weiter ein.' : 'Im Reservierungsbuch trägst du für heute weiter ein.' }}</p>
+            <p>Mit dem Annahmeschluss endet die Online-Buchung für den laufenden Tag zu einer festen Uhrzeit, samt der Nacht nach Mitternacht, die noch zu den heutigen Öffnungszeiten gehört. Gäste sehen dann deine Telefonnummer und können einen anderen Tag wählen.{{ $salon ? '' : ' Mit „Walk-ins erfassen“ lädt die Seite sie außerdem ein, spontan vorbeizukommen.' }} {{ $salon ? 'Unter „Termine“ trägst du für heute weiter ein.' : 'Im Reservierungsbuch trägst du für heute weiter ein.' }}</p>
         </x-slot:description>
         <x-field name="min_lead_minutes" label="Mindestvorlauf" type="number" unit="Min." :minutes="true" required class="max-w-48"
                  :value="$settings->min_lead_minutes" min="0" :max="$limits['lead_max_minutes']"
@@ -87,7 +87,7 @@
                         : 'Ist alles belegt, tragen sich Gäste ein und bekommen ein Angebot, sobald ein Platz frei wird.'" />
         @unless($salon)
             <x-checkbox name="walkins_enabled" label="Walk-ins erfassen" :checked="(bool) $settings->walkins_enabled"
-                        help="Dein Team setzt Gäste, die spontan kommen, im Live-Board an einen freien Tisch." />
+                        help="Dein Team setzt Gäste, die spontan kommen, im Live-Board an einen freien Tisch. Nach dem Annahmeschluss lädt die Buchungsseite dann zum Vorbeikommen ein und sagt dazu, dass ein freier Platz nicht versprochen ist." />
         @endunless
     </x-settings.section>
 </form>

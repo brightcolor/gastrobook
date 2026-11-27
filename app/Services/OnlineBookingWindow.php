@@ -94,21 +94,40 @@ class OnlineBookingWindow
 
     /**
      * Die Meldung für Gäste, wenn der Annahmeschluss erreicht ist: mit der
-     * Uhrzeit, der Telefonnummer des Standorts (falls gepflegt) und dem Weg
-     * zu einem anderen Tag. Anrede nach den Einstellungen des Standorts.
+     * Uhrzeit, der Einladung zum spontanen Vorbeikommen (Restaurant mit
+     * eingeschaltetem „Walk-ins erfassen“), der Telefonnummer des Standorts
+     * (falls gepflegt) und dem Weg zu einem anderen Tag. Anrede nach den
+     * Einstellungen des Standorts.
      */
     public function closedMessage(Location $location): string
     {
-        $du = $location->effectiveSettings()->du();
-        $text = __('Für heute nehmen wir online keine Buchungen mehr an, das geht bis :time Uhr.', ['time' => $this->cutoff($location) ?? '']);
+        $settings = $location->effectiveSettings();
+        $du = $settings->du();
         $phone = trim((string) $location->phone);
+        // Der Salon hat keinen Walk-in-Schalter; die Spalte steht dort auf ihrer Vorgabe.
+        $walkIns = $settings->walkins_enabled && ! $location->tenant?->isSalon();
 
-        if ($phone !== '') {
-            return $text.' '.($du
-                ? __('Ruf uns gern an: :phone. Oder wähl einen anderen Tag.', ['phone' => $phone])
-                : __('Rufen Sie uns gern an: :phone. Oder wählen Sie einen anderen Tag.', ['phone' => $phone]));
+        $sentences = [
+            $du ? __('Schön, dass du heute kommen möchtest!') : __('Schön, dass Sie heute kommen möchten!'),
+            __('Online buchen geht für heute nur bis :time Uhr.', ['time' => $this->cutoff($location) ?? '']),
+        ];
+        if ($walkIns) {
+            $sentences[] = $du
+                ? __('Komm aber gern einfach vorbei – vielleicht findet sich noch ein Plätzchen für dich, versprechen können wir es leider nicht.')
+                : __('Kommen Sie aber gern einfach vorbei – vielleicht findet sich noch ein Plätzchen für Sie, versprechen können wir es leider nicht.');
         }
+        if ($phone !== '') {
+            // Nach der Einladung zum Vorbeikommen ist der Anruf der zweite Weg.
+            $sentences[] = match (true) {
+                $walkIns && $du => __('Du kannst uns auch anrufen: :phone.', ['phone' => $phone]),
+                $walkIns => __('Sie können uns auch anrufen: :phone.', ['phone' => $phone]),
+                $du => __('Ruf uns gern an: :phone.', ['phone' => $phone]),
+                default => __('Rufen Sie uns gern an: :phone.', ['phone' => $phone]),
+            };
+        }
+        $sentences[] = $du ? __('Oder such dir einen anderen Tag aus.') : __('Oder suchen Sie sich einen anderen Tag aus.');
+        $sentences[] = $du ? __('Wir freuen uns auf dich!') : __('Wir freuen uns auf Sie!');
 
-        return $text.' '.($du ? __('Wähl gern einen anderen Tag.') : __('Wählen Sie gern einen anderen Tag.'));
+        return implode(' ', $sentences);
     }
 }

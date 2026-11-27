@@ -184,8 +184,11 @@ werden müssen.
 **Annahmeschluss für heute** – ab dieser Uhrzeit nimmt die Online-Buchung für
 den laufenden Tag nichts mehr an, etwa ab 12:00. Das gilt auch für die Uhrzeiten
 nach Mitternacht, die noch zu den heutigen Öffnungszeiten gehören (bei 18:00 bis
-02:00 also auch für 00:30). Gäste sehen dann einen Hinweis mit der Uhrzeit, der
-Telefonnummer des Standorts und einem Knopf zum nächsten Tag. Im
+02:00 also auch für 00:30). Gäste sehen dann einen freundlichen Hinweis mit der
+Uhrzeit, der Telefonnummer des Standorts (falls eingetragen) und einem Knopf zum
+nächsten Tag. Im Restaurant lädt der Hinweis außerdem ein, spontan
+vorbeizukommen, und sagt dazu, dass ein freier Platz nicht versprochen ist. Das
+gilt, solange **Walk-ins erfassen** eingeschaltet ist. Im
 Reservierungsbuch trägst du weiter für heute ein. Leer heißt: kein
 Annahmeschluss.
 
@@ -207,7 +210,9 @@ Kästchen „E-Mail-Adresse bestätigen lassen“. Siehe *Einrichtung*. Die
 folgenreichste Einstellung.
 
 **Warteliste und Walk-ins** – ob Gäste auf eine Warteliste kommen, wenn alles
-belegt ist, und ob dein Team Walk-ins im Live-Board erfasst.
+belegt ist, und ob dein Team Walk-ins im Live-Board erfasst. Mit
+eingeschalteten Walk-ins lädt die Buchungsseite nach dem Annahmeschluss auch zum
+Vorbeikommen ein.
 
 ## Wenn nichts angeboten wird
 

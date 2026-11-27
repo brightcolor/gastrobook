@@ -73,13 +73,36 @@ class SameDayCutoffTest extends TestCase
         $today = $this->slots($setup, '2026-12-02');
         $this->assertSame([], $today['slots']);
         $this->assertSame(
-            'Für heute nehmen wir online keine Buchungen mehr an, das geht bis 12:00 Uhr. Rufen Sie uns gern an: +49 30 1234567. Oder wählen Sie einen anderen Tag.',
+            'Schön, dass Sie heute kommen möchten! Online buchen geht für heute nur bis 12:00 Uhr. Kommen Sie aber gern einfach vorbei – vielleicht findet sich noch ein Plätzchen für Sie, versprechen können wir es leider nicht. Sie können uns auch anrufen: +49 30 1234567. Oder suchen Sie sich einen anderen Tag aus. Wir freuen uns auf Sie!',
             $today['day_notice']['text'],
         );
         $this->assertSame('2026-12-03', $today['day_notice']['next_date']);
         $this->assertSame('Zu morgen', $today['day_notice']['jump_label']);
 
         $this->assertContains('19:00', $this->slots($setup, '2026-12-03')['slots']);
+    }
+
+    public function test_with_du_and_without_phone_the_guest_is_invited_to_drop_by(): void
+    {
+        $setup = $this->restaurant();
+        $setup['location']->update(['phone' => null]);
+        $setup['location']->settings()->update(['guest_address' => 'du']);
+
+        $this->assertSame(
+            'Schön, dass du heute kommen möchtest! Online buchen geht für heute nur bis 12:00 Uhr. Komm aber gern einfach vorbei – vielleicht findet sich noch ein Plätzchen für dich, versprechen können wir es leider nicht. Oder such dir einen anderen Tag aus. Wir freuen uns auf dich!',
+            $this->slots($setup, '2026-12-02')['day_notice']['text'],
+        );
+    }
+
+    public function test_without_walk_ins_nobody_is_invited_to_drop_by(): void
+    {
+        $setup = $this->restaurant();
+        $setup['location']->settings()->update(['walkins_enabled' => false, 'guest_address' => 'du']);
+
+        $this->assertSame(
+            'Schön, dass du heute kommen möchtest! Online buchen geht für heute nur bis 12:00 Uhr. Ruf uns gern an: +49 30 1234567. Oder such dir einen anderen Tag aus. Wir freuen uns auf dich!',
+            $this->slots($setup, '2026-12-02')['day_notice']['text'],
+        );
     }
 
     public function test_before_the_cutoff_today_is_bookable(): void
@@ -206,6 +229,8 @@ class SameDayCutoffTest extends TestCase
         $today = $this->getJson($url.'2026-12-02')->assertOk()->json();
         $this->assertSame([], $today['slots']);
         $this->assertStringContainsString('bis 12:00 Uhr', $today['day_notice']['text']);
+        // Im Salon gibt es keinen Walk-in-Schalter, also auch keine Einladung zum Vorbeikommen.
+        $this->assertStringNotContainsString('einfach vorbei', $today['day_notice']['text']);
 
         $this->assertNotSame([], $this->getJson($url.'2026-12-03')->assertOk()->json('slots'));
     }
