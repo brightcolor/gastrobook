@@ -1,6 +1,6 @@
 # Changelog
 
-## [@@VERSION@@] – 2026-11-27
+## [1.142.3] – 2026-11-27
 
 ### „So wirkt es“ nennt den Folgetag
 
